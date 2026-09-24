@@ -61,24 +61,47 @@ Familias de acciones actualmente en revisión:
 - Penalti
 - Tarjeta
 
-Decisión de diseño provisional:
+Estructura base:
 
 ```text
 action_type + subtype + outcome
 ```
 
-Ejemplos:
+### Pase — aprobado
+
+Se registrarán también las passadas normales porque el volumen y la efectividad de pase son variables centrales para el análisis de perfil, evolución y encaje de rol.
+
+Diseño aprobado para maximizar rapidez y evitar dobles clics:
 
 ```text
-PASS | NORMAL/LONG/CROSS | SUCCESS/FAIL
-SHOT | GOAL/ON_TARGET/OFF_TARGET/BLOCKED
-PENALTY | WON/CONCEDED | GOAL/MISSED
+PASS | NORMAL | SUCCESS/FAIL
+PASS | LONG   | SUCCESS/FAIL
+PASS | CROSS  | SUCCESS/FAIL
 ```
 
-La lógica de penalti acordada es:
+Una acción `LONG` o `CROSS` cuenta automáticamente también como pase total. El usuario no debe registrar adicionalmente una pasada normal para la misma acción.
+
+La efectividad no se recoge manualmente; se deriva posteriormente a partir de completadas / totales.
+
+### Defensa — aprobado
+
+Se mantienen como acciones separadas:
 
 ```text
-PENALTI → RECIBIDO / CONCEDIDO → GOL / NO GOL
+TACKLE
+INTERCEPTION
+BLOCK
+CLEARANCE
+```
+
+El despeje se mantiene en el MVP como acción defensiva propia.
+
+### Penalti — aprobado parcialmente
+
+La lógica acordada es:
+
+```text
+PENALTY → WON / CONCEDED → GOAL / MISSED
 ```
 
 No se utilizará un botón persistente separado para "gol de penalti".
@@ -265,11 +288,9 @@ El LLM podrá interpretar preguntas, explicar resultados, resumir tendencias y g
 
 ## 13. Pendientes abiertos
 
-- Resolver si registrar todos los pases normales es viable para el contexto amateur.
-- Cerrar las variables definitivas del Data Collector.
-- Resolver remate a portería y resultado de penaltis desde las fuentes de tiro/eventos.
-- Decidir si el despeje y el bloqueo se mantienen como acciones defensivas separadas.
 - Definir exactamente qué significa `Pérdida` para evitar doble conteo con pase/regate fallado.
+- Resolver remate a portería y resultado de penaltis desde las fuentes de tiro/eventos.
+- Cerrar las variables definitivas del Data Collector.
 - Extraer la temporada 2025/26 del equipo fuente con las variables aprobadas.
 - Crear el proceso reproducible de anonimización.
 - Definir el esquema de datos estándar del proyecto.
@@ -286,15 +307,14 @@ El LLM podrá interpretar preguntas, explicar resultados, resumir tendencias y g
 
 ## 15. Siguiente paso exacto
 
-**Cerrar las decisiones de recogida manual del Data Collector.**
+**Cerrar la definición de `Pérdida` y evitar dobles conteos con acciones falladas.**
 
 Orden inmediato:
 
 ```text
-1. decidir política de pase normal
-2. cerrar defensa y pérdida
-3. resolver remate a portería y penaltis desde shot_events
-4. aprobar variables definitivas
-5. actualizar GitHub
-6. crear esquema de datos
+1. definir pérdida
+2. resolver remate a portería y penaltis desde shot_events
+3. aprobar variables definitivas
+4. actualizar GitHub
+5. crear esquema de datos
 ```
