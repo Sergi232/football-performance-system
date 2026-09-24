@@ -60,6 +60,7 @@ Familias de acciones actualmente en revisión:
 - Pérdida
 - Penalti
 - Tarjeta
+- Portero
 
 Estructura base:
 
@@ -69,7 +70,7 @@ action_type + subtype + outcome
 
 ### Pase — aprobado
 
-Se registrarán también las passadas normales porque el volumen y la efectividad de pase son variables centrales para el análisis de perfil, evolución y encaje de rol.
+Se registrarán también las pasadas normales porque el volumen y la efectividad de pase son variables centrales para el análisis de perfil, evolución y encaje de rol.
 
 Diseño aprobado para maximizar rapidez y evitar dobles clics:
 
@@ -95,6 +96,35 @@ CLEARANCE
 ```
 
 El despeje se mantiene en el MVP como acción defensiva propia.
+
+### Pérdida — aprobado
+
+`LOSS` se utilizará únicamente para pérdidas de posesión no explicadas ya por una pasada fallada o un regate fallado.
+
+No se generará una segunda acción de pérdida cuando el origen ya esté registrado en la propia acción. La capa derivada podrá clasificar el motivo de la pérdida, por ejemplo:
+
+```text
+PASS | ... | FAIL      → possession_lost = 1 | loss_reason = FAILED_PASS
+DRIBBLE | ... | FAIL   → possession_lost = 1 | loss_reason = FAILED_DRIBBLE
+LOSS | OTHER           → possession_lost = 1 | loss_reason = OTHER_TURNOVER
+```
+
+Objetivo: evitar doble conteo y poder obtener tanto pérdidas totales como pérdidas por origen.
+
+### Remate — aprobado
+
+El Collector usará una única selección por remate:
+
+```text
+SHOT | GOAL
+SHOT | ON_TARGET
+SHOT | OFF_TARGET
+SHOT | BLOCKED
+```
+
+Cada opción cuenta automáticamente como remate total. No debe registrarse primero una acción genérica de remate.
+
+Los remates al poste se agrupan dentro de `OFF_TARGET` para mantener la interfaz simple.
 
 ### Penalti — aprobado parcialmente
 
@@ -198,13 +228,33 @@ Penalti: penaltyConceded / penaltyWon
 Portero: saves / divingSave / goalsConceded
 ```
 
+La fuente de eventos Opta permite mapear tipos de acción mediante `type_id`. Entre los identificadores relevantes confirmados en la documentación de PannaData se encuentran, entre otros:
+
+```text
+1  Pass
+3  Take on
+4  Foul
+7  Tackle
+8  Interception
+9  Turnover
+10 Save
+12 Clearance
+13 Miss
+14 Post
+15 Attempt saved
+16 Goal
+17 Card
+32 Blocked pass
+67 Dispossessed
+77 Key pass
+```
+
 Aspectos que requieren resolución antes del cierre:
 
-- No se encontró una columna directa `keyPass` en el mapping probado; existen variables de asistencia al remate que deben evaluarse antes de decidir si se incorpora un concepto equivalente.
-- El remate a portería no apareció con el nombre probado en `player_stats`; debe derivarse o mapearse desde `opta_shot_events`/`opta_shots`.
-- Penalti marcado/fallado no apareció con los nombres probados; puede reconstruirse desde eventos de tiro y sus qualifiers.
-- La familia de eventos Opta está disponible a nivel evento con `type_id`, minuto, segundo, jugador, equipo, outcome y qualifiers.
-- El principal problema metodológico pendiente no es disponibilidad de datos, sino coste de recogida manual.
+- El remate a portería debe reconstruirse desde las fuentes de tiro/eventos, separando disparos realmente dirigidos a portería de bloqueos defensivos.
+- El resultado de penaltis debe reconstruirse desde eventos de tiro y qualifiers.
+- Debe definirse la interfaz exacta de regate, falta, tarjeta, penalti y portero.
+- El principal problema metodológico pendiente ya no es disponibilidad de datos, sino equilibrio entre valor analítico y coste de recogida manual.
 
 ## 9. Política de anonimización del dataset demostrador
 
@@ -288,8 +338,11 @@ El LLM podrá interpretar preguntas, explicar resultados, resumir tendencias y g
 
 ## 13. Pendientes abiertos
 
-- Definir exactamente qué significa `Pérdida` para evitar doble conteo con pase/regate fallado.
-- Resolver remate a portería y resultado de penaltis desde las fuentes de tiro/eventos.
+- Definir la interfaz exacta de regate.
+- Definir la interfaz exacta de falta y disciplina.
+- Cerrar el tratamiento de penalti.
+- Definir las acciones de portero del MVP.
+- Resolver técnicamente remate a portería y resultado de penaltis desde `shot_events`.
 - Cerrar las variables definitivas del Data Collector.
 - Extraer la temporada 2025/26 del equipo fuente con las variables aprobadas.
 - Crear el proceso reproducible de anonimización.
@@ -304,17 +357,21 @@ El LLM podrá interpretar preguntas, explicar resultados, resumir tendencias y g
 - No usar datos ficticios como caso principal si puede reconstruirse una temporada real.
 - No publicar los datasets completos de PannaData/Opta dentro del repositorio.
 - No seleccionar Getafe como caso demostrador principal: su perfil de pase y disciplina es más extremo y menos representativo para el caso que se quiere simular.
+- No crear una acción adicional de pérdida cuando la pérdida ya está contenida en una pasada o regate fallado.
+- No crear un botón separado para remate al poste en el MVP.
 
 ## 15. Siguiente paso exacto
 
-**Cerrar la definición de `Pérdida` y evitar dobles conteos con acciones falladas.**
+**Cerrar las familias restantes del Data Collector: regate, falta/disciplina, penalti y portero.**
 
 Orden inmediato:
 
 ```text
-1. definir pérdida
-2. resolver remate a portería y penaltis desde shot_events
-3. aprobar variables definitivas
-4. actualizar GitHub
-5. crear esquema de datos
+1. cerrar regate
+2. cerrar falta y disciplina
+3. cerrar penalti
+4. cerrar portero
+5. resolver mapping técnico de shot_events
+6. aprobar variables definitivas
+7. crear esquema de datos
 ```
