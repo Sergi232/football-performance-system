@@ -8,7 +8,7 @@ Este archivo es la memoria técnica operativa del proyecto. Debe reflejar siempr
 
 **Cierre del Data Collector y construcción del caso demostrador real.**
 
-La auditoría de cobertura de LaLiga 2025/26 ya está completada. El siguiente trabajo es mapear las variables disponibles en PannaData/Opta a un conjunto reducido de variables realmente recogibles por un equipo amateur o semiprofesional.
+La auditoría de cobertura de LaLiga 2025/26 ya está completada y también se ha realizado una primera auditoría específica de variables para el equipo demostrador. El siguiente trabajo es cerrar qué acciones son realmente recogibles en fútbol amateur/semi-profesional y fijar el mapping definitivo PannaData/Opta → Data Collector.
 
 ## 2. Objetivo confirmado
 
@@ -108,22 +108,7 @@ opta_shots.parquet
 opta_match_xg.parquet
 ```
 
-También existen ficheros de eventos por competición para:
-
-```text
-EPL
-La Liga
-Serie A
-Bundesliga
-Ligue 1
-UCL
-UEL
-Conference League
-UEFA Super Cup
-World Cup
-UEFA Euros
-Copa America
-```
+También existen ficheros de eventos por competición para EPL, La Liga, Serie A, Bundesliga, Ligue 1 y competiciones internacionales.
 
 Existe además una base local:
 
@@ -131,23 +116,11 @@ Existe además una base local:
 C:\Users\sergi\Desktop\analisi_futbol\outputs\base_pannadata.duckdb
 ```
 
-con tablas originales y derivadas. Entre las fuentes Opta disponibles dentro de la base aparecen:
-
-```text
-ext_opta_fixtures
-ext_opta_lineups
-ext_opta_match_xg
-ext_opta_player_stats
-ext_opta_players
-ext_opta_shot_events
-ext_opta_shots
-```
-
-También existen tablas derivadas de proyectos anteriores. No deben confundirse con la fuente original ni utilizarse automáticamente como base del TFM.
+con tablas originales y derivadas. Las tablas derivadas de proyectos anteriores no deben confundirse con la fuente original ni utilizarse automáticamente como base del TFM.
 
 ## 6. Auditoría de cobertura LaLiga 2025/26
 
-La auditoría de fixtures, player stats, alineaciones y eventos confirma:
+La auditoría confirma:
 
 ```text
 20 equipos
@@ -165,6 +138,12 @@ Por tanto, la elección del equipo demostrador no depende de disponibilidad de d
 
 **Equipo fuente local: Deportivo Alavés — LaLiga 2025/26.**
 
+Identificador Opta detectado localmente:
+
+```text
+4dtdjgnpdq9uw4sdutti0vaar
+```
+
 Motivos de selección:
 
 - 38 partidos con cobertura completa.
@@ -173,26 +152,38 @@ Motivos de selección:
 - Volumen de pase claramente inferior a equipos dominantes pero no tan atípico como el extremo observado en Getafe.
 - Perfil equilibrado entre pase, juego directo, centros, defensa y faltas.
 
-Perfil de referencia detectado en la auditoría:
-
-```text
-Pases por partido: 404,3
-Precisión de pase: 80,3 %
-Balones largos por partido: 54,8
-Centros por partido: 20,0
-Entradas por partido: 18,2
-Intercepciones por partido: 7,7
-Faltas por partido: 14,9
-Pérdidas/turnovers por partido: 16,2
-Dispossessed por partido: 10,2
-Goles: 41
-Tarjetas amarillas: 86
-Tarjetas rojas: 5
-```
-
 Estos valores sirven únicamente para justificar la elección del caso demostrador. No se aprueban automáticamente como métricas finales del producto.
 
-## 8. Política de anonimización del dataset demostrador
+## 8. Auditoría específica Data Collector
+
+La auditoría del equipo demostrador confirma 38/38 partidos en fixtures, player stats, lineups y events.
+
+Variables Opta directamente disponibles y potencialmente mapeables al Collector:
+
+```text
+Pase: totalPass / accuratePass
+Pase largo: totalLongBalls / accurateLongBalls
+Centro: totalCross / accurateCross
+Asistencia: goalAssist
+Regate: totalContest / wonContest
+Remate: totalScoringAtt / blockedScoringAtt / goals
+Defensa: totalTackle / wonTackle / interception / blockedPass / totalClearance
+Falta: fouls / wasFouled
+Pérdida: turnover / dispossessed
+Disciplina: yellowCard / redCard
+Penalti: penaltyConceded / penaltyWon
+Portero: saves / divingSave / goalsConceded
+```
+
+Aspectos que requieren resolución antes del cierre:
+
+- No se encontró una columna directa `keyPass` en el mapping probado; existen variables de asistencia al remate que deben evaluarse antes de decidir si se incorpora un concepto equivalente.
+- El remate a portería no apareció con el nombre probado en `player_stats`; debe derivarse o mapearse desde `opta_shot_events`/`opta_shots`.
+- Penalti marcado/fallado no apareció con los nombres probados; puede reconstruirse desde eventos de tiro y sus qualifiers.
+- La familia de eventos Opta está disponible a nivel evento con `type_id`, minuto, segundo, jugador, equipo, outcome y qualifiers.
+- El principal problema metodológico pendiente no es disponibilidad de datos, sino coste de recogida manual.
+
+## 9. Política de anonimización del dataset demostrador
 
 Los datos reales de Deportivo Alavés se utilizarán únicamente de forma local para construir y validar el sistema.
 
@@ -215,7 +206,7 @@ scripts/build_anonymized_demo.py
 
 El repositorio no debe contener una copia completa de los datasets originales de PannaData/Opta.
 
-## 9. Arquitectura analítica prevista
+## 10. Arquitectura analítica prevista
 
 La unidad principal de análisis será **jugador-partido**.
 
@@ -234,7 +225,7 @@ jugador
 
 El esquema definitivo de base de datos todavía no está aprobado.
 
-## 10. Sistema experto previsto
+## 11. Sistema experto previsto
 
 Estructura jerárquica inicial:
 
@@ -262,7 +253,7 @@ entrada → condición → resultado → confianza → justificación
 
 No se construirán ramas detalladas hasta cerrar las variables disponibles.
 
-## 11. LLM / asistente IA
+## 12. LLM / asistente IA
 
 Arquitectura obligatoria:
 
@@ -272,18 +263,19 @@ DATA → ANALYTICS → DECISION ENGINE → LLM → COACH
 
 El LLM podrá interpretar preguntas, explicar resultados, resumir tendencias y generar informes, pero no podrá inventar métricas ni sustituir cálculos críticos del motor analítico.
 
-## 12. Pendientes abiertos
+## 13. Pendientes abiertos
 
-- Mapear PannaData/Opta → variables potenciales del Data Collector.
-- Revisar específicamente regate, defensa, pérdida, penalti, tarjetas, asistencias y acciones de portero.
-- Determinar si registrar todos los pases normales es viable para el contexto amateur.
-- Cerrar definitivamente las variables del Data Collector.
-- Extraer la temporada 2025/26 de Deportivo Alavés con las variables aprobadas.
+- Resolver si registrar todos los pases normales es viable para el contexto amateur.
+- Cerrar las variables definitivas del Data Collector.
+- Resolver remate a portería y resultado de penaltis desde las fuentes de tiro/eventos.
+- Decidir si el despeje y el bloqueo se mantienen como acciones defensivas separadas.
+- Definir exactamente qué significa `Pérdida` para evitar doble conteo con pase/regate fallado.
+- Extraer la temporada 2025/26 del equipo fuente con las variables aprobadas.
 - Crear el proceso reproducible de anonimización.
 - Definir el esquema de datos estándar del proyecto.
 - Definir la capa de normalización GPS.
 
-## 13. Decisiones descartadas o no aprobadas
+## 14. Decisiones descartadas o no aprobadas
 
 - No usar directamente todas las variables profesionales disponibles solo porque existan en Opta.
 - No construir todavía el árbol experto detallado.
@@ -292,17 +284,17 @@ El LLM podrá interpretar preguntas, explicar resultados, resumir tendencias y g
 - No publicar los datasets completos de PannaData/Opta dentro del repositorio.
 - No seleccionar Getafe como caso demostrador principal: su perfil de pase y disciplina es más extremo y menos representativo para el caso que se quiere simular.
 
-## 14. Siguiente paso exacto
+## 15. Siguiente paso exacto
 
-**Construir el mapping PannaData/Opta → Data Collector para Deportivo Alavés 2025/26 y cerrar las variables realmente recogibles en fútbol amateur/semi-profesional.**
+**Cerrar las decisiones de recogida manual del Data Collector.**
 
 Orden inmediato:
 
 ```text
-1. auditar columnas relevantes de player_stats y events
-2. mapear cada familia del Collector
-3. marcar mantener / descartar / derivar
-4. cerrar variables definitivas
+1. decidir política de pase normal
+2. cerrar defensa y pérdida
+3. resolver remate a portería y penaltis desde shot_events
+4. aprobar variables definitivas
 5. actualizar GitHub
 6. crear esquema de datos
 ```
