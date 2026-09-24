@@ -61,6 +61,7 @@ Familias de acciones actualmente en revisión:
 - Penalti
 - Tarjeta
 - Portero
+- Contexto / eventos de equipo
 
 Estructura base:
 
@@ -83,6 +84,15 @@ PASS | CROSS  | SUCCESS/FAIL
 Una acción `LONG` o `CROSS` cuenta automáticamente también como pase total. El usuario no debe registrar adicionalmente una pasada normal para la misma acción.
 
 La efectividad no se recoge manualmente; se deriva posteriormente a partir de completadas / totales.
+
+### Regate — aprobado
+
+```text
+DRIBBLE | SUCCESS
+DRIBBLE | FAIL
+```
+
+Un regate fallado genera automáticamente una pérdida derivada y no debe registrarse además como `LOSS`.
 
 ### Defensa — aprobado
 
@@ -126,6 +136,21 @@ Cada opción cuenta automáticamente como remate total. No debe registrarse prim
 
 Los remates al poste se agrupan dentro de `OFF_TARGET` para mantener la interfaz simple.
 
+### Falta y disciplina — aprobado
+
+Diseño base:
+
+```text
+FOUL | COMMITTED
+FOUL | RECEIVED
+CARD | YELLOW
+CARD | RED
+```
+
+Las tarjetas se registran como eventos propios y no dependen obligatoriamente de una falta, ya que pueden producirse por otros motivos. En caso de segunda amarilla con expulsión se conservarán ambas consecuencias disciplinarias.
+
+Se ha propuesto añadir una distinción de **falta peligrosa** cometida/recibida. El concepto se considera útil, pero su criterio operativo exacto debe cerrarse antes de aprobarlo para evitar subjetividad.
+
 ### Penalti — aprobado parcialmente
 
 La lógica acordada es:
@@ -135,6 +160,21 @@ PENALTY → WON / CONCEDED → GOAL / MISSED
 ```
 
 No se utilizará un botón persistente separado para "gol de penalti".
+
+### Contexto / eventos de equipo — pendiente de cierre
+
+Se ha identificado la necesidad de una capa de eventos de equipo que no obligue a duplicar las acciones ya registradas a nivel jugador.
+
+Candidatos prioritarios:
+
+```text
+CORNER | FOR
+CORNER | AGAINST
+```
+
+Las estadísticas de equipo que puedan agregarse desde acciones de jugador (pases, remates, faltas, tarjetas, defensa, etc.) se derivarán automáticamente y no se volverán a introducir manualmente.
+
+La posible etiqueta de falta peligrosa deberá agregarse sobre la propia acción de falta, permitiendo derivar después faltas peligrosas a favor/en contra sin doble registro.
 
 Las variables definitivas todavía no están cerradas.
 
@@ -253,7 +293,9 @@ Aspectos que requieren resolución antes del cierre:
 
 - El remate a portería debe reconstruirse desde las fuentes de tiro/eventos, separando disparos realmente dirigidos a portería de bloqueos defensivos.
 - El resultado de penaltis debe reconstruirse desde eventos de tiro y qualifiers.
-- Debe definirse la interfaz exacta de regate, falta, tarjeta, penalti y portero.
+- Debe cerrarse el criterio operativo de falta peligrosa.
+- Deben cerrarse los eventos de equipo imprescindibles del MVP, empezando por córners a favor/en contra.
+- Debe definirse la interfaz exacta de penalti y portero.
 - El principal problema metodológico pendiente ya no es disponibilidad de datos, sino equilibrio entre valor analítico y coste de recogida manual.
 
 ## 9. Política de anonimización del dataset demostrador
@@ -338,8 +380,8 @@ El LLM podrá interpretar preguntas, explicar resultados, resumir tendencias y g
 
 ## 13. Pendientes abiertos
 
-- Definir la interfaz exacta de regate.
-- Definir la interfaz exacta de falta y disciplina.
+- Cerrar el criterio de falta peligrosa cometida/recibida.
+- Cerrar los eventos de equipo del MVP, empezando por córners a favor/en contra.
 - Cerrar el tratamiento de penalti.
 - Definir las acciones de portero del MVP.
 - Resolver técnicamente remate a portería y resultado de penaltis desde `shot_events`.
@@ -362,13 +404,13 @@ El LLM podrá interpretar preguntas, explicar resultados, resumir tendencias y g
 
 ## 15. Siguiente paso exacto
 
-**Cerrar las familias restantes del Data Collector: regate, falta/disciplina, penalti y portero.**
+**Cerrar la capa de contexto/equipo y las familias restantes del Data Collector.**
 
 Orden inmediato:
 
 ```text
-1. cerrar regate
-2. cerrar falta y disciplina
+1. cerrar criterio de falta peligrosa
+2. cerrar córners y otros eventos de equipo imprescindibles
 3. cerrar penalti
 4. cerrar portero
 5. resolver mapping técnico de shot_events
