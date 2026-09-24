@@ -6,9 +6,9 @@ Este archivo es la memoria técnica operativa del proyecto. Debe reflejar siempr
 
 ## 1. Fase actual
 
-**Auditoría de datos y cierre del Data Collector.**
+**Cierre del Data Collector y construcción del caso demostrador real.**
 
-Antes de definir el esquema de datos, el Feature Engine o el sistema experto, se está comprobando qué variables reales están disponibles y cuáles son razonables de recoger en fútbol amateur o semiprofesional.
+La auditoría de cobertura de LaLiga 2025/26 ya está completada. El siguiente trabajo es mapear las variables disponibles en PannaData/Opta a un conjunto reducido de variables realmente recogibles por un equipo amateur o semiprofesional.
 
 ## 2. Objetivo confirmado
 
@@ -44,6 +44,7 @@ La aplicación web es el producto principal del TFM.
 - GitHub será la fuente de verdad técnica del proyecto.
 - La documentación oficial del TFM y del repositorio se redactará en castellano.
 - Los nombres técnicos internos de código pueden mantenerse en inglés cuando sea estándar.
+- El caso demostrador utilizará una temporada real completa reconstruida a partir de PannaData/Opta, pero el dataset publicable será anonimizado.
 
 ## 4. Data Collector — estado actual
 
@@ -144,35 +145,69 @@ ext_opta_shots
 
 También existen tablas derivadas de proyectos anteriores. No deben confundirse con la fuente original ni utilizarse automáticamente como base del TFM.
 
-## 6. Criterio para el caso demostrador
+## 6. Auditoría de cobertura LaLiga 2025/26
 
-Se reconstruirá una temporada completa de un **equipo real de la temporada 2025/26 que no disputara competición europea**, utilizando únicamente sus partidos de liga si ello permite mantener un caso limpio y homogéneo.
+La auditoría de fixtures, player stats, alineaciones y eventos confirma:
 
-El equipo todavía **no está seleccionado definitivamente**.
+```text
+20 equipos
+380 partidos de liga
+38 partidos por equipo
+100 % de cobertura en fixtures
+100 % de cobertura en player stats
+100 % de cobertura en lineups
+100 % de cobertura en events
+```
 
-Criterios de selección:
+Por tanto, la elección del equipo demostrador no depende de disponibilidad de datos, sino de su adecuación metodológica al objetivo del TFM.
 
-- temporada completa disponible;
-- buena cobertura de fixtures, alineaciones, player stats y eventos;
-- sin necesidad de cruzar competiciones europeas;
-- adecuado para demostrar un producto orientado a fútbol amateur/semi-profesional.
+## 7. Equipo demostrador aprobado
 
-## 7. Política de anonimización del dataset demostrador
+**Equipo fuente local: Deportivo Alavés — LaLiga 2025/26.**
 
-Los datos reales se utilizarán localmente para construir y validar el sistema.
+Motivos de selección:
+
+- 38 partidos con cobertura completa.
+- Clasificado en la auditoría como equipo sin competición europea en 2025/26.
+- Perfil estadístico intermedio y razonable para utilizarlo como sustituto de un equipo amateur/semi-profesional, evitando perfiles demasiado extremos.
+- Volumen de pase claramente inferior a equipos dominantes pero no tan atípico como el extremo observado en Getafe.
+- Perfil equilibrado entre pase, juego directo, centros, defensa y faltas.
+
+Perfil de referencia detectado en la auditoría:
+
+```text
+Pases por partido: 404,3
+Precisión de pase: 80,3 %
+Balones largos por partido: 54,8
+Centros por partido: 20,0
+Entradas por partido: 18,2
+Intercepciones por partido: 7,7
+Faltas por partido: 14,9
+Pérdidas/turnovers por partido: 16,2
+Dispossessed por partido: 10,2
+Goles: 41
+Tarjetas amarillas: 86
+Tarjetas rojas: 5
+```
+
+Estos valores sirven únicamente para justificar la elección del caso demostrador. No se aprueban automáticamente como métricas finales del producto.
+
+## 8. Política de anonimización del dataset demostrador
+
+Los datos reales de Deportivo Alavés se utilizarán únicamente de forma local para construir y validar el sistema.
 
 Antes de incorporar un dataset demostrador al repositorio se anonimizarán:
 
 ```text
-club real        → TEAM_001
-jugadores reales → PLAYER_001, PLAYER_002, ...
-oponentes         → OPP_001, OPP_002, ...
-identificadores   → identificadores internos
+Deportivo Alavés  → TEAM_001
+jugadores reales  → PLAYER_001, PLAYER_002, ...
+oponentes          → OPP_001, OPP_002, ...
+identificadores    → identificadores internos
 ```
 
 Se mantendrán las estadísticas, minutos, posiciones y secuencia temporal necesarias para reproducir los análisis.
 
-Está previsto crear un proceso reproducible, por ejemplo:
+Está previsto crear un proceso reproducible:
 
 ```text
 scripts/build_anonymized_demo.py
@@ -180,7 +215,7 @@ scripts/build_anonymized_demo.py
 
 El repositorio no debe contener una copia completa de los datasets originales de PannaData/Opta.
 
-## 8. Arquitectura analítica prevista
+## 9. Arquitectura analítica prevista
 
 La unidad principal de análisis será **jugador-partido**.
 
@@ -199,7 +234,7 @@ jugador
 
 El esquema definitivo de base de datos todavía no está aprobado.
 
-## 9. Sistema experto previsto
+## 10. Sistema experto previsto
 
 Estructura jerárquica inicial:
 
@@ -227,7 +262,7 @@ entrada → condición → resultado → confianza → justificación
 
 No se construirán ramas detalladas hasta cerrar las variables disponibles.
 
-## 10. LLM / asistente IA
+## 11. LLM / asistente IA
 
 Arquitectura obligatoria:
 
@@ -237,36 +272,37 @@ DATA → ANALYTICS → DECISION ENGINE → LLM → COACH
 
 El LLM podrá interpretar preguntas, explicar resultados, resumir tendencias y generar informes, pero no podrá inventar métricas ni sustituir cálculos críticos del motor analítico.
 
-## 11. Pendientes abiertos
+## 12. Pendientes abiertos
 
-- Auditar las columnas reales de los Parquet originales.
 - Mapear PannaData/Opta → variables potenciales del Data Collector.
-- Revisar específicamente regate, defensa, pérdida, penalti, tarjetas y acciones de portero.
+- Revisar específicamente regate, defensa, pérdida, penalti, tarjetas, asistencias y acciones de portero.
 - Determinar si registrar todos los pases normales es viable para el contexto amateur.
 - Cerrar definitivamente las variables del Data Collector.
-- Seleccionar el equipo demostrador 2025/26.
-- Comprobar cobertura completa de su temporada.
+- Extraer la temporada 2025/26 de Deportivo Alavés con las variables aprobadas.
+- Crear el proceso reproducible de anonimización.
 - Definir el esquema de datos estándar del proyecto.
 - Definir la capa de normalización GPS.
 
-## 12. Decisiones descartadas o no aprobadas
+## 13. Decisiones descartadas o no aprobadas
 
 - No usar directamente todas las variables profesionales disponibles solo porque existan en Opta.
 - No construir todavía el árbol experto detallado.
 - No construir todavía el Feature Engine definitivo.
 - No usar datos ficticios como caso principal si puede reconstruirse una temporada real.
 - No publicar los datasets completos de PannaData/Opta dentro del repositorio.
+- No seleccionar Getafe como caso demostrador principal: su perfil de pase y disciplina es más extremo y menos representativo para el caso que se quiere simular.
 
-## 13. Siguiente paso exacto
+## 14. Siguiente paso exacto
 
-**Auditar las columnas de los Parquet originales y elegir el equipo 2025/26 con mejor cobertura que cumpla el criterio de no disputar competición europea.**
+**Construir el mapping PannaData/Opta → Data Collector para Deportivo Alavés 2025/26 y cerrar las variables realmente recogibles en fútbol amateur/semi-profesional.**
 
-Después:
+Orden inmediato:
 
 ```text
-selección del equipo
-→ mapping Opta → Collector
-→ cierre de variables
-→ checkpoint GitHub
-→ esquema de datos
+1. auditar columnas relevantes de player_stats y events
+2. mapear cada familia del Collector
+3. marcar mantener / descartar / derivar
+4. cerrar variables definitivas
+5. actualizar GitHub
+6. crear esquema de datos
 ```
