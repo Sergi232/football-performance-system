@@ -45,35 +45,47 @@ Decisión: `EXPLORATORY_RESULT / NO_DEPLOY` por baja estabilidad temporal.
 
 ## DSAI-04 — role-label audit — CERRADO
 
-Resultado:
+Resultado: `REFORMULATE_LABELS` porque `Substitute` mezclaba estado de participación y rol táctico.
+
+## DSAI-05 — role target reconstruction — CERRADO
+
+Resultado local:
 
 ```text
-labeled_rows=590
-raw_labels=23
-labeled_players=28
-Substitute rows=172
-Substitute players=23
-players_also_with_tactical_role=19
+rows=835
+played=590
+starters=418
+substitute_appearances=172
+unused_bench=245
+clean_target_rows=418
+labels=22
+players=24
+single_player_labels=3
+withheld_substitute_appearances=172
+invalid_starter_rows=0
+substitute_labels_remaining=0
 ```
 
-Decisión: `REFORMULATE_LABELS`.
+El target limpio conserva únicamente roles tácticos directamente observados en titulares. No se infiere el rol de los suplentes ni se agrupan clases.
 
-`Substitute` mezcla semántica de participación con rol táctico y no puede usarse como clase deportiva en un target supervisado.
-
-## DSAI-05 — role target reconstruction — ACTIVO
+## DSAI-06 — supervised role feasibility — ACTIVO
 
 Ejecutar:
 
 ```powershell
-python dsai\role_target_reconstruction.py
+python dsai\role_supervised_feasibility.py
 ```
 
-El script separa:
-- `participation_status`: `STARTER`, `SUBSTITUTE_APPEARANCE`, `UNUSED_BENCH`, etc.;
-- `tactical_role`: únicamente cuando el rol está directamente observado y no es `Substitute`;
-- `target_state`: explica por qué una fila entra o no entra en el target táctico.
+Antes de entrenar un classificador se auditan:
+- cobertura real de FEATURE-01 en las 418 filas limpias;
+- diversidad de jugadores por clase;
+- posibilidad de evaluación temporal strict-past;
+- posibilidad de evaluación independent de identidad usando observaciones previas del mismo label en otros jugadores;
+- clases que solo existen en un jugador.
 
-No hay imputación de rol por historial, posición habitual, forward-fill/back-fill ni agrupación intuitiva de clases. La base normalizada no se modifica.
+No se entrena ningún modelo. FEATURE-03 queda excluido de este experimento porque está condicionado al rol y sería circular para predecir ese mismo target. `player_id`, nombres, el propio rol y outputs del sistema experto tampoco pueden actuar como predictores.
+
+La salida será `GO_BASELINE_EXPERIMENT`, `LIMITED_EXPERIMENT_ONLY` o `NO_GO_SUPERVISED`, sin introducir un mínimo de muestra arbitrario.
 
 ## Líneas bloqueadas
 
