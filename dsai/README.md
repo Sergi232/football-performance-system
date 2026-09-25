@@ -80,7 +80,7 @@ conclusion=LIMITED_SOURCE_POSITION_BASELINE
 
 ## DSAI-09 — source-position classification baseline — ACTIVO
 
-Ejecutar:
+Script:
 
 ```powershell
 python dsai\source_position_classification_baseline.py
