@@ -1,8 +1,8 @@
-"""Deterministic assistant facade used before connecting a generative LLM.
+"""Deterministic assistant facade and safety guardrails.
 
-It answers only from structured context and explicitly blocks unsupported
-ranking/recommendation requests. This module is the contract the future LLM must
-respect.
+This module remains the safety baseline even when a generative provider is enabled.
+It answers only from structured context and blocks requests that would require an
+unvalidated ranking or tactical recommendation policy.
 """
 from __future__ import annotations
 
@@ -14,12 +14,32 @@ BLOCKED_TERMS = (
     "pitjor jugador",
     "qui està millorant més",
     "qui esta millorant mes",
+    "qui rendeix millor",
+    "qui rendeix pitjor",
+    "millor com a",
+    "pitjor com a",
     "recomana",
     "recomanació",
     "recomanacio",
+    "qui hauria",
+    "hauria de jugar",
+    "hauria de ser titular",
+    "alineació ideal",
+    "alineacio ideal",
+    "onze ideal",
     "best player",
     "worst player",
+    "who is best",
+    "who is worst",
+    "who should start",
+    "recommend",
 )
+
+
+def is_blocked_question(question: str) -> bool:
+    """Return True when answering would require unvalidated evaluative policy."""
+    q = (question or "").strip().lower()
+    return any(term in q for term in BLOCKED_TERMS)
 
 
 def _fmt(value: Any) -> str:
@@ -33,7 +53,7 @@ def answer_from_context(question: str, context: dict[str, Any]) -> str:
     if not q:
         return "Escriu una pregunta sobre les dades disponibles."
 
-    if any(term in q for term in BLOCKED_TERMS):
+    if is_blocked_question(question):
         return (
             "Aquesta pregunta requereix un ranking o una política de recomanació que encara no està validada. "
             "El sistema pot mostrar evidència descriptiva, però no convertir-la en una recomanació tàctica."
