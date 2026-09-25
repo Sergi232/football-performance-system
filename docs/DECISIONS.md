@@ -53,21 +53,18 @@ Estado: `APPROVED`
 
 `PROJECT_STATE.md`, arquitectura, workflow y decisiones documentadas prevalecen sobre conversaciones antiguas.
 
-## Gates pendientes
-
 ### DG-AN-01 — Comparaciones analíticas válidas
-Estado: `PENDING SERGI`
+Estado: `APPROVED`
 
-**Por qué importa:** define Analytics, Player Fit, rankings futuros y parte de N13000.
+Decisión: **C — ambas, separadas y explícitamente etiquetadas**.
 
-Opciones:
-- A. jugador vs su propio historial, condicionado a rol;
-- B. jugador vs pares del mismo rol;
-- C. ambas, separadas y explícitamente etiquetadas.
+Analytics debe conservar dos evidencias distintas:
+- `SELF_ROLE_PRIOR`: jugador vs su propio historial estrictamente anterior en el mismo rol observado;
+- `PEER_ROLE_PRIOR`: jugador vs otros jugadores del mismo equipo con el mismo rol observado, usando solo información estrictamente anterior.
 
-Recomendación arquitectónica: **C**, manteniendo self-history y peer comparison como evidencias distintas, nunca mezcladas silenciosamente.
+No se mezclan silenciosamente en un único score. La comparación peer debe excluir al jugador actual y evitar que un jugador con más partidos pese más que otro: cada peer aporta su media strict-past en ese rol antes de construir la distribución de referencia.
 
-No bloquea definir la infraestructura de Analytics, pero debe cerrarse antes de emitir comparaciones evaluativas finales.
+## Gates pendientes
 
 ### DG-N13-01 — Política final de recomendación
 Estado: `PENDING SERGI`
