@@ -20,22 +20,29 @@ def run(title: str, args: list[str]) -> None:
     subprocess.run(args, check=True)
 
 
+def count_missing_dates() -> int:
+    with duckdb.connect(str(DB), read_only=True) as con:
+        return int(
+            con.execute("SELECT COUNT(*) FROM matches WHERE match_date IS NULL").fetchone()[0]
+        )
+
+
 def main() -> None:
     py = sys.executable
     if not DB.exists():
         raise FileNotFoundError(f"Database not found: {DB}")
 
-    with duckdb.connect(str(DB), read_only=True) as con:
-        missing_dates = con.execute(
-            "SELECT COUNT(*) FROM matches WHERE match_date IS NULL"
-        ).fetchone()[0]
-
+    missing_dates = count_missing_dates()
     if missing_dates:
-        raise RuntimeError(
-            f"FEATURE-02 blocked: {missing_dates} matches have NULL match_date. "
-            "Run `python data/repair_demo_match_dates.py` first; chronology must come "
-            "from the original fixture source and will not be inferred from IDs or row order."
+        run(
+            "FEATURE-02 — REPAIR SOURCE MATCH DATES",
+            [py, str(ROOT / "data" / "repair_demo_match_dates.py"), "--db", str(DB)],
         )
+        remaining = count_missing_dates()
+        if remaining:
+            raise RuntimeError(
+                f"FEATURE-02 blocked: {remaining} matches still have NULL match_date after source repair."
+            )
 
     run(
         "FEATURE-02 — TEMPORAL BUILD",
