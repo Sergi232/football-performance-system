@@ -113,21 +113,35 @@ def transformed_select(
     expressions: list[str] = []
     for col in columns:
         quoted = f'"{col}"'
+
+        # Canonical identifiers used by the public app.
         if col in {"team_id", "opponent_team_id", "home_team_id", "away_team_id"}:
             expressions.append(f"{case_map(quoted, team_map)} AS {quoted}")
         elif col in {"player_id", "penalty_taker_player_id"}:
             expressions.append(f"{case_map(quoted, player_map)} AS {quoted}")
         elif col == "match_id":
             expressions.append(f"{case_map(quoted, match_map)} AS {quoted}")
-        elif table == "teams" and col == "display_name":
+
+        # Human-readable aliases. source_name is sensitive provenance too and
+        # must never retain the original club/player name in the public copy.
+        elif table == "teams" and col in {"display_name", "source_name"}:
             team_id_expr = case_map('"team_id"', team_map)
             expressions.append(
                 f"CASE WHEN {team_id_expr} = 'TEAM_001' THEN 'TEAM 001' "
                 f"ELSE replace({team_id_expr}, '_', ' ') END AS {quoted}"
             )
-        elif table == "players" and col == "display_name":
+        elif table == "players" and col in {"display_name", "source_name"}:
             player_id_expr = case_map('"player_id"', player_map)
             expressions.append(f"replace({player_id_expr}, '_', ' ') AS {quoted}")
+
+        # Provider identifiers are unnecessary for the public presentation DB.
+        # Keeping them would defeat anonymisation even if canonical IDs changed.
+        elif col in {"source_team_id", "source_player_id", "source_match_id"}:
+            expressions.append(f"NULL::VARCHAR AS {quoted}")
+        elif table in {"teams", "players"} and col == "is_anonymized":
+            expressions.append(f"TRUE AS {quoted}")
+
+        # decision_id can encode source provenance; regenerate it deterministically.
         elif table == "decision_results" and col == "decision_id":
             expressions.append(
                 "'DECISION_' || lpad(CAST(row_number() OVER (ORDER BY match_id, player_id, node_id, decision_id) AS VARCHAR), 9, '0') "
