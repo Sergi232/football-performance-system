@@ -14,8 +14,9 @@ FEATURE-01/02/03                    CERRADO / VALIDADO
 EXPERT-01..07 N1000-N13000          CERRADO / VALIDADO
 LLM-01/02                           CERRADO / VALIDADO
 REPORTS-01 Team/Player/Match PDF    CERRADO / VALIDADO
+PUBLICATION-01 demo anonimizada     CERRADO / VALIDADO
 DASHBOARD-01 Streamlit MVP          CONTRACT PASS / REVISIÓN VISUAL ABIERTA
-PUBLICATION-01 demo anonimizada     PREPARADO / PENDIENTE VALIDACIÓN LOCAL
+FINAL-01                            SIGUIENTE MACROBLOQUE
 ```
 
 ## 2. Producto
@@ -52,116 +53,98 @@ TEAM MODE es principal. PLAYER MODE es complementario. RIVAL MODE queda como ext
 
 ## 4. Caso de desarrollo
 
-Deportivo Alavés 2025/26: 38 partidos, 36 jugadores, 835 player_match.
+Deportivo Alavés 2025/26: 38 partidos, 36 jugadores, 835 `player_match`.
 
-Los datos profesionales se usan localmente para desarrollar/validar. No se publicarán raw files originales.
+Los datos profesionales se usan localmente para desarrollo/validación. No se publicarán raw files originales.
 
-## 5. Variables y datos aprobados
+## 5. Datos / features / motor
 
-Collector v0.3.0: PASS NORMAL/LONG/CROSS SUCCESS/FAIL; DRIBBLE; SHOT GOAL/ON_TARGET/OFF_TARGET/BLOCKED; TACKLE; INTERCEPTION; BLOCK; CLEARANCE; FOUL; CARD; LOSS OTHER; PENALTY WON/CONCEDED GOAL/MISSED; CORNER FOR/AGAINST; GK SAVE/GOAL_CONCEDED.
-
-Qualifiers: key_pass, assist, second_yellow, set_piece_result, penalty_taker_player_id.
-
-DATA-04: 27 raw stats player-match aprobadas: pases total/completados, asistencias, largos, centros, regates, turnovers, dispossessed, remates, bloqueados, goles, tackles total/ganados, intercepciones, blocked passes, despejes, faltas cometidas/recibidas, tarjetas, penaltis concedidos/ganados, paradas y goles encajados. key_passes no se aproxima si no existe fuente verificada.
-
-## 6. Feature Engine
+Collector v0.3.0 cerrado funcionalmente. DATA-04 contiene 27 raw stats player-match aprobadas. `key_passes` no se aproxima si no existe fuente verificada.
 
 FEATURE-01 `0.1.0`: 28 features, 23.380 filas.
 
-FEATURE-02 `0.2.0`: history_n, prev, prior_mean, prior_std, delta_prev, delta_prior_mean, prior_slope. Strict-past; partido actual, misma fecha y futuro excluidos.
+FEATURE-02 `0.2.0`: evolución strict-past (`history_n`, `prev`, `prior_mean`, `prior_std`, `delta_prev`, `delta_prior_mean`, `prior_slope`).
 
-FEATURE-03 `0.3.0`: historial jugador + rol observado + feature; 117.735 filas; 590/835 player-match con rol; 23 roles. No se infiere rol.
+FEATURE-03 `0.3.0`: historial jugador + rol observado + feature; 117.735 filas; 590/835 player-match con rol; 23 roles.
 
-## 7. Sistema experto
+Motor experto final `expert_0.7.0`: 154.475 decisiones; 2.505 N13000. N13000 solo devuelve `RECOMMENDATION_NOT_ISSUED_*` mientras no exista política final validada.
 
-```text
-N1000 disponibilidad / actividad
-N2000 perfil estructural
-N3000 forma / evolución
-N4000 amenaza ofensiva
-N5000 creación / progresión
-N6000 contribución defensiva
-N7000 finalización
-N8000 contexto del equipo
-N9000 componente físico opcional
-N10000 rol y encaje táctico
-N11000 consistencia / tendencia
-N12000 player-fit evidence
-N13000 recommendation gate
-```
+## 6. Dashboard / LLM / PDF
 
-Motor final `expert_0.7.0`: 154.475 decisiones; 2.505 N13000. Carry-forward validado. N13000 solo devuelve estados RECOMMENDATION_NOT_ISSUED_* mientras no exista política final validada.
-
-## 8. Dashboard / LLM / PDF
-
-DASHBOARD-01 DATA CONTRACT PASS: 38 partidos, 36 jugadores, 28 métricas FEATURE-01, 154.475 decisiones y N13000 seguro. Streamlit arrancó correctamente en localhost:8501 después de la integración final.
+DASHBOARD-01 DATA CONTRACT PASS: 38 partidos, 36 jugadores, 28 métricas FEATURE-01, 154.475 decisiones y N13000 seguro. Streamlit arrancó correctamente en `localhost:8501` después de la integración final.
 
 Pendiente para cerrar DASHBOARD-01: revisar visualmente TEAM, PLAYER, PARTITS y ASSISTENT, incluyendo los tres botones PDF.
 
-LLM-01 y LLM-02: PASS. OpenAI es opcional; sin clave funciona fallback determinista. Rankings/recomendaciones no validadas se bloquean antes de proveedor externo.
+LLM-01 y LLM-02: PASS. OpenAI es opcional; sin clave funciona fallback determinista. Rankings/recomendaciones no validadas se bloquean antes del proveedor externo.
 
-REPORTS-01: PASS. Motor único ReportLab para Team / Player / Match, ya integrado en Streamlit. PDF demo: equipo 10.638 bytes; jugador 6.291; partido 5.562. Guardrails PASS.
+REPORTS-01: PASS. Motor único ReportLab para Team / Player / Match, integrado en Streamlit. PDF demo: equipo 10.638 bytes; jugador 6.291; partido 5.562. Guardrails PASS.
 
-## 9. PUBLICATION-01 — PREPARADO
+## 7. PUBLICATION-01 — CERRADO / VALIDADO
 
-Issue #23.
+Issue #23 cerrado.
 
-Archivos:
+Archivos principales:
 
 ```text
 publication/build_public_demo.py
 publication/validate_public_demo.py
-publication/validate_public_demo.ps1
 publication/README.md
 ```
 
-La demo local sustituye identidades por TEAM_001, OPP_001..., PLAYER_001... y MATCH_001.... Incluye solo las tablas necesarias para ejecutar el producto web actual: teams, players, matches, team_match, player_match, player_match_raw_stats, player_match_features y decision_results.
+Validación local 25/09/2026:
 
-La validación debe comprobar:
-- identidad de número de filas source/output;
-- ausencia de nombres e IDs originales;
-- aliases válidos;
-- compatibilidad con app.data_access;
-- N13000 sin estados inseguros.
+```text
+PUBLICATION-01 ANONYMIZED DEMO CONTRACT: PASS
+team: TEAM 001
+matches: 38
+players: 36
+decision rows: 154475
+N13000 rows: 2505
+sensitive text columns checked: 43
+source/output row-count identity: PASS
+source identifiers/names absent from public tables: PASS
+source provenance IDs neutralized: PASS
+is_anonymized flags: PASS
+recommendation gate safety: PASS
+metadata: public_demo_0.1.0 / ANONYMIZED_LOCAL_EXPORT
+```
 
-`publication/output/` y `reports/output/` están ignorados por Git.
+La demo local sustituye identidades por `TEAM_001`, `OPP_001...`, `PLAYER_001...`, `MATCH_001...`, neutraliza `source_*_id`, anonimiza `source_name` y marca `is_anonymized=TRUE`.
 
-La demo generada permanece local. Solo se publicará si la licencia de la fuente permite redistribución; si no, el GitHub público usará datos sintéticos o con licencia compatible.
+**Redistribución no autorizada por defecto.** La demo generada queda local/ignorada por Git hasta confirmar la licencia. Si no existe permiso explícito, el GitHub público utilizará datos sintéticos o con licencia compatible.
 
-README.md principal actualizado al MVP funcional real.
-
-## 10. Decisiones descartadas / restricciones
+## 8. Restricciones vigentes
 
 - No inventar eventos atómicos desde agregados ambiguos.
 - No inferir formación ni rol sin evidencia.
 - No crear role stints ficticios.
 - No inventar umbrales GPS.
 - No usar fuzzy matching GPS silencioso.
-- No etiquetar consistencia o tendencia como buena/mala sin regla validada.
+- No etiquetar consistencia/tendencia como buena/mala sin regla validada.
 - No interpretar N12000 como score de fit.
 - No emitir recomendación N13000 mientras la política siga sin validar.
 - No publicar datos profesionales solo porque estén anonimizados.
 
-## 11. Problemas abiertos
+## 9. Problemas abiertos
 
-- validar localmente PUBLICATION-01;
 - cerrar revisión visual DASHBOARD-01;
-- decidir dataset público según derechos de redistribución;
-- test global / instalación limpia / capturas para GitHub;
+- decidir dataset público final según derechos de redistribución;
+- ejecutar tests globales y empaquetado limpio;
+- preparar capturas y README final para GitHub;
 - futura validación de política de recomendación;
 - ML posterior si existe base suficiente;
 - features físicas cuando haya GPS real;
 - mejorar reejecución incremental;
 - retoque UX Collector final.
 
-## 12. Siguiente paso exacto
+## 10. Siguiente paso exacto
 
-Sin instalar nada nuevo, abrir una segunda PowerShell mientras Streamlit sigue abierto y ejecutar:
+FINAL-01 debe agrupar, sin microfases:
 
-```powershell
-cd C:\Users\sergi\Desktop\football-performance-system
-git pull
-python publication\validate_public_demo.py
-```
+1. test global de módulos ya validados;
+2. ejecución limpia del producto;
+3. cierre visual de DASHBOARD-01;
+4. dataset público compatible (sintético/licencia válida si no hay permiso de redistribución);
+5. README/capturas/estructura final de GitHub.
 
-Esperado: `PUBLICATION-01 ANONYMIZED DEMO CONTRACT: PASS`.
+No añadir nuevas métricas ni rediseñar el sistema antes de cerrar este bloque.
