@@ -6,7 +6,7 @@ from pathlib import Path
 
 import duckdb
 
-from decision_tree.build_stage6 import summarize_role_evidence
+from build_stage6 import summarize_role_evidence
 
 
 ROOT = Path(__file__).resolve().parents[1]
