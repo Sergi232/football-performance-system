@@ -29,76 +29,26 @@ FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ## Flujo vigente
 
 ```text
-DATA
-→ FEATURE ENGINE
-→ ANALYTICS
-→ EXPERT SYSTEM
-→ DSAI EXPERIMENTS
-→ PRODUCT SERVICE LAYER
-→ WEB / REPORTS / AI ASSISTANT
-→ QA / PUBLICATION
+DATA → FEATURE ENGINE → ANALYTICS → EXPERT SYSTEM → DSAI → PRODUCT → LLM → QA/PUBLICATION
 ```
 
 GitHub es la fuente de verdad. Una capa superior no puede inventar métricas, rankings, scores o recomendaciones.
 
 ## Baseline
 
-Caso de desarrollo: Deportivo Alavés 2025/26.
-
 ```text
 matches=38
 players=36
 player_match=835
-FEATURE-01=28 features
-FEATURE-02=temporal strict-past
-FEATURE-03=temporal same-role strict-past
+FEATURE-01=28
 observed-role rows=590
 raw role labels=23
 analytics rows=46760
 GPS observations=0
 ```
 
-## ANALYTICS-01
-
-DG-AN-01 = C:
-- SELF_ROLE_PRIOR;
-- PEER_ROLE_PRIOR;
-- siempre separados.
-
-PASS final:
-```text
-SELF_ROLE_PRIOR=23380
-PEER_ROLE_PRIOR=23380
-strict-past peer checks=PASS
-no score/ranking/recommendation=PASS
-```
-
-## N13000
-
-DG-N13-01 = C. Contrato objetivo futuro:
-- recomendación;
-- confianza/calibración;
-- evidencia;
-- justificación;
-- limitaciones;
-- alternativa.
-
-Todavía no emite recomendaciones porque no existe calibración/ground truth validado.
-
-## DSAI-01A — feasibility audit
-
-```text
-player_similarity_profiles        GO_EXPLORATORY
-change_detection_evolution        GO_EXPERIMENT
-observed_role_classification      CANDIDATE_SUPERVISED
-role_player_fit                   REFORMULATE_TARGET
-expert_vs_ml                      BLOCKED_SHARED_TARGET
-n13000_recommendation_calibration BLOCKED_GROUND_TRUTH
-```
-
 ## DSAI-02 — change detection
 
-Resultado:
 ```text
 evaluable_rows=3647
 players=25
@@ -110,13 +60,10 @@ AUC 1.5σ=0.7211
 AUC 2.0σ=0.8024
 ```
 
-Decisión: `EXPERIMENTALLY_USEFUL / NO_DEPLOY` por ausencia de ground truth real de change-points.
+Decisión: `EXPERIMENTALLY_USEFUL / NO_DEPLOY`.
 
 ## DSAI-03 — player similarity
 
-Script: `dsai/player_similarity_experiment.py`.
-
-Resultado:
 ```text
 profiles=64
 players=24
@@ -129,39 +76,30 @@ retention_rate=0.22727272727272727
 pair_distance_corr=0.2143880082112036
 ```
 
-Decisión: `EXPLORATORY_RESULT / NO_DEPLOY`.
-
-La estabilidad temporal es demasiado baja para exponer “jugadores similares” como funcionalidad del producto. El experimento se conserva como resultado académico y baseline para futuros datos más amplios.
+Decisión: `EXPLORATORY_RESULT / NO_DEPLOY` por baja estabilidad temporal.
 
 ## DSAI-04 — role-label audit ACTIVO
 
-Objetivo: decidir si `primary_role` puede utilizarse como target supervisado defendible.
+Objetivo: auditar `primary_role` antes de cualquier clasificador supervisado.
 
-Problema identificado:
-- 23 raw labels;
-- `Substitute` concentra 172 filas;
-- la importación de lineups documenta que `Substitute` es estado de banquillo, no rol táctico;
-- no se permite agrupar labels por intuición.
-
-El audit debe revisar:
-- distribución exacta por label;
-- jugadores por label;
-- titularidad y minutos;
-- diagnóstico de `Substitute`;
+Puntos obligatorios:
+- distribución por label;
+- jugadores, titularidad y minutos;
+- `Substitute` como posible estado no táctico;
 - coexistencia del mismo jugador con roles tácticos;
 - transiciones temporales;
 - sparsity;
-- conclusión sobre si el target raw puede usarse, debe depurarse por fuente o descartarse.
+- decisión final sobre target raw.
 
-Script: `dsai/role_label_audit.py`.
+No agrupar labels por intuición.
 
 ## Líneas bloqueadas
 
-- role/player fit: sin target independiente;
-- Expert vs ML: sin shared target independiente;
-- N13000 calibration: sin ground truth;
-- GPS ML: sin observaciones;
-- role classification: bloqueada hasta cerrar DSAI-04.
+- role/player fit;
+- Expert vs ML;
+- N13000 calibration;
+- GPS ML;
+- role classification hasta cerrar DSAI-04.
 
 ## Producto
 
