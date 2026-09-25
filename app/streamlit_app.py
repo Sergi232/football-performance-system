@@ -24,11 +24,15 @@ from app.data_access import (  # noqa: E402
     list_base_features,
     list_teams,
 )
-from llm.assistant_service import answer_from_context  # noqa: E402
 from llm.context_builder import (  # noqa: E402
     build_match_context,
     build_player_context,
     build_team_context,
+)
+from llm.openai_provider import (  # noqa: E402
+    answer_question,
+    configured_model,
+    provider_available,
 )
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
@@ -142,7 +146,7 @@ def render_team(path: str, team_id: str, team_name: str) -> None:
     with left:
         st.subheader("Plantilla")
         display = squad.drop(columns=["player_id"], errors="ignore").copy()
-        st.dataframe(display, hide_index=True, use_container_width=True)
+        st.dataframe(display, hide_index=True, width="stretch")
 
     with right:
         st.subheader("Partits")
@@ -154,7 +158,7 @@ def render_team(path: str, team_id: str, team_name: str) -> None:
             display["match_date"] = pd.to_datetime(display["match_date"]).dt.date
             display = display[["match_date", "venue", "opponent", "result", "starting_formation"]]
             display.columns = ["Data", "L/V", "Rival", "Resultat", "Formació"]
-            st.dataframe(display, hide_index=True, use_container_width=True)
+            st.dataframe(display, hide_index=True, width="stretch")
 
 
 def render_player(path: str, team_id: str) -> None:
@@ -230,14 +234,14 @@ def render_player(path: str, team_id: str) -> None:
             details = feature_history.copy()
             details["match_date"] = pd.to_datetime(details["match_date"]).dt.date
             details.columns = ["Data", "Rival", "Rol", "Minuts", "Valor"]
-            st.dataframe(details, hide_index=True, use_container_width=True)
+            st.dataframe(details, hide_index=True, width="stretch")
 
     st.subheader("Historial de partits")
     details = history.copy()
     if not details.empty:
         details["match_date"] = pd.to_datetime(details["match_date"]).dt.date
         details = details.drop(columns=["match_id"], errors="ignore")
-    st.dataframe(details, hide_index=True, use_container_width=True)
+    st.dataframe(details, hide_index=True, width="stretch")
 
 
 def render_matches(path: str, team_id: str) -> None:
@@ -260,16 +264,27 @@ def render_matches(path: str, team_id: str) -> None:
     lineup = cached_lineup(path, team_id, match_id)
     st.header(options[match_id])
     st.subheader("Jugadors i estadístiques brutes")
-    st.dataframe(lineup, hide_index=True, use_container_width=True)
+    st.dataframe(lineup, hide_index=True, width="stretch")
     st.caption("Aquesta vista mostra dades player-match brutes/observades. Les features derivades es calculen en la capa Feature Engine.")
 
 
 def render_assistant(path: str, team_id: str) -> None:
     st.header("Assistent")
     st.caption(
-        "LLM-01: capa d'interacció segura sobre resultats estructurats. Aquesta versió encara és determinista "
-        "i serveix per validar el contracte abans de connectar un LLM generatiu."
+        "LLM-02: l'assistent pot utilitzar OpenAI per explicar resultats estructurats, però el motor analític "
+        "continua sent l'única font de mètriques, evidència i decisions."
     )
+
+    openai_ready = provider_available()
+    if openai_ready:
+        st.success(f"OpenAI disponible · model {configured_model()}")
+        use_llm = st.toggle("Utilitza resposta generativa", value=True, key="assistant_use_llm")
+    else:
+        st.info(
+            "OPENAI_API_KEY no està configurada. L'assistent continua funcionant en mode determinista. "
+            "La clau s'ha de configurar localment i no s'ha de pujar a GitHub."
+        )
+        use_llm = False
 
     scope = st.radio("Context", ["Equip", "Jugador", "Partit"], horizontal=True)
     question = ""
@@ -326,15 +341,24 @@ def render_assistant(path: str, team_id: str) -> None:
         )
 
     if st.button("Analitza", type="primary"):
+        result = answer_question(question, context, prefer_llm=use_llm)
         st.subheader("Resposta")
-        st.write(answer_from_context(question, context))
+        st.write(result.text)
+        if result.mode == "openai":
+            st.caption(f"Resposta explicativa generada amb {result.model}; dades i decisions provenen del motor estructurat.")
+        elif result.mode == "guardrail":
+            st.caption("Pregunta interceptada pel guardrail abans de qualsevol crida externa.")
+        elif result.error:
+            st.warning(f"El proveïdor generatiu ha fallat; s'ha utilitzat el fallback determinista. {result.error}")
+        else:
+            st.caption("Resposta determinista basada exclusivament en el context estructurat.")
 
     with st.expander("Context estructurat utilitzat"):
         st.json(context)
 
     st.info(
-        "Preguntes que exigeixen ranking, 'millor/pitjor jugador' o recomanació tàctica es bloquegen mentre "
-        "la política de recomanació continuï sense validar."
+        "Preguntes que exigeixen ranking, 'millor/pitjor jugador' o recomanació tàctica es bloquegen abans "
+        "de cridar cap LLM mentre la política de recomanació continuï sense validar."
     )
 
 
