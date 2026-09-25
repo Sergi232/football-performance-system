@@ -28,7 +28,12 @@ def source_sensitive_values(source: Path) -> tuple[set[str], set[str]]:
         for table, id_col in (("teams", "team_id"), ("players", "player_id"), ("matches", "match_id")):
             ids.update(str(row[0]) for row in con.execute(f'SELECT "{id_col}" FROM "{table}" WHERE "{id_col}" IS NOT NULL').fetchall())
         names.update(str(row[0]) for row in con.execute("SELECT display_name FROM teams WHERE display_name IS NOT NULL").fetchall())
+        names.update(str(row[0]) for row in con.execute("SELECT source_name FROM teams WHERE source_name IS NOT NULL").fetchall())
         names.update(str(row[0]) for row in con.execute("SELECT display_name FROM players WHERE display_name IS NOT NULL").fetchall())
+        names.update(str(row[0]) for row in con.execute("SELECT source_name FROM players WHERE source_name IS NOT NULL").fetchall())
+        ids.update(str(row[0]) for row in con.execute("SELECT source_team_id FROM teams WHERE source_team_id IS NOT NULL").fetchall())
+        ids.update(str(row[0]) for row in con.execute("SELECT source_player_id FROM players WHERE source_player_id IS NOT NULL").fetchall())
+        ids.update(str(row[0]) for row in con.execute("SELECT source_match_id FROM matches WHERE source_match_id IS NOT NULL").fetchall())
     return ids, names
 
 
@@ -68,6 +73,26 @@ def assert_no_sensitive_strings(output: Path, ids: set[str], names: set[str]) ->
     return checked
 
 
+def assert_source_provenance_neutralized(output: Path) -> None:
+    with duckdb.connect(str(output), read_only=True) as con:
+        checks = [
+            ("teams", "source_team_id"),
+            ("players", "source_player_id"),
+            ("matches", "source_match_id"),
+        ]
+        for table, column in checks:
+            count = con.execute(
+                f'SELECT COUNT(*) FROM "{table}" WHERE "{column}" IS NOT NULL'
+            ).fetchone()[0]
+            if count:
+                raise AssertionError(f"Source provenance ID remains in {table}.{column}: {count} rows")
+
+        team_flag = con.execute("SELECT COUNT(*) FROM teams WHERE is_anonymized IS DISTINCT FROM TRUE").fetchone()[0]
+        player_flag = con.execute("SELECT COUNT(*) FROM players WHERE is_anonymized IS DISTINCT FROM TRUE").fetchone()[0]
+        if team_flag or player_flag:
+            raise AssertionError("is_anonymized flag is not TRUE for every public team/player row")
+
+
 def validate(source: Path, output: Path) -> None:
     source = source.expanduser().resolve()
     output = output.expanduser().resolve()
@@ -86,6 +111,7 @@ def validate(source: Path, output: Path) -> None:
 
     ids, names = source_sensitive_values(source)
     columns_checked = assert_no_sensitive_strings(output, ids, names)
+    assert_source_provenance_neutralized(output)
 
     with duckdb.connect(str(output), read_only=True) as con:
         team_ids = [row[0] for row in con.execute("SELECT team_id FROM teams ORDER BY team_id").fetchall()]
@@ -126,6 +152,8 @@ def validate(source: Path, output: Path) -> None:
     print(f"sensitive text columns checked: {columns_checked}")
     print("source/output row-count identity: PASS")
     print("source identifiers/names absent from public tables: PASS")
+    print("source provenance IDs neutralized: PASS")
+    print("is_anonymized flags: PASS")
     print("recommendation gate safety: PASS")
     print(f"metadata: {metadata[0]} / {metadata[1]}")
     print("REDISTRIBUTION STATUS: NOT CLEARED — keep this generated DB local unless the source-data licence explicitly permits redistribution.")
