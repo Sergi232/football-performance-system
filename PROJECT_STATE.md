@@ -11,140 +11,192 @@ DATA-01/02/03/04                    CERRADO / VALIDADO
 COLLECTOR-01 MVP                    CERRADO FUNCIONALMENTE
 GPS-01                              CERRADO / VALIDADO
 FEATURE-01/02/03                    CERRADO / VALIDADO
-EXPERT-01..07 N1000-N13000          CERRADO / VALIDADO
-LLM-01/02                           CERRADO / VALIDADO
-REPORTS-01 Team/Player/Match PDF    CERRADO / VALIDADO
-PUBLICATION-01 demo anonimizada     CERRADO / VALIDADO
-DASHBOARD-01 Streamlit MVP          CONTRACT PASS / REVISIÓN VISUAL ABIERTA
-FINAL-01                            SIGUIENTE MACROBLOQUE
+EXPERT-01..07 N1000-N13000          BASELINE CERRADO / VALIDADO
+LLM-01/02                           PROTOTYPE v0.1 / CONTRATOS PASS
+REPORTS-01                          PROTOTYPE v0.1 / CONTRATO PASS
+PUBLICATION-01                      CERRADO / VALIDADO TÉCNICAMENTE
+DASHBOARD-01                        PROTOTYPE v0.1 / CONTRACT PASS
+ARCHITECTURE-01                     ACTIVO — ISSUE #25
+FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
-## 2. Producto
+## 2. Cambio de forma de trabajo
 
-Aplicación web para equipos amateur o semiprofesionales sin departamento de análisis:
+A partir de 25/09/2026 el proyecto pasa a flujo **architecture-first + gated**.
+
+No se seguirá añadiendo funcionalidad al dashboard/report/assistant por parches. Primero se cierra la arquitectura y luego se avanza por capas con contratos de entrada/salida.
+
+Fuente de verdad:
+
+1. `PROJECT_STATE.md` — estado operativo;
+2. `docs/ARCHITECTURE.md` — arquitectura vigente;
+3. `docs/DECISIONS.md` — decisiones estructurales/gates;
+4. `docs/WORKFLOW.md` — agentes, orden y desbloqueos;
+5. `README.md` — presentación e instalación.
+
+## 3. Arquitectura vigente
 
 ```text
-VÍDEO / DATA COLLECTOR + GPS OPCIONAL
-→ DUCKDB
-→ FEATURE ENGINE
-→ MOTOR ANALÍTICO
-→ SISTEMA EXPERTO / ML
-→ STREAMLIT
-→ ASISTENTE IA
-→ PDF
+CAPTURE / IMPORT
+      ↓
+RAW + NORMALIZED DATA
+      ↓
+FEATURE ENGINE
+      ↓
+ANALYTICS ENGINE
+      ↓
+DECISION ENGINE
+      ↓
+PRODUCT SERVICE LAYER
+      ↓
+WEB / REPORTS / AI ASSISTANT
+      ↓
+QA / PUBLICATION
 ```
 
-TEAM MODE es principal. PLAYER MODE es complementario. RIVAL MODE queda como extensión futura.
+Regla: una capa superior no puede inventar métricas, rankings, evaluaciones o recomendaciones que no existan en una capa inferior validada.
 
-## 3. Principios aprobados
+## 4. Orden obligatorio de trabajo
 
-- GPS opcional.
-- Separación estricta raw → features → motor → conclusiones.
-- Evitar data leakage.
-- Ninguna conclusión importante depende exclusivamente de un LLM.
-- Reglas, umbrales y pesos requieren datos, literatura, validación o experimento.
-- No inferir datos ausentes silenciosamente.
-- PannaData/Opta sirve para desarrollo y validación, no define el producto amateur.
-- No crear score de fit ni recomendación sin política validada.
-- El LLM explica resultados estructurados; no recalcula métricas críticas.
-- La capa PDF tampoco crea métricas, rankings o recomendaciones nuevas.
-- No repetir instalaciones salvo cambio de dependencias o entorno limpio.
-- Anonimizar datos no equivale a tener derecho a redistribuirlos.
+```text
+ARCHITECTURE-01
+        ↓
+ANALYTICS-01
+        ↓
+DECISION POLICY / N13000
+        ↓
+PRODUCT UX
+        ↓
+REPORTS-02
+        ↓
+ASSISTANT ARCHITECTURE
+        ↓
+ML si aporta valor
+        ↓
+FINAL PRODUCT / PUBLICATION / TFM
+```
 
-## 4. Caso de desarrollo
+## 5. Estado real del prototipo actual
+
+El backend está más avanzado que la capa de producto.
+
+Se reutiliza:
+- DuckDB y esquema;
+- Collector;
+- GPS normalization;
+- FEATURE-01/02/03;
+- baseline experto N1000-N13000;
+- acceso read-only a datos;
+- guardrails LLM;
+- tooling PDF;
+- tooling de anonimización;
+- tests existentes.
+
+No se considera definitivo:
+- UX Streamlit actual, demasiado orientada a tablas;
+- PDF ReportLab actual, válido como prueba técnica pero no como informe profesional;
+- proveedor/arquitectura final del LLM;
+- política final N13000;
+- capa Analytics de insights;
+- Product Service Layer común para web/report/assistant.
+
+## 6. Caso de desarrollo
 
 Deportivo Alavés 2025/26: 38 partidos, 36 jugadores, 835 `player_match`.
 
-Los datos profesionales se usan localmente para desarrollo/validación. No se publicarán raw files originales.
+Los datos profesionales sirven para desarrollo/validación. No se publicarán raw files originales. La demo anonimizada está técnicamente validada, pero redistribución sigue condicionada a licencia.
 
-## 5. Datos / features / motor
+## 7. Datos y features cerrados como baseline
 
-Collector v0.3.0 cerrado funcionalmente. DATA-04 contiene 27 raw stats player-match aprobadas. `key_passes` no se aproxima si no existe fuente verificada.
+DATA-04: 27 raw stats player-match aprobadas. `key_passes` no se aproxima sin fuente verificada.
 
-FEATURE-01 `0.1.0`: 28 features, 23.380 filas.
+FEATURE-01 `0.1.0`: 28 features.
 
-FEATURE-02 `0.2.0`: evolución strict-past (`history_n`, `prev`, `prior_mean`, `prior_std`, `delta_prev`, `delta_prior_mean`, `prior_slope`).
+FEATURE-02 `0.2.0`: historial strict-past (`history_n`, `prev`, `prior_mean`, `prior_std`, `delta_prev`, `delta_prior_mean`, `prior_slope`).
 
-FEATURE-03 `0.3.0`: historial jugador + rol observado + feature; 117.735 filas; 590/835 player-match con rol; 23 roles.
+FEATURE-03 `0.3.0`: historial jugador + rol observado + feature; 590/835 player-match con rol; 23 roles.
 
-Motor experto final `expert_0.7.0`: 154.475 decisiones; 2.505 N13000. N13000 solo devuelve `RECOMMENDATION_NOT_ISSUED_*` mientras no exista política final validada.
+El Feature Engine no decide si una métrica es buena/mala.
 
-## 6. Dashboard / LLM / PDF
+## 8. Sistema experto baseline
 
-DASHBOARD-01 DATA CONTRACT PASS: 38 partidos, 36 jugadores, 28 métricas FEATURE-01, 154.475 decisiones y N13000 seguro. Streamlit arrancó correctamente en `localhost:8501` después de la integración final.
+Motor `expert_0.7.0`: 154.475 decisiones; 2.505 N13000.
 
-Pendiente para cerrar DASHBOARD-01: revisar visualmente TEAM, PLAYER, PARTITS y ASSISTENT, incluyendo los tres botones PDF.
+N13000 mantiene `RECOMMENDATION_NOT_ISSUED_*` mientras no exista policy validada.
 
-LLM-01 y LLM-02: PASS. OpenAI es opcional; sin clave funciona fallback determinista. Rankings/recomendaciones no validadas se bloquean antes del proveedor externo.
+El árbol existente se conserva como baseline auditable. La futura policy debe construirse encima de Analytics validado, no mediante intuición ni LLM.
 
-REPORTS-01: PASS. Motor único ReportLab para Team / Player / Match, integrado en Streamlit. PDF demo: equipo 10.638 bytes; jugador 6.291; partido 5.562. Guardrails PASS.
+## 9. Prototipos de producto ya validados técnicamente
 
-## 7. PUBLICATION-01 — CERRADO / VALIDADO
+### Dashboard
+DATA CONTRACT PASS. TEAM / PLAYER / MATCH / ASSISTANT arrancan y consumen datos reales/anonimizados.
 
-Issue #23 cerrado.
+Problema de producto detectado: predominio de tablas y falta de capa de insights suficientemente desarrollada.
 
-Archivos principales:
+### Reports
+REPORTS-01 PASS. Los tres PDF se generan.
+
+Problema de producto detectado: el PDF actual es una prueba técnica, no un informe final entregable al cuerpo técnico.
+
+### Assistant
+LLM-01/02 PASS en contratos y guardrails. OpenAI opcional y fallback determinista.
+
+Decisión pendiente: arquitectura final local/cloud/híbrida. El asistente final solo explicará outputs estructurados.
+
+## 10. Agents / ownership
+
+Definidos en `docs/WORKFLOW.md`:
+- A0 Architect/Integrator;
+- A1 Data & Collector;
+- A2 Feature Engine;
+- A3 Analytics;
+- A4 Expert/Decision Engine;
+- A5 ML/Validation;
+- A6 Product/UX;
+- A7 Reporting;
+- A8 AI Assistant;
+- A9 QA/Publication.
+
+A0 y A9 acompañan todo el proyecto. Los agentes de interfaz no pueden crear lógica analítica.
+
+## 11. Decisions gates
+
+Registro: `docs/DECISIONS.md`.
+
+Solo se pide intervención de Sergi en decisiones estructurales. Gates previstos:
+- `DG-AN-01` comparaciones analíticas;
+- `DG-N13-01` policy de recomendación;
+- `DG-UX-01` jerarquía de producto;
+- `DG-LLM-01` local/cloud/híbrido;
+- `DG-REP-01` estructura final de informes;
+- `DG-PUB-01` dataset público.
+
+No se preguntarán detalles técnicos reversibles/rutinarios.
+
+## 12. Restricciones vigentes
+
+- no inventar eventos atómicos desde agregados ambiguos;
+- no inferir rol/formación sin evidencia;
+- no crear scores/umbrales por intuición;
+- no mezclar self-history y peer comparison silenciosamente;
+- no usar LLM para cálculo crítico;
+- no emitir recomendación N13000 sin policy validada;
+- no publicar datos profesionales solo por estar anonimizados;
+- no rediseñar web/report/assistant antes de cerrar la capa Analytics correspondiente.
+
+## 13. Fase activa y siguiente paso exacto
+
+**ARCHITECTURE-01 — issue #25.**
+
+Documentación creada/actualizada:
 
 ```text
-publication/build_public_demo.py
-publication/validate_public_demo.py
-publication/README.md
+docs/ARCHITECTURE.md
+docs/WORKFLOW.md
+docs/DECISIONS.md
+PROJECT_STATE.md
 ```
 
-Validación local 25/09/2026:
+Siguiente transición: cerrar ARCHITECTURE-01 y abrir **ANALYTICS-01**.
 
-```text
-PUBLICATION-01 ANONYMIZED DEMO CONTRACT: PASS
-team: TEAM 001
-matches: 38
-players: 36
-decision rows: 154475
-N13000 rows: 2505
-sensitive text columns checked: 43
-source/output row-count identity: PASS
-source identifiers/names absent from public tables: PASS
-source provenance IDs neutralized: PASS
-is_anonymized flags: PASS
-recommendation gate safety: PASS
-metadata: public_demo_0.1.0 / ANONYMIZED_LOCAL_EXPORT
-```
-
-La demo local sustituye identidades por `TEAM_001`, `OPP_001...`, `PLAYER_001...`, `MATCH_001...`, neutraliza `source_*_id`, anonimiza `source_name` y marca `is_anonymized=TRUE`.
-
-**Redistribución no autorizada por defecto.** La demo generada queda local/ignorada por Git hasta confirmar la licencia. Si no existe permiso explícito, el GitHub público utilizará datos sintéticos o con licencia compatible.
-
-## 8. Restricciones vigentes
-
-- No inventar eventos atómicos desde agregados ambiguos.
-- No inferir formación ni rol sin evidencia.
-- No crear role stints ficticios.
-- No inventar umbrales GPS.
-- No usar fuzzy matching GPS silencioso.
-- No etiquetar consistencia/tendencia como buena/mala sin regla validada.
-- No interpretar N12000 como score de fit.
-- No emitir recomendación N13000 mientras la política siga sin validar.
-- No publicar datos profesionales solo porque estén anonimizados.
-
-## 9. Problemas abiertos
-
-- cerrar revisión visual DASHBOARD-01;
-- decidir dataset público final según derechos de redistribución;
-- ejecutar tests globales y empaquetado limpio;
-- preparar capturas y README final para GitHub;
-- futura validación de política de recomendación;
-- ML posterior si existe base suficiente;
-- features físicas cuando haya GPS real;
-- mejorar reejecución incremental;
-- retoque UX Collector final.
-
-## 10. Siguiente paso exacto
-
-FINAL-01 debe agrupar, sin microfases:
-
-1. test global de módulos ya validados;
-2. ejecución limpia del producto;
-3. cierre visual de DASHBOARD-01;
-4. dataset público compatible (sintético/licencia válida si no hay permiso de redistribución);
-5. README/capturas/estructura final de GitHub.
-
-No añadir nuevas métricas ni rediseñar el sistema antes de cerrar este bloque.
+El primer gate que puede afectar Analytics es `DG-AN-01` (self-history / peer-role / ambas). El Architect debe presentarlo de forma breve cuando sea necesario; hasta entonces Sergi no debe ejecutar ningún script ni decidir detalles técnicos.
