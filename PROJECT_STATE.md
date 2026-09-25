@@ -1,20 +1,20 @@
 # PROJECT_STATE
 
-Última actualización: 24/09/2026
+Última actualización: 25/09/2026
 
 Este archivo es la memoria técnica operativa del proyecto. Debe reflejar siempre el estado más reciente confirmado y prevalecer sobre conversaciones antiguas cuando exista una contradicción.
 
 ## 1. Fase actual
 
-**Cierre del Data Collector y construcción del caso demostrador real.**
+**Base de datos v0.1 en construcción + cierre del Data Collector en paralelo.**
 
-La auditoría de cobertura de LaLiga 2025/26 ya está completada y también se ha realizado una primera auditoría específica de variables para el equipo demostrador. El siguiente trabajo es cerrar qué acciones son realmente recogibles en fútbol amateur/semi-profesional y fijar el mapping definitivo PannaData/Opta → Data Collector.
+Ya no se espera a cerrar el 100 % de la taxonomía del Collector para avanzar con la infraestructura. Se ha aprobado una arquitectura orientada a eventos que permite representar acciones pendientes (`CORNER`, falta peligrosa, ABP, etc.) sin rediseñar la base central.
+
+El siguiente objetivo técnico es conectar los Parquet reales de PannaData/Opta con el esquema normalizado y construir el caso demostrador Deportivo Alavés 2025/26.
 
 ## 2. Objetivo confirmado
 
 Desarrollar una aplicación web funcional para equipos de fútbol amateur o semiprofesional sin departamento de análisis propio.
-
-Flujo principal:
 
 ```text
 VÍDEO / DATA COLLECTOR + GPS OPCIONAL
@@ -29,166 +29,130 @@ VÍDEO / DATA COLLECTOR + GPS OPCIONAL
 
 La aplicación web es el producto principal del TFM.
 
-## 3. Decisiones aprobadas
+## 3. Principios y decisiones aprobadas
 
-- El sistema principal será **Team Mode**.
-- **Player Mode** será complementario.
-- **Rival Mode** será una extensión futura y no condicionará el TFM.
+- Team Mode es el modo principal.
+- Player Mode será complementario.
+- Rival Mode será una extensión futura.
 - El sistema principal debe funcionar sin datos del rival.
-- El GPS será complementario y no obligatorio.
-- Los datos brutos, features, modelos y conclusiones deben mantenerse separados.
-- Las conclusiones importantes no pueden depender exclusivamente de un LLM.
-- Debe evitarse data leakage.
-- Toda regla, umbral o peso deberá justificarse mediante datos, literatura, validación o experimentación.
-- Se priorizará un MVP funcional antes de aumentar la complejidad.
-- GitHub será la fuente de verdad técnica del proyecto.
-- La documentación oficial del TFM y del repositorio se redactará en castellano.
-- Los nombres técnicos internos de código pueden mantenerse en inglés cuando sea estándar.
-- El caso demostrador utilizará una temporada real completa reconstruida a partir de PannaData/Opta, pero el dataset publicable será anonimizado.
+- GPS complementario, no obligatorio.
+- Separación estricta entre datos brutos, features, modelos y conclusiones.
+- Ninguna conclusión importante dependerá exclusivamente de un LLM.
+- Evitar data leakage.
+- Toda regla, umbral o peso deberá justificarse con datos, literatura, validación o experimentación.
+- Priorizar MVP funcional antes de aumentar complejidad.
+- GitHub es la fuente de verdad técnica.
+- Documentación oficial en castellano.
+- Código puede usar nombres técnicos en inglés.
+- Caso demostrador real reconstruido con PannaData/Opta y anonimizado antes de publicarse.
 
-## 4. Data Collector — estado actual
+## 4. Arquitectura materializada
 
-Existe un prototipo HTML previo que debe simplificarse, no sustituirse sin una razón clara.
-
-Familias de acciones actualmente en revisión:
-
-- Pase
-- Regate
-- Remate
-- Defensa
-- Falta
-- Pérdida
-- Penalti
-- Tarjeta
-- Portero
-- Contexto / eventos de equipo
-
-Estructura base:
+Documento creado:
 
 ```text
-action_type + subtype + outcome
+docs/ARCHITECTURE.md
 ```
 
-### Pase — aprobado
-
-Se registrarán también las pasadas normales porque el volumen y la efectividad de pase son variables centrales para el análisis de perfil, evolución y encaje de rol.
-
-Diseño aprobado para maximizar rapidez y evitar dobles clics:
+Módulos del proyecto:
 
 ```text
-PASS | NORMAL | SUCCESS/FAIL
-PASS | LONG   | SUCCESS/FAIL
-PASS | CROSS  | SUCCESS/FAIL
+collector/       captura y taxonomía de eventos
+data/            esquema, imports y dataset normalizado
+gps/             normalización multi-proveedor
+features/        variables derivadas
+engine/          análisis determinista
+decision_tree/   sistema experto auditable
+models/          ML opcional
+app/             dashboard web
+llm/             consulta y explicación
+reports/         PDF
+tests/           tests de datos/lógica/regresión
 ```
 
-Una acción `LONG` o `CROSS` cuenta automáticamente también como pase total. El usuario no debe registrar adicionalmente una pasada normal para la misma acción.
+Regla de desbloqueo: una decisión pendiente de interfaz no debe bloquear infraestructura si el modelo de datos ya puede representarla de forma genérica.
 
-La efectividad no se recoge manualmente; se deriva posteriormente a partir de completadas / totales.
+## 5. Base de datos — v0.1 creada
 
-### Regate — aprobado
+Archivos:
 
 ```text
-DRIBBLE | SUCCESS
-DRIBBLE | FAIL
+data/schema.sql
+data/init_database.py
+data/README.md
+requirements.txt
 ```
 
-Un regate fallado genera automáticamente una pérdida derivada y no debe registrarse además como `LOSS`.
+Motor inicial: **DuckDB**.
 
-### Defensa — aprobado
-
-Se mantienen como acciones separadas:
+Unidad analítica principal:
 
 ```text
-TACKLE
-INTERCEPTION
-BLOCK
-CLEARANCE
+player_match = jugador + partido
 ```
 
-El despeje se mantiene en el MVP como acción defensiva propia.
-
-### Pérdida — aprobado
-
-`LOSS` se utilizará únicamente para pérdidas de posesión no explicadas ya por una pasada fallada o un regate fallado.
-
-No se generará una segunda acción de pérdida cuando el origen ya esté registrado en la propia acción. La capa derivada podrá clasificar el motivo de la pérdida, por ejemplo:
+Tablas/capas definidas:
 
 ```text
-PASS | ... | FAIL      → possession_lost = 1 | loss_reason = FAILED_PASS
-DRIBBLE | ... | FAIL   → possession_lost = 1 | loss_reason = FAILED_DRIBBLE
-LOSS | OTHER           → possession_lost = 1 | loss_reason = OTHER_TURNOVER
+teams
+players
+matches
+team_match
+player_match
+player_role_stints
+match_events
+collector_sessions
+gps_imports
+gps_observations
+player_match_features
+decision_results
 ```
 
-Objetivo: evitar doble conteo y poder obtener tanto pérdidas totales como pérdidas por origen.
-
-### Remate — aprobado
-
-El Collector usará una única selección por remate:
+La tabla estable de eventos es `match_events`:
 
 ```text
-SHOT | GOAL
-SHOT | ON_TARGET
-SHOT | OFF_TARGET
-SHOT | BLOCKED
+action_type + subtype + outcome + contexto + qualifiers
 ```
 
-Cada opción cuenta automáticamente como remate total. No debe registrarse primero una acción genérica de remate.
+La taxonomía se guarda como datos, no como columnas fijas. Esto permite añadir o cerrar eventos sin rehacer el esquema.
 
-Los remates al poste se agrupan dentro de `OFF_TARGET` para mantener la interfaz simple.
+La base mantiene trazabilidad temporal, vídeo, fuente de origen y posibilidad de enlazar eventos.
 
-### Falta y disciplina — aprobado
-
-Diseño base:
+Ya está implementada como lógica derivada aprobada la vista de pérdidas:
 
 ```text
-FOUL | COMMITTED
-FOUL | RECEIVED
-CARD | YELLOW
-CARD | RED
+PASS | ... | FAIL    → FAILED_PASS
+DRIBBLE | FAIL       → FAILED_DRIBBLE
+LOSS                 → OTHER_TURNOVER / subtipo
 ```
 
-Las tarjetas se registran como eventos propios y no dependen obligatoriamente de una falta, ya que pueden producirse por otros motivos. En caso de segunda amarilla con expulsión se conservarán ambas consecuencias disciplinarias.
+No debe existir doble conteo de pérdidas.
 
-Se ha propuesto añadir una distinción de **falta peligrosa** cometida/recibida. El concepto se considera útil, pero su criterio operativo exacto debe cerrarse antes de aprobarlo para evitar subjetividad.
+## 6. Auditoría automática de fuentes
 
-### Penalti — aprobado parcialmente
-
-La lógica acordada es:
+Archivo creado:
 
 ```text
-PENALTY → WON / CONCEDED → GOAL / MISSED
+data/audit_pannadata_sources.py
 ```
 
-No se utilizará un botón persistente separado para "gol de penalti".
-
-### Contexto / eventos de equipo — pendiente de cierre
-
-Se ha identificado la necesidad de una capa de eventos de equipo que no obligue a duplicar las acciones ya registradas a nivel jugador.
-
-Candidatos prioritarios:
+Objetivo: inspeccionar los Parquet locales reales y generar:
 
 ```text
-CORNER | FOR
-CORNER | AGAINST
+data/source_schema_audit.json
 ```
 
-Las estadísticas de equipo que puedan agregarse desde acciones de jugador (pases, remates, faltas, tarjetas, defensa, etc.) se derivarán automáticamente y no se volverán a introducir manualmente.
+El script obtiene para cada fuente:
 
-La posible etiqueta de falta peligrosa deberá agregarse sobre la propia acción de falta, permitiendo derivar después faltas peligrosas a favor/en contra sin doble registro.
+- existencia;
+- número de filas;
+- número de columnas;
+- nombres reales de columnas;
+- tipos de datos.
 
-Las variables definitivas todavía no están cerradas.
+Esto evita construir el importador suponiendo nombres de campos que no se hayan comprobado.
 
-## 5. Datos de desarrollo disponibles
-
-Fuente de desarrollo y validación: **PannaData / Opta**.
-
-Inventario local confirmado en:
-
-```text
-C:\Users\sergi\Desktop\analisi_futbol\input\pannadata\
-```
-
-Fuentes relevantes disponibles:
+Fuentes objetivo:
 
 ```text
 opta_fixtures.parquet
@@ -201,57 +165,139 @@ opta_shots.parquet
 opta_match_xg.parquet
 ```
 
-También existen ficheros de eventos por competición para EPL, La Liga, Serie A, Bundesliga, Ligue 1 y competiciones internacionales.
+Ruta local confirmada:
 
-Existe además una base local:
+```text
+C:\Users\sergi\Desktop\analisi_futbol\input\pannadata\
+```
+
+## 7. Data Collector — estado actual
+
+Catálogo versionado creado:
+
+```text
+collector/event_catalog.json
+```
+
+### Aprobado
+
+Pases:
+
+```text
+PASS | NORMAL | SUCCESS/FAIL
+PASS | LONG   | SUCCESS/FAIL
+PASS | CROSS  | SUCCESS/FAIL
+```
+
+`LONG` y `CROSS` cuentan automáticamente como pases totales.
+
+Regate:
+
+```text
+DRIBBLE | SUCCESS/FAIL
+```
+
+Remate:
+
+```text
+SHOT | GOAL
+SHOT | ON_TARGET
+SHOT | OFF_TARGET
+SHOT | BLOCKED
+```
+
+Poste se agrupa en `OFF_TARGET` en el MVP.
+
+Defensa:
+
+```text
+TACKLE
+INTERCEPTION
+BLOCK
+CLEARANCE
+```
+
+Falta y disciplina:
+
+```text
+FOUL | COMMITTED
+FOUL | RECEIVED
+CARD | YELLOW
+CARD | RED
+```
+
+Pérdida:
+
+```text
+LOSS | OTHER
+```
+
+solo cuando no está ya explicada por pase/regate fallado.
+
+### Parcial
+
+Penalti:
+
+```text
+PENALTY → WON / CONCEDED → GOAL / MISSED
+```
+
+La lógica general está aprobada; falta validar el mapping técnico completo.
+
+### Pendiente
+
+- criterio operativo de falta peligrosa;
+- confirmar `CORNER | FOR/AGAINST` en el MVP;
+- resultado de ABP (`SHOT`, `CHANCE`, `GOAL`, etc.) solo si es reproducible y recogible;
+- interfaz exacta de portero;
+- reconstrucción exacta de remate a portería/penaltis desde eventos y qualifiers.
+
+Estas decisiones ya no bloquean la base de datos.
+
+## 8. Datos de desarrollo
+
+Base local existente:
 
 ```text
 C:\Users\sergi\Desktop\analisi_futbol\outputs\base_pannadata.duckdb
 ```
 
-con tablas originales y derivadas. Las tablas derivadas de proyectos anteriores no deben confundirse con la fuente original ni utilizarse automáticamente como base del TFM.
+Las tablas derivadas de proyectos anteriores no deben utilizarse automáticamente como fuente original del TFM.
 
-## 6. Auditoría de cobertura LaLiga 2025/26
-
-La auditoría confirma:
+Auditoría LaLiga 2025/26 confirmada:
 
 ```text
 20 equipos
-380 partidos de liga
+380 partidos
 38 partidos por equipo
-100 % de cobertura en fixtures
-100 % de cobertura en player stats
-100 % de cobertura en lineups
-100 % de cobertura en events
+100 % fixtures
+100 % player stats
+100 % lineups
+100 % events
 ```
 
-Por tanto, la elección del equipo demostrador no depende de disponibilidad de datos, sino de su adecuación metodológica al objetivo del TFM.
+## 9. Caso demostrador aprobado
 
-## 7. Equipo demostrador aprobado
+**Fuente local: Deportivo Alavés — LaLiga 2025/26.**
 
-**Equipo fuente local: Deportivo Alavés — LaLiga 2025/26.**
-
-Identificador Opta detectado localmente:
+Opta team id:
 
 ```text
 4dtdjgnpdq9uw4sdutti0vaar
 ```
 
-Motivos de selección:
+Motivos:
 
-- 38 partidos con cobertura completa.
-- Clasificado en la auditoría como equipo sin competición europea en 2025/26.
-- Perfil estadístico intermedio y razonable para utilizarlo como sustituto de un equipo amateur/semi-profesional, evitando perfiles demasiado extremos.
-- Volumen de pase claramente inferior a equipos dominantes pero no tan atípico como el extremo observado en Getafe.
-- Perfil equilibrado entre pase, juego directo, centros, defensa y faltas.
+- temporada completa;
+- sin competición europea;
+- perfil menos extremo y más adecuado como demostrador que alternativas analizadas;
+- equilibrio razonable entre pase, juego directo, centros, defensa y faltas.
 
-Estos valores sirven únicamente para justificar la elección del caso demostrador. No se aprueban automáticamente como métricas finales del producto.
+Los valores profesionales sirven para validar el sistema, no para aprobar automáticamente métricas finales.
 
-## 8. Auditoría específica Data Collector
+## 10. Mapping PannaData/Opta conocido
 
-La auditoría del equipo demostrador confirma 38/38 partidos en fixtures, player stats, lineups y events.
-
-Variables Opta directamente disponibles y potencialmente mapeables al Collector:
+Variables disponibles relevantes:
 
 ```text
 Pase: totalPass / accuratePass
@@ -268,7 +314,7 @@ Penalti: penaltyConceded / penaltyWon
 Portero: saves / divingSave / goalsConceded
 ```
 
-La fuente de eventos Opta permite mapear tipos de acción mediante `type_id`. Entre los identificadores relevantes confirmados en la documentación de PannaData se encuentran, entre otros:
+Type IDs de eventos conocidos:
 
 ```text
 1  Pass
@@ -289,60 +335,28 @@ La fuente de eventos Opta permite mapear tipos de acción mediante `type_id`. En
 77 Key pass
 ```
 
-Aspectos que requieren resolución antes del cierre:
+## 11. Anonimización
 
-- El remate a portería debe reconstruirse desde las fuentes de tiro/eventos, separando disparos realmente dirigidos a portería de bloqueos defensivos.
-- El resultado de penaltis debe reconstruirse desde eventos de tiro y qualifiers.
-- Debe cerrarse el criterio operativo de falta peligrosa.
-- Deben cerrarse los eventos de equipo imprescindibles del MVP, empezando por córners a favor/en contra.
-- Debe definirse la interfaz exacta de penalti y portero.
-- El principal problema metodológico pendiente ya no es disponibilidad de datos, sino equilibrio entre valor analítico y coste de recogida manual.
-
-## 9. Política de anonimización del dataset demostrador
-
-Los datos reales de Deportivo Alavés se utilizarán únicamente de forma local para construir y validar el sistema.
-
-Antes de incorporar un dataset demostrador al repositorio se anonimizarán:
+Antes de publicar el dataset demostrador:
 
 ```text
-Deportivo Alavés  → TEAM_001
-jugadores reales  → PLAYER_001, PLAYER_002, ...
-oponentes          → OPP_001, OPP_002, ...
-identificadores    → identificadores internos
+Deportivo Alavés → TEAM_001
+jugadores         → PLAYER_001, PLAYER_002, ...
+oponentes         → OPP_001, OPP_002, ...
+IDs originales    → IDs internos
 ```
 
-Se mantendrán las estadísticas, minutos, posiciones y secuencia temporal necesarias para reproducir los análisis.
+Se mantendrán estadísticas, minutos, roles y estructura temporal.
 
-Está previsto crear un proceso reproducible:
+Script previsto:
 
 ```text
 scripts/build_anonymized_demo.py
 ```
 
-El repositorio no debe contener una copia completa de los datasets originales de PannaData/Opta.
+Nunca se publicarán los datasets completos originales de PannaData/Opta.
 
-## 10. Arquitectura analítica prevista
-
-La unidad principal de análisis será **jugador-partido**.
-
-El sistema deberá relacionar, como mínimo:
-
-```text
-jugador
-+ partido
-+ minutos
-+ rol
-+ acciones de vídeo
-+ GPS opcional
-+ contexto del equipo
-+ resultados derivados
-```
-
-El esquema definitivo de base de datos todavía no está aprobado.
-
-## 11. Sistema experto previsto
-
-Estructura jerárquica inicial:
+## 12. Sistema experto previsto
 
 ```text
 N1000  disponibilidad / actividad
@@ -360,15 +374,15 @@ N12000 player fit
 N13000 recomendación final
 ```
 
-Cada nodo deberá tener:
+Cada nodo:
 
 ```text
 entrada → condición → resultado → confianza → justificación
 ```
 
-No se construirán ramas detalladas hasta cerrar las variables disponibles.
+No se detallan ramas todavía.
 
-## 12. LLM / asistente IA
+## 13. LLM
 
 Arquitectura obligatoria:
 
@@ -376,44 +390,45 @@ Arquitectura obligatoria:
 DATA → ANALYTICS → DECISION ENGINE → LLM → COACH
 ```
 
-El LLM podrá interpretar preguntas, explicar resultados, resumir tendencias y generar informes, pero no podrá inventar métricas ni sustituir cálculos críticos del motor analítico.
+El LLM explica resultados ya calculados; no inventa métricas ni sustituye cálculos críticos.
 
-## 13. Pendientes abiertos
+## 14. Decisiones descartadas
 
-- Cerrar el criterio de falta peligrosa cometida/recibida.
-- Cerrar los eventos de equipo del MVP, empezando por córners a favor/en contra.
-- Cerrar el tratamiento de penalti.
-- Definir las acciones de portero del MVP.
-- Resolver técnicamente remate a portería y resultado de penaltis desde `shot_events`.
-- Cerrar las variables definitivas del Data Collector.
-- Extraer la temporada 2025/26 del equipo fuente con las variables aprobadas.
-- Crear el proceso reproducible de anonimización.
-- Definir el esquema de datos estándar del proyecto.
-- Definir la capa de normalización GPS.
-
-## 14. Decisiones descartadas o no aprobadas
-
-- No usar directamente todas las variables profesionales disponibles solo porque existan en Opta.
+- No usar todas las variables Opta solo porque existan.
 - No construir todavía el árbol experto detallado.
-- No construir todavía el Feature Engine definitivo.
-- No usar datos ficticios como caso principal si puede reconstruirse una temporada real.
-- No publicar los datasets completos de PannaData/Opta dentro del repositorio.
-- No seleccionar Getafe como caso demostrador principal: su perfil de pase y disciplina es más extremo y menos representativo para el caso que se quiere simular.
-- No crear una acción adicional de pérdida cuando la pérdida ya está contenida en una pasada o regate fallado.
-- No crear un botón separado para remate al poste en el MVP.
+- No construir el Feature Engine definitivo antes de cerrar/madurar la capa de datos.
+- No usar datos ficticios como caso principal pudiendo reconstruir una temporada real.
+- No publicar datasets completos de PannaData/Opta.
+- No usar Getafe como demostrador principal.
+- No duplicar pérdidas derivadas de pase/regate fallado.
+- No crear botón separado para remate al poste en el MVP.
 
 ## 15. Siguiente paso exacto
 
-**Cerrar la capa de contexto/equipo y las familias restantes del Data Collector.**
-
-Orden inmediato:
+### Track A — Datos, prioritario
 
 ```text
-1. cerrar criterio de falta peligrosa
-2. cerrar córners y otros eventos de equipo imprescindibles
-3. cerrar penalti
-4. cerrar portero
-5. resolver mapping técnico de shot_events
-6. aprobar variables definitivas
-7. crear esquema de datos
+1. ejecutar data/audit_pannadata_sources.py sobre los Parquet locales
+2. guardar/revisar source_schema_audit.json
+3. construir import_pannadata_demo.py contra columnas reales
+4. cargar Alavés 2025/26 en el esquema v0.1
+5. validar 38 partidos, jugadores, minutos, roles y eventos
+6. reconstruir shots/penaltis
+7. generar dataset demostrador anonimizado
+```
+
+### Track B — Collector, en paralelo
+
+```text
+1. cerrar falta peligrosa
+2. cerrar córners/ABP
+3. cerrar penalti/portero
+4. actualizar event_catalog.json
+5. simplificar el HTML usando el catálogo versionado
+```
+
+### Después
+
+```text
+Feature Engine → sistema experto → dashboard → LLM → PDF
 ```
