@@ -29,19 +29,7 @@ Resultado: `EXPERIMENTALLY_USEFUL / NO_DEPLOY`.
 
 ## DSAI-03 — player similarity / profiles — CERRADO
 
-```text
-profiles=64
-players=24
-roles=22
-features=28
-profiles_with_neighbour=61
-temporal_eligible=22
-same_neighbour=5
-retention_rate=0.22727272727272727
-pair_distance_corr=0.2143880082112036
-```
-
-Decisión: `EXPLORATORY_RESULT / NO_DEPLOY` por baja estabilidad temporal.
+Resultado: `EXPLORATORY_RESULT / NO_DEPLOY` por baja estabilidad temporal.
 
 ## DSAI-04 — role-label audit — CERRADO
 
@@ -49,43 +37,59 @@ Resultado: `REFORMULATE_LABELS` porque `Substitute` mezclaba estado de participa
 
 ## DSAI-05 — role target reconstruction — CERRADO
 
-Resultado local:
+Target limpio:
 
 ```text
-rows=835
-played=590
-starters=418
-substitute_appearances=172
-unused_bench=245
-clean_target_rows=418
+418 filas
+22 labels
+24 jugadores
+3 labels de un único jugador
+```
+
+`Substitute` queda fuera del target táctico y no se infiere el rol de suplentes.
+
+## DSAI-06 — supervised role feasibility — CERRADO
+
+Resultado:
+
+```text
+target_rows=418
 labels=22
 players=24
+matches=38
+feature_values=5081/11704
+features_per_row=min:1 median:12 max:20
+strict_past_label_seen=396/418
+identity_independent_strict_past=302/418
 single_player_labels=3
-withheld_substitute_appearances=172
-invalid_starter_rows=0
-substitute_labels_remaining=0
+labels_without_other_player_strict_past=3
+conclusion=LIMITED_EXPERIMENT_ONLY
 ```
 
-El target limpio conserva únicamente roles tácticos directamente observados en titulares. No se infiere el rol de los suplentes ni se agrupan clases.
+La línea de role classification puede avanzar únicamente como experimento limitado. No se considera todavía apta para producto.
 
-## DSAI-06 — supervised role feasibility — ACTIVO
+## DSAI-07 — role classification baseline — ACTIVO
 
-Ejecutar:
+Script:
 
 ```powershell
-python dsai\role_supervised_feasibility.py
+python dsai\role_classification_baseline.py
 ```
 
-Antes de entrenar un classificador se auditan:
-- cobertura real de FEATURE-01 en las 418 filas limpias;
-- diversidad de jugadores por clase;
-- posibilidad de evaluación temporal strict-past;
-- posibilidad de evaluación independent de identidad usando observaciones previas del mismo label en otros jugadores;
-- clases que solo existen en un jugador.
+Diseño:
+- target limpio de titulares;
+- únicamente FEATURE-01;
+- entrenamiento estrictamente anterior a la fecha de cada test;
+- exclusión completa del jugador evaluado del train;
+- solo se evalúan casos cuyo label ya existía previamente en otro jugador;
+- no se fusionan clases;
+- imputación de mediana fit únicamente sobre train;
+- regresión logística multinomial como primer baseline ML;
+- comparación con baseline de clase mayoritaria;
+- accuracy, balanced accuracy y macro-F1;
+- resultados y predicciones reproducibles en JSON/Markdown/CSV.
 
-No se entrena ningún modelo. FEATURE-03 queda excluido de este experimento porque está condicionado al rol y sería circular para predecir ese mismo target. `player_id`, nombres, el propio rol y outputs del sistema experto tampoco pueden actuar como predictores.
-
-La salida será `GO_BASELINE_EXPERIMENT`, `LIMITED_EXPERIMENT_ONLY` o `NO_GO_SUPERVISED`, sin introducir un mínimo de muestra arbitrario.
+Es un experimento post-partido para estudiar si el comportamiento estadístico contiene señal sobre el rol observado. No predice alineaciones futuras ni emite recomendaciones.
 
 ## Líneas bloqueadas
 
