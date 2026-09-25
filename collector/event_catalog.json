@@ -1,0 +1,66 @@
+{
+  "catalog_version": "0.1.0",
+  "status": "working",
+  "notes": "Catálogo del MVP. Los eventos approved pueden implementarse. Los pending requieren cierre metodológico antes de activarse en la interfaz.",
+  "events": [
+    {"action_type": "PASS", "subtype": "NORMAL", "outcomes": ["SUCCESS", "FAIL"], "status": "approved"},
+    {"action_type": "PASS", "subtype": "LONG", "outcomes": ["SUCCESS", "FAIL"], "status": "approved"},
+    {"action_type": "PASS", "subtype": "CROSS", "outcomes": ["SUCCESS", "FAIL"], "status": "approved"},
+
+    {"action_type": "DRIBBLE", "subtype": null, "outcomes": ["SUCCESS", "FAIL"], "status": "approved"},
+
+    {"action_type": "SHOT", "subtype": null, "outcomes": ["GOAL", "ON_TARGET", "OFF_TARGET", "BLOCKED"], "status": "approved"},
+
+    {"action_type": "TACKLE", "subtype": null, "outcomes": [], "status": "approved"},
+    {"action_type": "INTERCEPTION", "subtype": null, "outcomes": [], "status": "approved"},
+    {"action_type": "BLOCK", "subtype": null, "outcomes": [], "status": "approved"},
+    {"action_type": "CLEARANCE", "subtype": null, "outcomes": [], "status": "approved"},
+
+    {"action_type": "FOUL", "subtype": "COMMITTED", "outcomes": [], "status": "approved"},
+    {"action_type": "FOUL", "subtype": "RECEIVED", "outcomes": [], "status": "approved"},
+    {"action_type": "CARD", "subtype": "YELLOW", "outcomes": [], "status": "approved"},
+    {"action_type": "CARD", "subtype": "RED", "outcomes": [], "status": "approved"},
+
+    {"action_type": "LOSS", "subtype": "OTHER", "outcomes": [], "status": "approved"},
+
+    {"action_type": "PENALTY", "subtype": "WON", "outcomes": ["GOAL", "MISSED"], "status": "partial"},
+    {"action_type": "PENALTY", "subtype": "CONCEDED", "outcomes": ["GOAL", "MISSED"], "status": "partial"},
+
+    {"action_type": "CORNER", "subtype": "FOR", "outcomes": [], "status": "pending"},
+    {"action_type": "CORNER", "subtype": "AGAINST", "outcomes": [], "status": "pending"}
+  ],
+  "pending_qualifiers": [
+    {
+      "name": "dangerous_foul",
+      "applies_to": ["FOUL"],
+      "type": "boolean",
+      "status": "pending_definition",
+      "reason": "Debe definirse un criterio operativo reproducible antes de activarlo."
+    },
+    {
+      "name": "set_piece_result",
+      "applies_to": ["CORNER", "FOUL"],
+      "allowed_values_candidate": ["SHOT", "CHANCE", "GOAL", "NO_THREAT"],
+      "status": "pending_validation",
+      "reason": "Debe comprobarse qué puede reconstruirse con PannaData/Opta y qué es realista recoger manualmente."
+    }
+  ],
+  "derived_rules": [
+    {
+      "rule": "PASS with outcome FAIL implies possession_lost=1 and loss_reason=FAILED_PASS",
+      "status": "approved"
+    },
+    {
+      "rule": "DRIBBLE with outcome FAIL implies possession_lost=1 and loss_reason=FAILED_DRIBBLE",
+      "status": "approved"
+    },
+    {
+      "rule": "PASS LONG or CROSS counts automatically toward total passes",
+      "status": "approved"
+    },
+    {
+      "rule": "Every SHOT outcome counts automatically toward total shots",
+      "status": "approved"
+    }
+  ]
+}
