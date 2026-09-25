@@ -12,13 +12,14 @@ El prototipo funcional ya contiene:
 - base de datos DuckDB con unidad principal `jugador-partido`;
 - Feature Engine determinista y temporal leakage-safe;
 - historial condicionado a rol observado;
+- Analytics Engine con evidencia `SELF_ROLE_PRIOR` y `PEER_ROLE_PRIOR` validada;
 - motor experto auditable N1000-N13000;
 - dashboard Streamlit con modos Equipo, Jugador, Partidos y Asistente;
 - asistente determinista y proveedor OpenAI opcional con guardrails;
 - informes PDF de Equipo, Jugador y Partido mediante un motor común;
 - normalización GPS multi-proveedor preparada;
 - tooling de anonimización para construir una demo pública local;
-- capa Analytics en desarrollo para convertir features en evidencia estructurada self/peer.
+- núcleo DS/IA activo con feasibility audit previo a entrenamiento de modelos.
 
 El estado técnico exacto y el siguiente paso están en [`PROJECT_STATE.md`](PROJECT_STATE.md).
 
@@ -26,7 +27,8 @@ Documentación clave:
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — arquitectura y contratos;
 - [`docs/WORKFLOW.md`](docs/WORKFLOW.md) — fases, agentes y gates;
 - [`docs/DECISIONS.md`](docs/DECISIONS.md) — decisiones estructurales;
-- [`docs/DATA_SCIENCE_AI_STRATEGY.md`](docs/DATA_SCIENCE_AI_STRATEGY.md) — estrategia académica Data Science + IA.
+- [`docs/DATA_SCIENCE_AI_STRATEGY.md`](docs/DATA_SCIENCE_AI_STRATEGY.md) — estrategia académica Data Science + IA;
+- [`dsai/README.md`](dsai/README.md) — experimentación DS/ML y feasibility audit.
 
 ## Arquitectura
 
@@ -39,7 +41,9 @@ FEATURE ENGINE
         ↓
 ANALYTICS ENGINE
         ↓
-SISTEMA EXPERTO / ML
+SISTEMA EXPERTO
+        ↓
+DS / ML EXPERIMENTAL CORE
         ↓
 PRODUCT SERVICE LAYER
         ↓
@@ -68,8 +72,17 @@ El proyecto no se considera completo solo porque exista una interfaz funcional. 
 Casos prioritarios a evaluar:
 - player profiles / similarity;
 - change detection / evolución;
+- observed role classification como posible tarea supervisada con label observado;
 - role/player fit solo si existe un target defendible;
 - comparación Expert vs ML cuando sea metodológicamente válida.
+
+El primer paso de este bloque es:
+
+```powershell
+python dsai\feasibility_audit.py
+```
+
+El audit no entrena modelos. Primero comprueba muestra, cobertura, secuencias temporales, targets, leakage y viabilidad.
 
 ## Principios metodológicos
 
@@ -120,7 +133,7 @@ N12000  player-fit evidence
 N13000  recommendation gate
 ```
 
-El motor final validado es `expert_0.7.0`. N13000 **no emite todavía recomendaciones tácticas** porque la política final de recomendación no está validada con literatura/datos/experimentos. Esta ausencia es deliberada y auditable.
+El motor final validado es `expert_0.7.0`. El contrato objetivo de N13000 está aprobado: recomendación + confianza/calibración + evidencia + justificación + limitaciones + alternativa cuando proceda. Sin embargo, **no emite todavía recomendaciones tácticas** porque los criterios, umbrales y calibración no están validados. Esta ausencia es deliberada y auditable.
 
 ## Informes PDF
 
@@ -130,7 +143,7 @@ El motor actual (`reports/pdf_engine.py`) genera:
 - informe de jugador;
 - informe de partido.
 
-REPORTS-01 es un prototipo técnico. Los informes finales se rediseñarán después de cerrar Analytics y Product UX para convertirse en entregables profesionales alimentados por los mismos insights estructurados.
+REPORTS-01 es un prototipo técnico. Los informes finales se rediseñarán después del núcleo DS/IA y de Product UX para convertirse en entregables profesionales alimentados por los mismos insights estructurados.
 
 ## Instalación local
 
@@ -175,6 +188,7 @@ python llm\validate_assistant.py
 python llm\validate_stage2.py
 python reports\validate_reports.py
 python analytics\validate_stage1.py
+python dsai\feasibility_audit.py
 ```
 
 Las validaciones del sistema experto y del Feature Engine se mantienen en sus respectivos módulos.
@@ -204,19 +218,18 @@ El sistema deliberadamente limita las variables finales a información que pueda
 ```text
 football-performance-system/
 ├── analytics/        # evidencia estructurada self/peer
+├── dsai/             # feasibility, experimentos DS/ML y validación
 ├── collector/        # Data Collector HTML
 ├── data/             # esquema, importadores y contratos de datos
 ├── gps/              # normalización GPS multi-proveedor
 ├── features/         # Feature Engine
 ├── decision_tree/    # motor experto N1000-N13000
-├── models/           # ML y experimentación posterior
 ├── llm/              # contexto, guardrails y proveedor LLM opcional
 ├── app/              # aplicación Streamlit
 ├── reports/          # motor PDF común
 ├── publication/      # anonimización y demo pública local
 ├── tests/            # tests y regresión
 ├── docs/
-├── examples/
 ├── README.md
 └── PROJECT_STATE.md
 ```
@@ -235,9 +248,10 @@ La arquitectura final local/cloud/híbrida sigue pendiente de `DG-LLM-01`.
 
 ## Próximos bloques
 
-1. cerrar ANALYTICS-01;
-2. validar la policy N13000;
-3. ejecutar el núcleo experimental Data Science / ML;
-4. rediseñar Product UX;
-5. convertir Reports/Assistant en capas finales sobre outputs validados;
-6. cerrar publicación, GitHub y memoria TFM.
+1. ejecutar `DSAI-01A` feasibility audit;
+2. congelar los experimentos DS/ML realmente viables;
+3. ejecutar y validar player similarity / change detection / tarea supervisada si procede;
+4. evaluar Expert vs ML solo con target independiente común;
+5. rediseñar Product UX;
+6. convertir Reports/Assistant en capas finales sobre outputs validados;
+7. cerrar publicación, GitHub y memoria TFM.
