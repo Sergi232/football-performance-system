@@ -1,0 +1,30 @@
+{
+  "engine_version": "expert_0.5.0",
+  "parent_engine_version": "expert_0.4.0",
+  "base_feature_version": "0.1.0",
+  "temporal_feature_version": "0.2.0",
+  "status": "strict_past_variability_and_trend_evidence",
+  "principles": [
+    "N1000-N10000 are carried forward unchanged from expert_0.4.0.",
+    "N11000 reads FEATURE-02 strict-past history only; current, same-date and future matches never enter its historical evidence.",
+    "Consistency is not classified as high/low or good/bad: the exact prior population standard deviation is exposed when evaluable.",
+    "Trend is not classified as improving/declining: the exact prior OLS slope is exposed when evaluable.",
+    "At least two prior non-null observations are mathematically required for prior_std and prior_slope; this is an operator requirement, not a performance threshold.",
+    "No score, weight, percentile, cross-player ranking, practical-significance cutoff or recommendation is introduced.",
+    "confidence=1.0 means deterministic execution of the evidence rule, not calibrated performance probability."
+  ],
+  "node_patterns": [
+    {
+      "suffix": "VARIABILITY",
+      "operator": "prior_std",
+      "result_type": "strict_past_prior_std",
+      "description": "Exact population standard deviation over prior non-null observations."
+    },
+    {
+      "suffix": "TREND",
+      "operator": "prior_slope",
+      "result_type": "strict_past_prior_slope",
+      "description": "Exact OLS slope over prior non-null observations."
+    }
+  ]
+}
