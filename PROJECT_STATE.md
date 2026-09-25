@@ -25,8 +25,10 @@ EXPERT-05 N11000 consistencia/tendencia  CERRADO / VALIDADO
 EXPERT-06 N12000 player-fit evidence     CERRADO / VALIDADO
 EXPERT-07 N13000 recommendation gate     CERRADO / VALIDADO
 MOTOR EXPERTO BASE N1000-N13000          CERRADO / VALIDADO
-DASHBOARD-01 Streamlit MVP               PREPARADO / PENDIENTE VALIDACIÓN LOCAL
-LLM / PDF                                DESPUÉS DEL DASHBOARD BASE
+DASHBOARD-01 Streamlit MVP               DATA CONTRACT PASS / REVISIÓN VISUAL ABIERTA
+LLM-01 contexto + asistente seguro       CERRADO / VALIDADO
+LLM-02 proveedor OpenAI opcional         PREPARADO / PENDIENTE VALIDACIÓN LOCAL
+PDF                                      DESPUÉS DE LLM-02 / DASHBOARD
 ```
 
 El Collector puede recibir mejoras UX posteriormente, pero su contrato de datos ya no bloquea el desarrollo.
@@ -70,8 +72,8 @@ gps/             normalización multi-proveedor
 features/        variables deterministas, temporales y condicionadas a rol
 decision_tree/   sistema experto auditable
 app/             dashboard web Streamlit
+llm/             contexto, guardrails y proveedor generativo opcional
 models/          ML opcional posterior
-llm/             consulta y explicación posterior
 reports/         PDF posterior
 tests/           regresión y validación
 ```
@@ -166,8 +168,6 @@ non-null 6324
 coverage 38 matches / 36 players
 ```
 
-Ratio solo con numerador/denominador válidos y denominador >0; por90 solo con minutos >0; NULL raw permanece NULL; sin ratings/pesos/percentiles/umbrales.
-
 ### FEATURE-02 — `0.2.0`
 Por cada feature: `history_n`, `prev`, `prior_mean`, `prior_std`, `delta_prev`, `delta_prior_mean`, `prior_slope`.
 
@@ -224,10 +224,10 @@ Cada nodo: `entrada → condición → resultado → confianza → justificació
 48.430 decisiones. N1000=835, N2000=835, N3000=46.760. Sin duplicados ni etiquetas prematuras.
 
 ### EXPERT-02 — `expert_0.2.0`
-68.470 decisiones. N4000-N7000 incorporados como evidencia descriptiva own-history. Carry-forward exacto PASS.
+68.470 decisiones. N4000-N7000 como evidencia descriptiva own-history. Carry-forward exacto PASS.
 
 ### EXPERT-03 — `expert_0.3.0`
-72.645 decisiones. N8000 contexto propio equipo y N9000 GPS opcional. GPS observado en demo: 0. Ausencia GPS no genera estimación física.
+72.645 decisiones. N8000 contexto propio equipo y N9000 GPS opcional. GPS observado en demo: 0.
 
 ### EXPERT-04 — `expert_0.4.0`
 94.355 decisiones. N10000 usa FEATURE-03 same-role strict-past. 590/835 player-match con rol observado. Sin fit score.
@@ -255,19 +255,11 @@ RECOMMENDATION_NOT_ISSUED_POLICY_UNVALIDATED: 501
 RECOMMENDATION_NOT_ISSUED_ROLE_UNKNOWN: 245
 ```
 
-N13000 no inventa la política final. Estados:
-
-```text
-RECOMMENDATION_NOT_ISSUED_ROLE_UNKNOWN
-RECOMMENDATION_NOT_ISSUED_NO_EVIDENCE
-RECOMMENDATION_NOT_ISSUED_POLICY_UNVALIDATED
-```
-
 El motor experto base N1000-N13000 queda completado y validado. Una política futura de recomendación solo podrá sustituir este gate cuando esté justificada con literatura, datos o experimentación.
 
-## 11. DASHBOARD-01 — PREPARADO / PENDIENTE VALIDACIÓN LOCAL
+## 11. DASHBOARD-01 — DATA CONTRACT PASS / REVISIÓN VISUAL ABIERTA
 
-Primer MVP Streamlit añadido:
+Archivos principales:
 
 ```text
 app/__init__.py
@@ -276,25 +268,73 @@ app/validate_dashboard.py
 app/streamlit_app.py
 ```
 
-`requirements.txt` incorpora `streamlit>=1.40`.
+Validación local:
 
-Alcance MVP:
-- TEAM MODE: resumen del equipo, plantilla y partidos;
-- PLAYER MODE: apariciones/minutos/goles/asistencias, roles observados, evolución de features, historial de partidos y evidencia N12000/N13000;
-- MATCH VIEW: jugador-partido con estadísticas brutas;
-- lectura DuckDB `read_only`;
-- la interfaz no recalcula métricas críticas;
-- N13000 se muestra como gate y no como recomendación táctica.
+```text
+DASHBOARD-01 DATA CONTRACT: PASS
+team: Deportivo Alavés
+matches: 38
+players: 36
+FEATURE-01 metrics available: 28
+final engine: expert_0.7.0
+decision rows: 154475
+N13000 rows: 2505
+Final recommendation gate safety: PASS
+```
 
-La DB por defecto es `data/football_performance.duckdb`; se puede cambiar con `FPS_DB_PATH`.
+Streamlit arrancó correctamente en `localhost:8501`. TEAM / PLAYER / PARTITS están disponibles. La revisión visual final sigue abierta antes de cerrar formalmente DASHBOARD-01.
 
-## 12. LLM / PDF
+Los warnings `use_container_width` se han eliminado en la versión preparada para LLM-02 usando `width='stretch'`.
+
+## 12. LLM
 
 Arquitectura obligatoria: `DATA → ANALYTICS → DECISION ENGINE → LLM → COACH`.
 
-El LLM explicará/consultará resultados estructurados. No inventará métricas ni sustituirá cálculos críticos. PDF será exportación estática posterior del producto web.
+### LLM-01 — CERRADO / VALIDADO
 
-## 13. Decisiones descartadas / restricciones vigentes
+Contextos read-only TEAM / PLAYER / MATCH y asistente determinista con guardrails.
+
+```text
+LLM-01 ASSISTANT CONTRACT: PASS
+team context matches: 38
+team context squad: 36
+match lineup rows: 23
+unsupported ranking/recommendation question guardrail: PASS
+N12000/N13000 provenance explanation: PASS
+```
+
+No recalcula métricas ni crea rankings/recomendaciones.
+
+### LLM-02 — PREPARADO / PENDIENTE VALIDACIÓN LOCAL
+
+Añadido `llm/openai_provider.py` y routing opcional a OpenAI.
+
+Contrato:
+- usa Responses API;
+- `store=False`;
+- model por defecto `gpt-5.6-luna`, configurable con `FPS_LLM_MODEL`;
+- requiere `OPENAI_API_KEY` solo para modo generativo;
+- sin clave funciona el fallback determinista;
+- preguntas de ranking/recomendación se bloquean antes de cualquier llamada externa;
+- el proveedor solo recibe el contexto estructurado ya calculado;
+- datos del contexto se tratan como datos, no instrucciones;
+- si falla el proveedor, vuelve al asistente determinista.
+
+Archivos:
+
+```text
+llm/openai_provider.py
+llm/validate_stage2.py
+tests/test_openai_provider.py
+```
+
+La validación `llm/validate_stage2.py` no realiza ninguna llamada externa.
+
+## 13. PDF
+
+Pendiente. Será exportación estática de la web con datos calculados, gráficos y texto explicativo generado exclusivamente desde resultados estructurados.
+
+## 14. Decisiones descartadas / restricciones vigentes
 
 - No usar variables Opta solo porque existan.
 - No duplicar pérdidas derivadas.
@@ -309,11 +349,14 @@ El LLM explicará/consultará resultados estructurados. No inventará métricas 
 - No etiquetar consistencia alta/baja o improving/declining sin validación.
 - No interpretar conteos N12000 como score de fit.
 - No emitir recomendación N13000 mientras la política final siga sin validar.
+- El LLM no puede recalcular métricas críticas ni sobreescribir el motor analítico.
+- Ninguna API key o secreto se sube al repositorio.
 
-## 14. Problemas abiertos
+## 15. Problemas abiertos
 
-- validar localmente DASHBOARD-01 y corregir cualquier incompatibilidad SQL/Streamlit;
-- después mejorar navegación/visualización del dashboard sin romper contratos;
+- validar localmente LLM-02;
+- confirmar visualmente TEAM / PLAYER / PARTITS / ASSISTENT y cerrar DASHBOARD-01;
+- probar llamada generativa real solo cuando `OPENAI_API_KEY` esté configurada localmente;
 - estudiar política futura de recomendación con literatura/datos/experimentos;
 - añadir features físicas cuando haya GPS real o definiciones justificadas;
 - script de anonimización para publicación;
@@ -321,12 +364,14 @@ El LLM explicará/consultará resultados estructurados. No inventará métricas 
 - retocar UX Collector al final;
 - localizar fuente fiable de `key_passes` si aparece otro export.
 
-## 15. Siguiente paso exacto
+## 16. Siguiente paso exacto
 
 ```powershell
 pip install -r requirements.txt
-python app\validate_dashboard.py
+python llm\validate_stage2.py
 streamlit run app\streamlit_app.py
 ```
 
-Primero debe pasar `DASHBOARD-01 DATA CONTRACT: PASS`. Después se abre la aplicación y se valida visualmente TEAM / PLAYER / PARTITS antes de integrar el asistente IA.
+Esperado: `LLM-02 PROVIDER ROUTING CONTRACT: PASS`.
+
+Esta validación no hace ninguna llamada externa. Si después se configura `OPENAI_API_KEY` localmente, el modo Assistent podrá usar OpenAI manteniendo los mismos guardrails. No enviar la clave por chat ni subirla a GitHub.
