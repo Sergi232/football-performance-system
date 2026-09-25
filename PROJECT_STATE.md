@@ -28,9 +28,7 @@ FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 
 ## Flujo vigente
 
-```text
-DATA → FEATURE ENGINE → ANALYTICS → EXPERT SYSTEM → DSAI → PRODUCT → LLM → QA/PUBLICATION
-```
+`DATA → FEATURES → ANALYTICS → EXPERT → DSAI → PRODUCT → LLM → QA/PUBLICATION`
 
 GitHub es la fuente de verdad. Una capa superior no puede inventar métricas, rankings, scores o recomendaciones.
 
@@ -48,17 +46,6 @@ GPS observations=0
 ```
 
 ## DSAI-02 — change detection
-
-```text
-evaluable_rows=3647
-players=25
-roles=18
-features=25
-AUC 0.5σ=0.2365
-AUC 1.0σ=0.5341
-AUC 1.5σ=0.7211
-AUC 2.0σ=0.8024
-```
 
 Decisión: `EXPERIMENTALLY_USEFUL / NO_DEPLOY`.
 
