@@ -57,14 +57,7 @@ Una capa superior no puede inventar métricas, rankings, evaluaciones o recomend
 
 ## 4. Prioridad académica
 
-El TFM es de Data Science e IA. El producto web es el vehículo final, pero el núcleo académico debe quedar demostrado en:
-- data engineering;
-- feature engineering leakage-safe;
-- analytics estadístico;
-- sistema experto auditable;
-- experimentación DS/ML;
-- validación y explicabilidad;
-- IA generativa como capa final, no como motor de cálculo.
+El TFM es de Data Science e IA. El producto web es el vehículo final, pero el núcleo académico debe quedar demostrado en data engineering, feature engineering leakage-safe, analytics estadístico, sistema experto auditable, experimentación DS/ML, validación/explicabilidad e IA generativa como capa final.
 
 ## 5. Baseline de datos
 
@@ -74,13 +67,12 @@ Caso de desarrollo: Deportivo Alavés 2025/26.
 matches=38
 players=36
 player_match=835
+FEATURE-01=28 features
+FEATURE-02=temporal strict-past
+FEATURE-03=temporal same-role strict-past
+observed roles=590/835 player-match
+raw role labels=23
 ```
-
-FEATURE-01 `0.1.0`: 28 features.
-FEATURE-02 `0.2.0`: temporal strict-past.
-FEATURE-03 `0.3.0`: temporal same-role strict-past.
-
-Roles observados: 590/835 player-match con rol; 23 raw labels.
 
 ## 6. ANALYTICS-01 — CERRADO
 
@@ -103,19 +95,10 @@ no score/ranking/recommendation=PASS
 
 DG-N13-01 = C.
 
-Contrato objetivo futuro:
-- recomendación;
-- confianza/calibración;
-- evidencia;
-- justificación;
-- limitaciones;
-- alternativa.
-
-Aún no se autoriza ninguna recomendación porque no hay criterios/thresholds/calibración validados. N13000 mantiene `RECOMMENDATION_NOT_ISSUED_*`.
+Contrato objetivo futuro: recomendación + confianza/calibración + evidencia + justificación + limitaciones + alternativa. Aún no se autoriza ninguna recomendación porque no hay criterios/thresholds/calibración validados.
 
 ## 8. DSAI-01A — FEASIBILITY AUDIT CERRADO
 
-Resultado:
 ```text
 player_similarity_profiles        GO_EXPLORATORY
 change_detection_evolution        GO_EXPERIMENT
@@ -125,19 +108,7 @@ expert_vs_ml                      BLOCKED_SHARED_TARGET
 n13000_recommendation_calibration BLOCKED_GROUND_TRUTH
 ```
 
-Más datos:
-```text
-player-role sequences=87
-repeated=67
-median_matches=5
-max_matches=38
-FEATURE-01 non-null=6324/23380
-GPS observations=0
-```
-
 ## 9. DSAI-02 — CHANGE DETECTION CERRADO EXPERIMENTAL
-
-Script: `dsai/change_detection_experiment.py`.
 
 Cobertura:
 ```text
@@ -149,31 +120,19 @@ features=25
 
 Validación sintética:
 ```text
-0.5 std  AUC=0.2365  median uplift=-0.4645
-1.0 std  AUC=0.5341  median uplift= 0.0355
-1.5 std  AUC=0.7211  median uplift= 0.5355
-2.0 std  AUC=0.8024  median uplift= 1.0355
+0.5 std  AUC=0.2365
+1.0 std  AUC=0.5341
+1.5 std  AUC=0.7211
+2.0 std  AUC=0.8024
 ```
 
-Decisión: `EXPERIMENTALLY_USEFUL / NO_DEPLOY`.
-
-Motivo: muestra sensibilidad estadística para cambios suficientemente grandes, pero no existe ground truth real de change-points para calibrar alertas operativas.
+Decisión: `EXPERIMENTALLY_USEFUL / NO_DEPLOY` por ausencia de ground truth real de change-points.
 
 ## 10. DSAI-03 — PLAYER SIMILARITY CERRADO EXPLORATORIO
 
-Issue #32.
+Issue #32. Script: `dsai/player_similarity_experiment.py`.
 
-Script:
-```text
-dsai/player_similarity_experiment.py
-```
-
-Unidad:
-```text
-player_id + exact observed primary_role
-```
-
-Ejecución local:
+Resultado local:
 ```text
 profiles=64
 players=24
@@ -186,58 +145,41 @@ retention_rate=0.22727272727272727
 pair_distance_corr=0.2143880082112036
 ```
 
-Interpretación:
-- cobertura descriptiva razonable para un experimento exploratorio;
-- solo 22 perfiles permiten validación temporal;
-- nearest-neighbour retention = 22.7%;
-- correlación de distancias entre mitades = 0.214;
-- la estabilidad temporal es insuficiente para desplegar ahora una funcionalidad de “jugadores similares”.
-
 Decisión: `EXPLORATORY_RESULT / NO_DEPLOY`.
 
-Se conserva como resultado académico negativo/limitado y como base para repetir con más partidos, temporadas/equipos y una taxonomía de roles validada. Similarity no equivale a calidad, fit ni recomendación.
+La estabilidad temporal es insuficiente para exponer ahora “jugadores similares” como funcionalidad de producto. El resultado se conserva como evidencia académica negativa/limitada y como baseline para repetir con más datos y una taxonomía de roles validada.
 
 ## 11. DSAI-04 — ROLE-LABEL AUDIT ACTIVO
 
 Objetivo: decidir si `primary_role` puede utilizarse de forma defendible como target supervisado antes de entrenar ningún clasificador.
 
 Motivo:
-- hay 23 raw labels;
-- `Substitute` concentra 172 filas en el feasibility audit;
+- 23 raw labels;
+- `Substitute` concentra 172 filas;
 - la importación de lineups documenta que `position='Substitute'` es un estado de banquillo y no un rol táctico específico;
 - no se agruparán etiquetas por intuición.
 
 Audit requerido:
-- distribución exacta por label, jugadores, titularidad y minutos;
-- diagnóstico específico de `Substitute`;
-- coexistencia del mismo jugador con roles tácticos en otros partidos;
+- distribución por label, jugadores, titularidad y minutos;
+- diagnóstico de `Substitute`;
+- coexistencia del mismo jugador con roles tácticos;
 - transiciones temporales de labels;
-- clases con muy pocos jugadores/observaciones;
-- conclusión metodológica sobre si el target raw es entrenable tal cual, requiere depuración basada en fuente o debe descartarse.
+- sparsity del target;
+- conclusión metodológica sobre target raw.
 
-Script:
-```text
-dsai/role_label_audit.py
-```
+Script: `dsai/role_label_audit.py`.
 
 ## 12. Líneas bloqueadas
 
 - role/player fit: sin target independiente;
 - Expert vs ML: sin shared target independiente;
 - N13000 calibration: sin ground truth;
-- GPS ML: 0 observaciones en dataset actual;
+- GPS ML: 0 observaciones;
 - role classification: bloqueada hasta cerrar DSAI-04.
 
 ## 13. Producto actual
 
-Dashboard, Reports y Assistant funcionan técnicamente, pero continúan como prototipo v0.1.
-
-Pendientes después del núcleo DS/IA:
-- Product UX insight-first;
-- Reports-02 profesionales;
-- arquitectura final LLM local/cloud/híbrida;
-- Product Service Layer común;
-- publicación final y TFM.
+Dashboard, Reports y Assistant continúan como prototipo v0.1. Después del núcleo DS/IA: Product UX insight-first → Reports-02 → arquitectura LLM final → Product Service Layer → publicación/TFM.
 
 ## 14. Decision gates pendientes
 
@@ -248,12 +190,10 @@ Pendientes después del núcleo DS/IA:
 
 ## 15. Siguiente paso exacto
 
-No instalar nada:
-
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
 python dsai\role_label_audit.py
 ```
 
-Después A5 decide si una tarea supervisada de clasificación de rol es metodológicamente defendible y con qué target exacto, o si se documenta como no viable con este dataset.
+Después A5 decide si la clasificación supervisada de rol es metodológicamente defendible y con qué target exacto, o si se documenta como no viable con este dataset.
