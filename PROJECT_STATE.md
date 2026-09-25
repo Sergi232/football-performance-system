@@ -19,8 +19,8 @@ DASHBOARD-01                        PROTOTYPE v0.1 / CONTRACT PASS
 ARCHITECTURE-01                     CERRADO — ISSUE #25
 ANALYTICS-01                        CERRADO / VALIDADO — ISSUE #26
 DECISION POLICY / N13000            GATE APROBADO C — ISSUE #27 CERRADO
-DSAI-01                             ACTIVO — ISSUE #28
-DSAI-01A FEASIBILITY AUDIT          IMPLEMENTADO / PENDIENTE EJECUCIÓN LOCAL
+DSAI-01A FEASIBILITY AUDIT          CERRADO / EJECUTADO
+DSAI-02 CHANGE DETECTION            ACTIVO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
@@ -34,7 +34,8 @@ Fuente de verdad:
 3. `docs/DECISIONS.md` — decisiones estructurales/gates;
 4. `docs/WORKFLOW.md` — agentes, orden y desbloqueos;
 5. `docs/DATA_SCIENCE_AI_STRATEGY.md` — prioridad académica DS/IA;
-6. `README.md` — presentación e instalación.
+6. `docs/DSAI_EXPERIMENT_PLAN.md` — plan experimental congelado;
+7. `README.md` — presentación e instalación.
 
 ## 3. Prioridad académica del TFM — Data Science + IA
 
@@ -86,13 +87,15 @@ ANALYTICS-01                 CERRADO / PASS
         ↓
 DECISION POLICY / N13000     GATE C APROBADO
         ↓
-DS/AI EXPERIMENTAL CORE      ACTIVO
-  ├─ DSAI-01A feasibility audit
-  ├─ validación estadística
-  ├─ player similarity / profiles
-  ├─ change detection
-  ├─ role/player fit solo si hay target defensable
-  └─ Expert vs ML cuando sea metodológicamente válido
+DSAI-01A FEASIBILITY AUDIT   CERRADO
+        ↓
+DSAI-02 CHANGE DETECTION     ACTIVO
+        ↓
+DSAI-03 SIMILARITY/PROFILES
+        ↓
+DSAI-04 ROLE-LABEL AUDIT
+        ↓
+REVISIÓN DE BLOQUEADOS
         ↓
 PRODUCT UX
         ↓
@@ -137,7 +140,7 @@ FEATURE-01 `0.1.0`: 28 features.
 
 FEATURE-02 `0.2.0`: historial strict-past (`history_n`, `prev`, `prior_mean`, `prior_std`, `delta_prev`, `delta_prior_mean`, `prior_slope`).
 
-FEATURE-03 `0.3.0`: historial jugador + rol observado + feature; 590/835 player-match con rol; 23 roles.
+FEATURE-03 `0.3.0`: historial jugador + rol observado + feature; 590/835 player-match con rol; 23 raw role labels.
 
 El Feature Engine no decide si una métrica es buena/mala.
 
@@ -179,60 +182,97 @@ Objetivo final de N13000 cuando la policy esté validada:
 
 La aprobación del contrato no autoriza a inventar pesos, umbrales ni confianza. Hasta que DS/estadística/literatura validen criterios y calibración, N13000 conserva `RECOMMENDATION_NOT_ISSUED_*`.
 
-## 11. DSAI-01 — ACTIVO
+## 11. DSAI-01A — FEASIBILITY AUDIT CERRADO
 
-Issue #28.
+Ejecución local completada:
 
-### DSAI-01A — feasibility audit
+```text
+matches=38
+players=36
+player_match=835
+observed-role rows=590
+raw role labels=23
+labeled_players=28
+player-role sequences=87
+repeated=67
+median_matches=5.0
+max_matches=38
+FEATURE-01 names=28
+FEATURE-01 non-null=6324/23380
+analytics rows=46760
+GPS observations=0
+```
+
+Resultado por caso:
+
+```text
+player_similarity_profiles        GO_EXPLORATORY
+change_detection_evolution        GO_EXPERIMENT
+observed_role_classification      CANDIDATE_SUPERVISED
+role_player_fit                   REFORMULATE_TARGET
+expert_vs_ml                      BLOCKED_SHARED_TARGET
+n13000_recommendation_calibration BLOCKED_GROUND_TRUTH
+```
+
+Interpretación metodológica:
+- change detection es el primer experimento por disponer de secuencias repetidas y baseline temporal strict-past;
+- similarity/profiles es viable como exploratorio, con validación de estabilidad;
+- observed-role classification necesita antes un audit semántico de labels: `Substitute` aparece como etiqueta y no equivale a un rol táctico específico;
+- role/player fit no dispone de target externo defendible;
+- Expert vs ML queda bloqueado sin shared target independiente;
+- N13000 no puede calibrarse sin ground truth de recomendación;
+- GPS no entra en experimentos actuales porque hay 0 observaciones.
+
+Plan congelado: `docs/DSAI_EXPERIMENT_PLAN.md`.
+
+## 12. DSAI-02 — CHANGE DETECTION ACTIVO
 
 Implementado:
 
 ```text
-dsai/__init__.py
-dsai/feasibility_audit.py
-dsai/README.md
+dsai/change_detection_experiment.py
 ```
 
-Objetivo: auditar antes de entrenar modelos:
-- muestra;
-- cobertura y missingness;
-- distribución de roles;
-- longitud de secuencias temporales;
-- targets independientes disponibles;
-- riesgo de leakage;
-- baselines posibles;
-- viabilidad metodológica.
+Objetivo: estudiar detección de cambios sobre secuencias `jugador + rol observado + feature` usando referencias FEATURE-03 estrictamente anteriores.
 
-El audit no entrena modelos y no crea scores, thresholds, rankings ni recomendaciones.
+Estadístico experimental:
 
-Estados metodológicos incluidos:
-- `GO_EXPLORATORY`;
-- `GO_EXPERIMENT`;
-- `CANDIDATE_SUPERVISED`;
-- `REFORMULATE_TARGET`;
-- `BLOCKED_SHARED_TARGET`;
-- `BLOCKED_GROUND_TRUTH`.
+```text
+abs(current - same_role_prior_mean) / same_role_prior_std
+```
 
-Casos auditados:
-1. player similarity / profiles;
-2. change detection / evolution;
-3. observed role classification como posible tarea supervisada con label real `primary_role`;
-4. role/player fit;
-5. Expert vs ML;
-6. calibración N13000.
+No es una métrica de producto ni un score de rendimiento. Se usa únicamente para evaluar sensibilidad.
 
-Regla clave: N12000/N13000 no pueden usarse como ground truth independiente del ML.
+Validación inicial:
+- inyección sintética del valor actual a 0.5 / 1.0 / 1.5 / 2.0 desviaciones estándar del prior;
+- el baseline strict-past no se modifica;
+- ROC-AUC experimental original vs injected;
+- cobertura y sensibilidad por longitud de historial;
+- sin seleccionar threshold operativo;
+- sin etiqueta bueno/malo;
+- sin recomendación.
 
 Outputs locales:
 
 ```text
-dsai/output/feasibility_audit.json
-dsai/output/feasibility_audit.md
+dsai/output/change_detection_experiment.json
+dsai/output/change_detection_experiment.md
 ```
 
-`dsai/output/` está ignorado por Git.
+## 13. Próximos experimentos
 
-## 12. Prototipos de producto
+### DSAI-03 — Player similarity / profiles
+Segundo experimento. Perfil agregado jugador-rol con FEATURE-01, distancias simples como baseline y validación de estabilidad. No equivaldrá a ranking de calidad.
+
+### DSAI-04 — Role-label audit
+Antes de cualquier clasificador supervisado se debe revisar la semántica de `primary_role`, distribución de clases y el uso de `Substitute`. No se agruparán etiquetas por intuición.
+
+### Líneas bloqueadas
+- role/player fit: reformular target;
+- Expert vs ML: requiere shared target independiente;
+- N13000 calibration: requiere ground truth.
+
+## 14. Prototipos de producto
 
 ### Dashboard
 Contract PASS. TEAM / PLAYER / MATCH / ASSISTANT funcionan técnicamente, pero predominan tablas y faltan insights estructurados.
@@ -243,7 +283,7 @@ REPORTS-01 PASS. Los tres PDF se generan, pero son prueba técnica y no informes
 ### Assistant
 LLM-01/02 PASS en contratos y guardrails. Decisión final local/cloud/híbrida pendiente. La IA generativa es capa de interacción, no el núcleo científico del TFM.
 
-## 13. Agents / ownership
+## 15. Agents / ownership
 
 Definidos en `docs/WORKFLOW.md`:
 - A0 Architect/Integrator;
@@ -259,7 +299,7 @@ Definidos en `docs/WORKFLOW.md`:
 
 A5 es ahora el agente principal. A0 y A9 acompañan la fase.
 
-## 14. Decision gates
+## 16. Decision gates
 
 Registro: `docs/DECISIONS.md`.
 
@@ -270,28 +310,29 @@ Registro: `docs/DECISIONS.md`.
 - `DG-REP-01` — pendiente;
 - `DG-PUB-01` — pendiente/derechos.
 
-No hay gate de Sergi necesario antes de ejecutar DSAI-01A.
+No hay gate de Sergi necesario para ejecutar DSAI-02.
 
-## 15. Restricciones vigentes
+## 17. Restricciones vigentes
 
 - no inventar eventos atómicos desde agregados ambiguos;
 - no inferir rol/formación sin evidencia;
-- no crear scores/umbrales por intuición;
+- no crear scores/umbrales de producto por intuición;
 - no mezclar self-history y peer comparison silenciosamente;
 - no usar LLM para cálculo crítico;
 - no emitir recomendación N13000 sin criterios/calibración validados;
 - no crear targets ML circulares a partir del propio sistema experto;
 - no publicar datos profesionales solo por estar anonimizados;
+- no usar `Substitute` como rol táctico sin resolver su semántica;
 - no rediseñar web/report/assistant antes del núcleo DS/IA prioritario.
 
-## 16. Siguiente paso exacto
+## 18. Siguiente paso exacto
 
-Sergi debe ejecutar una única auditoría local; no hay que instalar nada:
+Ejecutar DSAI-02, sin instalar nada:
 
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\feasibility_audit.py
+python dsai\change_detection_experiment.py
 ```
 
-Después, A5 usa esos resultados para congelar el plan experimental real: qué experimentos se hacen, qué target/split/baseline/métricas tendrá cada uno y qué líneas se descartan o reformulan antes de entrenar modelos.
+Después, A5 revisará cobertura, sensibilidad y limitaciones y decidirá si DSAI-02 pasa a una segunda validación o se cierra como evidencia experimental antes de DSAI-03.
