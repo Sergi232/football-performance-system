@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Football Performance System · Data Collector MVP</title>
+  <style>
+    :root{
+      --bg:#0f172a;--card:#fff;--line:#e5e7eb;--text:#111827;--muted:#6b7280;
+      --blue:#2563eb;--green:#16a34a;--red:#dc2626;--orange:#d97706;
+      --purple:#7c3aed;--cyan:#0891b2;--teal:#0f766e;--shadow:0 8px 18px rgba(0,0,0,.10);--radius:12px;
+    }
+    *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f3f4f6;color:var(--text);font-size:12px}
+    header{position:sticky;top:0;z-index:20;background:var(--bg);color:#fff;padding:8px 12px;box-shadow:var(--shadow)}
+    .header-grid{max-width:1900px;margin:0 auto;display:grid;grid-template-columns:1.15fr .75fr .75fr .55fr .55fr;gap:8px;align-items:end}
+    h1{margin:0 0 2px;font-size:17px}.subtitle{margin:0;color:#cbd5e1;font-size:11px}
+    label{display:block;margin-bottom:3px;font-size:10px;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:.04em} header label{color:#d1d5db}
+    input,textarea,select{width:100%;border:1px solid #d1d5db;border-radius:8px;padding:6px 7px;font-size:12px;background:#fff;color:var(--text);outline:none}
+    input:focus,textarea:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 2px rgba(37,99,235,.16)}
+    button{border:none;border-radius:9px;padding:7px 8px;font-size:12px;font-weight:800;cursor:pointer;color:#fff;background:var(--blue);transition:.1s ease;user-select:none}
+    button:hover{filter:brightness(.96);transform:translateY(-1px)} button:active{transform:translateY(0)} button:disabled{opacity:.45;cursor:not-allowed;transform:none}
+    .btn-light{background:#e5e7eb;color:#111827}.btn-dark{background:#111827}.btn-good{background:var(--green)}.btn-danger{background:var(--red)}.btn-warn{background:var(--orange)}
+    .main{max-width:1900px;margin:8px auto;padding:0 8px 22px;display:grid;grid-template-columns:290px 1fr;gap:8px}
+    .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+    .panel-title{padding:8px 10px;border-bottom:1px solid var(--line);background:#f9fafb;font-weight:900;display:flex;justify-content:space-between;align-items:center;gap:8px}.panel-body{padding:8px}
+    .pill{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;background:#e5e7eb;color:#111827;font-size:10px;font-weight:900;white-space:nowrap}
+    .inline-fields{display:grid;grid-template-columns:1fr 74px;gap:6px;margin-bottom:7px}.player-list{display:grid;gap:4px;max-height:calc(100vh - 245px);overflow:auto;padding-right:2px}
+    .player-row{display:grid;grid-template-columns:28px 1fr 42px;gap:5px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:4px;cursor:pointer;background:#fff}.player-row:hover{background:#eff6ff;border-color:#93c5fd}.player-row.active{background:#dbeafe;border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
+    .player-number{width:25px;height:25px;display:flex;align-items:center;justify-content:center;border-radius:999px;background:#e5e7eb;font-weight:900;font-size:11px}.player-mins{text-align:right;color:var(--muted);font-size:10px;font-weight:800}
+    .small-note{color:var(--muted);font-size:11px;line-height:1.3;margin-top:6px}.active-player-box{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:7px 8px;margin-bottom:7px}.active-player-name{font-size:15px;font-weight:900;margin-bottom:2px}.active-player-meta{font-size:11px;color:var(--muted)}
+    .top-capture{display:grid;grid-template-columns:1fr 390px;gap:8px;margin-bottom:8px}.capture-fields{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px}.role-fields{display:grid;grid-template-columns:1fr .75fr auto;gap:6px;align-items:end}.toolbar{display:flex;gap:6px;flex-wrap:wrap}
+    .collector-grid{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:8px}.event-card{border:1px solid var(--line);border-radius:var(--radius);background:#fff;overflow:hidden}.event-card h2{margin:0;padding:7px 8px;color:#fff;font-size:13px;line-height:1.1;display:flex;justify-content:space-between;gap:6px;align-items:center}.event-card h2 span{font-size:10px;font-weight:700;opacity:.9}
+    .cat-pass h2{background:var(--blue)}.cat-shot h2{background:var(--green)}.cat-dribble h2{background:var(--cyan)}.cat-defense h2{background:var(--purple)}.cat-discipline h2{background:var(--orange)}.cat-team h2{background:var(--teal)}.cat-gk h2{background:#334155}
+    .event-card .body{padding:6px;display:grid;gap:5px}.two-col{display:grid;grid-template-columns:1fr 1fr;gap:5px}.event-btn{background:#f9fafb;color:#111827;border:1px solid var(--line);display:grid;grid-template-columns:1fr auto;gap:5px;align-items:center;text-align:left;padding:6px;border-radius:9px;min-height:40px}.event-btn:hover{background:#eef2ff;border-color:#c7d2fe}.event-btn strong{display:block;font-size:12px;line-height:1.05}.event-btn span{display:block;color:var(--muted);font-size:10px;line-height:1.12;margin-top:2px}.shortcut{min-width:22px;text-align:center;background:#e5e7eb;color:#111827;border-radius:7px;padding:3px 5px;font-size:10px;font-weight:900}
+    .pending-box{border:1px dashed #94a3b8;border-radius:9px;padding:6px;background:#f8fafc}.pending-title{font-size:10px;font-weight:900;text-transform:uppercase;color:#475569;margin-bottom:5px}.pending-label{font-size:11px;margin-bottom:5px}.setpiece-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}.setpiece-grid button{font-size:10px;padding:6px 4px;background:#475569}
+    .table-wrap{overflow:auto;max-height:47vh;border-top:1px solid var(--line)} table{border-collapse:collapse;width:max-content;min-width:100%;font-size:11px}th,td{border:1px solid var(--line);padding:4px 5px;text-align:center;white-space:nowrap}th{position:sticky;top:0;z-index:4;background:#111827;color:#fff;font-size:10px}th:first-child,td:first-child{position:sticky;left:0;z-index:5;text-align:left;font-weight:900}td:first-child{background:#f9fafb}th:first-child{background:#020617;z-index:7}.num{font-weight:900}
+    .log{max-height:155px;overflow:auto;display:grid;gap:4px}.log-item{background:#f9fafb;border:1px solid var(--line);border-radius:8px;padding:6px;font-size:11px;line-height:1.2}
+    .toast{position:fixed;right:12px;bottom:12px;background:#111827;color:#fff;border-radius:10px;padding:9px 11px;font-weight:900;box-shadow:var(--shadow);opacity:0;pointer-events:none;transform:translateY(8px);transition:.15s ease;z-index:100}.toast.show{opacity:1;transform:translateY(0)}
+    .modal{position:fixed;inset:0;background:rgba(15,23,42,.72);z-index:200;display:none;align-items:center;justify-content:center;padding:16px}.modal.show{display:flex}.modal-card{width:min(760px,96vw);background:#fff;border-radius:14px;box-shadow:var(--shadow);padding:12px}.modal-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}.modal-head h3{margin:0;font-size:15px}
+    .pitch{position:relative;width:100%;aspect-ratio:105/68;background:#15803d;border:3px solid #fff;box-shadow:0 0 0 2px #166534 inset;cursor:crosshair;overflow:hidden}.pitch:before{content:"";position:absolute;left:50%;top:0;bottom:0;border-left:2px solid rgba(255,255,255,.85)}.pitch:after{content:"";position:absolute;left:50%;top:50%;width:17%;aspect-ratio:1;border:2px solid rgba(255,255,255,.85);border-radius:50%;transform:translate(-50%,-50%)}.pitch-box{position:absolute;top:20%;bottom:20%;width:16%;border:2px solid rgba(255,255,255,.85)}.pitch-box.left{left:0;border-left:0}.pitch-box.right{right:0;border-right:0}.pitch-dot{position:absolute;width:12px;height:12px;border-radius:50%;background:#fde047;border:2px solid #111827;transform:translate(-50%,-50%);pointer-events:none;display:none}
+    @media(max-width:1450px){.collector-grid{grid-template-columns:repeat(3,minmax(180px,1fr))}.top-capture{grid-template-columns:1fr}.header-grid{grid-template-columns:1.2fr .8fr .8fr .6fr .6fr}}@media(max-width:900px){header{position:static}.header-grid,.main{grid-template-columns:1fr}.collector-grid{grid-template-columns:1fr}.player-list{max-height:250px}.capture-fields,.role-fields{grid-template-columns:1fr 1fr}.two-col{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="header-grid">
+    <div><h1>Football Performance System · Collector</h1><p class="subtitle">MVP v0.3 · eventos observables + derivados automáticos</p></div>
+    <div><label for="matchName">Partido</label><input id="matchName" placeholder="Ej. Girona vs Rayo" /></div>
+    <div><label for="teamName">Equipo analizado</label><input id="teamName" placeholder="Ej. Girona FC" /></div>
+    <div><label for="matchDate">Fecha</label><input id="matchDate" type="date" /></div>
+    <div><label for="formation">Formación</label><div style="display:grid;grid-template-columns:1fr auto;gap:4px"><input id="formation" placeholder="4-3-3" /><button class="btn-light" onclick="recordFormationChange()">+</button></div></div>
+  </div>
+</header>
+
+<main class="main">
+  <section>
+    <div class="panel">
+      <div class="panel-title"><span>Jugadores</span><span class="pill" id="playerCount">25</span></div>
+      <div class="panel-body">
+        <div class="inline-fields"><div><label for="bulkNames">Pegar nombres</label><textarea id="bulkNames" rows="2" placeholder="Uno por línea"></textarea></div><div><label>&nbsp;</label><button class="btn-dark" style="width:100%;height:48px" onclick="loadBulkNames()">Cargar</button></div></div>
+        <div class="player-list" id="playerList"></div>
+        <div class="small-note">Selecciona jugador. Minutos, rol y lado se guardan por jugador. Los eventos alimentan la tabla automáticamente.</div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:8px">
+      <div class="panel-title"><span>Últimas acciones</span><button class="btn-light" onclick="undoLast()">↶ Deshacer</button></div>
+      <div class="panel-body"><div class="log" id="eventLog"></div><button class="btn-danger" style="width:100%;margin-top:6px" onclick="resetAll()">Reset total</button></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="panel">
+      <div class="panel-title"><span>Panel de captura</span><span class="pill">Atajos solo para acciones frecuentes · ←/→ cambia jugador · Backspace deshace</span></div>
+      <div class="panel-body">
+        <div class="top-capture">
+          <div>
+            <div class="active-player-box"><div class="active-player-name" id="activePlayerName">Jugador 1</div><div class="active-player-meta" id="activePlayerMeta"></div></div>
+            <div class="role-fields">
+              <div><label for="playerRole">Rol / posición</label><input id="playerRole" placeholder="Ej. CB, interior, extremo" onchange="updatePlayerContext()" /></div>
+              <div><label for="playerSide">Lado</label><input id="playerSide" placeholder="Izq / centro / der" onchange="updatePlayerContext()" /></div>
+              <button class="btn-light" onclick="recordRoleChange()">Guardar cambio</button>
+            </div>
+          </div>
+          <div>
+            <div class="capture-fields">
+              <div><label for="minuteIn">Entrada</label><input id="minuteIn" type="number" min="0" value="0" onchange="updateMinutesFromInputs()" /></div>
+              <div><label for="minuteOut">Salida</label><input id="minuteOut" type="number" min="0" value="90" onchange="updateMinutesFromInputs()" /></div>
+              <div><label for="eventMinute">Minuto evento</label><input id="eventMinute" type="number" min="0" value="0" /></div>
+              <div><label for="videoTime">Tiempo vídeo</label><input id="videoTime" placeholder="mm:ss" /></div>
+            </div>
+            <div class="toolbar">
+              <button class="btn-light" onclick="selectPreviousPlayer()">← Jugador</button><button class="btn-light" onclick="selectNextPlayer()">Jugador →</button>
+              <button class="btn-good" onclick="exportEventsCSV()">CSV eventos</button><button class="btn-good" onclick="exportSummaryCSV()">CSV resumen</button><button class="btn-dark" onclick="copyEventsCSV()">Copiar</button><button class="btn-warn" onclick="downloadJSON()">JSON</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="collector-grid">
+          <div class="event-card cat-pass">
+            <h2>Pases <span>Normal · largo · centro</span></h2>
+            <div class="body">
+              <div class="two-col">
+                <button class="event-btn" onclick="recordEvent('PASS','NORMAL','SUCCESS')"><div><strong>Passada ✓</strong><span>Pase normal completado.</span></div><div class="shortcut">1</div></button>
+                <button class="event-btn" onclick="recordEvent('PASS','NORMAL','FAIL')"><div><strong>Passada ✗</strong><span>Fallo; pérdida derivada.</span></div><div class="shortcut">2</div></button>
+                <button class="event-btn" onclick="recordEvent('PASS','LONG','SUCCESS')"><div><strong>Llarga ✓</strong><span>Cuenta también como pase.</span></div><div class="shortcut">3</div></button>
+                <button class="event-btn" onclick="recordEvent('PASS','LONG','FAIL')"><div><strong>Llarga ✗</strong><span>Cuenta pase fallado.</span></div><div class="shortcut">4</div></button>
+                <button class="event-btn" onclick="recordEvent('PASS','CROSS','SUCCESS')"><div><strong>Centre ✓</strong><span>Cuenta también como pase.</span></div><div class="shortcut">5</div></button>
+                <button class="event-btn" onclick="recordEvent('PASS','CROSS','FAIL')"><div><strong>Centre ✗</strong><span>Cuenta pase fallado.</span></div><div class="shortcut">6</div></button>
+              </div>
+              <div class="two-col">
+                <button class="btn-light" onclick="tagLastPass('key_pass')">Passada clau última</button>
+                <button class="btn-light" onclick="tagLastPass('assist')">Assistència última</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="event-card cat-shot">
+            <h2>Remates <span>Resultados exclusivos</span></h2>
+            <div class="body two-col">
+              <button class="event-btn" onclick="recordEvent('SHOT',null,'GOAL')"><div><strong>Gol</strong><span>Remate total + gol.</span></div><div class="shortcut">Q</div></button>
+              <button class="event-btn" onclick="recordEvent('SHOT',null,'ON_TARGET')"><div><strong>A puerta</strong><span>Sin gol.</span></div><div class="shortcut">W</div></button>
+              <button class="event-btn" onclick="recordEvent('SHOT',null,'OFF_TARGET')"><div><strong>Fuera / poste</strong><span>Poste agrupado aquí.</span></div><div class="shortcut">E</div></button>
+              <button class="event-btn" onclick="recordEvent('SHOT',null,'BLOCKED')"><div><strong>Bloqueado</strong><span>Remate bloqueado.</span></div><div class="shortcut">R</div></button>
+            </div>
+          </div>
+
+          <div class="event-card cat-dribble">
+            <h2>1v1 y pérdidas <span>Sin doble conteo</span></h2>
+            <div class="body">
+              <div class="two-col">
+                <button class="event-btn" onclick="recordEvent('DRIBBLE',null,'SUCCESS')"><div><strong>Regate ✓</strong><span>Supera rival.</span></div><div class="shortcut">A</div></button>
+                <button class="event-btn" onclick="recordEvent('DRIBBLE',null,'FAIL')"><div><strong>Regate ✗</strong><span>Pérdida derivada.</span></div><div class="shortcut">S</div></button>
+              </div>
+              <button class="event-btn" onclick="recordEvent('LOSS','OTHER',null)"><div><strong>Otra pérdida</strong><span>Mal control, robo u otro error no explicado.</span></div><div class="shortcut">D</div></button>
+            </div>
+          </div>
+
+          <div class="event-card cat-defense">
+            <h2>Defensa <span>Tackle ganado/perdido</span></h2>
+            <div class="body">
+              <div class="two-col">
+                <button class="event-btn" onclick="recordEvent('TACKLE',null,'SUCCESS')"><div><strong>Entrada ✓</strong><span>Tackle ganado.</span></div><div class="shortcut">Z</div></button>
+                <button class="event-btn" onclick="recordEvent('TACKLE',null,'FAIL')"><div><strong>Entrada ✗</strong><span>Tackle no ganado.</span></div><div class="shortcut">X</div></button>
+              </div>
+              <button class="event-btn" onclick="recordEvent('INTERCEPTION',null,null)"><div><strong>Intercepción</strong><span>Corta pase rival.</span></div><div class="shortcut">C</div></button>
+              <button class="event-btn" onclick="recordEvent('BLOCK',null,null)"><div><strong>Bloqueo</strong><span>Bloqueo defensivo.</span></div><div class="shortcut">V</div></button>
+              <button class="event-btn" onclick="recordEvent('CLEARANCE',null,null)"><div><strong>Despeje</strong><span>Clearance defensivo.</span></div><div class="shortcut">B</div></button>
+            </div>
+          </div>
+
+          <div class="event-card cat-discipline">
+            <h2>Faltas y disciplina <span>Falta = posición x/y</span></h2>
+            <div class="body">
+              <div class="two-col">
+                <button class="event-btn" onclick="beginFoul('RECEIVED')"><div><strong>Falta recibida</strong><span>Clica posición en el campo.</span></div></button>
+                <button class="event-btn" onclick="beginFoul('COMMITTED')"><div><strong>Falta cometida</strong><span>Clica posición en el campo.</span></div></button>
+                <button class="event-btn" onclick="recordEvent('CARD','YELLOW',null)"><div><strong>Amarilla</strong><span>Tarjeta al jugador.</span></div></button>
+                <button class="event-btn" onclick="recordEvent('CARD','RED',null)"><div><strong>Roja</strong><span>Expulsión directa.</span></div></button>
+              </div>
+              <button class="btn-light" onclick="recordSecondYellow()">2ª amarilla → roja</button>
+              <button class="btn-light" onclick="markLastFoulAsSetPiece()">ABP de la última falta</button>
+            </div>
+          </div>
+
+          <div class="event-card cat-team">
+            <h2>Equipo / ABP <span>Córners y resultado</span></h2>
+            <div class="body">
+              <div class="two-col">
+                <button class="event-btn" onclick="recordTeamSetPiece('CORNER','FOR')"><div><strong>Córner a favor</strong><span>ABP ataque.</span></div></button>
+                <button class="event-btn" onclick="recordTeamSetPiece('CORNER','AGAINST')"><div><strong>Córner en contra</strong><span>ABP defensa.</span></div></button>
+              </div>
+              <div class="pending-box">
+                <div class="pending-title">Última ABP pendiente</div><div class="pending-label" id="pendingSetPieceLabel">Ninguna</div>
+                <div class="setpiece-grid">
+                  <button class="sp-result" onclick="finishSetPiece('DIRECT_SHOT')">Remate directo</button>
+                  <button class="sp-result" onclick="finishSetPiece('SHOT_AFTER_RESTART')">Remate jugada</button>
+                  <button class="sp-result" onclick="finishSetPiece('GOAL')">Gol</button>
+                  <button class="sp-result" onclick="finishSetPiece('NO_SHOT')">Sin remate</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="event-card cat-discipline">
+            <h2>Penalti <span>No duplica gol/remate</span></h2>
+            <div class="body">
+              <div class="two-col">
+                <button class="event-btn" onclick="recordEvent('PENALTY','WON','GOAL')"><div><strong>Ganado · gol</strong><span>Jugador provoca penalti.</span></div></button>
+                <button class="event-btn" onclick="recordEvent('PENALTY','WON','MISSED')"><div><strong>Ganado · fallado</strong><span>Jugador provoca penalti.</span></div></button>
+                <button class="event-btn" onclick="recordEvent('PENALTY','CONCEDED','GOAL')"><div><strong>Concedido · gol</strong><span>Jugador concede penalti.</span></div></button>
+                <button class="event-btn" onclick="recordEvent('PENALTY','CONCEDED','MISSED')"><div><strong>Concedido · fallado</strong><span>Jugador concede penalti.</span></div></button>
+              </div>
+              <div class="small-note">Si quieres atribuir el remate/gol al lanzador propio, selecciónalo y registra también el SHOT correspondiente.</div>
+            </div>
+          </div>
+
+          <div class="event-card cat-gk">
+            <h2>Portero <span>MVP mínimo</span></h2>
+            <div class="body two-col">
+              <button class="event-btn" onclick="recordEvent('GK','SAVE',null)"><div><strong>Parada</strong><span>Save.</span></div></button>
+              <button class="event-btn" onclick="recordEvent('GK','GOAL_CONCEDED',null)"><div><strong>Gol encajado</strong><span>Goal conceded.</span></div></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:8px">
+      <div class="panel-title"><span>Resumen derivado</span><span class="pill">La tabla no se captura manualmente</span></div>
+      <div class="table-wrap"><table id="dataTable"></table></div>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="pitchModal">
+  <div class="modal-card">
+    <div class="modal-head"><div><h3 id="pitchTitle">Posición de la falta</h3><div class="small-note" style="margin:2px 0 0">Ataque propio de izquierda a derecha. Clica la posición aproximada.</div></div><button class="btn-light" onclick="cancelPitch()">Cancelar</button></div>
+    <div class="pitch" id="pitch"><div class="pitch-box left"></div><div class="pitch-box right"></div><div class="pitch-dot" id="pitchDot"></div></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+  const STORAGE_KEY="fpsCollectorMvpV03";
+  const LEGACY_DATA_KEY="footballCollectorCompactData";
+  const LEGACY_META_KEY="footballCollectorCompactMeta";
+  const summaryColumns=["Jugador","Min","Rol","Pases","Pases OK","% pase","Claves","Asist","Largos","Largos OK","Centros","Centros OK","Regates","Regates OK","Pérdidas","Remates","Goles","A puerta","Bloq remate","Tackles","Tackles OK","Interc","Bloqueos","Despejes","F recibidas","F cometidas","TA","TR","Pen gan","Pen conc","Paradas","GE"];
+  const shortcutMap={"1":["PASS","NORMAL","SUCCESS"],"2":["PASS","NORMAL","FAIL"],"3":["PASS","LONG","SUCCESS"],"4":["PASS","LONG","FAIL"],"5":["PASS","CROSS","SUCCESS"],"6":["PASS","CROSS","FAIL"],"q":["SHOT",null,"GOAL"],"w":["SHOT",null,"ON_TARGET"],"e":["SHOT",null,"OFF_TARGET"],"r":["SHOT",null,"BLOCKED"],"a":["DRIBBLE",null,"SUCCESS"],"s":["DRIBBLE",null,"FAIL"],"d":["LOSS","OTHER",null],"z":["TACKLE",null,"SUCCESS"],"x":["TACKLE",null,"FAIL"],"c":["INTERCEPTION",null,null],"v":["BLOCK",null,null],"b":["CLEARANCE",null,null]};
+  let state=createInitialState();let activeIndex=0;let pendingFoul=null;let pendingSetPieceEventId=null;let toastTimeout=null;
+
+  function uid(){return (crypto.randomUUID?crypto.randomUUID():`evt_${Date.now()}_${Math.random().toString(16).slice(2)}`)}
+  function createPlayer(i){return {id:`P${String(i+1).padStart(2,"0")}`,name:`Jugador ${i+1}`,shirtNumber:i+1,minuteIn:0,minuteOut:90,role:"",side:"",roleChanges:[]}}
+  function createInitialState(){return {version:"0.3.0",meta:{matchName:"",teamName:"",matchDate:"",formation:"",formationChanges:[]},players:Array.from({length:25},(_,i)=>createPlayer(i)),events:[]}}
+  function migrateLegacy(){try{const old=JSON.parse(localStorage.getItem(LEGACY_DATA_KEY)||"null"),meta=JSON.parse(localStorage.getItem(LEGACY_META_KEY)||"{}");if(!old||!Array.isArray(old))return null;const next=createInitialState();next.meta.matchName=meta.matchName||"";next.meta.teamName=meta.teamName||"";next.meta.matchDate=meta.matchDate||"";old.slice(0,25).forEach((p,i)=>{next.players[i].name=p["Jugador"]||next.players[i].name;next.players[i].minuteIn=Number(p["Minuto entrada"]||0);next.players[i].minuteOut=Number(p["Minuto salida"]??90)});return next}catch{return null}}
+  function init(){try{const saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||"null");state=saved&&saved.version==="0.3.0"?saved:(migrateLegacy()||createInitialState())}catch{state=createInitialState()}bindMeta();renderAll()}
+  function bindMeta(){["matchName","teamName","matchDate","formation"].forEach(id=>{document.getElementById(id).value=state.meta[id]||"";document.getElementById(id).addEventListener("input",()=>{state.meta[id]=document.getElementById(id).value;saveState()})})}
+  function saveState(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
+  function renderAll(){renderPlayerList();renderActivePlayer();renderTable();renderLog();renderPendingSetPiece();saveState()}
+
+  function renderPlayerList(){const list=document.getElementById("playerList");list.innerHTML="";state.players.forEach((p,i)=>{const row=document.createElement("div");row.className="player-row"+(i===activeIndex?" active":"");row.onclick=()=>selectPlayer(i);row.innerHTML=`<div class="player-number">${escapeHtml(p.shirtNumber)}</div><input value="${escapeHtml(p.name)}" onclick="event.stopPropagation()" onchange="renamePlayer(${i},this.value)"/><div class="player-mins">${minutesPlayed(p)}'</div>`;list.appendChild(row)});document.getElementById("playerCount").textContent=state.players.length}
+  function renderActivePlayer(){const p=state.players[activeIndex],s=summarizePlayer(p.id);document.getElementById("activePlayerName").textContent=p.name;document.getElementById("activePlayerMeta").textContent=`#${p.shirtNumber} · ${minutesPlayed(p)} min · ${p.role||"sin rol"} · ${s.goals} goles · ${s.assists} asistencias`;document.getElementById("minuteIn").value=p.minuteIn;document.getElementById("minuteOut").value=p.minuteOut;document.getElementById("playerRole").value=p.role||"";document.getElementById("playerSide").value=p.side||""}
+  function selectPlayer(i){activeIndex=i;renderAll()} function selectPreviousPlayer(){activeIndex=Math.max(0,activeIndex-1);renderAll()} function selectNextPlayer(){activeIndex=Math.min(state.players.length-1,activeIndex+1);renderAll()}
+  function renamePlayer(i,value){state.players[i].name=value.trim()||`Jugador ${i+1}`;renderAll()}
+  function loadBulkNames(){const raw=document.getElementById("bulkNames").value.trim();if(!raw)return showToast("Pega nombres primero.");raw.split(/\n+/).map(x=>x.trim()).filter(Boolean).forEach((name,i)=>{if(state.players[i])state.players[i].name=name});document.getElementById("bulkNames").value="";renderAll();showToast("Nombres cargados.")}
+  function minutesPlayed(p){return Math.max(0,Number(p.minuteOut||0)-Number(p.minuteIn||0))}
+  function updateMinutesFromInputs(){const p=state.players[activeIndex];p.minuteIn=Math.max(0,parseInt(document.getElementById("minuteIn").value,10)||0);p.minuteOut=Math.max(0,parseInt(document.getElementById("minuteOut").value,10)||0);renderAll()}
+  function updatePlayerContext(){const p=state.players[activeIndex];p.role=document.getElementById("playerRole").value.trim();p.side=document.getElementById("playerSide").value.trim();saveState();renderActivePlayer();renderTable()}
+  function currentMatchSecond(){const minute=Math.max(0,parseFloat(document.getElementById("eventMinute").value)||0);return Math.round(minute*60)}
+  function parseVideoSecond(){const raw=document.getElementById("videoTime").value.trim();if(!raw)return null;if(/^\d+(\.\d+)?$/.test(raw))return Math.round(Number(raw));const m=raw.match(/^(\d+):(\d{1,2})$/);return m?Number(m[1])*60+Number(m[2]):null}
+  function recordRoleChange(){updatePlayerContext();const p=state.players[activeIndex];p.roleChanges.push({match_second:currentMatchSecond(),role:p.role||null,side:p.side||null,formation:state.meta.formation||null,created_at:new Date().toISOString()});saveState();showToast(`${p.name}: cambio de rol guardado.`)}
+  function recordFormationChange(){state.meta.formation=document.getElementById("formation").value.trim();state.meta.formationChanges.push({match_second:currentMatchSecond(),formation:state.meta.formation||null,created_at:new Date().toISOString()});saveState();showToast("Cambio de formación guardado.")}
+
+  function makeEvent(action_type,subtype,outcome,opts={}){const p=opts.teamLevel?null:state.players[activeIndex];return {event_id:uid(),match_id:null,team_id:null,player_id:p?p.id:null,player_name:p?p.name:null,action_type,subtype:subtype||null,outcome:outcome||null,period:null,match_second:currentMatchSecond(),video_second:parseVideoSecond(),x:opts.x??null,y:opts.y??null,qualifiers:opts.qualifiers||{},linked_event_id:opts.linked_event_id||null,source_type:"collector",source_event_id:null,created_at:new Date().toISOString()}}
+  function recordEvent(action_type,subtype,outcome,opts={}){const ev=makeEvent(action_type,subtype,outcome,opts);state.events.push(ev);if(opts.setPiece)pendingSetPieceEventId=ev.event_id;renderAll();showToast(eventLabel(ev));return ev}
+  function eventLabel(ev){const bits=[ev.action_type,ev.subtype,ev.outcome].filter(Boolean).join(" · ");return `${ev.player_name||"Equipo"}: ${bits}`}
+  function lastEventBy(predicate){for(let i=state.events.length-1;i>=0;i--)if(predicate(state.events[i]))return state.events[i];return null}
+  function tagLastPass(kind){const p=state.players[activeIndex];const ev=lastEventBy(e=>e.player_id===p.id&&e.action_type==="PASS"&&e.outcome==="SUCCESS");if(!ev)return showToast("No hay pase completado previo de este jugador.");ev.qualifiers=ev.qualifiers||{};if(kind==="assist"){ev.qualifiers.assist=true;ev.qualifiers.key_pass=true}else ev.qualifiers.key_pass=true;saveState();renderAll();showToast(kind==="assist"?"Assistència aplicada a l'últim pase.":"Passada clau aplicada a l'últim pase.")}
+  function recordSecondYellow(){recordEvent("CARD","RED",null,{qualifiers:{second_yellow:true}})}
+
+  function beginFoul(subtype){pendingFoul={subtype};document.getElementById("pitchTitle").textContent=subtype==="RECEIVED"?"Posición de la falta recibida":"Posición de la falta cometida";document.getElementById("pitchDot").style.display="none";document.getElementById("pitchModal").classList.add("show")}
+  function cancelPitch(){pendingFoul=null;document.getElementById("pitchModal").classList.remove("show")}
+  document.getElementById("pitch").addEventListener("click",e=>{if(!pendingFoul)return;const r=e.currentTarget.getBoundingClientRect(),x=Math.round(((e.clientX-r.left)/r.width)*1000)/10,y=Math.round(((e.clientY-r.top)/r.height)*1000)/10;const dot=document.getElementById("pitchDot");dot.style.left=`${x}%`;dot.style.top=`${y}%`;dot.style.display="block";recordEvent("FOUL",pendingFoul.subtype,null,{x,y});pendingFoul=null;document.getElementById("pitchModal").classList.remove("show")})
+  function markLastFoulAsSetPiece(){const ev=lastEventBy(e=>e.action_type==="FOUL");if(!ev)return showToast("No hay falta reciente.");ev.qualifiers=ev.qualifiers||{};ev.qualifiers.set_piece=true;ev.qualifiers.set_piece_phase=ev.subtype==="RECEIVED"?"ATTACK":"DEFENCE";pendingSetPieceEventId=ev.event_id;saveState();renderPendingSetPiece();showToast("Última falta marcada como ABP.")}
+  function recordTeamSetPiece(action_type,subtype){const ev=recordEvent(action_type,subtype,null,{teamLevel:true,setPiece:true,qualifiers:{set_piece:true,set_piece_phase:subtype==="FOR"?"ATTACK":"DEFENCE"}});pendingSetPieceEventId=ev.event_id;renderPendingSetPiece()}
+  function pendingSetPiece(){return pendingSetPieceEventId?state.events.find(e=>e.event_id===pendingSetPieceEventId):null}
+  function renderPendingSetPiece(){const ev=pendingSetPiece();document.getElementById("pendingSetPieceLabel").textContent=ev?`${ev.action_type} ${ev.subtype||""} · min ${Math.floor((ev.match_second||0)/60)}`:"Ninguna";document.querySelectorAll(".sp-result").forEach(b=>b.disabled=!ev)}
+  function finishSetPiece(result){const ev=pendingSetPiece();if(!ev)return showToast("No hay ABP pendiente.");ev.qualifiers=ev.qualifiers||{};ev.qualifiers.set_piece_result=result;pendingSetPieceEventId=null;saveState();renderAll();showToast(`ABP cerrada: ${result}`)}
+
+  function summarizePlayer(playerId){const ev=state.events.filter(e=>e.player_id===playerId),count=f=>ev.filter(f).length;const passes=ev.filter(e=>e.action_type==="PASS"),shots=ev.filter(e=>e.action_type==="SHOT"),tackles=ev.filter(e=>e.action_type==="TACKLE");const losses=count(e=>(e.action_type==="PASS"&&e.outcome==="FAIL")||(e.action_type==="DRIBBLE"&&e.outcome==="FAIL")||e.action_type==="LOSS");const passesOk=passes.filter(e=>e.outcome==="SUCCESS").length;return {passes:passes.length,passesOk,passPct:passes.length?Math.round(passesOk/passes.length*100):0,keyPasses:passes.filter(e=>e.qualifiers?.key_pass).length,assists:passes.filter(e=>e.qualifiers?.assist).length,long:passes.filter(e=>e.subtype==="LONG").length,longOk:passes.filter(e=>e.subtype==="LONG"&&e.outcome==="SUCCESS").length,cross:passes.filter(e=>e.subtype==="CROSS").length,crossOk:passes.filter(e=>e.subtype==="CROSS"&&e.outcome==="SUCCESS").length,dribbles:count(e=>e.action_type==="DRIBBLE"),dribblesOk:count(e=>e.action_type==="DRIBBLE"&&e.outcome==="SUCCESS"),losses,shots:shots.length,goals:shots.filter(e=>e.outcome==="GOAL").length,onTarget:shots.filter(e=>e.outcome==="ON_TARGET").length,shotBlocked:shots.filter(e=>e.outcome==="BLOCKED").length,tackles:tackles.length,tacklesOk:tackles.filter(e=>e.outcome==="SUCCESS").length,interceptions:count(e=>e.action_type==="INTERCEPTION"),blocks:count(e=>e.action_type==="BLOCK"),clearances:count(e=>e.action_type==="CLEARANCE"),foulsReceived:count(e=>e.action_type==="FOUL"&&e.subtype==="RECEIVED"),foulsCommitted:count(e=>e.action_type==="FOUL"&&e.subtype==="COMMITTED"),yellow:count(e=>e.action_type==="CARD"&&e.subtype==="YELLOW")+count(e=>e.action_type==="CARD"&&e.subtype==="RED"&&e.qualifiers?.second_yellow),red:count(e=>e.action_type==="CARD"&&e.subtype==="RED"),penWon:count(e=>e.action_type==="PENALTY"&&e.subtype==="WON"),penConceded:count(e=>e.action_type==="PENALTY"&&e.subtype==="CONCEDED"),saves:count(e=>e.action_type==="GK"&&e.subtype==="SAVE"),goalsConceded:count(e=>e.action_type==="GK"&&e.subtype==="GOAL_CONCEDED")}}
+  function summaryRow(p){const s=summarizePlayer(p.id);return [p.name,minutesPlayed(p),p.role||"",s.passes,s.passesOk,s.passPct,s.keyPasses,s.assists,s.long,s.longOk,s.cross,s.crossOk,s.dribbles,s.dribblesOk,s.losses,s.shots,s.goals,s.onTarget,s.shotBlocked,s.tackles,s.tacklesOk,s.interceptions,s.blocks,s.clearances,s.foulsReceived,s.foulsCommitted,s.yellow,s.red,s.penWon,s.penConceded,s.saves,s.goalsConceded]}
+  function renderTable(){const table=document.getElementById("dataTable");table.innerHTML=`<thead><tr>${summaryColumns.map(c=>`<th>${escapeHtml(c)}</th>`).join("")}</tr></thead><tbody>${state.players.map(p=>`<tr>${summaryRow(p).map((v,i)=>`<td class="${i?"num":""}">${escapeHtml(v)}</td>`).join("")}</tr>`).join("")}</tbody>`}
+  function renderLog(){const log=document.getElementById("eventLog");if(!state.events.length){log.innerHTML=`<div class="small-note">Aún no hay acciones registradas.</div>`;return}log.innerHTML=state.events.slice(-12).reverse().map(e=>`<div class="log-item"><b>${escapeHtml(e.player_name||"Equipo")}</b> · ${escapeHtml([e.action_type,e.subtype,e.outcome].filter(Boolean).join(" · "))}<br><span>min ${Math.floor((e.match_second||0)/60)}${e.video_second!=null?` · vídeo ${formatSeconds(e.video_second)}`:""}${e.x!=null?` · x=${e.x}, y=${e.y}`:""}</span></div>`).join("")}
+  function undoLast(){const ev=state.events.pop();if(!ev)return showToast("No hay acciones para deshacer.");if(pendingSetPieceEventId===ev.event_id)pendingSetPieceEventId=null;const idx=ev.player_id?state.players.findIndex(p=>p.id===ev.player_id):-1;if(idx>=0)activeIndex=idx;renderAll();showToast(`Deshecho: ${ev.action_type}`)}
+
+  function eventsCsvRows(){const h=["event_id","match_name","team_name","match_date","formation","player_id","player_name","action_type","subtype","outcome","match_second","video_second","x","y","qualifiers_json","linked_event_id","source_type","created_at"];return [h,...state.events.map(e=>[e.event_id,state.meta.matchName,state.meta.teamName,state.meta.matchDate,state.meta.formation,e.player_id,e.player_name,e.action_type,e.subtype,e.outcome,e.match_second,e.video_second,e.x,e.y,JSON.stringify(e.qualifiers||{}),e.linked_event_id,e.source_type,e.created_at])]}
+  function exportEventsCSV(){downloadText(toCsv(eventsCsvRows()),getFileName("events.csv"),"text/csv;charset=utf-8;");showToast("CSV de eventos exportado.")}
+  function exportSummaryCSV(){downloadText(toCsv([summaryColumns,...state.players.map(summaryRow)]),getFileName("summary.csv"),"text/csv;charset=utf-8;");showToast("CSV resumen exportado.")}
+  async function copyEventsCSV(){try{await navigator.clipboard.writeText(toCsv(eventsCsvRows()));showToast("CSV de eventos copiado.")}catch{showToast("No se pudo copiar.")}}
+  function downloadJSON(){downloadText(JSON.stringify({catalog_version:"0.3.0",meta:state.meta,players:state.players,events:state.events,player_summary:state.players.map(p=>({player_id:p.id,values:Object.fromEntries(summaryColumns.map((c,i)=>[c,summaryRow(p)[i]]))}))},null,2),getFileName("json"),"application/json");showToast("JSON guardado.")}
+  function toCsv(rows){return rows.map(r=>r.map(csvEscape).join(";")).join("\n")}
+  function csvEscape(value){const str=String(value??"");return /[;"\n]/.test(str)?`"${str.replace(/"/g,'""')}"`:str}
+  function getFileName(suffix){const date=state.meta.matchDate||new Date().toISOString().slice(0,10),team=slugify(state.meta.teamName||"equipo"),match=slugify(state.meta.matchName||"partido");return `data_collector_${date}_${team}_${match}_${suffix}`}
+  function downloadText(text,fileName,type){const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=fileName;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)}
+  function resetAll(){if(!confirm("¿Seguro que quieres borrar todos los datos del partido?"))return;localStorage.removeItem(STORAGE_KEY);state=createInitialState();activeIndex=0;pendingSetPieceEventId=null;["matchName","teamName","matchDate","formation"].forEach(id=>document.getElementById(id).value="");document.getElementById("bulkNames").value="";renderAll();showToast("Datos reiniciados.")}
+  function formatSeconds(v){const m=Math.floor(v/60),s=String(v%60).padStart(2,"0");return `${m}:${s}`}
+  function slugify(str){return String(str).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"")}
+  function escapeHtml(str){return String(str??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
+  function showToast(message){const toast=document.getElementById("toast");toast.textContent=message;toast.classList.add("show");clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>toast.classList.remove("show"),1200)}
+
+  document.addEventListener("keydown",e=>{const tag=document.activeElement.tagName.toLowerCase();if(["input","textarea","select"].includes(tag))return;const key=e.key.toLowerCase();if(shortcutMap[key]){e.preventDefault();recordEvent(...shortcutMap[key]);return}if(key==="backspace"){e.preventDefault();undoLast();return}if(key==="arrowleft"){e.preventDefault();selectPreviousPlayer();return}if(key==="arrowright"){e.preventDefault();selectNextPlayer()}});
+  init();
+</script>
+</body>
+</html>
