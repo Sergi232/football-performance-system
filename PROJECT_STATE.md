@@ -10,24 +10,22 @@ Este archivo es la memoria técnica operativa del proyecto. Debe consultarse al 
 
 La arquitectura general ya está aprobada y no debe reabrirse sin una razón técnica concreta.
 
-Se ha abandonado el enfoque de esperar a cerrar el 100 % del Data Collector antes de programar. La base está diseñada de forma orientada a eventos, por lo que decisiones pendientes como `CORNER`, falta peligrosa o resultados de ABP no bloquean la infraestructura.
-
 Estado operativo actual:
 
 ```text
-arquitectura                  HECHO
-esquema DuckDB v0.1           HECHO
-auditoría automática fuentes  HECHO (código)
-import fixtures demo          HECHO (código)
-import player_match           HECHO (código)
-validación BD                 HECHO (código)
-test sintético integración    HECHO (código)
-validación con PannaData real PENDIENTE DE EJECUCIÓN LOCAL
-lineups / roles               SIGUIENTE DESPUÉS DE VALIDAR DATOS REALES
-events / shots                DESPUÉS
+arquitectura                         HECHO
+esquema DuckDB v0.1                  HECHO
+auditoría automática fuentes         HECHO Y VALIDADO CON DATOS REALES
+fixtures demo                         HECHO Y VALIDADO: 38/38
+players + player_match               HECHO Y VALIDADO: 590 filas / 38 partidos
+validación BD                         PASS
+test sintético integración           HECHO
+DATA-01                               CERRADO 25/09/2026
+lineups / formación / roles          SIGUIENTE — DATA-02
+events / shots                       DESPUÉS — DATA-03
 ```
 
-El código no se considera validado contra PannaData real hasta ejecutarlo sobre los Parquet locales.
+La base está diseñada de forma orientada a eventos. Decisiones pendientes del Collector como `CORNER`, falta peligrosa o resultado de ABP no bloquean la infraestructura DATA.
 
 ## 2. Objetivo confirmado
 
@@ -62,8 +60,10 @@ La aplicación web es el producto principal del TFM.
 - Documentación oficial del repositorio/TFM en castellano.
 - Nombres técnicos de código pueden estar en inglés.
 - El caso demostrador se reconstruye con datos reales y se anonimiza antes de publicarse.
-- Los importadores deben ser reproducibles, idempotentes y fail-fast.
+- Los importadores deben ser reproducibles y fail-fast.
 - Una columna desconocida no puede sustituirse por una suposición silenciosa.
+- Las filas sin información suficiente no se completan con valores inventados.
+- Una decisión pendiente de interfaz no bloquea infraestructura si el modelo de datos ya puede representarla de forma genérica.
 
 ## 4. Arquitectura materializada
 
@@ -89,13 +89,11 @@ reports/         PDF
 tests/           tests de datos/lógica/regresión
 ```
 
-Regla de desbloqueo:
-
-> Una decisión pendiente de interfaz no debe bloquear infraestructura si el modelo de datos ya puede representarla de forma genérica.
-
 ## 5. Base de datos — v0.1
 
-Archivos:
+Motor inicial: **DuckDB**.
+
+Archivos principales:
 
 ```text
 data/schema.sql
@@ -103,8 +101,6 @@ data/init_database.py
 data/README.md
 requirements.txt
 ```
-
-Motor inicial: **DuckDB**.
 
 Unidad analítica principal:
 
@@ -155,44 +151,42 @@ LOSS               → OTHER_TURNOVER / subtipo
 
 No debe existir doble conteo de pérdidas.
 
-## 6. Track A — pipeline DATA implementado
+## 6. Track A — DATA
 
-### 6.1 Auditoría de fuentes
+### 6.1 Fuentes reales auditadas
 
-Archivo:
+Ruta local de desarrollo:
+
+```text
+C:\Users\sergi\Desktop\analisi_futbol\input\pannadata\
+```
+
+Auditoría real ejecutada el 25/09/2026:
+
+```text
+opta_fixtures.parquet       243.562 filas / 13 columnas
+opta_lineups.parquet      8.850.866 filas / 17 columnas
+opta_player_stats.parquet 8.915.362 filas / 288 columnas
+opta_players.parquet        263.236 filas / 14 columnas
+opta_events.parquet       4.087.160 filas / 15 columnas
+opta_shot_events.parquet  3.305.837 filas / 23 columnas
+opta_shots.parquet        1.604.338 filas / 29 columnas
+opta_match_xg.parquet       106.538 filas / 3 columnas
+```
+
+Archivo auditor:
 
 ```text
 data/audit_pannadata_sources.py
 ```
 
-Salida local:
+Salida local generada y no versionada:
 
 ```text
 data/source_schema_audit.json
 ```
 
-Audita:
-
-- existencia;
-- filas;
-- columnas;
-- nombres reales;
-- tipos.
-
-Fuentes objetivo:
-
-```text
-opta_fixtures.parquet
-opta_lineups.parquet
-opta_player_stats.parquet
-opta_players.parquet
-opta_events.parquet
-opta_shot_events.parquet
-opta_shots.parquet
-opta_match_xg.parquet
-```
-
-### 6.2 Stage 1 — fixtures
+### 6.2 Stage 1 — fixtures VALIDADO
 
 Archivos:
 
@@ -201,25 +195,36 @@ data/import_demo_fixtures.py
 data/run_stage1.py
 ```
 
-`import_demo_fixtures.py`:
+Mapping real resuelto:
 
-- inspecciona el esquema real de `opta_fixtures.parquet`;
-- resuelve variantes de nombres de columnas;
-- aborta si faltan campos obligatorios;
-- filtra por Opta team id del Alavés;
-- limita a 2025/26 cuando existe fecha;
-- exige 38 partidos por defecto;
-- genera IDs internos deterministas;
-- carga `teams`, `matches`, `team_match`;
-- es idempotente.
-
-Una orden ejecuta Stage 1:
-
-```bash
-python data/run_stage1.py
+```text
+match_id         -> match_id
+match_date       -> match_date
+home_team_id     -> home_team_id
+away_team_id     -> away_team_id
+home_team_name   -> home_team
+away_team_name   -> away_team
+home_score       -> home_score
+away_score       -> away_score
+competition      -> competition
+season           -> season
 ```
 
-### 6.3 Stage 2A — players + player_match
+Resultado real:
+
+```text
+Deportivo Alavés 2025/26
+38 fixtures importados
+38 partidos distintos
+0 source_match_id duplicados
+0 rivales ausentes
+0 source_match_id ausentes
+VALIDATION PASS
+```
+
+El primer prototipo mezclaba 424 partidos porque detectaba `season` y `competition` pero no los aplicaba correctamente al filtro. Se corrigió antes de validar el Stage 1.
+
+### 6.3 Stage 2A — players + player_match VALIDADO
 
 Archivos:
 
@@ -228,28 +233,53 @@ data/import_demo_player_match.py
 data/run_stage2.py
 ```
 
-`import_demo_player_match.py`:
+Mapping real resuelto:
 
-- requiere Stage 1 válido;
-- usa exclusivamente los 38 `source_match_id` ya aprobados;
-- filtra explícitamente por source team id;
-- exige `match_id`, `team_id`, `player_id` y minutos;
-- detecta y bloquea duplicados jugador-partido;
-- rechaza minutos <0 o >130;
-- carga `players` y `player_match`;
-- añade nombre, posición, titularidad y dorsal si existen;
-- deja `NULL` cuando la fuente no permite conocer un dato, en lugar de inventarlo;
-- es idempotente.
-
-Orden acumulativa recomendada:
-
-```bash
-python data/run_stage2.py
+```text
+match_id         -> match_id
+team_id          -> team_id
+player_id        -> player_id
+player_name      -> player_name
+minutes          -> minsPlayed
+position         -> position
+started          -> None
+shirt_number     -> shirt_number
 ```
 
-Esta orden vuelve a ejecutar Stage 1 de forma segura y luego Stage 2A.
+Resultado real:
 
-### 6.4 Validación
+```text
+filas fuente sin minutos descartadas: 245
+player_match importados:             590
+cobertura:                            38/38 partidos
+jugadores distintos:                 28
+minutos inválidos:                   0
+VALIDATION PASS
+```
+
+Decisión aprobada sobre minutos nulos:
+
+- `opta_player_stats` contiene filas con `minsPlayed = NULL/NaN`.
+- No se convierten automáticamente en 0 minutos.
+- No se inventa participación.
+- Esas 245 filas quedan fuera de `player_match` en Stage 2A.
+- `opta_lineups` se utilizará en DATA-02 para identificar correctamente suplentes no utilizados, titularidad y contexto de alineación.
+
+`started` no existe/resuelve en `opta_player_stats`, por lo que debe proceder de `opta_lineups` y no inferirse artificialmente.
+
+### 6.4 Ejecución limpia reproducible
+
+Durante la validación real se detectó una limitación de DuckDB al reejecutar un `UPSERT` sobre filas padre ya referenciadas por claves foráneas. Para una reconstrucción limpia del dataset normalizado se añadió:
+
+```bash
+python data/run_stage2.py --reset
+```
+
+`--reset` elimina únicamente la DuckDB generada por el proyecto y la reconstruye desde los Parquet originales. No modifica los Parquet fuente.
+
+Pendiente técnico no bloqueante: mejorar la reejecución incremental sin `--reset` para que no dependa de actualizaciones de filas padre referenciadas.
+
+### 6.5 Validación
 
 Archivo:
 
@@ -257,53 +287,29 @@ Archivo:
 data/validate_demo_database.py
 ```
 
-Checks actuales:
+Checks validados hasta Stage 2A:
 
 - demo team existente;
 - 38 `team_match`;
 - 38 partidos distintos;
 - sin `source_match_id` duplicados;
-- equipo demo presente realmente en home/away;
+- equipo demo presente en home/away;
 - rival no nulo;
 - source match id no nulo;
-- presencia de `player_match` cuando Stage 2 está cargado;
+- `player_match` presente;
 - cobertura player_match 38/38;
-- minutos válidos;
-- controles básicos sobre `match_events` cuando existan.
+- minutos válidos.
 
-Salida local:
+`match_events` continúa PENDING hasta DATA-03.
 
-```text
-data/validation_report.json
-```
-
-### 6.5 Tests
-
-Archivo:
+### 6.6 Tests
 
 ```text
 tests/test_data_pipeline.py
-```
-
-El test genera datos sintéticos con:
-
-```text
-38 partidos
-2 jugadores demo por partido
-1 jugador rival de control
-```
-
-y ejecuta dos veces los importadores para comprobar idempotencia.
-
-Workflow creado:
-
-```text
 .github/workflows/tests.yml
 ```
 
-El workflow instala Python 3.13 + dependencias y ejecuta `pytest -q`.
-
-Estado a 25/09/2026: el workflow está definido, pero todavía no se ha observado una ejecución en GitHub Actions desde el conector.
+El test sintético utiliza 38 partidos, jugadores demo y rival de control. GitHub Actions está definido; su estado de ejecución debe revisarse cuando sea necesario, pero no sustituye la validación realizada sobre PannaData real.
 
 ## 7. Track B — Data Collector
 
@@ -315,62 +321,34 @@ collector/event_catalog.json
 
 ### Aprobado
 
-Pases:
-
 ```text
 PASS | NORMAL | SUCCESS/FAIL
 PASS | LONG   | SUCCESS/FAIL
 PASS | CROSS  | SUCCESS/FAIL
-```
-
-`LONG` y `CROSS` cuentan automáticamente como pases totales.
-
-Regate:
-
-```text
 DRIBBLE | SUCCESS/FAIL
-```
-
-Remate:
-
-```text
 SHOT | GOAL
 SHOT | ON_TARGET
 SHOT | OFF_TARGET
 SHOT | BLOCKED
-```
-
-Poste se agrupa en `OFF_TARGET` para el MVP.
-
-Defensa:
-
-```text
 TACKLE
 INTERCEPTION
 BLOCK
 CLEARANCE
-```
-
-Falta y disciplina:
-
-```text
 FOUL | COMMITTED
 FOUL | RECEIVED
 CARD | YELLOW
 CARD | RED
-```
-
-Pérdida:
-
-```text
 LOSS | OTHER
 ```
 
-solo cuando no está explicada por pase/regate fallado.
+Reglas:
+
+- `LONG` y `CROSS` cuentan automáticamente como pases totales.
+- `PASS FAIL` y `DRIBBLE FAIL` generan pérdida derivada.
+- `LOSS` solo se usa cuando la pérdida no está explicada por pase/regate fallado.
+- Poste se agrupa en `OFF_TARGET` para el MVP.
 
 ### Parcial
-
-Penalti:
 
 ```text
 PENALTY → WON / CONCEDED → GOAL / MISSED
@@ -388,35 +366,7 @@ La lógica general está aprobada; falta validar el mapping técnico.
 
 Estas decisiones no bloquean Track A.
 
-## 8. Datos de desarrollo
-
-Ruta de fuentes locales:
-
-```text
-C:\Users\sergi\Desktop\analisi_futbol\input\pannadata\
-```
-
-Base local preexistente:
-
-```text
-C:\Users\sergi\Desktop\analisi_futbol\outputs\base_pannadata.duckdb
-```
-
-Las tablas derivadas de proyectos anteriores no se utilizan automáticamente como fuente original del TFM.
-
-Auditoría previa LaLiga 2025/26 confirmada:
-
-```text
-20 equipos
-380 partidos
-38 partidos por equipo
-100 % fixtures
-100 % player stats
-100 % lineups
-100 % events
-```
-
-## 9. Caso demostrador aprobado
+## 8. Caso demostrador aprobado
 
 **Deportivo Alavés — LaLiga 2025/26.**
 
@@ -435,9 +385,9 @@ Motivos:
 
 Los valores profesionales sirven para validar el sistema, no para aprobar automáticamente métricas finales.
 
-## 10. Mapping PannaData/Opta conocido
+## 9. Mapping PannaData/Opta conocido
 
-Variables agregadas disponibles relevantes:
+Variables agregadas relevantes:
 
 ```text
 Pase: totalPass / accuratePass
@@ -475,9 +425,9 @@ Type IDs de eventos conocidos:
 77 Key pass
 ```
 
-Todavía no se debe construir el mapping final de outcomes/qualifiers hasta inspeccionar las columnas reales de `opta_events` y las fuentes de tiros.
+No construir el mapping final de outcomes/qualifiers hasta inspeccionar las columnas reales de `opta_events` y fuentes específicas de tiros.
 
-## 11. Anonimización
+## 10. Anonimización
 
 Antes de publicar el dataset demostrador:
 
@@ -498,7 +448,7 @@ scripts/build_anonymized_demo.py
 
 Nunca se publicarán datasets completos originales de PannaData/Opta.
 
-## 12. Sistema experto previsto
+## 11. Sistema experto previsto
 
 ```text
 N1000  disponibilidad / actividad
@@ -524,7 +474,7 @@ entrada → condición → resultado → confianza → justificación
 
 No se detallan ramas todavía.
 
-## 13. LLM
+## 12. LLM
 
 Arquitectura obligatoria:
 
@@ -534,74 +484,67 @@ DATA → ANALYTICS → DECISION ENGINE → LLM → COACH
 
 El LLM explica resultados ya calculados; no inventa métricas ni sustituye cálculos críticos.
 
-## 14. División de trabajo en GitHub Issues
-
-Issues activos:
+## 13. GitHub Issues
 
 ```text
-#1 DATA-01 — Validar Stage 1/2A con PannaData real
-#2 DATA-02 — Importar lineups, formación y roles
-#3 DATA-03 — Mapear events y shot events al catálogo normalizado
-#4 COLLECTOR-01 — Cerrar variables pendientes del MVP
+#1 DATA-01 — Validar Stage 1/2A con PannaData real          CERRADO 25/09/2026
+#2 DATA-02 — Importar lineups, formación y roles            ACTIVO / SIGUIENTE
+#3 DATA-03 — Mapear events y shot events                    PENDIENTE
+#4 COLLECTOR-01 — Cerrar variables pendientes del MVP       EN PARALELO
 ```
 
-DATA-01 es el cuello de botella operativo inmediato porque requiere acceso a los ficheros locales reales.
+## 14. Problemas abiertos
 
-## 15. Problemas abiertos
-
-- Validar los nombres reales de columnas contra los importadores automáticos.
-- Comprobar Stage 1/2A sobre los Parquet reales.
-- Completar lineups/formación/roles.
-- Mapear eventos atómicos.
+- Implementar DATA-02 con `opta_lineups` usando columnas reales, sin inferir roles no observados.
+- Obtener titularidad fiable, dorsal y formación desde lineups cuando estén disponibles.
+- Crear `player_role_stints` solo si la fuente permite reconstruir cambios de rol de forma fiable.
+- Mapear eventos atómicos en DATA-03.
 - Resolver shots/penaltis desde las fuentes específicas de tiro.
 - Cerrar falta peligrosa/córners/ABP/portero en el Collector.
 - Crear proceso de anonimización.
 - Definir normalización GPS.
+- Mejorar reejecución incremental de Stage 1/2 sin necesitar `--reset`.
 - Construir Feature Engine cuando la capa DATA esté estable.
 
-## 16. Decisiones descartadas o no aprobadas
+## 15. Decisiones descartadas o no aprobadas
 
 - No usar todas las variables Opta solo porque existan.
 - No construir todavía el árbol experto detallado.
-- No construir Feature Engine definitivo sobre una capa DATA no validada.
+- No construir Feature Engine definitivo sobre una capa DATA no estable.
 - No usar datos ficticios como caso principal pudiendo reconstruir una temporada real.
 - No publicar datasets completos de PannaData/Opta.
 - No usar Getafe como demostrador principal.
 - No duplicar pérdidas derivadas de pase/regate fallado.
 - No crear botón separado para remate al poste.
 - No inventar mappings de columnas u outcomes si la fuente real no los confirma.
+- No convertir automáticamente minutos nulos en 0.
 
-## 17. Siguiente paso exacto
+## 16. Siguiente paso exacto
 
-### Acción local inmediata
+**DATA-02 — `opta_lineups` → titularidad + formación + roles.**
 
-Desde la raíz del repositorio:
-
-```bash
-python data/run_stage2.py
-```
-
-Resultado esperado:
+Objetivos mínimos:
 
 ```text
-Stage 1:
-  DuckDB inicializado
-  auditoría de fuentes generada
-  38 fixtures importados
-  validación PASS
-
-Stage 2A:
-  players/player_match importados
-  cobertura 38/38
-  validación PASS
+player_match.started
+player_match.shirt_number, si la fuente lo permite
+player_match.primary_role, solo con mapping fiable
+team_match.starting_formation, si la fuente lo permite
+player_role_stints, solo si los cambios de rol son reconstruibles sin inferencia arbitraria
 ```
 
-Si un mapping falla, el propi script mostrará las columnas reales que no ha podido resolver. Esa salida se utiliza para corregir el mapping de forma explícita.
+Criterios:
 
-### Inmediatamente después de DATA-01
+- usar los mismos 38 partidos ya validados;
+- inspeccionar primero las 17 columnas reales de `opta_lineups`;
+- no inventar roles;
+- cobertura 38/38;
+- mantener separación entre datos brutos y derivados;
+- añadir validación y test antes de cerrar DATA-02.
+
+Después:
 
 ```text
-DATA-02: opta_lineups → titularidad + formación + roles
 DATA-03: opta_events + shot events → match_events
 anonimización
 → Feature Engine
