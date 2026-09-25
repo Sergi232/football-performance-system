@@ -26,10 +26,10 @@ def main() -> None:
     args = parser.parse_args()
 
     run(
-        "DATA-03 STAGE 3A — SHOTS + CARDS",
+        "DATA-03 STAGE 3A — RECONCILED SHOTS + CARDS",
         [
             sys.executable,
-            str(DATA_DIR / "import_demo_events.py"),
+            str(DATA_DIR / "import_demo_events_reconciled.py"),
             "--input-dir",
             str(args.input_dir),
             "--db",
