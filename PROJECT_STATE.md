@@ -215,7 +215,7 @@ Audit requerido:
 - clases con muy pocos jugadores/observaciones;
 - conclusión metodológica sobre si el target raw es entrenable tal cual, requiere depuración basada en fuente o debe descartarse.
 
-Script previsto:
+Script:
 ```text
 dsai/role_label_audit.py
 ```
@@ -248,7 +248,7 @@ Pendientes después del núcleo DS/IA:
 
 ## 15. Siguiente paso exacto
 
-No instalar nada. Ejecutar DSAI-04 cuando el script esté disponible:
+No instalar nada:
 
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
