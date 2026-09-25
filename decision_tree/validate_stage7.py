@@ -6,7 +6,7 @@ from pathlib import Path
 
 import duckdb
 
-from decision_tree.build_stage7 import recommendation_gate
+from build_stage7 import recommendation_gate
 
 
 ROOT = Path(__file__).resolve().parents[1]
