@@ -20,9 +20,9 @@ FEATURE-03 historial condicionado a rol  CERRADO / VALIDADO
 EXPERT-01 N1000-N3000                    CERRADO / VALIDADO
 EXPERT-02 N4000-N7000                    CERRADO / VALIDADO
 EXPERT-03 N8000-N9000                    CERRADO / VALIDADO
-EXPERT-04 N10000 rol/encaje              PREPARADO / PENDIENTE VALIDACIÓN LOCAL
-N11000 consistencia/tendencia            DESPUÉS DE EXPERT-04
-N12000 player fit                        DESPUÉS DE N11000
+EXPERT-04 N10000 rol/encaje              CERRADO / VALIDADO
+EXPERT-05 N11000 consistencia/tendencia  PREPARADO / PENDIENTE VALIDACIÓN LOCAL
+N12000 player fit                        DESPUÉS DE EXPERT-05
 N13000 recomendación final               SOLO TRAS VALIDAR REGLAS/PESOS
 Dashboard                                DESPUÉS DEL MOTOR BASE
 LLM / PDF                                DESPUÉS DEL DASHBOARD BASE
@@ -58,7 +58,7 @@ TEAM MODE es principal. PLAYER MODE es complementario. RIVAL MODE queda como ext
 - PannaData/Opta sirve para desarrollar/validar; no define el producto amateur.
 - GitHub es la fuente de verdad técnica.
 - Priorizar MVP funcional antes de aumentar complejidad.
-- Ningún score de fit/recomendación se crea antes de disponer de una regla validada.
+- No crear scores de fit/recomendación antes de disponer de reglas validadas.
 
 ## 4. Arquitectura materializada
 
@@ -157,11 +157,10 @@ Contrato multi-proveedor normalizado. Unidades canónicas: ms, m, m/s, m/s² y x
 
 `GPS-01 VALIDATION: PASS`.
 
-## 9. FEATURE-01 — CERRADO / VALIDADO
+## 9. FEATURE ENGINE
 
+### FEATURE-01 — CERRADO / VALIDADO
 `features/catalog.json` v0.1.0. 28 features: 7 ratios + 21 por90.
-
-Reglas: ratio solo con numerador/denominador válidos y denominador >0; por90 solo con minutos >0; NULL raw permanece NULL; sin ratings/pesos/percentiles/umbrales.
 
 ```text
 FEATURE-01 VALIDATION: PASS
@@ -170,11 +169,10 @@ non-null 6324
 coverage 38 matches / 36 players
 ```
 
-## 10. FEATURE-02 — CERRADO / VALIDADO
+Reglas: ratio solo con numerador/denominador válidos y denominador >0; por90 solo con minutos >0; NULL raw permanece NULL; sin ratings/pesos/percentiles/umbrales.
 
+### FEATURE-02 — CERRADO / VALIDADO
 `features/temporal_catalog.json` v0.2.0. Por cada feature: `history_n`, `prev`, `prior_mean`, `prior_std`, `delta_prev`, `delta_prior_mean`, `prior_slope`.
-
-Strict-past: solo fechas anteriores; partido actual y misma fecha no entran; futuros no entran; NULL no se vuelve 0; sin ventanas arbitrarias 3/5/10.
 
 ```text
 FEATURE-02 VALIDATION: PASS
@@ -185,31 +183,13 @@ prior_std PASS
 first-date strict-past PASS
 ```
 
-## 11. FEATURE-03 — CERRADO / VALIDADO
+Strict-past: solo fechas anteriores; partido actual y misma fecha no entran; futuros no entran; NULL no se vuelve 0; sin ventanas arbitrarias 3/5/10.
 
-Objetivo: separar el historial por rol observado antes de construir N10000.
-
-Archivos:
-
-```text
-features/role_temporal_catalog.json
-features/build_role_temporal_features.py
-features/validate_stage3.py
-features/run_stage3.py
-tests/test_role_temporal_features.py
-```
-
-Contrato `feature_version=0.3.0`: rol tomado exactamente de `player_match.primary_role`; ningún rol se infiere; strict-past por `match_date`; partidos de la misma fecha no se informan entre sí; historial separado por jugador + rol observado + feature; rol ausente permanece NULL; `role_match_history_n` cuenta partidos previos en el mismo rol con `minutes_played > 0`.
-
-Para cada una de las 28 features base: `role_history_n`, `role_prior_mean`, `role_prior_std`, `role_delta_prior_mean`, `role_prior_slope`. Además: `role_match_history_n`.
-
-Validación local 25/09/2026:
+### FEATURE-03 — CERRADO / VALIDADO
+`features/role_temporal_catalog.json` v0.3.0. Historial separado por jugador + rol observado + feature.
 
 ```text
 FEATURE-03 VALIDATION: PASS
-feature_version 0.3.0
-base features 28
-role metric operators 5
 feature rows 117735/117735
 non-null 43060
 player_match con rol observado 590/835
@@ -220,9 +200,9 @@ strict-past first-observation PASS
 role history count + std domains PASS
 ```
 
-No se creó inferencia de rol, score, percentil, peso, corte mínimo de muestra ni juicio de fit.
+Para cada feature: `role_history_n`, `role_prior_mean`, `role_prior_std`, `role_delta_prior_mean`, `role_prior_slope`; además `role_match_history_n`. No se infiere rol ni se crea score de fit.
 
-## 12. Sistema experto
+## 10. Sistema experto
 
 Arquitectura:
 
@@ -245,10 +225,9 @@ N13000 recomendación final
 Cada nodo: `entrada → condición → resultado → confianza → justificación`.
 
 ### EXPERT-01 — CERRADO / VALIDADO
-Motor `expert_0.1.0`. N1000 actividad observada; N2000 rol observado; N3000 diferencia frente media strict-past + pendiente strict-past.
+Motor `expert_0.1.0`.
 
 ```text
-EXPERT-01 VALIDATION: PASS
 48430/48430 decisiones
 N1000=835
 N2000=835
@@ -256,25 +235,24 @@ N3000=46760
 duplicados=0
 ```
 
+N3000 usa diferencia frente media strict-past y pendiente strict-past. `confidence=1.0` significa ejecución determinista, no probabilidad.
+
 ### EXPERT-02 — CERRADO / VALIDADO
-Motor `expert_0.2.0`. N4000 amenaza ofensiva, N5000 creación/progresión, N6000 defensa, N7000 finalización. Cada señal compara al jugador solo con su propio historial strict-past. `metric_role` es metadata, no peso.
+Motor `expert_0.2.0`. N4000 amenaza ofensiva, N5000 creación/progresión, N6000 defensa, N7000 finalización.
 
 ```text
-EXPERT-02 VALIDATION: PASS
-player_match 835
-domain nodes/player-match 24
 decision rows 68470/68470
 N1000-N3000 exact carry-forward PASS
 confidence contract PASS
 no evaluative/recommendation labels PASS
 ```
 
+Cada señal compara al jugador solo con su propio historial strict-past. Sin scores/pesos/percentiles.
+
 ### EXPERT-03 — CERRADO / VALIDADO
-Motor `expert_0.3.0`. N8000 usa solo contexto del propio equipo. N9000 es degradable: `GPS_OBSERVED` o `GPS_NOT_AVAILABLE`; ausencia GPS no genera estimación física.
+Motor `expert_0.3.0`.
 
 ```text
-EXPERT-03 VALIDATION: PASS
-player_match 835
 decision rows 72645/72645
 N8000=3340
 N9000=835
@@ -284,34 +262,56 @@ N9000 optional GPS contract PASS
 GPS observed player-match 0
 ```
 
-### EXPERT-04 — PREPARADO / PENDIENTE VALIDACIÓN LOCAL
-Motor `expert_0.4.0`.
+N8000 usa contexto del propio equipo. N9000 devuelve `GPS_OBSERVED` o `GPS_NOT_AVAILABLE`; ausencia GPS no genera estimación física.
+
+### EXPERT-04 — CERRADO / VALIDADO
+Motor `expert_0.4.0`. N10000 usa el rol observado y FEATURE-03 same-role strict-past.
+
+```text
+EXPERT-04 VALIDATION: PASS
+player_match 835
+N10000 nodes/player-match 26
+decision rows 94355/94355
+N10000 rows 21710/21710
+role-conditioned evidence rows 20040/20040
+observed-role player-match 590/835
+N1000-N9000 exact carry-forward PASS
+observed role identity PASS
+same-role evidence justification PASS
+confidence contract PASS
+```
+
+N10000 contiene rol observado, número de partidos previos en el mismo rol y 24 señales N4000-N7000 condicionadas al mismo rol. `ABOVE/BELOW_ROLE_PRIOR_MEAN` es dirección descriptiva, no un score de fit. Sin mínimo de muestra, peso, percentil, ranking o recomendación.
+
+### EXPERT-05 — PREPARADO / PENDIENTE VALIDACIÓN LOCAL
+Motor `expert_0.5.0`. Issue #16.
 
 Archivos:
 
 ```text
-decision_tree/role_fit_catalog.json
-decision_tree/build_stage4.py
-decision_tree/validate_stage4.py
-decision_tree/run_stage4.py
-tests/test_decision_tree_stage4.py
+decision_tree/consistency_trend_catalog.json
+decision_tree/build_stage5.py
+decision_tree/validate_stage5.py
+decision_tree/run_stage5.py
+tests/test_decision_tree_stage5.py
 ```
 
-N10000 añade 26 nodos por jugador-partido: `N10000.100` rol observado exacto o `ROLE_UNKNOWN`; `N10000.110` número exacto de partidos strict-past jugados en ese mismo rol; y 24 señales condicionadas al rol que reutilizan las áreas N4000-N7000 y comparan el valor actual únicamente con la media strict-past del mismo jugador en el mismo rol.
+N11000 crea 56 nodos por jugador-partido = 28 features × 2 evidencias:
 
-Estados posibles: `ROLE_UNKNOWN`, `CURRENT_VALUE_MISSING`, `ROLE_HISTORY_MISSING`, `NO_PRIOR_METRIC_HISTORY_IN_ROLE`, `ROLE_DELTA_NOT_EVALUABLE`, `ABOVE_ROLE_PRIOR_MEAN`, `BELOW_ROLE_PRIOR_MEAN`, `EQUAL_ROLE_PRIOR_MEAN`.
+- `VARIABILITY`: `prior_std` exacto de FEATURE-02;
+- `TREND`: `prior_slope` exacto de FEATURE-02.
 
-`ABOVE/BELOW_ROLE_PRIOR_MEAN` es dirección descriptiva, no juicio de buen/mal encaje. El número de partidos previos se expone directamente; todavía no existe corte mínimo de muestra. N1000-N9000 deben arrastrarse exactamente desde `expert_0.3.0`.
+Menos de 2 observaciones strict-past devuelve `INSUFFICIENT_PRIOR_HISTORY` porque desviación y pendiente no son matemáticamente evaluables. No es un umbral de rendimiento.
 
-EXPERT-04 no crea score de fit, pesos, percentiles, ranking entre jugadores ni recomendación táctica.
+No se clasifica la consistencia como alta/baja ni la tendencia como improving/declining. No se crean scores, pesos, percentiles, rankings ni recomendaciones. N1000-N10000 debe arrastrarse exactamente desde `expert_0.4.0`.
 
-## 13. LLM
+## 11. LLM
 
 Arquitectura obligatoria: `DATA → ANALYTICS → DECISION ENGINE → LLM → COACH`.
 
 El LLM explica/consulta resultados estructurados. No inventa métricas ni sustituye cálculos críticos.
 
-## 14. Restricciones vigentes
+## 12. Restricciones vigentes
 
 - No usar variables Opta solo porque existan.
 - No duplicar pérdidas derivadas.
@@ -322,30 +322,31 @@ El LLM explica/consulta resultados estructurados. No inventa métricas ni sustit
 - No usar fuzzy matching silencioso GPS.
 - No convertir dirección matemática en juicio de rendimiento sin regla validada por métrica.
 - No mezclar historiales de roles distintos para evaluar encaje de rol.
-- No fijar un mínimo de muestra de rol por intuición; primero exponer `role_match_history_n` y validar posteriormente.
+- No fijar mínimo de muestra de rol por intuición.
+- No etiquetar consistencia alta/baja o tendencia improving/declining sin validación.
 - No usar score global/recomendación final antes de validar reglas y pesos.
 
-## 15. Problemas abiertos
+## 13. Problemas abiertos
 
-- validar localmente EXPERT-04;
-- después construir N11000 consistencia/tendencia aprovechando `prior_std` y `prior_slope`, manteniendo strict-past;
-- decidir muestra mínima/significancia práctica mediante validación, no intuición;
-- N12000 player fit requerirá reglas comparativas validadas;
+- validar localmente EXPERT-05;
+- diseñar N12000 player fit sobre evidencia ya validada, sin score arbitrario;
+- decidir muestras mínimas/significancia práctica mediante validación o literatura;
+- N13000 requerirá reglas finales justificadas;
 - añadir features físicas cuando haya GPS real o definiciones justificadas;
 - script de anonimización para publicación;
 - mejorar reejecución incremental;
 - retocar UX Collector al final;
 - localizar fuente fiable de `key_passes` si aparece otro export.
 
-## 16. Siguiente paso exacto
+## 14. Siguiente paso exacto
 
 ```powershell
-python decision_tree\run_stage4.py
+python decision_tree\run_stage5.py
 ```
 
 Si pasa:
-1. cerrar EXPERT-04;
-2. construir N11000 consistencia/tendencia con evidencia strict-past;
-3. estudiar reglas de N12000 player fit sin crear un score arbitrario;
-4. N13000 recomendación final solo tras validar reglas/pesos;
-5. después cerrar motor base y pasar al primer dashboard funcional.
+1. cerrar EXPERT-05;
+2. construir N12000 player fit;
+3. definir y validar N13000 recomendación final;
+4. cerrar motor base;
+5. pasar al primer dashboard funcional.
