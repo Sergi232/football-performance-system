@@ -6,18 +6,19 @@ Este archivo es la memoria técnica operativa del proyecto y prevalece sobre con
 
 ## 1. Fase actual
 
-**Track A — DATA en implementación activa. Track B — Data Collector en paralelo.**
+**Track A — DATA base del MVP estabilizada. Track B — cerrar Data Collector antes de GPS/Feature Engine.**
 
 ```text
 arquitectura                         HECHO
-esquema DuckDB v0.1                  HECHO
+esquema DuckDB + migraciones         HECHO
 auditoría fuentes reales             HECHO
 DATA-01 fixtures + player_match      CERRADO / VALIDADO
 DATA-02 lineups + titularidad/rol    CERRADO / VALIDADO
 DATA-03 events + shots               CERRADO / VALIDADO LOCALMENTE
-DATA-04 player stats agregados       SIGUIENTE
-Collector MVP                        EN PARALELO
-Feature Engine                       DESPUÉS DE ESTABILIZAR DATA
+DATA-04 player stats agregados       CERRADO / VALIDADO LOCALMENTE
+Collector MVP                        SIGUIENTE
+GPS normalizado                      DESPUÉS DE COLLECTOR
+Feature Engine                       DESPUÉS DE DATA + GPS BASE
 Sistema experto                      DESPUÉS DE FEATURES
 Dashboard / LLM / PDF                DESPUÉS
 ```
@@ -58,6 +59,7 @@ La web es el producto principal. Los PDF son exportaciones estáticas.
 - Si una fuente no permite conocer una variable, queda `NULL`, se conserva como agregado o se marca como no reconstruible.
 - El caso demostrador usa datos reales y se anonimizará antes de publicarse.
 - PannaData/Opta sirve para desarrollar y validar el sistema; no dicta la taxonomía del Collector amateur.
+- Una estadística raw disponible puede conservarse aunque su interpretación analítica final todavía requiera contexto; raw no equivale a feature ni a conclusión.
 
 ## 4. Arquitectura materializada
 
@@ -87,7 +89,7 @@ Unidad analítica principal:
 player_match = jugador + partido
 ```
 
-Tablas principales:
+Tablas principales actuales:
 
 ```text
 teams
@@ -97,6 +99,7 @@ team_match
 player_match
 player_role_stints
 match_events
+player_match_raw_stats
 collector_sessions
 gps_imports
 gps_observations
@@ -104,7 +107,15 @@ player_match_features
 decision_results
 ```
 
-`match_events` mantiene:
+Versiones de esquema aplicadas localmente:
+
+```text
+0.1.0 core event-oriented schema
+0.2.0 player_match_raw_stats
+0.3.0 expand raw stats: tackles_won + goals_conceded
+```
+
+### match_events
 
 ```text
 match + team + player nullable
@@ -118,7 +129,11 @@ source_type + source_event_id
 
 `player_id` puede ser `NULL` para un evento real de equipo cuando la fuente no identifica al jugador. No se inventa una atribución.
 
-Regla de pérdidas:
+### player_match_raw_stats
+
+Capa raw/agregada separada de `player_match_features`. Conserva valores de proveedor y `NULL` de fuente; no guarda porcentajes ni métricas derivadas.
+
+Regla de pérdidas de eventos:
 
 ```text
 PASS | ... | FAIL  → FAILED_PASS
@@ -169,18 +184,18 @@ Opta team id: 4dtdjgnpdq9uw4sdutti0vaar
 VALIDATION PASS
 ```
 
-### Participación inicial desde `opta_player_stats`
+### Participación inicial
 
 ```text
 590 player_match con participación
 38/38 partidos
 28 jugadores distintos
-245 filas con minsPlayed nulo excluidas
+245 filas con minsPlayed nulo excluidas inicialmente
 0 minutos inválidos
 VALIDATION PASS
 ```
 
-Los minutos nulos no se convierten en 0. La participación completa se resolvió posteriormente con `opta_lineups`.
+Los minutos nulos no se convirtieron en 0. La participación completa se resolvió posteriormente con `opta_lineups`.
 
 Ejecución limpia:
 
@@ -188,13 +203,11 @@ Ejecución limpia:
 python data/run_stage2.py --reset
 ```
 
-El `--reset` existe por una limitación de DuckDB al hacer upsert de filas padre referenciadas por foreign keys. La reejecución incremental sin reset sigue siendo una mejora técnica futura, no una garantía actual.
+El `--reset` existe por una limitación de DuckDB al hacer upsert de filas padre referenciadas por foreign keys. La reejecución incremental sin reset sigue siendo una mejora técnica futura.
 
 ## 8. DATA-02 — CERRADO / VALIDADO
 
 Fuente: `opta_lineups.parquet`.
-
-Resultado:
 
 ```text
 filas lineup fuente                 835
@@ -218,7 +231,7 @@ Decisiones:
 - `team_match.starting_formation` queda `NULL`: la fuente no trae formación explícita.
 - No se crean `player_role_stints`: la fuente no permite reconstruir cambios de rol de forma fiable.
 
-Archivos principales:
+Archivos:
 
 ```text
 data/inspect_demo_lineups.py
@@ -229,7 +242,7 @@ tests/test_lineup_import.py
 
 ## 9. DATA-03 — CERRADO / VALIDADO LOCALMENTE
 
-Fuentes inspeccionadas:
+Fuentes:
 
 ```text
 opta_events.parquet
@@ -237,9 +250,9 @@ opta_shot_events.parquet
 opta_shots.parquet
 ```
 
-### Hallazgo estructural clave
+### Hallazgo estructural
 
-`opta_events.parquet` en este export no es un feed atómico completo. Para los 38 partidos del demostrador contiene únicamente eventos resumen de:
+`opta_events.parquet` en este export no es un feed atómico completo. En los 38 partidos del demostrador solo contiene:
 
 ```text
 substitution
@@ -248,13 +261,9 @@ second_yellow
 goal
 ```
 
-Por tanto, no contiene eventos atómicos de pase, regate, entrada, intercepción, despeje, falta o pérdida. Esas acciones **no se inventan** y se obtendrán de agregados `opta_player_stats` o del Collector.
+No se inventan eventos atómicos de pase, regate, entrada, intercepción, despeje, falta o pérdida.
 
 ### Remates
-
-`opta_shot_events.parquet` sí contiene eventos atómicos de remate con `event_id`, jugador, minuto/segundo, coordenadas, tipo, cuerpo, situación, xG/xGOT y flags de gol/bloqueo.
-
-Resultado real Stage 3A:
 
 ```text
 shot_events fuente                         464
@@ -262,14 +271,13 @@ autogoles excluidos de SHOT atacante         1
 SHOT normalizados/importados               463
 cobertura                                  38/38
 
-outcomes Collector-facing:
 BLOCKED                                    126
 GOAL                                        41
 OFF_TARGET                                 186
 ON_TARGET                                  110
 ```
 
-Validación del contrato de fuentes:
+Contrato validado:
 
 ```text
 total_shots mismatches                       0
@@ -281,18 +289,14 @@ on_target + blocked partition mismatches      0
 shots_blocked                    AGGREGATE_CANONICAL
 ```
 
-Decisión metodológica:
+Decisiones:
 
-- El `outcome` del Collector sigue siendo exclusivo: `GOAL / ON_TARGET / OFF_TARGET / BLOCKED`.
-- `opta_shots.shots_on_target` y `shots_blocked` se consideran métricas agregadas canónicas cuando la identidad exacta del evento no puede recuperarse sin adivinar.
-- `opta_shot_events.is_blocked` se conserva como evidencia del evento, pero no se fuerza a reproducir `shots_blocked` agregado uno a uno.
-- Los agregados se usan para validar compatibilidad, no para asignar arbitrariamente una categoría a un remate concreto.
-- `source_event_id` real se conserva para los shot events.
-- Los goles de `opta_events` no se importan para evitar doble conteo con `opta_shot_events`.
+- El outcome Collector sigue siendo exclusivo `GOAL / ON_TARGET / OFF_TARGET / BLOCKED`.
+- `opta_shots.shots_on_target` y `shots_blocked` son agregados canónicos cuando no pueden atribuirse sin adivinar a un event concreto.
+- `opta_shot_events.is_blocked` se conserva como evidencia del evento.
+- Los goles de `opta_events` no se importan para evitar doble conteo.
 
 ### Tarjetas
-
-Resultado:
 
 ```text
 CARD importadas                              98
@@ -301,72 +305,129 @@ source player missing                         2
 source player id unresolved                   0
 ```
 
-Las dos tarjetas sin jugador se guardan como eventos de equipo (`player_id=NULL`) y se conserva en `qualifiers` que la atribución no estaba disponible en la fuente.
+Las dos tarjetas sin jugador se guardan con `player_id=NULL`.
 
-### Validación final de base
+### Validación final
 
 ```text
-demo_team_exists             OK
-demo_match_count             38/38
-duplicate_source_match_ids   0
-missing_opponents            0
-player_match_rows_present    OK
-match_event_rows_present     OK
-player_match_fixture_coverage 38/38
-invalid_minutes              0
-orphan_match_events          0
-duplicate_source_events      0
-VALIDATION STATUS            PASS
+38/38 partidos
+0 orphan match_events
+0 duplicate source events
+VALIDATION STATUS PASS
 ```
 
-Archivos principales:
+Archivos:
 
 ```text
 data/inspect_demo_events.py
 data/import_demo_events_contract_v2.py
 data/run_stage3a.py
+tests/test_event_source_contract.py
 ```
 
-## 10. DATA-04 — SIGUIENTE
+## 10. DATA-04 — CERRADO / VALIDADO LOCALMENTE
 
-Objetivo: auditar y normalizar las estadísticas agregadas jugador-partido de `opta_player_stats.parquet` que sí corresponden a variables aprobadas o candidatas del Collector.
+Fuente: `opta_player_stats.parquet`.
 
-Variables a verificar en la fuente real:
+Inspección real:
 
 ```text
-pases totales / completados
-pases clave / asistencias
-pases largos totales / completados
-centros totales / completados
-regates totales / ganados
-pérdidas / dispossessions
-remates agregados de control
-tackles / tackles ganados
-intercepciones
-bloqueos
-despejes
-faltas cometidas / recibidas
-tarjetas
-penalti ganado / concedido
-paradas / goles encajados
+filas demo                835
+partidos                 38/38
+jugadores distintos        36
+columnas fuente            288
 ```
 
-Regla: estos datos son **raw/agregados de fuente**, no features derivadas. No deben mezclarse silenciosamente con `player_match_features`.
+### Raw stats incorporadas
 
-Inspector previsto/creado: `data/inspect_demo_player_stats.py`.
+```text
+passes_total              <- totalPass
+passes_completed          <- accuratePass
+assists                   <- goalAssist
+long_balls_total          <- totalLongBalls
+long_balls_completed      <- accurateLongBalls
+crosses_total             <- totalCross
+crosses_completed         <- accurateCross
+dribbles_total            <- totalContest
+dribbles_won              <- wonContest
+turnovers                 <- turnover
+dispossessed              <- dispossessed
+shots_total               <- totalScoringAtt
+shots_blocked             <- blockedScoringAtt
+goals                     <- goals
+tackles_total             <- totalTackle
+tackles_won               <- wonTackle
+interceptions             <- interception
+blocked_passes            <- blockedPass
+clearances                <- totalClearance
+fouls_committed           <- fouls
+fouls_received            <- wasFouled
+yellow_cards              <- yellowCard
+red_cards                 <- redCard
+penalties_conceded        <- penaltyConceded
+penalties_won             <- penaltyWon
+saves                     <- saves
+goals_conceded            <- goalsConceded
+```
 
-## 11. Data Collector — variables aprobadas
+Total: **27 estadísticas raw**.
+
+`key_passes` sigue como variable útil del sistema/Collector, pero este export concreto no tiene una columna verificada equivalente. No se rellena con otra estadística por aproximación.
+
+`divingSave` existe en Opta, pero no se incorpora como variable principal porque `saves` cubre la acción de porter aprobada para el MVP.
+
+### Resultado Stage 4 v2
+
+```text
+source/imported rows                     835/835
+coverage                                  38/38
+distinct players                             36
+source/player_match minute alignment       PASS
+non-negative/integer constraints           PASS
+subset constraints                         PASS
+DATA-03 shots_total/goals cross-check      PASS
+tackles_won imported sum                    402
+goals_conceded imported sum                 612
+source NULL values preserved               PASS
+DATABASE VALIDATION STATUS                 PASS
+```
+
+### Caso 0 minutos + estadística positiva
+
+Existe exactamente una fila con 0 minutos según lineups que contiene una `yellow_card` positiva en `opta_player_stats`:
+
+```text
+match source id:  36vy9cu402k8m0goxchkpmpzo
+player source id: 2ww626a9v31b072prdx0xf1g4
+raw stat:         yellow_cards
+```
+
+Decisión: se preserva la estadística raw y se audita, pero **no modifica la participación**. Los minutos de `opta_lineups` siguen siendo la fuente canónica de participación. Una tarjeta puede existir para un jugador del banquillo sin implicar minutos jugados.
+
+Archivos:
+
+```text
+data/inspect_demo_player_stats.py
+data/import_demo_player_match_stats_v2.py
+data/migrations/002_player_match_raw_stats.sql
+data/migrations/003_expand_raw_stats.sql
+data/run_stage4.py
+tests/test_player_match_raw_stats.py
+```
+
+## 11. Data Collector — estado actual
+
+Catálogo: `collector/event_catalog.json` versión 0.2.0.
+
+Aprobado:
 
 ```text
 PASS | NORMAL | SUCCESS/FAIL
 PASS | LONG   | SUCCESS/FAIL
 PASS | CROSS  | SUCCESS/FAIL
 DRIBBLE | SUCCESS/FAIL
-SHOT | GOAL
-SHOT | ON_TARGET
-SHOT | OFF_TARGET
-SHOT | BLOCKED
-TACKLE
+SHOT | GOAL / ON_TARGET / OFF_TARGET / BLOCKED
+TACKLE | SUCCESS/FAIL
 INTERCEPTION
 BLOCK
 CLEARANCE
@@ -375,6 +436,8 @@ FOUL | RECEIVED
 CARD | YELLOW
 CARD | RED
 LOSS | OTHER
+GK | SAVE
+GK | GOAL_CONCEDED
 ```
 
 Reglas:
@@ -383,6 +446,7 @@ Reglas:
 - `PASS FAIL` y `DRIBBLE FAIL` generan pérdida derivada.
 - `LOSS` solo para pérdidas no explicadas por pase/regate fallado.
 - Poste se agrupa en `OFF_TARGET` para el MVP.
+- Cada `TACKLE` cuenta para `tackles_total`; `TACKLE SUCCESS` cuenta para `tackles_won`.
 
 Parcial:
 
@@ -390,12 +454,15 @@ Parcial:
 PENALTY → WON / CONCEDED → GOAL / MISSED
 ```
 
-Pendiente del Collector:
+Pendiente de cerrar:
 
 - definición operativa de falta peligrosa;
 - confirmar `CORNER | FOR/AGAINST`;
 - decidir resultado de ABP solo si es reproducible y útil;
-- interfaz exacta de portero.
+- cerrar interfaz exacta de penalti;
+- simplificar el HTML actual contra el catálogo definitivo.
+
+Acciones mínimas de portero ya cerradas: `SAVE` y `GOAL_CONCEDED`.
 
 ## 12. Anonimización
 
@@ -412,7 +479,23 @@ Nunca se publicarán datasets completos originales de PannaData/Opta.
 
 Script previsto: `scripts/build_anonymized_demo.py`.
 
-## 13. Sistema experto previsto
+## 13. GPS — pendiente
+
+GPS es opcional y complementario. La capa de base ya existe (`gps_imports`, `gps_observations`), pero falta cerrar el contrato multi-proveedor.
+
+Variables raw candidatas:
+
+```text
+timestamp
+posición x/y
+distancia
+velocidad
+aceleración/desaceleración
+```
+
+Los esfuerzos de alta intensidad y otras métricas avanzadas deben derivarse posteriormente; no se capturan manualmente.
+
+## 14. Sistema experto previsto
 
 ```text
 N1000  disponibilidad / actividad
@@ -438,7 +521,7 @@ entrada → condición → resultado → confianza → justificación
 
 No se detallan ramas hasta estabilizar DATA + Feature Engine.
 
-## 14. LLM
+## 15. LLM
 
 ```text
 DATA → ANALYTICS → DECISION ENGINE → LLM → COACH
@@ -446,7 +529,7 @@ DATA → ANALYTICS → DECISION ENGINE → LLM → COACH
 
 El LLM explica resultados calculados; no inventa métricas ni sustituye cálculos críticos.
 
-## 15. Tests y GitHub Actions
+## 16. Tests y GitHub Actions
 
 Tests actuales:
 
@@ -454,13 +537,14 @@ Tests actuales:
 tests/test_data_pipeline.py
 tests/test_lineup_import.py
 tests/test_event_source_contract.py
+tests/test_player_match_raw_stats.py
 ```
 
 Durante desarrollo, `.github/workflows/tests.yml` es manual (`workflow_dispatch`) para evitar emails repetitivos por cada push. Antes de publicar se reactivarán `push` y `pull_request` y se dejará CI verde.
 
 La validación con datos reales locales tiene prioridad sobre un test sintético.
 
-## 16. Decisiones descartadas / no aprobadas
+## 17. Decisiones descartadas / no aprobadas
 
 - No usar todas las variables Opta solo porque existan.
 - No construir todavía el árbol experto detallado.
@@ -473,24 +557,28 @@ La validación con datos reales locales tiene prioridad sobre un test sintético
 - No crear role stints si la fuente no permite reconstruir cambios de rol.
 - No inventar mappings de outcomes/qualifiers.
 - No forzar `shots_on_target` o `shots_blocked` agregados a un evento concreto cuando la fuente no permite identificarlo.
-- No usar `opta_events` como si fuera un feed atómico completo: el export inspeccionado no lo es.
+- No usar `opta_events` como si fuera un feed atómico completo.
+- No descartar una estadística raw del sistema solo porque necesite interpretación posterior; se conserva separada de features cuando la fuente está identificada.
+- No hacer que una estadística raw positiva de un suplente cambie automáticamente sus minutos de participación.
 
-## 17. Problemas abiertos
+## 18. Problemas abiertos
 
-- DATA-04: cerrar mapping real de agregados `opta_player_stats`.
-- Definir dónde persistir raw stats agregados sin mezclarlos con features derivadas.
-- Cerrar falta peligrosa/córners/ABP/portero en Collector.
+- Cerrar falta peligrosa/córners/ABP/penalti en Collector.
+- Simplificar el HTML del Collector definitivo.
+- Definir normalización GPS multi-proveedor.
 - Crear anonimización.
-- Definir normalización GPS.
 - Mejorar reejecución incremental sin depender de `--reset`.
-- Construir Feature Engine cuando DATA esté estable.
+- Construir Feature Engine cuando Collector + contrato GPS base estén cerrados.
+- Determinar fuente de `key_passes` si se dispone de otro export; mientras tanto queda ausente en este demostrador.
 
-## 18. Siguiente paso exacto
+## 19. Siguiente paso exacto
 
-Ejecutar:
+Cerrar **COLLECTOR-01** usando el HTML existente y `collector/event_catalog.json` como base:
 
-```bash
-python data/inspect_demo_player_stats.py
-```
+1. decidir `CORNER | FOR/AGAINST`;
+2. definir criterio reproducible de falta peligrosa;
+3. decidir si `set_piece_result` entra en MVP;
+4. cerrar flujo de penalti;
+5. simplificar el HTML sin añadir variables no aprobadas.
 
-La salida debe confirmar qué columnas reales soportan las variables del Collector antes de diseñar su persistencia final.
+Después: definir contrato GPS multi-proveedor y pasar al Feature Engine.
