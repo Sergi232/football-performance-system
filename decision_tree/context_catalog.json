@@ -1,0 +1,19 @@
+{
+  "engine_version": "expert_0.3.0",
+  "parent_engine_version": "expert_0.2.0",
+  "status": "team_context_and_optional_physical_gate",
+  "principles": [
+    "N1000-N7000 are carried forward unchanged from expert_0.2.0.",
+    "N8000 uses only own-team match context already present in team_match; it does not require opponent analytics.",
+    "N9000 is optional: when no normalized GPS observation exists for a player-match, the result is GPS_NOT_AVAILABLE rather than an invented physical estimate.",
+    "No sprint/HIE/load threshold, score, weight, percentile, role-fit recommendation or practical-significance threshold is introduced.",
+    "confidence=1.0 means deterministic rule execution or deterministic missing-data detection, not calibrated performance probability."
+  ],
+  "nodes": [
+    {"node_id":"N8000.100","family":"N8000","label":"venue_context","result_type":"team_context_venue"},
+    {"node_id":"N8000.110","family":"N8000","label":"match_result_context","result_type":"team_context_match_result"},
+    {"node_id":"N8000.120","family":"N8000","label":"goal_difference_context","result_type":"team_context_goal_difference_sign"},
+    {"node_id":"N8000.130","family":"N8000","label":"starting_formation_context","result_type":"team_context_starting_formation"},
+    {"node_id":"N9000.100","family":"N9000","label":"gps_data_availability","result_type":"physical_data_availability"}
+  ]
+}
