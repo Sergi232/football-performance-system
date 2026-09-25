@@ -36,5 +36,6 @@ def test_feature_evolution_is_descriptive_not_evaluative():
         ],
     }
     answer = answer_from_context("Com ha evolucionat aquesta mètrica?", context)
-    assert "millora" not in answer.lower()
-    assert "empitjorament" in answer.lower()
+    assert "primer valor disponible" in answer.lower()
+    assert "últim valor" in answer.lower()
+    assert "no s'etiqueta com a millora o empitjorament" in answer.lower()
