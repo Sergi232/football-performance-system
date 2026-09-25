@@ -1,7 +1,7 @@
 {
-  "catalog_version": "0.2.0",
-  "status": "working",
-  "notes": "Catálogo MVP. Los eventos approved pueden implementarse. Los pending requieren cierre metodológico antes de activarse en la interfaz.",
+  "catalog_version": "0.3.0",
+  "status": "approved_mvp_taxonomy",
+  "notes": "Catálogo operativo del MVP. Se priorizan acciones observables y pocos clics. Los agregados se derivan posteriormente; no se registran manualmente.",
   "events": [
     {"action_type": "PASS", "subtype": "NORMAL", "outcomes": ["SUCCESS", "FAIL"], "status": "approved"},
     {"action_type": "PASS", "subtype": "LONG", "outcomes": ["SUCCESS", "FAIL"], "status": "approved"},
@@ -16,36 +16,74 @@
     {"action_type": "BLOCK", "subtype": null, "outcomes": [], "status": "approved"},
     {"action_type": "CLEARANCE", "subtype": null, "outcomes": [], "status": "approved"},
 
-    {"action_type": "FOUL", "subtype": "COMMITTED", "outcomes": [], "status": "approved"},
-    {"action_type": "FOUL", "subtype": "RECEIVED", "outcomes": [], "status": "approved"},
+    {"action_type": "FOUL", "subtype": "COMMITTED", "outcomes": [], "status": "approved", "capture_xy": true},
+    {"action_type": "FOUL", "subtype": "RECEIVED", "outcomes": [], "status": "approved", "capture_xy": true},
+
     {"action_type": "CARD", "subtype": "YELLOW", "outcomes": [], "status": "approved"},
     {"action_type": "CARD", "subtype": "RED", "outcomes": [], "status": "approved"},
 
     {"action_type": "LOSS", "subtype": "OTHER", "outcomes": [], "status": "approved"},
 
+    {"action_type": "PENALTY", "subtype": "WON", "outcomes": ["GOAL", "MISSED"], "status": "approved"},
+    {"action_type": "PENALTY", "subtype": "CONCEDED", "outcomes": ["GOAL", "MISSED"], "status": "approved"},
+
+    {"action_type": "CORNER", "subtype": "FOR", "outcomes": [], "status": "approved"},
+    {"action_type": "CORNER", "subtype": "AGAINST", "outcomes": [], "status": "approved"},
+
     {"action_type": "GK", "subtype": "SAVE", "outcomes": [], "status": "approved"},
-    {"action_type": "GK", "subtype": "GOAL_CONCEDED", "outcomes": [], "status": "approved"},
-
-    {"action_type": "PENALTY", "subtype": "WON", "outcomes": ["GOAL", "MISSED"], "status": "partial"},
-    {"action_type": "PENALTY", "subtype": "CONCEDED", "outcomes": ["GOAL", "MISSED"], "status": "partial"},
-
-    {"action_type": "CORNER", "subtype": "FOR", "outcomes": [], "status": "pending"},
-    {"action_type": "CORNER", "subtype": "AGAINST", "outcomes": [], "status": "pending"}
+    {"action_type": "GK", "subtype": "GOAL_CONCEDED", "outcomes": [], "status": "approved"}
   ],
-  "pending_qualifiers": [
+  "qualifiers": [
     {
-      "name": "dangerous_foul",
-      "applies_to": ["FOUL"],
+      "name": "key_pass",
+      "applies_to": ["PASS"],
       "type": "boolean",
-      "status": "pending_definition",
-      "reason": "Debe definirse un criterio operativo reproducible antes de activarlo."
+      "status": "approved",
+      "definition": "Pass directly followed by a teammate shot before possession changes."
+    },
+    {
+      "name": "assist",
+      "applies_to": ["PASS"],
+      "type": "boolean",
+      "status": "approved",
+      "definition": "Final pass directly leading to a goal. assist=true implies PASS SUCCESS and key_pass=true."
+    },
+    {
+      "name": "second_yellow",
+      "applies_to": ["CARD"],
+      "allowed_subtypes": ["RED"],
+      "type": "boolean",
+      "status": "approved",
+      "definition": "UI shortcut for a dismissal by second yellow; the stored event is CARD RED with second_yellow=true."
     },
     {
       "name": "set_piece_result",
       "applies_to": ["CORNER", "FOUL"],
-      "allowed_values_candidate": ["SHOT", "CHANCE", "GOAL", "NO_THREAT"],
-      "status": "pending_validation",
-      "reason": "Debe comprobarse qué puede reconstruirse con PannaData/Opta y qué es realista recoger manualmente."
+      "allowed_values": ["DIRECT_SHOT", "SHOT_AFTER_RESTART", "GOAL", "NO_SHOT"],
+      "status": "approved",
+      "definition": "Observable end of the dead-ball sequence. Used only when a corner/free-kick restart occurs; avoids subjective CHANCE labels."
+    },
+    {
+      "name": "penalty_taker_player_id",
+      "applies_to": ["PENALTY"],
+      "allowed_subtypes": ["WON"],
+      "type": "player_id_nullable",
+      "status": "approved",
+      "definition": "Optional own-team taker. If known, the UI may create a linked SHOT event for the taker; the PENALTY event itself does not alter shot totals."
+    }
+  ],
+  "capture_rules": [
+    {
+      "rule": "FOUL events capture x/y so dangerous-foul status can be derived later from a validated spatial rule instead of a subjective manual button.",
+      "status": "approved"
+    },
+    {
+      "rule": "CORNER FOR/AGAINST and FOUL RECEIVED/COMMITTED define attacking/defending set-piece context automatically.",
+      "status": "approved"
+    },
+    {
+      "rule": "Every corner/foul keeps video_second/match_second so set-piece clips can be extracted later.",
+      "status": "approved"
     }
   ],
   "derived_rules": [
@@ -62,12 +100,28 @@
       "status": "approved"
     },
     {
+      "rule": "PASS key_pass=true counts toward key_passes; assist=true counts toward assists and also implies key_pass=true",
+      "status": "approved"
+    },
+    {
       "rule": "Every SHOT outcome counts automatically toward total shots",
       "status": "approved"
     },
     {
       "rule": "Every TACKLE counts toward tackles_total; TACKLE SUCCESS counts toward tackles_won",
       "status": "approved"
+    },
+    {
+      "rule": "CARD RED with second_yellow=true represents a dismissal by second yellow and preserves both disciplinary consequences in derived counts.",
+      "status": "approved"
+    },
+    {
+      "rule": "PENALTY WON/CONCEDED stores the penalty context/result; it does not itself create player shot/goal totals. A linked SHOT is created only when the own-team taker is known.",
+      "status": "approved"
+    },
+    {
+      "rule": "dangerous_foul is not a raw click. It will be derived from captured foul x/y after the spatial threshold is validated in the Feature Engine.",
+      "status": "approved_capture_contract"
     }
   ]
 }
