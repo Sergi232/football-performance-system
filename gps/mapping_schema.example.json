@@ -1,0 +1,29 @@
+{
+  "provider": "generic_example",
+  "mapping_version": "0.1.0",
+  "source_format": "csv",
+  "delimiter": ";",
+  "encoding": "utf-8",
+  "decimal_separator": ".",
+  "time_basis": "SESSION_RELATIVE_MS",
+  "coordinate_system": "LOCAL_METERS",
+  "sample_rate_hz": 1.0,
+  "distance_mode": "cumulative",
+  "columns": {
+    "player_key": "athlete_id",
+    "timestamp": "time_s",
+    "x": "pos_x_m",
+    "y": "pos_y_m",
+    "distance": "distance_total_km",
+    "speed": "speed_kmh",
+    "acceleration": "acc_g"
+  },
+  "units": {
+    "timestamp": "s",
+    "x": "m",
+    "y": "m",
+    "distance": "km",
+    "speed": "km_h",
+    "acceleration": "g"
+  }
+}
