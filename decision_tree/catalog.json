@@ -1,0 +1,52 @@
+{
+  "engine_version": "expert_0.1.0",
+  "status": "descriptive_auditable_foundation",
+  "scope": "First expert-system substrate for N1000-N3000. It creates deterministic evidence states, not final performance judgements or recommendations.",
+  "dependencies": {
+    "feature_base_version": "0.1.0",
+    "feature_temporal_version": "0.2.0"
+  },
+  "confidence_semantics": "confidence=1.0 means the stored state follows deterministically from the available inputs and rule. It is not a calibrated probability and does not mean that a player is good/bad or that a change is meaningful.",
+  "principles": [
+    "No arbitrary minimum-match threshold is introduced in EXPERT-01.",
+    "No rating, weight, percentile, good/bad label or final recommendation is introduced in EXPERT-01.",
+    "N3000 uses only FEATURE-02 strict-past primitives, so current or future matches never enter the historical baseline.",
+    "The zero boundary is used only as the mathematical sign of an exact difference or slope, not as a claim of practical significance.",
+    "ABOVE_PRIOR_MEAN is descriptive only: for harmful metrics such as turnovers, above is not automatically better.",
+    "Missing or insufficient evidence is represented explicitly instead of being imputed."
+  ],
+  "families": [
+    {
+      "node_id": "N1000.100",
+      "family": "N1000",
+      "name": "availability_activity_observed",
+      "inputs": ["player_match.minutes_played", "player_match.started"],
+      "results": ["MINUTES_UNKNOWN", "LISTED_NO_MINUTES", "STARTER_ACTIVE", "SUBSTITUTE_ACTIVE", "ACTIVE_START_STATUS_UNKNOWN"],
+      "interpretation": "Observed participation/listing state only. It does not infer injury, medical availability or fitness."
+    },
+    {
+      "node_id": "N2000.100",
+      "family": "N2000",
+      "name": "structural_role_observed",
+      "inputs": ["player_match.primary_role"],
+      "results": ["<observed primary_role>", "ROLE_UNKNOWN"],
+      "interpretation": "Observed role label only. Player archetypes and role-fit scores are deferred."
+    },
+    {
+      "node_id_pattern": "N3000.<feature_index>.DELTA_PRIOR_MEAN",
+      "family": "N3000",
+      "name": "current_vs_strict_past_mean",
+      "inputs": ["FEATURE-01 current feature", "FEATURE-02 history_n", "FEATURE-02 delta_prior_mean"],
+      "results": ["CURRENT_VALUE_MISSING", "HISTORY_COUNT_MISSING", "NO_PRIOR_HISTORY", "DELTA_NOT_EVALUABLE", "ABOVE_PRIOR_MEAN", "BELOW_PRIOR_MEAN", "EQUAL_PRIOR_MEAN"],
+      "interpretation": "Direction relative to the player's own strict-past mean; no practical-significance threshold is claimed."
+    },
+    {
+      "node_id_pattern": "N3000.<feature_index>.PRIOR_SLOPE",
+      "family": "N3000",
+      "name": "strict_past_trend_direction",
+      "inputs": ["FEATURE-02 history_n", "FEATURE-02 prior_slope"],
+      "results": ["HISTORY_COUNT_MISSING", "INSUFFICIENT_PRIOR_HISTORY", "SLOPE_NOT_EVALUABLE", "PRIOR_TREND_UP", "PRIOR_TREND_DOWN", "PRIOR_TREND_FLAT"],
+      "interpretation": "Mathematical direction of the OLS slope over prior non-null observations only. It is not yet a semantic improving/declining label."
+    }
+  ]
+}
