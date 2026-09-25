@@ -31,22 +31,6 @@ DSAI-09 SOURCE POSITION BASELINE    ACTIVO — ISSUE #49 / SCRIPT IMPLEMENTADO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
-## DSAI-07 — resultado cerrado
-
-```text
-candidate_rows=418
-evaluated_rows=302
-evaluated_labels=19
-logreg_accuracy=0.1325
-logreg_balanced_accuracy=0.0823
-logreg_macro_f1=0.0722
-majority_accuracy=0.0033
-majority_balanced_accuracy=0.0016
-majority_macro_f1=0.0005
-```
-
-Decisión: `EXPERIMENTAL_SIGNAL / NO_DEPLOY`. FEATURE-01 contiene señal sobre el rol observado, pero la granularidad detallada de 22 clases es demasiado fragmentada para producto.
-
 ## DSAI-08 — resultado cerrado
 
 ```text
