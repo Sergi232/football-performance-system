@@ -1,0 +1,21 @@
+{
+  "feature_version": "0.2.0",
+  "base_feature_version": "0.1.0",
+  "status": "temporal_leakage_safe",
+  "naming": "<base_feature>__<operator>",
+  "principles": [
+    "Temporal baselines use only observations with match_date strictly earlier than the current match.",
+    "Matches sharing the same match_date cannot inform one another.",
+    "Missing base values remain missing; NULL is never converted to zero.",
+    "No arbitrary recent-match windows, ratings, weights, percentiles or expert thresholds are introduced in FEATURE-02."
+  ],
+  "operators": [
+    {"name": "history_n", "description": "Count of prior non-null observations."},
+    {"name": "prev", "description": "Latest prior non-null observation."},
+    {"name": "prior_mean", "description": "Mean of all prior non-null observations."},
+    {"name": "prior_std", "description": "Population standard deviation of prior non-null observations; NULL when fewer than two exist."},
+    {"name": "delta_prev", "description": "Current value minus latest prior non-null observation; NULL if either side is missing."},
+    {"name": "delta_prior_mean", "description": "Current value minus prior mean; NULL if either side is missing."},
+    {"name": "prior_slope", "description": "OLS slope over the ordered prior non-null observations; NULL when fewer than two exist."}
+  ]
+}
