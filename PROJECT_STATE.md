@@ -26,9 +26,8 @@ DSAI-04 ROLE-LABEL AUDIT            ACTIVO / SCRIPT IMPLEMENTADO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
-## DSAI-03 — player similarity
+## DSAI-03
 
-Resultado:
 ```text
 profiles=64
 players=24
@@ -43,20 +42,11 @@ pair_distance_corr=0.2143880082112036
 
 Decisión: `EXPLORATORY_RESULT / NO_DEPLOY` por baja estabilidad temporal.
 
-## DSAI-04 — role-label audit
+## DSAI-04
 
-Script implementado: `dsai/role_label_audit.py`.
+Script: `dsai/role_label_audit.py`.
 
-Objetivo: auditar `primary_role` antes de cualquier clasificador supervisado. El script es descriptivo: no entrena modelos, no agrupa etiquetas, no crea thresholds, rankings, scores ni recomendaciones.
-
-Audita:
-- distribución por label;
-- jugadores, titularidad y minutos;
-- diagnóstico específico de `Substitute`;
-- coexistencia con roles tácticos del mismo jugador;
-- transiciones temporales;
-- fragmentación/sparsity del target;
-- conclusión metodológica sobre el target raw.
+Audita `primary_role` antes de cualquier clasificador supervisado. No entrena modelos ni agrupa labels por intuición.
 
 ## Siguiente paso exacto
 
