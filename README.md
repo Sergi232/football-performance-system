@@ -19,7 +19,7 @@ El prototipo funcional ya contiene:
 - informes PDF de Equipo, Jugador y Partido mediante un motor común;
 - normalización GPS multi-proveedor preparada;
 - tooling de anonimización para construir una demo pública local;
-- núcleo DS/IA activo con feasibility audit previo a entrenamiento de modelos.
+- núcleo DS/IA activo con feasibility audit cerrado y primer experimento de change detection preparado.
 
 El estado técnico exacto y el siguiente paso están en [`PROJECT_STATE.md`](PROJECT_STATE.md).
 
@@ -28,7 +28,8 @@ Documentación clave:
 - [`docs/WORKFLOW.md`](docs/WORKFLOW.md) — fases, agentes y gates;
 - [`docs/DECISIONS.md`](docs/DECISIONS.md) — decisiones estructurales;
 - [`docs/DATA_SCIENCE_AI_STRATEGY.md`](docs/DATA_SCIENCE_AI_STRATEGY.md) — estrategia académica Data Science + IA;
-- [`dsai/README.md`](dsai/README.md) — experimentación DS/ML y feasibility audit.
+- [`docs/DSAI_EXPERIMENT_PLAN.md`](docs/DSAI_EXPERIMENT_PLAN.md) — plan experimental congelado;
+- [`dsai/README.md`](dsai/README.md) — experimentación DS/ML.
 
 ## Arquitectura
 
@@ -69,20 +70,44 @@ DATA
 
 El proyecto no se considera completo solo porque exista una interfaz funcional. Antes del cierre debe existir una fase experimental seria de DS/IA con hipótesis, baselines, validación leakage-safe, métricas, análisis de error y una decisión razonada de despliegue o no despliegue.
 
-Casos prioritarios a evaluar:
-- player profiles / similarity;
-- change detection / evolución;
-- observed role classification como posible tarea supervisada con label observado;
-- role/player fit solo si existe un target defendible;
-- comparación Expert vs ML cuando sea metodológicamente válida.
+### Feasibility audit cerrado
 
-El primer paso de este bloque es:
+DSAI-01A se ejecutó sobre el caso de desarrollo:
 
-```powershell
-python dsai\feasibility_audit.py
+```text
+38 partidos
+36 jugadores
+835 player-match
+590 filas con rol observado
+23 etiquetas de rol crudas
+87 secuencias jugador-rol
+67 secuencias repetidas
+28 FEATURE-01
+6324 valores no nulos / 23380 filas de features
+0 observaciones GPS
 ```
 
-El audit no entrena modelos. Primero comprueba muestra, cobertura, secuencias temporales, targets, leakage y viabilidad.
+Resultado:
+
+```text
+change detection / evolution        GO_EXPERIMENT
+player similarity / profiles        GO_EXPLORATORY
+observed role classification        CANDIDATE_SUPERVISED
+role/player fit                     REFORMULATE_TARGET
+Expert vs ML                        BLOCKED_SHARED_TARGET
+N13000 calibration                  BLOCKED_GROUND_TRUTH
+```
+
+Orden experimental congelado:
+
+```text
+DSAI-02 change detection
+→ DSAI-03 player similarity/profiles
+→ DSAI-04 role-label audit
+→ revisión de líneas bloqueadas
+```
+
+No se fuerzan modelos si no existe target o ground truth defendible.
 
 ## Principios metodológicos
 
@@ -134,6 +159,18 @@ N13000  recommendation gate
 ```
 
 El motor final validado es `expert_0.7.0`. El contrato objetivo de N13000 está aprobado: recomendación + confianza/calibración + evidencia + justificación + limitaciones + alternativa cuando proceda. Sin embargo, **no emite todavía recomendaciones tácticas** porque los criterios, umbrales y calibración no están validados. Esta ausencia es deliberada y auditable.
+
+## DSAI-02 — change detection
+
+Primer experimento activo. Usa referencias same-role strict-past de FEATURE-03 y estudia la sensibilidad de un estadístico de desviación estandarizada mediante inyecciones sintéticas controladas.
+
+Ejecución:
+
+```powershell
+python dsai\change_detection_experiment.py
+```
+
+No selecciona un threshold operativo y no crea una alerta de producto, ranking ni recomendación.
 
 ## Informes PDF
 
@@ -189,6 +226,7 @@ python llm\validate_stage2.py
 python reports\validate_reports.py
 python analytics\validate_stage1.py
 python dsai\feasibility_audit.py
+python dsai\change_detection_experiment.py
 ```
 
 Las validaciones del sistema experto y del Feature Engine se mantienen en sus respectivos módulos.
@@ -248,10 +286,10 @@ La arquitectura final local/cloud/híbrida sigue pendiente de `DG-LLM-01`.
 
 ## Próximos bloques
 
-1. ejecutar `DSAI-01A` feasibility audit;
-2. congelar los experimentos DS/ML realmente viables;
-3. ejecutar y validar player similarity / change detection / tarea supervisada si procede;
-4. evaluar Expert vs ML solo con target independiente común;
+1. ejecutar y validar DSAI-02 change detection;
+2. DSAI-03 player similarity / profiles;
+3. auditar labels antes de cualquier clasificación supervisada;
+4. revisar si aparece un shared target válido para Expert vs ML;
 5. rediseñar Product UX;
 6. convertir Reports/Assistant en capas finales sobre outputs validados;
 7. cerrar publicación, GitHub y memoria TFM.
