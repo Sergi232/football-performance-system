@@ -1,0 +1,42 @@
+{
+  "feature_version": "0.1.0",
+  "status": "deterministic_base",
+  "principles": [
+    "No ratings, weights, percentiles or expert thresholds in FEATURE-01.",
+    "A missing raw input remains missing; NULL is never silently converted to zero.",
+    "Per-90 features are calculated only when minutes_played > 0.",
+    "Ratio features are calculated only when numerator and denominator are present and denominator > 0."
+  ],
+  "ratio_features": [
+    {"name":"pass_completion_rate","numerator":"passes_completed","denominator":"passes_total","group":"passing"},
+    {"name":"long_ball_completion_rate","numerator":"long_balls_completed","denominator":"long_balls_total","group":"progression"},
+    {"name":"cross_completion_rate","numerator":"crosses_completed","denominator":"crosses_total","group":"progression"},
+    {"name":"dribble_success_rate","numerator":"dribbles_won","denominator":"dribbles_total","group":"one_v_one"},
+    {"name":"tackle_success_rate","numerator":"tackles_won","denominator":"tackles_total","group":"defending"},
+    {"name":"goal_per_shot_rate","numerator":"goals","denominator":"shots_total","group":"finishing"},
+    {"name":"blocked_shot_rate","numerator":"shots_blocked","denominator":"shots_total","group":"finishing"}
+  ],
+  "per90_features": [
+    {"name":"passes_total_per90","source":"passes_total","group":"passing"},
+    {"name":"assists_per90","source":"assists","group":"creation"},
+    {"name":"long_balls_total_per90","source":"long_balls_total","group":"progression"},
+    {"name":"crosses_total_per90","source":"crosses_total","group":"progression"},
+    {"name":"dribbles_total_per90","source":"dribbles_total","group":"one_v_one"},
+    {"name":"turnovers_per90","source":"turnovers","group":"losses"},
+    {"name":"dispossessed_per90","source":"dispossessed","group":"losses"},
+    {"name":"shots_total_per90","source":"shots_total","group":"finishing"},
+    {"name":"goals_per90","source":"goals","group":"finishing"},
+    {"name":"tackles_total_per90","source":"tackles_total","group":"defending"},
+    {"name":"interceptions_per90","source":"interceptions","group":"defending"},
+    {"name":"blocked_passes_per90","source":"blocked_passes","group":"defending"},
+    {"name":"clearances_per90","source":"clearances","group":"defending"},
+    {"name":"fouls_committed_per90","source":"fouls_committed","group":"discipline"},
+    {"name":"fouls_received_per90","source":"fouls_received","group":"duels"},
+    {"name":"yellow_cards_per90","source":"yellow_cards","group":"discipline"},
+    {"name":"red_cards_per90","source":"red_cards","group":"discipline"},
+    {"name":"penalties_conceded_per90","source":"penalties_conceded","group":"discipline"},
+    {"name":"penalties_won_per90","source":"penalties_won","group":"attacking"},
+    {"name":"saves_per90","source":"saves","group":"goalkeeping"},
+    {"name":"goals_conceded_per90","source":"goals_conceded","group":"goalkeeping_context"}
+  ]
+}
