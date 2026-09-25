@@ -46,7 +46,7 @@ FIELD_CANDIDATES = {
     "match_date": [
         "match_date", "matchDate", "date", "game_date", "gameDate", "kickoff",
         "kick_off", "kickoff_time", "kickoffTime", "start_time", "startTime",
-        "start_date", "startDate",
+        "start_date", "startDate", "match_time", "matchTime",
     ],
     "home_team_id": [
         "home_team_id", "homeTeamId", "home_id", "homeId", "team_home_id",
@@ -72,9 +72,12 @@ FIELD_CANDIDATES = {
     ],
     "competition": [
         "competition", "competition_name", "competitionName", "tournament",
-        "tournament_name", "tournamentName",
+        "tournament_name", "tournamentName", "competition_code", "competitionCode",
     ],
-    "season": ["season", "season_name", "seasonName"],
+    "season": [
+        "season", "season_name", "seasonName", "season_label", "seasonLabel",
+        "tournament_calendar_name", "tournamentCalendarName",
+    ],
 }
 
 
@@ -99,6 +102,12 @@ def parse_args() -> argparse.Namespace:
 
 def normalize_name(value: str) -> str:
     return re.sub(r"[^a-z0-9]", "", value.lower())
+
+
+def normalize_value(value: object) -> str:
+    if pd.isna(value):
+        return ""
+    return normalize_name(str(value))
 
 
 def resolve_column(columns: list[str], candidates: list[str]) -> str | None:
@@ -175,10 +184,36 @@ def load_fixtures(con: duckdb.DuckDBPyConnection, fixture_path: Path) -> tuple[p
     return frame, mapping
 
 
+def parse_dates(series: pd.Series) -> pd.Series:
+    # First try normal datetime parsing.
+    parsed = pd.to_datetime(series, errors="coerce", utc=True)
+    if parsed.notna().mean() >= 0.5:
+        return parsed
+
+    # PannaData exports may occasionally expose numeric epochs.
+    numeric = pd.to_numeric(series, errors="coerce")
+    if numeric.notna().any():
+        for unit in ("s", "ms", "us", "ns"):
+            candidate = pd.to_datetime(numeric, unit=unit, errors="coerce", utc=True)
+            plausible = candidate.dt.year.between(2000, 2100, inclusive="both")
+            if plausible.mean() >= 0.5:
+                return candidate.where(plausible)
+    return parsed
+
+
+def value_summary(series: pd.Series, limit: int = 12) -> str:
+    values = series.dropna().astype(str).value_counts().head(limit)
+    if values.empty:
+        return "<no values>"
+    return ", ".join(f"{idx} ({count})" for idx, count in values.items())
+
+
 def filter_demo_matches(
     fixtures: pd.DataFrame,
     mapping: dict[str, str | None],
     team_source_id: str,
+    season: str,
+    competition: str,
     allow_non_38: bool,
 ) -> pd.DataFrame:
     home_col = mapping["home_team_id"]
@@ -191,16 +226,43 @@ def filter_demo_matches(
         | fixtures[away_col].astype("string").fillna("").eq(team_source_id)
     )
     demo = fixtures.loc[mask].copy()
+    team_count = len(demo)
 
+    # Prefer explicit season metadata when available.
+    season_col = mapping.get("season")
+    if season_col and not demo.empty:
+        target = normalize_value(season)
+        normalized = demo[season_col].map(normalize_value)
+        exact = normalized.eq(target)
+        # Accept common forms such as 2025-2026, 2025/2026, 2025-26.
+        season_tokens = ("202526", "20252026") if target in {"202526", "20252026"} else (target,)
+        season_mask = normalized.apply(lambda x: any(token in x for token in season_tokens))
+        if exact.any() or season_mask.any():
+            demo = demo.loc[exact | season_mask].copy()
+
+    # Use competition metadata as a second independent restriction when it can
+    # positively identify LaLiga. Do not exclude rows merely because the source
+    # names the competition differently.
+    competition_col = mapping.get("competition")
+    if competition_col and not demo.empty:
+        target_comp = normalize_value(competition)
+        normalized_comp = demo[competition_col].map(normalize_value)
+        aliases = {target_comp, "laliga", "primeradivision", "spanishlaliga"}
+        comp_mask = normalized_comp.isin(aliases) | normalized_comp.str.contains("laliga", regex=False)
+        if comp_mask.any():
+            demo = demo.loc[comp_mask].copy()
+
+    # Date is the final guard and also the fallback when season metadata is absent.
     date_col = mapping.get("match_date")
     if date_col and not demo.empty:
-        parsed = pd.to_datetime(demo[date_col], errors="coerce", utc=True)
+        parsed = parse_dates(demo[date_col])
         parsed_naive = parsed.dt.tz_convert(None)
         usable = parsed_naive.notna()
         if usable.any():
-            in_season = (~usable) | parsed_naive.between(SEASON_START, SEASON_END)
-            demo = demo.loc[in_season].copy()
-            demo["__match_date"] = parsed_naive.loc[demo.index]
+            in_season = parsed_naive.between(SEASON_START, SEASON_END)
+            if in_season.any():
+                demo = demo.loc[in_season].copy()
+                demo["__match_date"] = parsed_naive.loc[demo.index]
 
     demo = demo.drop_duplicates(subset=[mapping["match_id"]])
 
@@ -211,10 +273,20 @@ def filter_demo_matches(
         )
 
     if len(demo) != 38 and not allow_non_38:
+        diagnostics = [
+            f"team fixtures before season filters={team_count}",
+            f"final fixtures={len(demo)}",
+            f"mapping={mapping}",
+        ]
+        if season_col:
+            diagnostics.append(f"season values: {value_summary(fixtures.loc[mask, season_col])}")
+        if competition_col:
+            diagnostics.append(f"competition values: {value_summary(fixtures.loc[mask, competition_col])}")
+        if date_col:
+            diagnostics.append(f"date samples: {value_summary(fixtures.loc[mask, date_col], 6)}")
         raise RuntimeError(
-            f"Expected 38 LaLiga fixtures for the demo season, found {len(demo)}. "
-            "Import aborted to avoid silently mixing competitions/seasons. "
-            "Use --allow-non-38 only for diagnostics."
+            "Expected 38 LaLiga fixtures for the demo season. "
+            + " | ".join(diagnostics)
         )
 
     return demo
@@ -286,15 +358,15 @@ def import_matches(
         if pd.isna(match_date):
             date_col = mapping.get("match_date")
             raw_date = row[date_col] if date_col else None
-            parsed_date = pd.to_datetime(raw_date, errors="coerce")
-            match_date = None if pd.isna(parsed_date) else parsed_date.to_pydatetime()
+            parsed_date = parse_dates(pd.Series([raw_date])).iloc[0] if date_col else pd.NaT
+            match_date = None if pd.isna(parsed_date) else parsed_date.tz_convert(None).to_pydatetime()
         elif hasattr(match_date, "to_pydatetime"):
             match_date = match_date.to_pydatetime()
 
         competition_col = mapping.get("competition")
         season_col = mapping.get("season")
-        competition = safe_text(row[competition_col] if competition_col else None, args.competition)
-        season = safe_text(row[season_col] if season_col else None, args.season)
+        competition_value = safe_text(row[competition_col] if competition_col else None, args.competition)
+        season_value = safe_text(row[season_col] if season_col else None, args.season)
 
         con.execute(
             """
@@ -315,7 +387,7 @@ def import_matches(
                 source_type = EXCLUDED.source_type
             """,
             [
-                match_id, competition, season, match_date,
+                match_id, competition_value, season_value, match_date,
                 home_team_id, away_team_id, home_score, away_score, source_match_id,
             ],
         )
@@ -358,6 +430,8 @@ def main() -> None:
             fixtures,
             mapping,
             args.team_source_id,
+            args.season,
+            args.competition,
             args.allow_non_38,
         )
 
