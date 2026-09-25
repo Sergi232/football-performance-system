@@ -6,6 +6,10 @@ Requires Stage 1 to have loaded the 38 demo fixtures into the database. The scri
 uses those source match ids as an allow-list, filters the source team explicitly,
 and refuses to continue if required identity/minutes fields cannot be resolved.
 
+Rows with missing minutes are not treated as played matches. They are excluded from
+`player_match` and reported so that unused substitutes / lineup-only records can be
+handled later from `opta_lineups.parquet` instead of inventing minutes.
+
 Usage:
     python data/import_demo_player_match.py
     python data/import_demo_player_match.py --input-dir C:/path/to/pannadata
@@ -216,8 +220,42 @@ def main() -> None:
                 "match ids and source team id."
             )
 
+        # Player stats can include lineup/squad rows with missing minutes. Do not
+        # invent 0 minutes here: only actual participation belongs in player_match.
+        numeric_minutes = pd.to_numeric(filtered[minutes_col], errors="coerce")
+        missing_minutes_mask = numeric_minutes.isna()
+        skipped_missing_minutes = int(missing_minutes_mask.sum())
+        filtered = filtered.loc[~missing_minutes_mask].copy()
+        filtered["__minutes"] = numeric_minutes.loc[filtered.index].astype(float)
+
+        if filtered.empty:
+            raise RuntimeError(
+                "All demo-team player-stat rows have missing minutes. "
+                "Player participation cannot be built from opta_player_stats."
+            )
+
+        invalid_minutes = ~filtered["__minutes"].between(0, 130)
+        if invalid_minutes.any():
+            sample = filtered.loc[
+                invalid_minutes, [match_col, player_col, minutes_col]
+            ].head(20)
+            raise RuntimeError(
+                "Player-stat rows with invalid non-null minutes detected. Sample:\n"
+                + sample.to_string(index=False)
+            )
+
         filtered["__source_match_id"] = filtered[match_col].astype("string")
         filtered["__source_player_id"] = filtered[player_col].astype("string")
+
+        invalid_identity = (
+            filtered["__source_player_id"].isna()
+            | filtered["__source_player_id"].eq("")
+            | filtered["__source_player_id"].eq("<NA>")
+        )
+        if invalid_identity.any():
+            raise RuntimeError(
+                f"Found {int(invalid_identity.sum())} participating rows without player id."
+            )
 
         duplicate_mask = filtered.duplicated(
             subset=["__source_match_id", "__source_player_id"], keep=False
@@ -249,12 +287,7 @@ def main() -> None:
                     fallback=source_player_id,
                 )
                 position = safe_text(row[position_col] if position_col else None)
-                minutes = nullable_float(row[minutes_col])
-                if minutes is None or minutes < 0 or minutes > 130:
-                    raise RuntimeError(
-                        f"Invalid minutes for match={source_match_id} "
-                        f"player={source_player_id}: {row[minutes_col]!r}"
-                    )
+                minutes = float(row["__minutes"])
 
                 started = nullable_bool(row[started_col]) if started_col else None
                 shirt_number = nullable_int(row[shirt_col]) if shirt_col else None
@@ -321,6 +354,7 @@ def main() -> None:
     print("Player-stats mapping used:")
     for logical, source in mapping.items():
         print(f"  {logical:16} -> {source}")
+    print(f"Skipped source rows with missing minutes: {skipped_missing_minutes}")
     print(f"Imported player_match rows: {row_count}")
     print(f"Covered matches: {covered_matches}/38")
     print(f"Distinct demo players: {player_count}")
