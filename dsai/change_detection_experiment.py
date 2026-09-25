@@ -13,8 +13,8 @@ there is no labelled ground-truth change-point dataset.
 from __future__ import annotations
 
 import argparse
+import bisect
 import json
-import math
 from pathlib import Path
 
 import duckdb
@@ -37,19 +37,17 @@ def parse_args() -> argparse.Namespace:
 
 
 def auc_rank(negative_scores: list[float], positive_scores: list[float]) -> float | None:
-    """Mann-Whitney interpretation of ROC-AUC, implemented without sklearn."""
+    """Mann-Whitney interpretation of ROC-AUC in O(n log n)."""
     if not negative_scores or not positive_scores:
         return None
+    negatives = sorted(negative_scores)
     wins = 0.0
-    total = 0
     for pos in positive_scores:
-        for neg in negative_scores:
-            total += 1
-            if pos > neg:
-                wins += 1.0
-            elif pos == neg:
-                wins += 0.5
-    return wins / total if total else None
+        less = bisect.bisect_left(negatives, pos)
+        right = bisect.bisect_right(negatives, pos)
+        equal = right - less
+        wins += less + 0.5 * equal
+    return wins / (len(negative_scores) * len(positive_scores))
 
 
 def median(values: list[float]) -> float | None:
@@ -63,11 +61,11 @@ def qframe(con: duckdb.DuckDBPyConnection, sql: str, params: list | None = None)
 
 
 def load_candidates(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
-    """Load only observations with a valid strict-past same-role mean/std.
+    """Load observations with a valid strict-past same-role mean/std.
 
-    FEATURE-03 guarantees the prior quantities use dates strictly before the
-    current match. Requiring two prior observations is not a football decision
-    threshold; it is the mathematical minimum needed for a non-null prior std.
+    FEATURE-03 guarantees prior quantities use dates strictly before the current
+    match. Two prior observations are the mathematical minimum needed for the
+    validated population standard deviation; this is not a football threshold.
     """
     return qframe(
         con,
@@ -89,11 +87,10 @@ def load_candidates(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
         role_mean AS (
             SELECT match_id, player_id,
                    REPLACE(feature_name, '__role_prior_mean', '') AS base_feature,
-                   feature_value AS prior_mean,
-                   feature_text AS role_text
+                   feature_value AS prior_mean
             FROM player_match_features
             WHERE feature_version = ?
-              AND feature_name LIKE '%__role_prior_mean'
+              AND RIGHT(feature_name, LENGTH('__role_prior_mean')) = '__role_prior_mean'
         ),
         role_std AS (
             SELECT match_id, player_id,
@@ -101,7 +98,7 @@ def load_candidates(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
                    feature_value AS prior_std
             FROM player_match_features
             WHERE feature_version = ?
-              AND feature_name LIKE '%__role_prior_std'
+              AND RIGHT(feature_name, LENGTH('__role_prior_std')) = '__role_prior_std'
         ),
         role_n AS (
             SELECT match_id, player_id,
@@ -109,7 +106,7 @@ def load_candidates(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
                    feature_value AS history_n
             FROM player_match_features
             WHERE feature_version = ?
-              AND feature_name LIKE '%__role_history_n'
+              AND RIGHT(feature_name, LENGTH('__role_history_n')) = '__role_history_n'
         )
         SELECT b.*, rm.prior_mean, rs.prior_std, rn.history_n
         FROM base b
@@ -139,9 +136,11 @@ def run_experiment(frame: pd.DataFrame) -> dict:
     shift_results: list[dict] = []
 
     for multiplier in SHIFT_MULTIPLIERS:
-        # Positive synthetic shift is applied only to the current observation.
-        # prior_mean/prior_std are untouched, preserving the strict-past baseline.
-        shifted_value = frame["current_value"] + multiplier * frame["prior_std"]
+        # The injected observation is placed exactly k prior-standard-deviations
+        # from the strict-past same-role mean. The prior baseline is unchanged.
+        # Positive and negative directions have the same absolute score, so one
+        # direction is sufficient for this sensitivity experiment.
+        shifted_value = frame["prior_mean"] + multiplier * frame["prior_std"]
         shifted_score = ((shifted_value - frame["prior_mean"]).abs() / frame["prior_std"])
         positives = [float(v) for v in shifted_score.dropna().tolist()]
 
@@ -193,7 +192,7 @@ def run_experiment(frame: pd.DataFrame) -> dict:
         "status": "EXPERIMENTAL_NOT_DEPLOYED",
         "method": {
             "score": "abs(current - strict_past_same_role_mean) / strict_past_same_role_std",
-            "synthetic_validation": "add k * strict_past_same_role_std to current observation only",
+            "synthetic_validation": "set synthetic current = prior_mean + k * prior_std; strict-past baseline unchanged",
             "shift_multipliers": list(SHIFT_MULTIPLIERS),
             "threshold_selection": "NONE",
             "ground_truth": "synthetic injected shifts only; no natural labelled change points",
