@@ -22,7 +22,7 @@ DECISION POLICY / N13000            GATE APROBADO — ISSUE #27 CERRADO
 DSAI-01A FEASIBILITY AUDIT          CERRADO — ISSUE #28
 DSAI-02 CHANGE DETECTION            CERRADO EXPERIMENTAL / NO DEPLOY — ISSUE #29
 DSAI-03 PLAYER SIMILARITY           CERRADO EXPLORATORIO / NO DEPLOY — ISSUE #32
-DSAI-04 ROLE-LABEL AUDIT            ACTIVO / SCRIPT IMPLEMENTADO
+DSAI-04 ROLE-LABEL AUDIT            ACTIVO — ISSUE #34 / SCRIPT IMPLEMENTADO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
@@ -40,13 +40,15 @@ retention_rate=0.22727272727272727
 pair_distance_corr=0.2143880082112036
 ```
 
-Decisión: `EXPLORATORY_RESULT / NO_DEPLOY` por baja estabilidad temporal.
+Decisión: `EXPLORATORY_RESULT / NO_DEPLOY` por baja estabilidad temporal. El experimento se conserva como baseline académico, no como funcionalidad de producto actual.
 
 ## DSAI-04
 
+Issue #34.
+
 Script: `dsai/role_label_audit.py`.
 
-Audita `primary_role` antes de cualquier clasificador supervisado. No entrena modelos ni agrupa labels por intuición.
+Audita `primary_role` antes de cualquier clasificador supervisado. No entrena modelos ni agrupa labels por intuición. Debe resolver si el target observado permite `GO_SUPERVISED`, necesita `REFORMULATE_LABELS` o queda `NO_GO`.
 
 ## Siguiente paso exacto
 
