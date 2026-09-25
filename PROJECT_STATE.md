@@ -28,7 +28,8 @@ MOTOR EXPERTO BASE N1000-N13000          CERRADO / VALIDADO
 DASHBOARD-01 Streamlit MVP               DATA CONTRACT PASS / REVISIÓN VISUAL ABIERTA
 LLM-01 contexto + asistente seguro       CERRADO / VALIDADO
 LLM-02 proveedor OpenAI opcional         CERRADO / VALIDADO
-PDF-01                                   SIGUIENTE BLOQUE
+REPORTS-01 motor PDF común               PREPARADO / PENDIENTE VALIDACIÓN LOCAL
+PUBLICACIÓN / ANONIMIZACIÓN              DESPUÉS DE REPORTS-01
 ```
 
 El Collector puede recibir mejoras UX posteriormente, pero su contrato ya no bloquea el producto.
@@ -74,7 +75,7 @@ features/        variables deterministas, temporales y condicionadas a rol
 decision_tree/   sistema experto auditable
 app/             dashboard web Streamlit
 llm/             contexto, guardrails y proveedor generativo opcional
-reports/         informes PDF
+reports/         motor común de informes PDF
 models/          ML opcional posterior
 tests/           regresión y validación
 ```
@@ -239,31 +240,36 @@ OpenAI API key configured: NO
 blocked ranking/recommendation intercepted before external provider: PASS
 deterministic fallback: PASS
 N12000/N13000 provenance preserved: PASS
-No external API call was made by this validation script.
+No external API call was made by validation.
 ```
 
-Contrato vigente:
-- el proveedor recibe solo contexto estructurado ya calculado;
-- `store=False`;
-- no recalcula métricas críticas;
-- no crea scores, pesos, percentiles, rankings ni umbrales;
-- no convierte ABOVE/BELOW o slope en good/bad o improving/declining;
-- no emite recomendación táctica mientras N13000 mantenga la política no validada;
-- preguntas bloqueadas se interceptan antes de cualquier llamada externa;
-- sin `OPENAI_API_KEY` o si falla el proveedor, fallback determinista;
-- el modelo se puede configurar con `FPS_LLM_MODEL`;
-- nunca guardar API keys en GitHub.
+El modo generativo real es opcional. Sin `OPENAI_API_KEY`, el producto funciona con fallback determinista.
 
-La conexión generativa real es opcional y no bloquea el MVP.
+## 13. REPORTS-01 — PREPARADO / PENDIENTE VALIDACIÓN LOCAL
 
-## 13. PDF
+Motor único per TEAM / PLAYER / MATCH, amb una sola base de codi.
 
-PDF-01 es el siguiente bloque. Los PDF serán exportaciones estáticas de la web, no el producto principal. Deben consumir datos/features/decisiones ya calculados y podrán añadir texto explicativo sin introducir nuevas conclusiones analíticas.
+Archivos preparados:
 
-Tipos previstos:
-- informe de jugador;
-- informe de partido;
-- informe de equipo/período.
+```text
+reports/__init__.py
+reports/data_builder.py
+reports/pdf_engine.py
+reports/validate_reports.py
+tests/test_reports_engine.py
+```
+
+`requirements.txt` incorpora `reportlab>=4.2`.
+
+Contrato:
+- payloads read-only desde `app.data_access`;
+- PDF común con ReportLab;
+- Team report: resumen, partidos y plantilla;
+- Player report: resumen, evidencia N12000/N13000, features observadas e historial reciente;
+- Match report: contexto del partido y estadísticas player-match observadas;
+- no crea métricas críticas nuevas;
+- no crea scores, rankings ni recomendaciones;
+- `validate_reports.py` genera los tres PDF demo dentro de `reports/output/`.
 
 ## 14. Decisiones descartadas / restricciones vigentes
 
@@ -281,12 +287,14 @@ Tipos previstos:
 - No interpretar conteos N12000 como score de fit.
 - No emitir recomendación N13000 mientras la política final siga sin validar.
 - El LLM no puede recalcular métricas críticas ni sobreescribir el motor analítico.
+- La capa reports tampoco puede recalcular métricas críticas ni crear conclusiones nuevas.
+- Ninguna API key o secreto se sube al repositorio.
 
 ## 15. Problemas abiertos
 
+- validar localmente REPORTS-01 y revisar los tres PDF generados;
 - confirmar visualmente TEAM / PLAYER / PARTITS / ASSISTENT y cerrar DASHBOARD-01;
-- implementar PDF-01;
-- prueba generativa real opcional cuando exista `OPENAI_API_KEY` local;
+- integrar botones de descarga PDF dentro de Streamlit después de validar el motor PDF;
 - estudiar política futura de recomendación con literatura/datos/experimentos;
 - añadir features físicas cuando haya GPS real o definiciones justificadas;
 - script de anonimización para publicación;
@@ -296,6 +304,10 @@ Tipos previstos:
 
 ## 16. Siguiente paso exacto
 
-1. Mantener la app Streamlit para revisión visual de TEAM / PLAYER / PARTITS / ASSISTENT.
-2. Construir PDF-01 como exportación de datos estructurados ya calculados.
-3. La prueba generativa real con OpenAI queda opcional y se hará solo con `OPENAI_API_KEY` configurada localmente; la clave nunca se comparte ni se versiona.
+```powershell
+git pull
+pip install -r requirements.txt
+python reports\validate_reports.py
+```
+
+Esperado: `REPORTS-01 PDF CONTRACT: PASS` y tres PDF dentro de `reports/output/`.
