@@ -18,7 +18,8 @@ PUBLICATION-01                      CERRADO / VALIDADO TÉCNICAMENTE
 DASHBOARD-01                        PROTOTYPE v0.1 / CONTRACT PASS
 ARCHITECTURE-01                     CERRADO — ISSUE #25
 ANALYTICS-01                        CERRADO / VALIDADO — ISSUE #26
-DECISION POLICY / N13000            ACTIVO — ISSUE #27
+DECISION POLICY / N13000            GATE APROBADO C — ISSUE #27 CERRADO
+DSAI-01                             ACTIVO — ISSUE #28
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
@@ -80,13 +81,15 @@ ARCHITECTURE-01              CERRADO
         ↓
 ANALYTICS-01                 CERRADO / PASS
         ↓
-DECISION POLICY / N13000     ACTIVO
+DECISION POLICY / N13000     GATE C APROBADO
         ↓
-DS/AI EXPERIMENTAL CORE
+DS/AI EXPERIMENTAL CORE      ACTIVO
+  ├─ feasibility audit
   ├─ validación estadística
   ├─ player similarity / profiles
   ├─ change detection
-  └─ Expert vs ML quan sigui metodològicament vàlid
+  ├─ role/player fit solo si hay target defensable
+  └─ Expert vs ML cuando sea metodológicamente válido
         ↓
 PRODUCT UX
         ↓
@@ -114,7 +117,7 @@ No definitivo:
 - UX Streamlit actual, demasiado orientada a tablas;
 - PDF ReportLab actual, prueba técnica y no informe profesional;
 - proveedor/arquitectura final del LLM;
-- política final N13000;
+- criterios, umbrales y calibración final de N13000;
 - Product Service Layer común para web/report/assistant.
 
 ## 7. Caso de desarrollo
@@ -157,24 +160,52 @@ Peer-role strict-past / current-player exclusion / equal-player weighting: PASS
 No score, ranking, recommendation, sample threshold or good/bad label: PASS
 ```
 
-## 10. Sistema experto baseline
+## 10. Sistema experto baseline y policy N13000
 
 Motor `expert_0.7.0`: 154.475 decisiones; 2.505 N13000.
 
-N13000 mantiene `RECOMMENDATION_NOT_ISSUED_*` mientras no exista policy validada.
+`DG-N13-01` queda **APROBADO C**.
 
-El árbol existente se conserva como baseline auditable. La futura policy debe construirse encima de Analytics validado, no mediante intuición ni LLM.
+Objetivo final de N13000 cuando la policy esté validada:
+- recomendación;
+- confianza/calibración;
+- evidencia;
+- justificación auditable;
+- limitaciones;
+- alternativa cuando proceda.
 
-## 11. Núcleo Data Science / ML posterior a N13000 policy
+La aprobación del contrato no autoriza a inventar pesos, umbrales ni confianza. Hasta que DS/estadística/literatura validen criterios y calibración, N13000 conserva `RECOMMENDATION_NOT_ISSUED_*`.
 
-Prioridades:
-1. **Player profiles / similarity** — clustering o similitud condicionada a rol;
-2. **Change detection / evolución** — métodos estadísticos o ML comparados con baselines simples;
-3. **Role/player fit** — solo con target/labels defendibles y sin circularidad con el sistema experto;
-4. **Expert vs ML** — al menos un caso comparable si los datos lo permiten;
-5. **Validación** — temporal split, leakage control, métricas, análisis de error, incertidumbre, reproducibilidad y ablations cuando aporten valor.
+## 11. DSAI-01 — ACTIVO
 
-No se obliga a desplegar un modelo inválido. Sí se exige experimentación DS/IA explícita.
+Issue #28.
+
+Primer entregable: `DSAI-01A feasibility audit`.
+
+Para cada caso de uso se debe fijar:
+- unidad de análisis;
+- tamaño de muestra y cobertura;
+- missingness;
+- features candidatas;
+- target o ausencia de target;
+- split temporal;
+- baseline simple;
+- métricas;
+- riesgo de leakage;
+- decisión `GO / NO-GO / REFORMULAR`.
+
+Casos prioritarios:
+1. player similarity / profiles;
+2. change detection / evolution;
+3. role/player fit solo si existe target defendible;
+4. Expert vs ML cuando exista una tarea común válida.
+
+Reglas:
+- no targets circulares derivados del propio sistema experto;
+- no modelo complejo sin baseline;
+- no usar futuro;
+- no presentar clustering como verdad sin estabilidad/utilidad;
+- un resultado NO-GO es válido si queda metodológicamente justificado.
 
 ## 12. Prototipos de producto
 
@@ -201,41 +232,35 @@ Definidos en `docs/WORKFLOW.md`:
 - A8 AI Assistant;
 - A9 QA/Publication.
 
-A0 y A9 acompañan todo el proyecto. A5 tiene prioridad académica antes del pulido final de producto.
+A5 es ahora el agente principal. A0 y A9 acompañan la fase.
 
 ## 14. Decision gates
 
 Registro: `docs/DECISIONS.md`.
 
-- `DG-AN-01` comparaciones analíticas — **APPROVED C**;
-- `DG-N13-01` policy de recomendación — **ACTIVO, issue #27**;
-- `DG-UX-01` jerarquía de producto — pendiente;
-- `DG-LLM-01` local/cloud/híbrido — pendiente;
-- `DG-REP-01` estructura final de informes — pendiente;
-- `DG-PUB-01` dataset público — pendiente/derechos.
+- `DG-AN-01` — **APPROVED C**;
+- `DG-N13-01` — **APPROVED C**;
+- `DG-UX-01` — pendiente;
+- `DG-LLM-01` — pendiente;
+- `DG-REP-01` — pendiente;
+- `DG-PUB-01` — pendiente/derechos.
+
+No hay gate de Sergi necesario antes del feasibility audit de DSAI-01.
 
 ## 15. Restricciones vigentes
 
 - no inventar eventos atómicos desde agregados ambiguos;
 - no inferir rol/formación sin evidencia;
-- no crear scores/umbrales por intuición;
+- no crear scores/umbrals por intuición;
 - no mezclar self-history y peer comparison silenciosamente;
 - no usar LLM para cálculo crítico;
-- no emitir recomendación N13000 sin policy validada;
+- no emitir recomendación N13000 sin criterios/calibración validados;
 - no crear targets ML circulares a partir del propio sistema experto;
 - no publicar datos profesionales solo por estar anonimizados;
 - no rediseñar web/report/assistant antes del núcleo DS/IA prioritario.
 
 ## 16. Siguiente paso exacto
 
-No hay scripts pendientes.
+No hay decisión pendiente de Sergi ahora.
 
-Resolver `DG-N13-01` en issue #27. Opciones:
-
-```text
-A — evidència i alertes, sense recomanació final
-B — recomanació només si supera criteris validats
-C — recomanació + confiança + justificació + alternativa/limitacions
-```
-
-Recomendación arquitectónica: **C como objetivo final**, sin inventar todavía pesos, umbrales ni confianza. Tras cerrar este gate, iniciar el macrobloque DS/AI experimental.
+A5 debe ejecutar `DSAI-01A — feasibility audit` antes de entrenar modelos. El resultado debe seleccionar qué experimentos ML son realmente defendibles y en qué orden.
