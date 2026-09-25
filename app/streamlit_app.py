@@ -34,6 +34,12 @@ from llm.openai_provider import (  # noqa: E402
     configured_model,
     provider_available,
 )
+from reports.data_builder import (  # noqa: E402
+    build_match_report_data,
+    build_player_report_data,
+    build_team_report_data,
+)
+from reports.pdf_engine import render_pdf_bytes  # noqa: E402
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 
@@ -120,6 +126,12 @@ def safe_float(value, digits: int = 1) -> str:
     return f"{float(value):.{digits}f}"
 
 
+def safe_filename(prefix: str, label: str) -> str:
+    cleaned = "_".join(str(label).strip().split())
+    cleaned = "".join(ch for ch in cleaned if ch.isalnum() or ch in {"_", "-"})
+    return f"{prefix}_{cleaned or 'report'}.pdf"
+
+
 def result_label(row: pd.Series) -> str:
     if pd.isna(row.get("score_for")) or pd.isna(row.get("score_against")):
         return "—"
@@ -129,12 +141,33 @@ def result_label(row: pd.Series) -> str:
     return f"{outcome} {sf}-{sa}"
 
 
+def render_pdf_download(payload: dict, filename: str, key: str) -> None:
+    try:
+        pdf_bytes = render_pdf_bytes(payload)
+    except Exception as exc:
+        st.warning(f"No s'ha pogut generar el PDF: {exc}")
+        return
+    st.download_button(
+        "Descarregar informe PDF",
+        data=pdf_bytes,
+        file_name=filename,
+        mime="application/pdf",
+        key=key,
+    )
+
+
 def render_team(path: str, team_id: str, team_name: str) -> None:
     overview = cached_overview(path, team_id)
     matches = cached_matches(path, team_id)
     squad = cached_squad(path, team_id)
 
     st.header(team_name)
+    render_pdf_download(
+        build_team_report_data(Path(path), team_id),
+        safe_filename("team", team_name),
+        f"download_team_{team_id}",
+    )
+
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Partits", safe_int(overview["matches"]))
     c2.metric("Jugadors", safe_int(overview["players"]))
@@ -182,6 +215,12 @@ def render_player(path: str, team_id: str) -> None:
     gate = cached_gate(path, team_id, player_id)
 
     st.header(player_name)
+    render_pdf_download(
+        build_player_report_data(Path(path), team_id, player_id),
+        safe_filename("player", player_name),
+        f"download_player_{player_id}",
+    )
+
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Aparicions", safe_int(row["appearances"]))
     c2.metric("Titularitats", safe_int(row["starts"]))
@@ -262,7 +301,16 @@ def render_matches(path: str, team_id: str) -> None:
         format_func=lambda value: options[value],
     )
     lineup = cached_lineup(path, team_id, match_id)
+    selected = matches.loc[matches["match_id"] == match_id].iloc[0]
+    opponent = str(selected["opponent"])
+
     st.header(options[match_id])
+    render_pdf_download(
+        build_match_report_data(Path(path), team_id, match_id),
+        safe_filename("match", opponent),
+        f"download_match_{match_id}",
+    )
+
     st.subheader("Jugadors i estadístiques brutes")
     st.dataframe(lineup, hide_index=True, width="stretch")
     st.caption("Aquesta vista mostra dades player-match brutes/observades. Les features derivades es calculen en la capa Feature Engine.")
