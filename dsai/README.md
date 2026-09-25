@@ -23,26 +23,11 @@ analytics rows=46760
 GPS observations=0
 ```
 
-Decisiones:
-
-```text
-player_similarity_profiles        GO_EXPLORATORY
-change_detection_evolution        GO_EXPERIMENT
-observed_role_classification      CANDIDATE_SUPERVISED
-role_player_fit                   REFORMULATE_TARGET
-expert_vs_ml                      BLOCKED_SHARED_TARGET
-n13000_recommendation_calibration BLOCKED_GROUND_TRUTH
-```
-
-El plan experimental congelado está en `docs/DSAI_EXPERIMENT_PLAN.md`.
-
 ## DSAI-02 — change detection / evolution — CERRADO
 
 Resultado: `EXPERIMENTALLY_USEFUL / NO_DEPLOY`.
 
 ## DSAI-03 — player similarity / profiles — CERRADO
-
-Resultado local:
 
 ```text
 profiles=64
@@ -60,19 +45,17 @@ Decisión: `EXPLORATORY_RESULT / NO_DEPLOY` por baja estabilidad temporal.
 
 ## DSAI-04 — role-label audit — ACTIVO
 
-Antes de entrenar un clasificador supervisado de rol se audita `primary_role`.
-
 Ejecutar:
 
 ```powershell
 python dsai\role_label_audit.py
 ```
 
-El audit reporta distribución, jugadores, titularidad, minutos, diagnóstico de `Substitute`, coexistencia con roles tácticos, transiciones cronológicas y sparsity. No entrena modelos ni agrupa roles por intuición.
+Se audita `primary_role` antes de cualquier clasificador supervisado. No se agrupan etiquetas por intuición y no se entrena ningún modelo en esta fase.
 
 ## Líneas bloqueadas
 
-`role_player_fit`, `expert_vs_ml` y calibración final de N13000 siguen bloqueados sin ground truth independiente defendible. N12000/N13000 no pueden utilizarse como target ML y después presentarse como validación independiente.
+`role_player_fit`, `expert_vs_ml` y calibración final de N13000 siguen bloqueados sin ground truth independiente defendible.
 
 ## Regla metodológica
 
