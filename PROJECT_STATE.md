@@ -22,12 +22,13 @@ DECISION POLICY / N13000            GATE APROBADO — ISSUE #27 CERRADO
 DSAI-01A FEASIBILITY AUDIT          CERRADO — ISSUE #28
 DSAI-02 CHANGE DETECTION            CERRADO EXPERIMENTAL / NO DEPLOY — ISSUE #29
 DSAI-03 PLAYER SIMILARITY           CERRADO EXPLORATORIO / NO DEPLOY — ISSUE #32
-DSAI-04 ROLE-LABEL AUDIT            ACTIVO
+DSAI-04 ROLE-LABEL AUDIT            ACTIVO / SCRIPT IMPLEMENTADO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
 ## DSAI-03 — player similarity
 
+Resultado:
 ```text
 profiles=64
 players=24
@@ -42,14 +43,27 @@ pair_distance_corr=0.2143880082112036
 
 Decisión: `EXPLORATORY_RESULT / NO_DEPLOY` por baja estabilidad temporal.
 
-## DSAI-04 — role-label audit ACTIVO
+## DSAI-04 — role-label audit
 
-Objetivo: auditar `primary_role` antes de cualquier clasificador supervisado. No agrupar labels por intuición.
+Script implementado: `dsai/role_label_audit.py`.
 
-Siguiente paso:
+Objetivo: auditar `primary_role` antes de cualquier clasificador supervisado. El script es descriptivo: no entrena modelos, no agrupa etiquetas, no crea thresholds, rankings, scores ni recomendaciones.
+
+Audita:
+- distribución por label;
+- jugadores, titularidad y minutos;
+- diagnóstico específico de `Substitute`;
+- coexistencia con roles tácticos del mismo jugador;
+- transiciones temporales;
+- fragmentación/sparsity del target;
+- conclusión metodológica sobre el target raw.
+
+## Siguiente paso exacto
 
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
 python dsai\role_label_audit.py
 ```
+
+No instalar nada.
