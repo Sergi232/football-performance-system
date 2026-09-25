@@ -26,10 +26,10 @@ def main() -> None:
     args = parser.parse_args()
 
     run(
-        "DATA-03 STAGE 3A — SOURCE-CONTRACT SHOTS + CARDS",
+        "DATA-03 STAGE 3A — SOURCE-CONTRACT SHOTS + CARDS V2",
         [
             sys.executable,
-            str(DATA_DIR / "import_demo_events_contract.py"),
+            str(DATA_DIR / "import_demo_events_contract_v2.py"),
             "--input-dir",
             str(args.input_dir),
             "--db",
