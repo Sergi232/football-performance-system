@@ -3,3 +3,4 @@ pandas>=2.2
 streamlit>=1.40
 openai>=1.66.0
 reportlab>=4.2
+scikit-learn>=1.6
