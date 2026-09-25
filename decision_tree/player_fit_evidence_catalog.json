@@ -1,0 +1,30 @@
+{
+  "engine_version": "expert_0.6.0",
+  "parent_engine_version": "expert_0.5.0",
+  "source_role_catalog": "role_fit_catalog.json",
+  "status": "player_fit_evidence_synthesis_without_score",
+  "principles": [
+    "N1000-N11000 are carried forward unchanged from expert_0.5.0.",
+    "N12000 summarizes only N10000 same-player/same-role strict-past evidence already present in the parent engine.",
+    "ABOVE/BELOW/EQUAL counts are descriptive directions only and are never interpreted as good/bad fit.",
+    "Metric-role semantics such as cost, volume or efficiency are not assigned weights or favourability.",
+    "Evidence coverage is an exact fraction of evaluable N10000 signals out of the 24 catalogued signals, not a performance score.",
+    "No minimum-sample threshold, weighted score, percentile, cross-player ranking or tactical recommendation is introduced.",
+    "confidence=1.0 means deterministic execution of the synthesis rule, not calibrated fit probability."
+  ],
+  "nodes": [
+    {"node_id":"N12000.100","label":"observed_role","result_type":"player_fit_role_context"},
+    {"node_id":"N12000.110","label":"same_role_match_history","result_type":"player_fit_role_history_count"},
+    {"node_id":"N12000.120","label":"evaluable_signal_count","result_type":"player_fit_evaluable_signal_count"},
+    {"node_id":"N12000.130","label":"unavailable_signal_count","result_type":"player_fit_unavailable_signal_count"},
+    {"node_id":"N12000.140","label":"above_role_prior_mean_count","result_type":"player_fit_above_count"},
+    {"node_id":"N12000.150","label":"below_role_prior_mean_count","result_type":"player_fit_below_count"},
+    {"node_id":"N12000.160","label":"equal_role_prior_mean_count","result_type":"player_fit_equal_count"},
+    {"node_id":"N12000.170","label":"evidence_coverage_ratio","result_type":"player_fit_evidence_coverage"},
+    {"node_id":"N12000.180","label":"evidence_availability","result_type":"player_fit_evidence_availability"},
+    {"node_id":"N12000.400","label":"n4000_evaluable_count","result_type":"player_fit_domain_evaluable_count"},
+    {"node_id":"N12000.500","label":"n5000_evaluable_count","result_type":"player_fit_domain_evaluable_count"},
+    {"node_id":"N12000.600","label":"n6000_evaluable_count","result_type":"player_fit_domain_evaluable_count"},
+    {"node_id":"N12000.700","label":"n7000_evaluable_count","result_type":"player_fit_domain_evaluable_count"}
+  ]
+}
