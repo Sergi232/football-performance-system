@@ -58,25 +58,28 @@ Estado: `APPROVED`
 
 Decisión: **C — ambas, separadas y explícitamente etiquetadas**.
 
-Analytics debe conservar dos evidencias distintas:
+Analytics conserva dos evidencias distintas:
 - `SELF_ROLE_PRIOR`: jugador vs su propio historial estrictamente anterior en el mismo rol observado;
 - `PEER_ROLE_PRIOR`: jugador vs otros jugadores del mismo equipo con el mismo rol observado, usando solo información estrictamente anterior.
 
-No se mezclan silenciosamente en un único score. La comparación peer debe excluir al jugador actual y evitar que un jugador con más partidos pese más que otro: cada peer aporta su media strict-past en ese rol antes de construir la distribución de referencia.
-
-## Gates pendientes
+No se mezclan silenciosamente en un único score. La comparación peer excluye al jugador actual y cada peer aporta su media strict-past en ese rol antes de construir la distribución de referencia.
 
 ### DG-N13-01 — Política final de recomendación
-Estado: `PENDING SERGI`
+Estado: `APPROVED`
 
-**Por qué importa:** determina si el sistema solo describe, alerta o recomienda acciones/roles.
+Decisión: **C — recomendación + confianza + justificación + alternativa/limitaciones** como contrato objetivo de N13000.
 
-Opciones:
-- A. evidencia y alertas, sin recomendación final;
-- B. recomendación solo cuando se superan criterios validados;
-- C. recomendación + confianza + justificación + alternativa/limitaciones.
+Cuando la policy esté validada, una salida final podrá incluir:
+- recomendación;
+- confianza o calibración;
+- evidencia que la soporta;
+- justificación auditable;
+- limitaciones;
+- alternativa cuando proceda.
 
-Recomendación arquitectónica: **C como objetivo final**, construida de forma incremental; mientras no esté validada, mantener el gate actual sin recomendación.
+Esta aprobación no fija todavía umbrales, pesos ni reglas de confianza. Esos componentes deben validarse con estadística, experimentos DS/ML y literatura cuando corresponda. Hasta entonces N13000 mantiene `RECOMMENDATION_NOT_ISSUED_*`.
+
+## Gates pendientes
 
 ### DG-UX-01 — Jerarquía de producto
 Estado: `PENDING SERGI`
