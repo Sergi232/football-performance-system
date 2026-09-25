@@ -25,47 +25,50 @@ DSAI-03 PLAYER SIMILARITY           CERRADO EXPLORATORIO / NO DEPLOY — ISSUE #
 DSAI-04 ROLE-LABEL AUDIT            CERRADO / REFORMULATE_LABELS — ISSUE #34
 DSAI-05 ROLE TARGET RECONSTRUCTION  CERRADO / VALIDADO — ISSUE #35
 DSAI-06 SUPERVISED ROLE FEASIBILITY CERRADO / LIMITED_EXPERIMENT_ONLY — ISSUE #36
-DSAI-07 ROLE CLASSIFICATION BASELINE ACTIVO — ISSUE #45 / SCRIPT IMPLEMENTADO
+DSAI-07 ROLE CLASSIFICATION BASELINE CERRADO / EXPERIMENTAL_SIGNAL / NO_DEPLOY — ISSUE #45
+DSAI-08 ROLE GRANULARITY AUDIT      ACTIVO — ISSUE #46 / SCRIPT IMPLEMENTADO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
-## DSAI-06 — resultado cerrado
+## DSAI-07 — resultado cerrado
 
 ```text
-target_rows=418
-labels=22
-players=24
-matches=38
-features=28
-feature_values=5081/11704
-features_per_row=min:1 median:12 max:20
-strict_past_label_seen=396/418
-identity_independent_strict_past=302/418
-single_player_labels=3
-labels_without_any_strict_past_test=0
-labels_without_other_player_strict_past=3
-conclusion=LIMITED_EXPERIMENT_ONLY
+candidate_rows=418
+evaluated_rows=302
+evaluated_labels=19
+skipped_no_other_player_prior_label=116
+logreg_accuracy=0.1325
+logreg_balanced_accuracy=0.0823
+logreg_macro_f1=0.0722
+majority_accuracy=0.0033
+majority_balanced_accuracy=0.0016
+majority_macro_f1=0.0005
+conclusion=LIMITED_BASELINE_EXPERIMENT_COMPLETE_NO_DEPLOYMENT_DECISION
 ```
 
-Decisión: existe suficiente estructura para un experimento supervisado limitado, pero no para considerar el classificador un modelo de producto. Tres clases no pueden validarse de forma independiente de identidad.
+Decisión: `EXPERIMENTAL_SIGNAL / NO_DEPLOY`.
 
-## DSAI-07 — activo
+La regresión logística supera claramente el baseline de clase mayoritaria bajo validación temporal e independiente de identidad, pero el rendimiento absoluto sigue siendo bajo. Las 22 clases detalladas están demasiado fragmentadas para producto.
 
-Objetivo: ejecutar el primer baseline ML supervisado real del TFM bajo un diseño más estricto que DSAI-06:
-- target táctico limpio de titulares;
-- únicamente FEATURE-01 como predictores;
-- test jugador-partido evaluado solo con entrenamiento de fechas estrictamente anteriores;
-- el jugador evaluado queda excluido completamente del entrenamiento de ese test;
-- el label objetivo debe existir previamente en otros jugadores;
-- no se fusionan ni eliminan clases para mejorar resultados;
-- imputación mediana solo dentro del train de cada evaluación;
-- comparación contra baseline de clase mayoritaria del train;
-- métricas: accuracy, balanced accuracy y macro-F1;
-- sin threshold de despliegue, ranking, fit o recomendación.
+Los warnings de scikit-learn reflejan conjuntos temporales pequeños y muchas clases; no invalidan la ejecución, pero son evidencia adicional de fragmentación.
 
-Interpretación: es un experimento post-partido de relación entre comportamiento observable y rol observado, no un predictor pre-partido ni una recomendación táctica.
+## DSAI-08 — activo
 
-Nueva dependencia de proyecto: `scikit-learn>=1.6`.
+Issue #46.
+
+Script: `dsai/role_granularity_audit.py`.
+
+Objetivo: auditar una granularidad de target recuperada directamente de la semántica de DATA-02. El importador construye el rol como `position | position_side`; DSAI-08 recupera únicamente `position` de forma determinista. No es una agrupación intuitiva.
+
+Se audita:
+- labels detallados vs posiciones fuente;
+- filas, jugadores y partidos por posición;
+- soporte strict-past;
+- soporte strict-past en otro jugador;
+- clases dependientes de un único jugador;
+- anomalías de parsing.
+
+Salida posible: `GO_SOURCE_POSITION_BASELINE`, `LIMITED_SOURCE_POSITION_BASELINE` o `NO_GO_SOURCE_POSITION`.
 
 ## Líneas todavía bloqueadas
 
@@ -78,11 +81,7 @@ Nueva dependencia de proyecto: `scikit-learn>=1.6`.
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\role_classification_baseline.py
+python dsai\role_granularity_audit.py
 ```
 
-Si aparece `ModuleNotFoundError: sklearn`, instalar una sola vez:
-
-```powershell
-python -m pip install "scikit-learn>=1.6"
-```
+No instalar nada.
