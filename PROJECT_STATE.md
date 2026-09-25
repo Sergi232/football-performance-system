@@ -18,193 +18,103 @@ PUBLICATION-01                      CERRADO / VALIDADO TÉCNICAMENTE
 DASHBOARD-01                        PROTOTYPE v0.1 / CONTRACT PASS
 ARCHITECTURE-01                     CERRADO — ISSUE #25
 ANALYTICS-01                        CERRADO / VALIDADO — ISSUE #26
-DECISION POLICY / N13000            GATE APROBADO C — ISSUE #27 CERRADO
-DSAI-01A FEASIBILITY AUDIT          CERRADO / EJECUTADO
-DSAI-02 CHANGE DETECTION            ACTIVO
+DECISION POLICY / N13000            GATE C APROBADO — ISSUE #27 CERRADO
+DSAI-01A FEASIBILITY AUDIT          CERRADO — ISSUE #28
+DSAI-02 CHANGE DETECTION            CERRADO EXPERIMENTAL / NO DEPLOY — ISSUE #29
+DSAI-03 PLAYER SIMILARITY           ACTIVO — ISSUE #32
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
-## 2. Forma de trabajo vigente
+## 2. Forma de trabajo
 
-El proyecto usa flujo **architecture-first + gated**. GitHub es la memoria técnica definitiva.
+Flujo architecture-first + gated. GitHub es la fuente de verdad.
 
-Fuente de verdad:
-1. `PROJECT_STATE.md` — estado operativo;
-2. `docs/ARCHITECTURE.md` — arquitectura vigente;
-3. `docs/DECISIONS.md` — decisiones estructurales/gates;
-4. `docs/WORKFLOW.md` — agentes, orden y desbloqueos;
-5. `docs/DATA_SCIENCE_AI_STRATEGY.md` — prioridad académica DS/IA;
-6. `docs/DSAI_EXPERIMENT_PLAN.md` — plan experimental congelado;
-7. `README.md` — presentación e instalación.
+Documentos principales:
+1. `PROJECT_STATE.md`;
+2. `docs/ARCHITECTURE.md`;
+3. `docs/DECISIONS.md`;
+4. `docs/WORKFLOW.md`;
+5. `docs/DATA_SCIENCE_AI_STRATEGY.md`;
+6. `docs/DSAI_EXPERIMENT_PLAN.md`;
+7. `README.md`.
 
-## 3. Prioridad académica del TFM — Data Science + IA
-
-La aplicación web es el producto final, pero la contribución académica principal debe quedar demostrada en datos, feature engineering, analytics, sistema experto, ML, validación y explicabilidad.
-
-```text
-DATA
-→ FEATURE ENGINE
-→ ANALYTICS / STATISTICS
-→ EXPERT SYSTEM
-→ ML / EXPERIMENTS
-→ VALIDATION / EXPLAINABILITY
-→ PRODUCT
-→ LLM
-```
-
-No convertir el proyecto en un dashboard con un LLM añadido. Debe existir al menos un bloque experimental DS/IA serio y reproducible.
-
-## 4. Arquitectura vigente
+## 3. Arquitectura vigente
 
 ```text
 CAPTURE / IMPORT
-      ↓
-RAW + NORMALIZED DATA
-      ↓
-FEATURE ENGINE
-      ↓
-ANALYTICS ENGINE
-      ↓
-DECISION ENGINE
-      ↓
-DS / ML EXPERIMENTAL CORE
-      ↓
-PRODUCT SERVICE LAYER
-      ↓
-WEB / REPORTS / AI ASSISTANT
-      ↓
-QA / PUBLICATION
+→ RAW + NORMALIZED DATA
+→ FEATURE ENGINE
+→ ANALYTICS ENGINE
+→ DECISION ENGINE
+→ DS / ML EXPERIMENTAL CORE
+→ PRODUCT SERVICE LAYER
+→ WEB / REPORTS / AI ASSISTANT
+→ QA / PUBLICATION
 ```
 
 Una capa superior no puede inventar métricas, rankings, evaluaciones o recomendaciones que no existan en una capa inferior validada.
 
-## 5. Orden obligatorio de trabajo
+## 4. Prioridad académica
 
-```text
-ARCHITECTURE-01              CERRADO
-        ↓
-ANALYTICS-01                 CERRADO / PASS
-        ↓
-DECISION POLICY / N13000     GATE C APROBADO
-        ↓
-DSAI-01A FEASIBILITY AUDIT   CERRADO
-        ↓
-DSAI-02 CHANGE DETECTION     ACTIVO
-        ↓
-DSAI-03 SIMILARITY/PROFILES
-        ↓
-DSAI-04 ROLE-LABEL AUDIT
-        ↓
-REVISIÓN DE BLOQUEADOS
-        ↓
-PRODUCT UX
-        ↓
-REPORTS-02 + ASSISTANT ARCHITECTURE
-        ↓
-FINAL PRODUCT / PUBLICATION / TFM
-```
+El TFM es de Data Science e IA. El producto web es el vehículo final, pero el núcleo académico debe quedar demostrado en:
+- data engineering;
+- feature engineering leakage-safe;
+- analytics estadístico;
+- sistema experto auditable;
+- experimentación DS/ML;
+- validación y explicabilidad;
+- IA generativa como capa final, no como motor de cálculo.
 
-## 6. Estado real del prototipo
+## 5. Baseline de datos
 
-Infraestructura reutilizable:
-- DuckDB y esquema;
-- Collector funcional;
-- GPS normalization;
-- FEATURE-01/02/03;
-- Analytics-01;
-- baseline experto N1000-N13000;
-- acceso read-only a datos;
-- guardrails LLM;
-- tooling PDF;
-- tooling de anonimización;
-- tests existentes.
-
-No definitivo:
-- UX Streamlit actual, demasiado orientada a tablas;
-- PDF ReportLab actual, prueba técnica y no informe profesional;
-- proveedor/arquitectura final del LLM;
-- criterios, umbrales y calibración final de N13000;
-- Product Service Layer común para web/report/assistant.
-
-## 7. Caso de desarrollo
-
-Deportivo Alavés 2025/26: 38 partidos, 36 jugadores, 835 `player_match`.
-
-Los datos profesionales sirven para desarrollo/validación. No se publicarán raw files originales. La demo anonimizada está técnicamente validada, pero redistribución sigue condicionada a licencia.
-
-## 8. Datos y features cerrados como baseline
-
-DATA-04: 27 raw stats player-match aprobadas. `key_passes` no se aproxima sin fuente verificada.
-
-FEATURE-01 `0.1.0`: 28 features.
-
-FEATURE-02 `0.2.0`: historial strict-past (`history_n`, `prev`, `prior_mean`, `prior_std`, `delta_prev`, `delta_prior_mean`, `prior_slope`).
-
-FEATURE-03 `0.3.0`: historial jugador + rol observado + feature; 590/835 player-match con rol; 23 raw role labels.
-
-El Feature Engine no decide si una métrica es buena/mala.
-
-## 9. ANALYTICS-01 — CERRADO / VALIDADO
-
-Issue #26 cerrado.
-
-DG-AN-01 aprobado: opción C, con evidencias separadas:
-- `SELF_ROLE_PRIOR` — jugador vs su historial strict-past en el mismo rol;
-- `PEER_ROLE_PRIOR` — jugador vs peers del mismo equipo/rol, strict-past, excluyendo al jugador actual y con equal-player weighting.
-
-Validación final:
-
-```text
-ANALYTICS-01 EVIDENCE CONTRACT: PASS
-base FEATURE-01 rows: 23380
-analytics rows: 46760
-SELF_ROLE_PRIOR rows: 23380
-PEER_ROLE_PRIOR rows: 23380
-peer strict-past samples independently checked: 30
-FEATURE-03 self-history provenance: PASS
-Peer-role strict-past / current-player exclusion / equal-player weighting: PASS
-No score, ranking, recommendation, sample threshold or good/bad label: PASS
-```
-
-## 10. Sistema experto baseline y policy N13000
-
-Motor `expert_0.7.0`: 154.475 decisiones; 2.505 N13000.
-
-`DG-N13-01` queda **APROBADO C**.
-
-Objetivo final de N13000 cuando la policy esté validada:
-- recomendación;
-- confianza/calibración;
-- evidencia;
-- justificación auditable;
-- limitaciones;
-- alternativa cuando proceda.
-
-La aprobación del contrato no autoriza a inventar pesos, umbrales ni confianza. Hasta que DS/estadística/literatura validen criterios y calibración, N13000 conserva `RECOMMENDATION_NOT_ISSUED_*`.
-
-## 11. DSAI-01A — FEASIBILITY AUDIT CERRADO
-
-Ejecución local completada:
+Caso de desarrollo: Deportivo Alavés 2025/26.
 
 ```text
 matches=38
 players=36
 player_match=835
-observed-role rows=590
-raw role labels=23
-labeled_players=28
-player-role sequences=87
-repeated=67
-median_matches=5.0
-max_matches=38
-FEATURE-01 names=28
-FEATURE-01 non-null=6324/23380
-analytics rows=46760
-GPS observations=0
 ```
 
-Resultado por caso:
+FEATURE-01 `0.1.0`: 28 features.
+FEATURE-02 `0.2.0`: temporal strict-past.
+FEATURE-03 `0.3.0`: temporal same-role strict-past.
 
+Roles observados: 590/835 player-match con rol; 23 raw labels.
+
+## 6. ANALYTICS-01 — CERRADO
+
+DG-AN-01 = C:
+- `SELF_ROLE_PRIOR`;
+- `PEER_ROLE_PRIOR`;
+- sempre separats.
+
+Validació:
+```text
+analytics rows=46760
+SELF_ROLE_PRIOR=23380
+PEER_ROLE_PRIOR=23380
+strict-past peer checks=PASS
+FEATURE-03 provenance=PASS
+no score/ranking/recommendation=PASS
+```
+
+## 7. N13000 policy
+
+DG-N13-01 = C.
+
+Contracte objectiu futur:
+- recomanació;
+- confiança/calibració;
+- evidència;
+- justificació;
+- limitacions;
+- alternativa.
+
+Encara no s’autoritza cap recomanació perquè no hi ha criteris/thresholds/calibració validats. N13000 manté `RECOMMENDATION_NOT_ISSUED_*`.
+
+## 8. DSAI-01A — FEASIBILITY AUDIT CERRADO
+
+Resultat:
 ```text
 player_similarity_profiles        GO_EXPLORATORY
 change_detection_evolution        GO_EXPERIMENT
@@ -214,125 +124,124 @@ expert_vs_ml                      BLOCKED_SHARED_TARGET
 n13000_recommendation_calibration BLOCKED_GROUND_TRUTH
 ```
 
-Interpretación metodológica:
-- change detection es el primer experimento por disponer de secuencias repetidas y baseline temporal strict-past;
-- similarity/profiles es viable como exploratorio, con validación de estabilidad;
-- observed-role classification necesita antes un audit semántico de labels: `Substitute` aparece como etiqueta y no equivale a un rol táctico específico;
-- role/player fit no dispone de target externo defendible;
-- Expert vs ML queda bloqueado sin shared target independiente;
-- N13000 no puede calibrarse sin ground truth de recomendación;
-- GPS no entra en experimentos actuales porque hay 0 observaciones.
-
-Plan congelado: `docs/DSAI_EXPERIMENT_PLAN.md`.
-
-## 12. DSAI-02 — CHANGE DETECTION ACTIVO
-
-Implementado:
-
+Més dades:
 ```text
-dsai/change_detection_experiment.py
+player-role sequences=87
+repeated=67
+median_matches=5
+max_matches=38
+FEATURE-01 non-null=6324/23380
+GPS observations=0
 ```
 
-Objetivo: estudiar detección de cambios sobre secuencias `jugador + rol observado + feature` usando referencias FEATURE-03 estrictamente anteriores.
+## 9. DSAI-02 — CHANGE DETECTION CERRADO EXPERIMENTAL
 
-Estadístico experimental:
+Script: `dsai/change_detection_experiment.py`.
 
+Estadístic experimental:
 ```text
 abs(current - same_role_prior_mean) / same_role_prior_std
 ```
 
-No es una métrica de producto ni un score de rendimiento. Se usa únicamente para evaluar sensibilidad.
-
-Validación inicial:
-- inyección sintética del valor actual a 0.5 / 1.0 / 1.5 / 2.0 desviaciones estándar del prior;
-- el baseline strict-past no se modifica;
-- ROC-AUC experimental original vs injected;
-- cobertura y sensibilidad por longitud de historial;
-- sin seleccionar threshold operativo;
-- sin etiqueta bueno/malo;
-- sin recomendación.
-
-Outputs locales:
-
+Cobertura:
 ```text
-dsai/output/change_detection_experiment.json
-dsai/output/change_detection_experiment.md
+evaluable_rows=3647
+players=25
+roles=18
+features=25
 ```
 
-## 13. Próximos experimentos
+Validació sintètica:
+```text
+0.5 std  AUC=0.2365  median uplift=-0.4645
+1.0 std  AUC=0.5341  median uplift= 0.0355
+1.5 std  AUC=0.7211  median uplift= 0.5355
+2.0 std  AUC=0.8024  median uplift= 1.0355
+```
 
-### DSAI-03 — Player similarity / profiles
-Segundo experimento. Perfil agregado jugador-rol con FEATURE-01, distancias simples como baseline y validación de estabilidad. No equivaldrá a ranking de calidad.
+Interpretació:
+- mediana natural aproximada ≈ `0.9645σ`;
+- 0.5σ queda dins la variació natural;
+- 1σ té molt solapament;
+- 1.5–2σ ofereixen separació creixent;
+- no existeix ground truth real de change-points.
 
-### DSAI-04 — Role-label audit
-Antes de cualquier clasificador supervisado se debe revisar la semántica de `primary_role`, distribución de clases y el uso de `Substitute`. No se agruparán etiquetas por intuición.
+Decisió: `EXPERIMENTALLY_USEFUL / NO_DEPLOY`.
 
-### Líneas bloqueadas
-- role/player fit: reformular target;
-- Expert vs ML: requiere shared target independiente;
-- N13000 calibration: requiere ground truth.
+No s’ha creat threshold operatiu, alerta, ranking ni recomanació.
 
-## 14. Prototipos de producto
+## 10. DSAI-03 — PLAYER SIMILARITY ACTIU
 
-### Dashboard
-Contract PASS. TEAM / PLAYER / MATCH / ASSISTANT funcionan técnicamente, pero predominan tablas y faltan insights estructurados.
+Issue #32.
 
-### Reports
-REPORTS-01 PASS. Los tres PDF se generan, pero son prueba técnica y no informes finales entregables.
+Implementat:
+```text
+dsai/player_similarity_experiment.py
+```
 
-### Assistant
-LLM-01/02 PASS en contratos y guardrails. Decisión final local/cloud/híbrida pendiente. La IA generativa es capa de interacción, no el núcleo científico del TFM.
+Unitat:
+```text
+player_id + exact observed primary_role
+```
 
-## 15. Agents / ownership
+Mètode inicial:
+- perfil = mitjana de FEATURE-01 en partits jugats dins del mateix rol;
+- `Substitute` exclòs de comparacions tàctiques;
+- z-standardisation per feature;
+- sense imputació de missing values;
+- distància RMS sobre features comuns no nuls;
+- comparació només entre el mateix rol observat;
+- nearest-neighbour exploratori;
+- validació temporal primera vs segona meitat;
+- escalat temporal ajustat només amb primera meitat.
 
-Definidos en `docs/WORKFLOW.md`:
-- A0 Architect/Integrator;
-- A1 Data & Collector;
-- A2 Feature Engine;
-- A3 Analytics;
-- A4 Expert/Decision Engine;
-- A5 ML/Validation;
-- A6 Product/UX;
-- A7 Reporting;
-- A8 AI Assistant;
-- A9 QA/Publication.
+Guardrails:
+- similarity ≠ quality;
+- similarity ≠ player fit;
+- similarity ≠ recommendation;
+- cap score global de rendiment;
+- cap target N12000/N13000.
 
-A5 es ahora el agente principal. A0 y A9 acompañan la fase.
+## 11. DSAI-04 — ROLE-LABEL AUDIT PENDENT
 
-## 16. Decision gates
+Abans de qualsevol classificació supervisada de rol:
+- revisar 23 labels;
+- tractar `Substitute` com estat no tàctic fins aclarir semàntica;
+- no agrupar rols per intuïció.
 
-Registro: `docs/DECISIONS.md`.
+## 12. Línies bloquejades
 
-- `DG-AN-01` — **APPROVED C**;
-- `DG-N13-01` — **APPROVED C**;
-- `DG-UX-01` — pendiente;
-- `DG-LLM-01` — pendiente;
-- `DG-REP-01` — pendiente;
-- `DG-PUB-01` — pendiente/derechos.
+- role/player fit: sense target independent;
+- Expert vs ML: sense shared target independent;
+- N13000 calibration: sense ground truth;
+- GPS ML: 0 observacions en dataset actual.
 
-No hay gate de Sergi necesario para ejecutar DSAI-02.
+## 13. Producte actual
 
-## 17. Restricciones vigentes
+Dashboard, Reports i Assistant funcionen tècnicament, però continuen com prototip v0.1.
 
-- no inventar eventos atómicos desde agregados ambiguos;
-- no inferir rol/formación sin evidencia;
-- no crear scores/umbrales de producto por intuición;
-- no mezclar self-history y peer comparison silenciosamente;
-- no usar LLM para cálculo crítico;
-- no emitir recomendación N13000 sin criterios/calibración validados;
-- no crear targets ML circulares a partir del propio sistema experto;
-- no publicar datos profesionales solo por estar anonimizados;
-- no usar `Substitute` como rol táctico sin resolver su semántica;
-- no rediseñar web/report/assistant antes del núcleo DS/IA prioritario.
+Pendents després del nucli DS/IA:
+- Product UX insight-first;
+- Reports-02 professionals;
+- arquitectura final LLM local/cloud/híbrida;
+- Product Service Layer comú;
+- publicació final i TFM.
 
-## 18. Siguiente paso exacto
+## 14. Decision gates pendents
 
-Ejecutar DSAI-02, sin instalar nada:
+- `DG-UX-01`;
+- `DG-LLM-01`;
+- `DG-REP-01`;
+- `DG-PUB-01`.
+
+## 15. Siguiente paso exacto
+
+No cal instal·lar res.
 
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\change_detection_experiment.py
+python dsai\player_similarity_experiment.py
 ```
 
-Después, A5 revisará cobertura, sensibilidad y limitaciones y decidirá si DSAI-02 pasa a una segunda validación o se cierra como evidencia experimental antes de DSAI-03.
+Després A5 revisa cobertura i estabilitat temporal i decideix si la funcionalitat de similitud és defensable o queda només com a experiment exploratori.
