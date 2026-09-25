@@ -17,14 +17,15 @@ GPS-01 contrato multi-proveedor          CERRADO / VALIDADO
 FEATURE-01 base determinista             CERRADO / VALIDADO
 FEATURE-02 evolución temporal            CERRADO / VALIDADO
 EXPERT-01 N1000-N3000                    CERRADO / VALIDADO
-EXPERT-02 N4000-N7000                    PREPARADO / PENDIENTE VALIDACIÓN LOCAL
-Dashboard                                DESPUÉS DEL MOTOR
+EXPERT-02 N4000-N7000                    CERRADO / VALIDADO
+EXPERT-03 N8000-N9000                    PREPARADO / PENDIENTE VALIDACIÓN LOCAL
+Dashboard                                DESPUÉS DEL MOTOR BASE
 LLM / PDF                                DESPUÉS DEL DASHBOARD BASE
 ```
 
 El Collector puede recibir mejoras visuales/UX posteriormente, pero su contrato de datos ya no bloquea el desarrollo.
 
-## 2. Objetivo del producto
+## 2. Producto
 
 Aplicación web para equipos amateur o semiprofesionales sin departamento de análisis:
 
@@ -39,287 +40,148 @@ VÍDEO / DATA COLLECTOR + GPS OPCIONAL
 → INFORMES PDF
 ```
 
-TEAM MODE es el producto principal. PLAYER MODE es complementario. RIVAL MODE queda como extensión futura y el sistema principal no depende de datos del rival.
+TEAM MODE es principal. PLAYER MODE es complementario. RIVAL MODE queda como extensión futura; el sistema principal no depende de datos del rival.
 
 ## 3. Principios aprobados
 
-- GPS es opcional y complementario.
-- Separación estricta entre raw, features, modelos y conclusiones.
+- GPS opcional y complementario.
+- Separación estricta raw → features → motor → conclusiones.
 - Ninguna conclusión importante depende exclusivamente de un LLM.
 - Evitar data leakage.
-- Toda regla, umbral o peso debe justificarse con datos, literatura, validación o experimento.
+- Toda regla, umbral o peso requiere datos, literatura, validación o experimento.
 - No rellenar datos ausentes mediante supuestos silenciosos.
-- PannaData/Opta sirve para desarrollar y validar; no define la taxonomía del Collector amateur.
-- Una estadística raw puede conservarse aunque su interpretación final requiera contexto.
+- PannaData/Opta sirve para desarrollar/validar; no define el producto amateur.
 - GitHub es la fuente de verdad técnica.
 - Priorizar MVP funcional antes de aumentar complejidad.
 
 ## 4. Arquitectura materializada
 
 ```text
-collector/       captura manual/vídeo y taxonomía
+collector/       captura manual/vídeo
 data/            esquema, imports y datos normalizados
-gps/             contrato y normalización multi-proveedor
-features/        variables derivadas deterministas y temporales
+gps/             normalización multi-proveedor
+features/        variables deterministas y temporales
 engine/          análisis determinista
 decision_tree/   sistema experto auditable
 models/          ML opcional
 app/             dashboard web
 llm/             consulta y explicación
-reports/         exportación PDF
+reports/         PDF
 tests/           regresión y validación
 ```
 
-Base: DuckDB. Unidad analítica principal: `player_match = jugador + partido`.
+DuckDB. Unidad principal: `player_match = jugador + partido`.
 
-Tablas principales:
-
-```text
-teams
-players
-matches
-team_match
-player_match
-player_role_stints
-match_events
-player_match_raw_stats
-collector_sessions
-gps_imports
-gps_player_map
-gps_observations
-player_match_features
-decision_results
-```
+Tablas clave: `teams`, `players`, `matches`, `team_match`, `player_match`, `player_role_stints`, `match_events`, `player_match_raw_stats`, `collector_sessions`, `gps_imports`, `gps_player_map`, `gps_observations`, `player_match_features`, `decision_results`.
 
 Versiones de esquema:
 
 ```text
-0.1.0 core event-oriented schema
+0.1.0 core
 0.2.0 player_match_raw_stats
 0.3.0 tackles_won + goals_conceded
-0.4.0 GPS normalization contract
+0.4.0 GPS normalization
 ```
 
 ## 5. Caso demostrador
 
 ```text
 Deportivo Alavés — LaLiga 2025/26
-Opta team id: 4dtdjgnpdq9uw4sdutti0vaar
+team id: 4dtdjgnpdq9uw4sdutti0vaar
 38 partidos
 36 jugadores
 835 player_match
 ```
 
-Antes de publicar se anonimizará como TEAM_001 / PLAYER_001 / OPP_001 con IDs internos. Nunca se publicarán datasets completos originales de PannaData/Opta.
+Antes de publicar se anonimizará como TEAM_001 / PLAYER_001 / OPP_001. No se publicarán datasets completos originales de PannaData/Opta.
 
 ## 6. DATA — CERRADO
 
 ### DATA-01
-
 - 38 fixtures.
-- 590 player_match iniciales con participación.
 - validación PASS.
 
 ### DATA-02
-
-- 835 filas finales de `player_match`.
-- 418 titulares = 38 x 11.
-- 245 suplentes con 0 minutos incorporados desde lineups.
-- 36 jugadores distintos.
-- no se infiere formación desde `formation_place`.
+- 835 `player_match`.
+- 418 titulares = 38×11.
+- 245 suplentes con 0 minutos.
+- 36 jugadores.
+- no se infiere formación.
 - no se crean role stints ficticios.
 
 ### DATA-03
-
-`opta_events.parquet` no es un feed atómico completo en este export. No se inventan pases, regates, tackles, intercepciones, faltas o pérdidas.
+`opta_events.parquet` no es feed atómico completo. No se inventan pases, regates, tackles, intercepciones o faltas.
 
 ```text
-shot_events fuente                    464
-autogol excluido                        1
-SHOT importados                        463
-cobertura                            38/38
+shot_events fuente 464
+autogol excluido 1
+SHOT importados 463
+cobertura 38/38
+CARD 98
+CARD sin player_id 2
 ```
 
-`shots_blocked` queda `AGGREGATE_CANONICAL`. Tarjetas: 98 importadas; 2 son eventos de equipo sin atribución de jugador y se guardan con `player_id=NULL`.
+`shots_blocked` queda `AGGREGATE_CANONICAL`.
 
 ### DATA-04
+835/835 filas, 38/38 partidos, 36 jugadores. Validación PASS.
 
-`player_match_raw_stats`: 835/835 filas, 38/38 partidos, 36 jugadores. Validación PASS.
+27 raw stats aprobadas: pases total/completados, asistencias, largos, centros, regates, turnovers, dispossessed, remates, bloqueados, goles, tackles total/ganados, intercepciones, blocked passes, despejes, faltas cometidas/recibidas, tarjetas, penaltis concedidos/ganados, paradas y goles encajados.
 
-27 estadísticas raw aprobadas:
+`key_passes` no tiene columna verificada en este export. No se aproxima. Los NULL se preservan.
 
-```text
-passes_total
-passes_completed
-assists
-long_balls_total
-long_balls_completed
-crosses_total
-crosses_completed
-dribbles_total
-dribbles_won
-turnovers
-dispossessed
-shots_total
-shots_blocked
-goals
-tackles_total
-tackles_won
-interceptions
-blocked_passes
-clearances
-fouls_committed
-fouls_received
-yellow_cards
-red_cards
-penalties_conceded
-penalties_won
-saves
-goals_conceded
-```
-
-`key_passes` es útil para el sistema/Collector, pero este export no tiene una columna verificada equivalente. No se aproxima.
-
-Los `NULL` de la fuente se preservan como `NULL`.
-
-### Reparación de fecha de partido
-
-FEATURE-02 detectó que `matches.match_date` estaba a NULL por parsing incorrecto del formato real de Opta.
-
-```text
-fuente: opta_fixtures.match_date
-formato: YYYY-MM-DDZ
-fixtures reparados: 38/38
-distinct dates: 38
-```
-
-No se infirió cronología desde IDs ni orden de filas.
+### Fechas
+`opta_fixtures.match_date` usa `YYYY-MM-DDZ`. Los 38 `matches.match_date` fueron reparados desde fuente real; no se infirió cronología por ID u orden.
 
 ## 7. COLLECTOR-01 — CERRADO FUNCIONALMENTE
 
-Catálogo: `collector/event_catalog.json` v0.3.0.
+Catálogo `collector/event_catalog.json` v0.3.0.
 
-Acciones MVP:
-
-```text
-PASS NORMAL/LONG/CROSS → SUCCESS/FAIL
-DRIBBLE → SUCCESS/FAIL
-SHOT → GOAL/ON_TARGET/OFF_TARGET/BLOCKED
-TACKLE → SUCCESS/FAIL
-INTERCEPTION
-BLOCK
-CLEARANCE
-FOUL COMMITTED/RECEIVED
-CARD YELLOW/RED
-LOSS OTHER
-PENALTY WON/CONCEDED → GOAL/MISSED
-CORNER FOR/AGAINST
-GK SAVE/GOAL_CONCEDED
-```
+Acciones: PASS NORMAL/LONG/CROSS SUCCESS/FAIL; DRIBBLE; SHOT GOAL/ON_TARGET/OFF_TARGET/BLOCKED; TACKLE; INTERCEPTION; BLOCK; CLEARANCE; FOUL; CARD; LOSS OTHER; PENALTY WON/CONCEDED GOAL/MISSED; CORNER FOR/AGAINST; GK SAVE/GOAL_CONCEDED.
 
 Qualifiers: `key_pass`, `assist`, `second_yellow`, `set_piece_result`, `penalty_taker_player_id`.
 
-Decisiones clave:
+Decisiones: LONG/CROSS cuentan como pase; PASS FAIL y DRIBBLE FAIL generan pérdida derivada; LOSS solo otras pérdidas; falta peligrosa se derivará desde x/y; clips ABP conservan tiempo partido/vídeo.
 
-- LONG/CROSS cuentan también como pase total.
-- PASS FAIL y DRIBBLE FAIL generan pérdida derivada.
-- LOSS se reserva para otras pérdidas.
-- poste agrupado en OFF_TARGET en MVP.
-- falta peligrosa no es un botón subjetivo: se captura x/y y se derivará cuando exista criterio validado.
-- córners/faltas conservan tiempo de partido/vídeo para clips ABP.
-
-Versión funcional: `collector/data_collector_futbol_mvp.html`.
-
-Validación local: PASS, 20/20 acciones cubiertas. Retocs visuales/UX quedan en backlog no bloqueante.
+`collector/data_collector_futbol_mvp.html`. Validación local PASS 20/20. Retocs UX no bloqueantes.
 
 ## 8. GPS-01 — CERRADO / VALIDADO
 
-Contrato normalizado multi-proveedor en `gps/`.
+Contrato multi-proveedor normalizado. Unidades canónicas: ms, m, m/s, m/s² y x/y cuando el mapping espacial es seguro. Mapping declarativo, conversiones, acumulada→incremental, `gps_player_map`, metadatos y QC. Sin fuzzy matching silencioso ni umbrales sprint/HIE/carga inventados.
 
-Unidades canónicas:
-
-```text
-timestamp_ms      milisegundos
-distance_m        metros
-speed_m_s         m/s
-acceleration_m_s2 m/s²
-x/y               metros cuando el mapping espacial es seguro
-```
-
-Incluye mapping declarativo, conversión de unidades, distancia acumulada→incremental, `gps_player_map`, metadatos de importación y controles de calidad. No hay fuzzy matching silencioso ni umbrales inventados de sprint/HIE/carga.
-
-Validación local: `GPS-01 VALIDATION: PASS`.
+`GPS-01 VALIDATION: PASS`.
 
 ## 9. FEATURE-01 — CERRADO / VALIDADO
 
-Catálogo: `features/catalog.json` v0.1.0.
+`features/catalog.json` v0.1.0. 28 features: 7 ratios + 21 por90.
 
-28 features deterministas:
-
-- 7 ratios de efectividad;
-- 21 variables por 90 minutos.
-
-Reglas:
-
-- ratio solo si numerador/denominador existen y denominador > 0;
-- por90 solo si `minutes_played > 0`;
-- NULL raw permanece NULL;
-- sin ratings, pesos, percentiles ni umbrales expertos.
-
-Validación local 25/09/2026:
+Reglas: ratio solo con numerador/denominador válidos y denominador >0; por90 solo con minutos >0; NULL raw permanece NULL; sin ratings/pesos/percentiles/umbrales.
 
 ```text
 FEATURE-01 VALIDATION: PASS
-feature rows: 23380/23380
-non-null values: 6324
-coverage: 38 matches / 36 players
-ratio domains [0,1]: PASS
-per-90 + zero-minute NULL: PASS
-raw NULL preservation: PASS
+feature rows 23380/23380
+non-null 6324
+coverage 38 matches / 36 players
 ```
 
 ## 10. FEATURE-02 — CERRADO / VALIDADO
 
-Catálogo: `features/temporal_catalog.json` v0.2.0.
+`features/temporal_catalog.json` v0.2.0. Por cada feature: `history_n`, `prev`, `prior_mean`, `prior_std`, `delta_prev`, `delta_prior_mean`, `prior_slope`.
 
-Para cada una de las 28 features base se crean 7 primitivas temporales:
-
-```text
-history_n
-prev
-prior_mean
-prior_std
-delta_prev
-delta_prior_mean
-prior_slope
-```
-
-Contrato anti-leakage:
-
-- solo usa observaciones con `match_date` estrictamente anterior;
-- el partido actual nunca entra en su propio baseline;
-- partidos de la misma fecha no se informan entre sí;
-- futuros nunca entran;
-- NULL no se convierte a cero;
-- no hay ventanas arbitrarias 3/5/10.
-
-Validación local 25/09/2026:
+Strict-past: solo fechas anteriores; partido actual y misma fecha no entran; futuros no entran; NULL no se vuelve 0; sin ventanas arbitrarias 3/5/10.
 
 ```text
 FEATURE-02 VALIDATION: PASS
-feature_version: 0.2.0
-base features: 28
-temporal operators: 7
-feature rows: 163660/163660
-coverage: 38 matches / 36 players
-history_n integer/non-negative: PASS
-prior_std non-negative: PASS
-first-date strict-past contract: PASS
+feature rows 163660/163660
+coverage 38 / 36
+history_n PASS
+prior_std PASS
+first-date strict-past PASS
 ```
 
 ## 11. Sistema experto
 
-Arquitectura prevista:
+Arquitectura:
 
 ```text
 N1000  disponibilidad / actividad
@@ -330,132 +192,117 @@ N5000  creación / progresión
 N6000  contribución defensiva
 N7000  finalización
 N8000  contexto del equipo
-N9000  componente físico
+N9000  componente físico opcional
 N10000 rol y encaje táctico
 N11000 consistencia / tendencia
 N12000 player fit
 N13000 recomendación final
 ```
 
-Cada nodo mantiene:
-
-```text
-entrada → condición → resultado → confianza → justificación
-```
+Cada nodo: `entrada → condición → resultado → confianza → justificación`.
 
 ### EXPERT-01 — CERRADO / VALIDADO
+Motor `expert_0.1.0`.
 
-Motor: `expert_0.1.0`.
-
-Archivos:
-
-```text
-decision_tree/catalog.json
-decision_tree/build_stage1.py
-decision_tree/validate_stage1.py
-decision_tree/run_stage1.py
-tests/test_decision_tree_stage1.py
-```
-
-Nodos:
-
-- `N1000.100`: actividad/listado observada desde minutos + titularidad; no infiere lesión ni disponibilidad médica.
-- `N2000.100`: rol estructural observado; no infiere arquetipo ni player-fit.
-- `N3000.*.DELTA_PRIOR_MEAN`: valor actual frente a media strict-past.
-- `N3000.*.PRIOR_SLOPE`: dirección matemática de la pendiente strict-past.
-
-Validación local 25/09/2026:
+N1000 actividad observada; N2000 rol observado; N3000 diferencia frente media strict-past + pendiente strict-past. `confidence=1.0` = regla determinista, no probabilidad.
 
 ```text
 EXPERT-01 VALIDATION: PASS
-engine_version: expert_0.1.0
-player_match rows: 835
-base features: 28
-decision rows: 48430/48430
-family coverage: N1000=835, N2000=835, N3000=46760
-duplicate node outputs: 0
-deterministic confidence contract: PASS
-no premature good/bad/improving/declining/recommendation labels: PASS
+48430/48430 decisiones
+N1000=835
+N2000=835
+N3000=46760
+duplicados=0
 ```
 
-`confidence=1.0` significa ejecución determinista de la regla, no probabilidad calibrada de rendimiento.
+### EXPERT-02 — CERRADO / VALIDADO
+Motor `expert_0.2.0`.
 
-La frontera 0 describe únicamente el signo matemático. `ABOVE_PRIOR_MEAN` no equivale automáticamente a “mejor”.
+N4000 amenaza ofensiva, N5000 creación/progresión, N6000 defensa, N7000 finalización. Cada señal compara al jugador solo con su propio historial strict-past. `metric_role` es metadata, no peso.
 
-### EXPERT-02 — PREPARADO / PENDIENTE VALIDACIÓN LOCAL
+```text
+EXPERT-02 VALIDATION: PASS
+player_match 835
+domain nodes/player-match 24
+decision rows 68470/68470
+N1000=835
+N2000=835
+N3000=46760
+N4000=3340
+N5000=7515
+N6000=5845
+N7000=3340
+N1000-N3000 exact carry-forward PASS
+confidence contract PASS
+no evaluative/recommendation labels PASS
+```
 
-Motor: `expert_0.2.0`.
+Sin score, peso, percentil, role adjustment ni umbral de significancia práctica.
+
+### EXPERT-03 — PREPARADO / PENDIENTE VALIDACIÓN LOCAL
+Motor `expert_0.3.0`.
 
 Archivos:
 
 ```text
-decision_tree/domain_catalog.json
-decision_tree/build_stage2.py
-decision_tree/validate_stage2.py
-decision_tree/run_stage2.py
-tests/test_decision_tree_stage2.py
+decision_tree/context_catalog.json
+decision_tree/build_stage3.py
+decision_tree/validate_stage3.py
+decision_tree/run_stage3.py
+tests/test_decision_tree_stage3.py
 ```
 
-Diseño:
+N8000 usa solo `team_match` propio:
+- N8000.100 HOME/AWAY/UNKNOWN;
+- N8000.110 WIN/DRAW/LOSS/UNKNOWN;
+- N8000.120 signo exacto del goal difference;
+- N8000.130 formación observada o `FORMATION_UNKNOWN`, nunca inferida.
 
-- N1000-N3000 se arrastran exactamente desde `expert_0.1.0`.
-- N4000 añade evidencia de amenaza ofensiva.
-- N5000 añade creación/progresión y costes de pérdida.
-- N6000 añade contribución defensiva y costes disciplinarios defensivos.
-- N7000 añade output y contexto de finalización.
-- cada señal se compara únicamente con el historial strict-past del mismo jugador.
-- `metric_role = volume/output/efficiency/cost/context` es metadata semántica, no un peso.
-- no hay scores, pesos, percentiles, ajuste por rol, recomendaciones ni umbrales de significancia práctica.
-- la escritura en DuckDB se hace en bloque para evitar el cuello de botella de `executemany` observado en EXPERT-01.
+N9000:
+- N9000.100 `GPS_OBSERVED` o `GPS_NOT_AVAILABLE` desde `gps_observations`;
+- ausencia GPS no genera estimación física;
+- aún no se crean distance/load/sprint/HIE features ni umbrales físicos.
+
+N1000-N7000 deben arrastrarse exactamente desde `expert_0.2.0`.
 
 ## 12. LLM
 
-Arquitectura obligatoria:
+Arquitectura obligatoria: `DATA → ANALYTICS → DECISION ENGINE → LLM → COACH`.
 
-```text
-DATA → ANALYTICS → DECISION ENGINE → LLM → COACH
-```
+El LLM explica/consulta resultados estructurados. No inventa métricas ni sustituye cálculos críticos.
 
-El LLM explica y consulta resultados estructurados. No inventa métricas ni sustituye cálculos críticos.
+## 13. Restricciones vigentes
 
-## 13. Decisiones descartadas / restricciones
-
-- No usar todas las variables Opta solo porque existan.
+- No usar variables Opta solo porque existan.
 - No duplicar pérdidas derivadas.
 - No inferir formación sin evidencia.
 - No crear role stints ficticios.
-- No forzar semántica event-level desde agregados ambiguos.
-- No tratar `opta_events` como feed atómico completo.
-- No hacer que una estadística raw positiva cambie automáticamente los minutos.
-- No inventar umbrales GPS de sprint/HIE/carga antes de justificarlos.
-- No usar fuzzy matching silencioso para identidades GPS.
-- No convertir métricas propietarias GPS en features canónicas automáticamente.
-- No convertir la dirección matemática de N3000-N7000 en juicio de rendimiento sin una regla validada por métrica.
-- No usar un score global ni recomendación final antes de validar reglas y pesos.
+- No forzar eventos atómicos desde agregados ambiguos.
+- No inventar umbrales GPS.
+- No usar fuzzy matching silencioso GPS.
+- No convertir dirección matemática en juicio de rendimiento sin regla validada por métrica.
+- No usar score global/recomendación final antes de validar reglas y pesos.
 
 ## 14. Problemas abiertos
 
-- validar localmente EXPERT-02;
-- diseñar después N8000 contexto del equipo con variables realmente disponibles;
-- N9000 debe funcionar como rama opcional cuando no haya GPS;
-- decidir reglas de muestra mínima/significancia práctica con validación, no por intuición;
-- añadir features físicas de rendimiento cuando exista GPS real o definición suficientemente justificada;
-- crear script de anonimización para publicación;
-- mejorar reejecución incremental de algunos imports;
-- retocar UX del Collector al final;
-- determinar fuente fiable de `key_passes` si aparece otro export.
+- validar localmente EXPERT-03;
+- después preparar N10000 rol/encaje con evidencia auditable;
+- definir muestra mínima/significancia práctica mediante validación, no intuición;
+- añadir features físicas cuando haya GPS real o definiciones justificadas;
+- script de anonimización para publicación;
+- mejorar reejecución incremental;
+- retocar UX Collector al final;
+- localizar fuente fiable de `key_passes` si aparece otro export.
 
 ## 15. Siguiente paso exacto
 
-Ejecutar:
-
 ```powershell
-python decision_tree\run_stage2.py
+python decision_tree\run_stage3.py
 ```
 
 Si pasa:
-
-1. cerrar EXPERT-02;
-2. construir N8000 contexto del equipo sin depender del rival;
-3. diseñar N9000 como rama física opcional y degradable cuando GPS no exista;
-4. preparar N10000 rol/encaje utilizando primero evidencia auditable antes de cualquier score o recomendación.
+1. cerrar EXPERT-03;
+2. mantener N9000 como rama opcional si no hay GPS;
+3. construir N10000 rol/encaje sin score arbitrario;
+4. después N11000 consistencia/tendencia y N12000 player fit;
+5. N13000 recomendación final solo tras validar reglas/pesos.
