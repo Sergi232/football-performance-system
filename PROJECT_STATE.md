@@ -21,8 +21,8 @@ EXPERT-01 N1000-N3000                    CERRADO / VALIDADO
 EXPERT-02 N4000-N7000                    CERRADO / VALIDADO
 EXPERT-03 N8000-N9000                    CERRADO / VALIDADO
 EXPERT-04 N10000 rol/encaje              CERRADO / VALIDADO
-EXPERT-05 N11000 consistencia/tendencia  PREPARADO / PENDIENTE VALIDACIÓN LOCAL
-N12000 player fit                        DESPUÉS DE EXPERT-05
+EXPERT-05 N11000 consistencia/tendencia  CERRADO / VALIDADO
+EXPERT-06 N12000 player-fit evidence     PREPARADO / PENDIENTE VALIDACIÓN LOCAL
 N13000 recomendación final               SOLO TRAS VALIDAR REGLAS/PESOS
 Dashboard                                DESPUÉS DEL MOTOR BASE
 LLM / PDF                                DESPUÉS DEL DASHBOARD BASE
@@ -283,27 +283,47 @@ confidence contract PASS
 
 N10000 contiene rol observado, número de partidos previos en el mismo rol y 24 señales N4000-N7000 condicionadas al mismo rol. `ABOVE/BELOW_ROLE_PRIOR_MEAN` es dirección descriptiva, no un score de fit. Sin mínimo de muestra, peso, percentil, ranking o recomendación.
 
-### EXPERT-05 — PREPARADO / PENDIENTE VALIDACIÓN LOCAL
-Motor `expert_0.5.0`. Issue #16.
+### EXPERT-05 — CERRADO / VALIDADO
+Motor `expert_0.5.0`. N11000 crea 56 nodos por jugador-partido = 28 features × 2 evidencias.
+
+```text
+EXPERT-05 VALIDATION: PASS
+player_match 835
+base features 28
+N11000 nodes/player-match 56
+decision rows 141115/141115
+N11000 rows 46760/46760
+N11000 evidence outputs checked 46760
+N1000-N10000 exact carry-forward PASS
+strict-past prior_std/prior_slope identity PASS
+confidence contract PASS
+```
+
+`VARIABILITY` expone `prior_std` exacto y `TREND` expone `prior_slope` exacto de FEATURE-02. Menos de 2 observaciones previas devuelve `INSUFFICIENT_PRIOR_HISTORY` por requisito matemático. No se clasifica consistencia alta/baja ni tendencia improving/declining. Sin scores, pesos, percentiles, rankings o recomendaciones.
+
+### EXPERT-06 — PREPARADO / PENDIENTE VALIDACIÓN LOCAL
+Motor `expert_0.6.0`. N12000 sintetiza la evidencia de N10000 sin convertirla en un score de fit.
 
 Archivos:
 
 ```text
-decision_tree/consistency_trend_catalog.json
-decision_tree/build_stage5.py
-decision_tree/validate_stage5.py
-decision_tree/run_stage5.py
-tests/test_decision_tree_stage5.py
+decision_tree/player_fit_evidence_catalog.json
+decision_tree/build_stage6.py
+decision_tree/validate_stage6.py
+decision_tree/run_stage6.py
+tests/test_decision_tree_stage6.py
 ```
 
-N11000 crea 56 nodos por jugador-partido = 28 features × 2 evidencias:
+N12000 expone por jugador-partido:
+- rol observado;
+- número de partidos strict-past en ese rol;
+- número de señales same-role evaluables y no evaluables;
+- conteos exactos `ABOVE/BELOW/EQUAL_ROLE_PRIOR_MEAN`;
+- cobertura exacta de evidencia = evaluables / 24;
+- estado de disponibilidad de evidencia (`ROLE_UNKNOWN`, `NO_EVALUABLE_ROLE_EVIDENCE`, `ROLE_EVIDENCE_AVAILABLE`);
+- conteo evaluable por familias N4000/N5000/N6000/N7000.
 
-- `VARIABILITY`: `prior_std` exacto de FEATURE-02;
-- `TREND`: `prior_slope` exacto de FEATURE-02.
-
-Menos de 2 observaciones strict-past devuelve `INSUFFICIENT_PRIOR_HISTORY` porque desviación y pendiente no son matemáticamente evaluables. No es un umbral de rendimiento.
-
-No se clasifica la consistencia como alta/baja ni la tendencia como improving/declining. No se crean scores, pesos, percentiles, rankings ni recomendaciones. N1000-N10000 debe arrastrarse exactamente desde `expert_0.4.0`.
+Los conteos no reciben pesos ni interpretación de bueno/malo. En métricas `cost`, `ABOVE` no se reinterpreta como favorable. N12000 sigue siendo una capa de evidencia para posterior validación, no una recomendación.
 
 ## 11. LLM
 
@@ -324,14 +344,14 @@ El LLM explica/consulta resultados estructurados. No inventa métricas ni sustit
 - No mezclar historiales de roles distintos para evaluar encaje de rol.
 - No fijar mínimo de muestra de rol por intuición.
 - No etiquetar consistencia alta/baja o tendencia improving/declining sin validación.
+- No interpretar conteos N12000 como score de fit.
 - No usar score global/recomendación final antes de validar reglas y pesos.
 
 ## 13. Problemas abiertos
 
-- validar localmente EXPERT-05;
-- diseñar N12000 player fit sobre evidencia ya validada, sin score arbitrario;
+- validar localmente EXPERT-06;
+- definir y validar reglas de N13000 sin inventar pesos;
 - decidir muestras mínimas/significancia práctica mediante validación o literatura;
-- N13000 requerirá reglas finales justificadas;
 - añadir features físicas cuando haya GPS real o definiciones justificadas;
 - script de anonimización para publicación;
 - mejorar reejecución incremental;
@@ -341,12 +361,11 @@ El LLM explica/consulta resultados estructurados. No inventa métricas ni sustit
 ## 14. Siguiente paso exacto
 
 ```powershell
-python decision_tree\run_stage5.py
+python decision_tree\run_stage6.py
 ```
 
 Si pasa:
-1. cerrar EXPERT-05;
-2. construir N12000 player fit;
-3. definir y validar N13000 recomendación final;
-4. cerrar motor base;
-5. pasar al primer dashboard funcional.
+1. cerrar EXPERT-06;
+2. definir N13000 como gate/recomendación solo con reglas justificadas;
+3. cerrar motor base;
+4. pasar al primer dashboard funcional.
