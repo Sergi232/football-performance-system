@@ -1,0 +1,25 @@
+{
+  "feature_version": "0.3.0",
+  "base_feature_version": "0.1.0",
+  "role_source": "player_match.primary_role",
+  "status": "role_conditioned_strict_past",
+  "principles": [
+    "Roles are taken exactly from player_match.primary_role; no role is inferred.",
+    "Every baseline uses only observations with match_date strictly earlier than the current match.",
+    "Matches on the same date never inform one another.",
+    "Role-conditioned metric history contains only prior non-null observations of that metric in the same observed role.",
+    "role_match_history_n counts prior matches in the same observed role with minutes_played > 0.",
+    "Missing roles remain unavailable; they are never replaced by a default role.",
+    "No score, percentile, weight, minimum-sample threshold or fit judgement is introduced."
+  ],
+  "metric_operators": [
+    {"name": "role_history_n", "description": "Prior non-null observations of this metric for the same player in the same observed role."},
+    {"name": "role_prior_mean", "description": "Mean of strict-past metric values in the same observed role."},
+    {"name": "role_prior_std", "description": "Population standard deviation of strict-past metric values in the same observed role."},
+    {"name": "role_delta_prior_mean", "description": "Current metric minus strict-past same-role mean."},
+    {"name": "role_prior_slope", "description": "OLS slope of strict-past metric values in the same observed role."}
+  ],
+  "context_features": [
+    {"name": "role_match_history_n", "description": "Number of strictly earlier matches played (>0 minutes) by the player in the same observed role."}
+  ]
+}
