@@ -10,27 +10,35 @@ El proyecto avanza por fases ordenadas. Cada fase tiene un agente propietario, e
 
 No se implementan interfaces definitivas antes de que las capas analíticas que las alimentan estén cerradas.
 
+El TFM pertenece a Data Science e Inteligencia Artificial. Por tanto, la experimentación, validación y modelado tienen prioridad académica sobre el pulido visual final.
+
 ## 2. Orden de trabajo
 
 ```text
-F0  ARCHITECTURE
+F0  ARCHITECTURE                    [cerrado]
       ↓
-F1  DATA / COLLECTOR       [base casi cerrada]
+F1  DATA / COLLECTOR               [base cerrada]
       ↓
-F2  FEATURES               [base cerrada]
+F2  FEATURES                       [base cerrada]
       ↓
-F3  ANALYTICS              [siguiente trabajo principal]
+F3  ANALYTICS                      [activo]
       ↓
-F4  DECISION POLICY        [N13000]
+F4  DECISION POLICY                [N13000]
       ↓
-F5  PRODUCT UX
+F5  DS / AI EXPERIMENTAL CORE
+      ├─ statistical validation
+      ├─ player similarity / profiles
+      ├─ change detection
+      └─ expert vs ML si es metodológicamente válido
       ↓
-F6  REPORTING + ASSISTANT
+F6  PRODUCT UX
       ↓
-F7  ML / VALIDATION AVANZADA si procede
+F7  REPORTING + ASSISTANT
       ↓
 F8  FINAL PRODUCT / PUBLICATION / TFM
 ```
+
+F5 es una fase metodológica obligatoria. No obliga a desplegar un modelo inválido; sí obliga a formular hipótesis, construir baselines y documentar resultados reproducibles.
 
 ## 3. Agentes
 
@@ -103,9 +111,14 @@ Propietario de:
 - change detection;
 - role-fit ML;
 - comparación Expert vs ML;
-- validación fuera de muestra.
+- validación fuera de muestra;
+- análisis de error;
+- ablations cuando aporten valor;
+- incertidumbre y reproducibilidad.
 
-Solo se activa cuando la hipótesis y los datos lo justifican.
+A5 tiene prioridad académica antes del pulido final del producto.
+
+No se fuerza un modelo cuando no hay labels o muestra suficiente. En ese caso debe quedar documentado el estudio de viabilidad, el baseline y la razón metodológica para no desplegarlo.
 
 ### A6 — Product / UX
 
@@ -142,6 +155,8 @@ Propietario de:
 
 No calcula conclusiones críticas.
 
+La IA generativa es una capa de interacción; la contribución científica principal debe seguir siendo medible sin el LLM.
+
 ### A9 — QA / Publication
 
 Propietario de:
@@ -161,15 +176,16 @@ No todos los agentes trabajan secuencialmente.
 Permitido:
 - A9 QA acompaña todas las fases;
 - A0 Architect acompaña todas las fases;
-- A6 Product puede diseñar wireframes una vez conocido el output contract de Analytics, aunque A4 siga validando policy;
-- A7 Reporting y A8 Assistant pueden avanzar en paralelo después de cerrar Product Service Layer;
-- A5 ML puede investigar en paralelo, pero no puede sustituir una policy no validada.
+- A5 ML puede preparar hipótesis y datasets experimentales una vez cerrado el output contract de Analytics;
+- A6 Product puede diseñar wireframes una vez conocido el output contract de Analytics, pero no debe absorber prioridad frente a F5;
+- A7 Reporting y A8 Assistant pueden avanzar en paralelo después de cerrar Product Service Layer.
 
 No permitido:
 - Product inventando métricas;
 - Reports recalculando analytics;
 - LLM emitiendo recomendaciones bloqueadas;
-- ML definiendo labels a partir de intuición no documentada.
+- ML definiendo labels a partir de intuición no documentada;
+- crear targets ML circulares a partir de outputs del propio sistema experto y después presentarlos como validación independiente.
 
 ## 5. Cómo pasa una fase a la siguiente
 
@@ -185,6 +201,14 @@ Cada fase debe dejar este paquete:
 8. **Next phase** — una única siguiente prioridad.
 
 Una fase está cerrada solo cuando su salida puede ser consumida sin reinterpretarla.
+
+Para F5 DS/AI, además debe existir:
+- hipótesis;
+- baseline;
+- split/validación adecuada;
+- métricas;
+- análisis de error;
+- decisión de despliegue o no despliegue justificada.
 
 ## 6. Cuándo interviene Sergi
 
@@ -219,8 +243,9 @@ Al iniciar:
 1. leer `PROJECT_STATE.md`;
 2. leer la fase activa en `docs/WORKFLOW.md`;
 3. consultar `docs/DECISIONS.md` si hay un gate abierto;
-4. trabajar solo en la fase activa o en tareas paralelas permitidas;
-5. no reabrir decisiones cerradas sin evidencia nueva.
+4. consultar `docs/DATA_SCIENCE_AI_STRATEGY.md` para mantener prioridad académica;
+5. trabajar solo en la fase activa o en tareas paralelas permitidas;
+6. no reabrir decisiones cerradas sin evidencia nueva.
 
 Al terminar:
 1. validar;
@@ -236,12 +261,13 @@ Al terminar:
 ```text
 A1 Data/Collector       base funcional cerrada
 A2 Features             base funcional cerrada
-A3 Analytics            INCOMPLETO / siguiente foco
+A3 Analytics            IMPLEMENTADO / revalidación pendiente
 A4 Expert               baseline N1000-N13000 creado; policy final pendiente
+A5 ML/Validation        próximo núcleo académico después de N13000 policy
 A6 Product              prototype v0.1, no final
 A7 Reporting            prototype v0.1, no final
 A8 Assistant            prototype v0.1, provider final pendiente
 A9 Publication tooling  validado técnicamente
 ```
 
-Por tanto el siguiente trabajo de construcción, después de cerrar ARCHITECTURE-01, es **ANALYTICS-01**.
+Siguiente foco inmediato: cerrar **ANALYTICS-01**. Después: **N13000 policy** y **DS/AI experimental core** antes del pulido final del producto.
