@@ -1,23 +1,23 @@
-"""DATA-03 Stage 3A importer with overlap-safe Opta shot semantics.
+"""DATA-03 Stage 3A importer with conservative Opta shot semantics.
 
-The inspected Opta/PannaData export shows that source shot properties are not
-mutually exclusive: a shot may count as ``shots_on_target`` and also as
-``shots_blocked`` in the aggregate source. The Football Performance System MVP,
-however, needs one collector-facing SHOT outcome.
+The inspected Opta/PannaData export gives us enough information to normalize every
+shot for the Football Performance System, but not enough information to decide
+whether every blocked type_id=15 attempt also belongs to Opta's aggregate
+``shots_on_target`` count.
 
-We therefore keep two layers separate:
+The two layers are therefore kept separate:
 
-1. Normalized collector-facing outcome (exclusive):
-   - GOAL
-   - ON_TARGET
-   - OFF_TARGET
-   - BLOCKED
-2. Source qualifiers (non-exclusive):
-   - source_on_target
-   - source_is_blocked
+1. Collector-facing normalized outcome (exclusive):
+   GOAL / ON_TARGET / OFF_TARGET / BLOCKED
+2. Source properties:
+   - source_is_blocked: observed directly at event level
+   - source_on_target: True/False only when event identity is directly supported;
+     None for blocked type_id=15 attempts whose on-target membership is ambiguous
 
-This avoids inventing event identity while still reproducing Opta aggregate
-metrics exactly. Any aggregate mismatch aborts before writing to DuckDB.
+Aggregate ``opta_shots`` totals are used as validation, not to invent which one of
+multiple ambiguous blocked events was on target. For shots_on_target we validate
+that the source total lies inside the exact lower/upper bounds implied by the
+unambiguous and ambiguous events of each player-match.
 """
 
 from __future__ import annotations
@@ -46,7 +46,9 @@ from import_demo_events import (
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Import demo shot/card events with overlap-safe Opta semantics")
+    parser = argparse.ArgumentParser(
+        description="Import demo shot/card events with conservative Opta semantics"
+    )
     parser.add_argument("--input-dir", type=Path, default=DEFAULT_INPUT)
     parser.add_argument("--db", type=Path, default=DEFAULT_DB)
     parser.add_argument("--team-source-id", default=DEFAULT_TEAM_SOURCE_ID)
@@ -65,7 +67,7 @@ def type_id_int(value: object) -> int:
 
 
 def normalized_outcome(row: pd.Series) -> str | None:
-    """Return one exclusive collector-facing outcome without losing source flags."""
+    """Return one exclusive collector-facing outcome."""
     if bool_value(row["is_own_goal"]):
         return None
 
@@ -84,12 +86,29 @@ def normalized_outcome(row: pd.Series) -> str | None:
     return "UNKNOWN"
 
 
-def source_on_target(row: pd.Series) -> bool:
-    """Opta source property; deliberately independent from normalized outcome."""
+def source_on_target_state(row: pd.Series) -> bool | None:
+    """Return event-level Opta on-target state only when directly identifiable.
+
+    Blocked type_id=15 attempts are deliberately left as None: the inspected
+    source proves that some can contribute to aggregate shots_on_target, but it
+    does not identify which event when multiple candidates exist.
+    """
     if bool_value(row["is_own_goal"]):
         return False
+
     tid = type_id_int(row["type_id"])
-    return tid in (15, 16) or bool_value(row["is_goal"])
+    is_goal = bool_value(row["is_goal"])
+    is_blocked = bool_value(row["is_blocked"])
+
+    if tid == 16 or is_goal:
+        return True
+    if tid in (13, 14):
+        return False
+    if tid == 15 and is_blocked:
+        return None
+    if tid == 15:
+        return True
+    return None
 
 
 def source_totals_by_player_match(shot_totals: pd.DataFrame) -> pd.DataFrame:
@@ -108,7 +127,10 @@ def source_totals_by_player_match(shot_totals: pd.DataFrame) -> pd.DataFrame:
     duplicates = totals.duplicated(["match_id", "player_id"], keep=False)
     if duplicates.any():
         sample = totals.loc[duplicates, ["match_id", "player_id"]].head(20)
-        raise RuntimeError("Duplicate player-match rows in opta_shots. Sample:\n" + sample.to_string(index=False))
+        raise RuntimeError(
+            "Duplicate player-match rows in opta_shots. Sample:\n"
+            + sample.to_string(index=False)
+        )
 
     return totals.set_index(["match_id", "player_id"])
 
@@ -118,7 +140,7 @@ def validate_shot_semantics(
 ) -> tuple[pd.DataFrame, dict[str, int]]:
     work = shot_events.copy()
     work["normalized_outcome"] = work.apply(normalized_outcome, axis=1)
-    work["source_on_target"] = work.apply(source_on_target, axis=1)
+    work["source_on_target"] = work.apply(source_on_target_state, axis=1)
     work["source_is_blocked"] = work["is_blocked"].fillna(False).astype(bool)
 
     unknown = work[
@@ -126,44 +148,101 @@ def validate_shot_semantics(
         & work["normalized_outcome"].eq("UNKNOWN")
     ]
     if not unknown.empty:
-        sample = unknown[["match_id", "event_id", "type_id", "is_goal", "is_blocked"]].head(20)
-        raise RuntimeError("Unmapped non-own-goal shot rows detected. Sample:\n" + sample.to_string(index=False))
+        sample = unknown[
+            ["match_id", "event_id", "type_id", "is_goal", "is_blocked"]
+        ].head(20)
+        raise RuntimeError(
+            "Unmapped non-own-goal shot rows detected. Sample:\n"
+            + sample.to_string(index=False)
+        )
 
     final = work[~work["is_own_goal"].fillna(False).astype(bool)].copy()
     final["total_shots"] = 1
-    final["shots_on_target"] = final["source_on_target"].astype(int)
     final["shots_off_target"] = final["normalized_outcome"].eq("OFF_TARGET").astype(int)
     final["shots_blocked"] = final["source_is_blocked"].astype(int)
     final["goals"] = final["normalized_outcome"].eq("GOAL").astype(int)
     final["shots_penalty"] = final["situation"].fillna("").eq("Penalty").astype(int)
+    final["clear_on_target"] = final["source_on_target"].map(lambda value: value is True).astype(int)
+    final["ambiguous_on_target"] = final["source_on_target"].map(lambda value: value is None).astype(int)
 
-    metrics = [
+    totals = source_totals_by_player_match(shot_totals)
+
+    # Exact metrics: these are directly observable from the atomic shot source.
+    exact_metrics = [
         "total_shots",
-        "shots_on_target",
         "shots_off_target",
         "shots_blocked",
         "goals",
         "shots_penalty",
     ]
-    derived = final.groupby(["match_id", "player_id"], as_index=True)[metrics].sum()
-    totals = source_totals_by_player_match(shot_totals)
-    compare = derived.join(totals[metrics], lsuffix="_derived", rsuffix="_source", how="outer").fillna(0)
+    derived = final.groupby(["match_id", "player_id"], as_index=True)[exact_metrics].sum()
+    compare = derived.join(
+        totals[exact_metrics],
+        lsuffix="_derived",
+        rsuffix="_source",
+        how="outer",
+    ).fillna(0)
 
     checks: dict[str, int] = {}
-    for metric in metrics:
-        mismatch = compare[f"{metric}_derived"].astype(int) != compare[f"{metric}_source"].astype(int)
+    for metric in exact_metrics:
+        mismatch = (
+            compare[f"{metric}_derived"].astype(int)
+            != compare[f"{metric}_source"].astype(int)
+        )
         checks[metric] = int(mismatch.sum())
         if checks[metric]:
-            bad = compare.loc[mismatch, [f"{metric}_derived", f"{metric}_source"]].head(20)
+            bad = compare.loc[
+                mismatch,
+                [f"{metric}_derived", f"{metric}_source"],
+            ].head(20)
             raise RuntimeError(
-                f"Shot semantic validation failed for {metric}: {checks[metric]} player-match mismatches.\n"
+                f"Shot semantic validation failed for {metric}: "
+                f"{checks[metric]} player-match mismatches.\n"
                 + bad.to_string()
             )
 
+    # shots_on_target is not fully identifiable event-by-event for blocked type 15.
+    # Validate the aggregate total against the exact feasible interval instead.
+    on_target_bounds = final.groupby(["match_id", "player_id"], as_index=True)[
+        ["clear_on_target", "ambiguous_on_target"]
+    ].sum()
+    on_target_bounds["lower"] = on_target_bounds["clear_on_target"]
+    on_target_bounds["upper"] = (
+        on_target_bounds["clear_on_target"] + on_target_bounds["ambiguous_on_target"]
+    )
+    on_target_compare = on_target_bounds.join(
+        totals[["shots_on_target"]].rename(columns={"shots_on_target": "source"}),
+        how="outer",
+    ).fillna(0)
+    invalid_on_target = (
+        (on_target_compare["source"].astype(int) < on_target_compare["lower"].astype(int))
+        | (on_target_compare["source"].astype(int) > on_target_compare["upper"].astype(int))
+    )
+    checks["shots_on_target"] = int(invalid_on_target.sum())
+    if checks["shots_on_target"]:
+        bad = on_target_compare.loc[
+            invalid_on_target,
+            ["lower", "upper", "source", "ambiguous_on_target"],
+        ].head(20)
+        raise RuntimeError(
+            "Shot semantic validation failed for shots_on_target bounds: "
+            f"{checks['shots_on_target']} player-match mismatches.\n"
+            + bad.to_string()
+        )
+
     checks["normalized_shots"] = len(final)
-    checks["own_goals_excluded"] = int(work["is_own_goal"].fillna(False).astype(bool).sum())
-    checks["source_on_target_and_blocked"] = int(
-        (final["source_on_target"] & final["source_is_blocked"]).sum()
+    checks["own_goals_excluded"] = int(
+        work["is_own_goal"].fillna(False).astype(bool).sum()
+    )
+    checks["ambiguous_on_target_events"] = int(final["ambiguous_on_target"].sum())
+    checks["ambiguous_on_target_player_matches"] = int(
+        (on_target_bounds["ambiguous_on_target"] > 0).sum()
+    )
+    checks["source_on_target_requires_ambiguous_block"] = int(
+        (
+            on_target_compare["source"].astype(int)
+            > on_target_compare["lower"].astype(int)
+        ).sum()
     )
     return work, checks
 
@@ -180,7 +259,9 @@ def main() -> None:
         if not path.exists():
             raise FileNotFoundError(f"Missing source: {path}")
     if not db_path.exists():
-        raise FileNotFoundError(f"Database not found: {db_path}. Run DATA-01/DATA-02 first.")
+        raise FileNotFoundError(
+            f"Database not found: {db_path}. Run DATA-01/DATA-02 first."
+        )
 
     demo_team_id = stable_id("team", args.team_source_id)
 
@@ -196,7 +277,9 @@ def main() -> None:
             [demo_team_id],
         ).fetchall()
         if len(fixture_rows) != EXPECTED_MATCHES:
-            raise RuntimeError(f"Expected {EXPECTED_MATCHES} validated demo fixtures, found {len(fixture_rows)}")
+            raise RuntimeError(
+                f"Expected {EXPECTED_MATCHES} validated demo fixtures, found {len(fixture_rows)}"
+            )
 
         match_map = {str(source_id): match_id for source_id, match_id in fixture_rows}
         in_list = ", ".join(sql_literal(value) for value in match_map)
@@ -216,7 +299,9 @@ def main() -> None:
         ).fetchdf()
 
         if shot_events["match_id"].nunique() != EXPECTED_MATCHES:
-            raise RuntimeError(f"Shot-event coverage is {shot_events['match_id'].nunique()}/{EXPECTED_MATCHES}")
+            raise RuntimeError(
+                f"Shot-event coverage is {shot_events['match_id'].nunique()}/{EXPECTED_MATCHES}"
+            )
         if shot_events["event_id"].duplicated().any():
             raise RuntimeError("Duplicate source event_id detected in demo shot events")
 
@@ -225,7 +310,8 @@ def main() -> None:
         player_source_ids = {
             str(source_id): player_id
             for source_id, player_id in con.execute(
-                "SELECT source_player_id, player_id FROM players WHERE source_player_id IS NOT NULL"
+                "SELECT source_player_id, player_id FROM players "
+                "WHERE source_player_id IS NOT NULL"
             ).fetchall()
         }
 
@@ -235,17 +321,27 @@ def main() -> None:
                 continue
             outcome = row.normalized_outcome
             if outcome not in {"GOAL", "ON_TARGET", "OFF_TARGET", "BLOCKED"}:
-                raise RuntimeError(f"Invalid normalized outcome for event {row.event_id}: {outcome}")
+                raise RuntimeError(
+                    f"Invalid normalized outcome for event {row.event_id}: {outcome}"
+                )
 
             source_match_id = str(row.match_id)
             source_player_id = str(row.player_id)
             player_id = player_source_ids.get(source_player_id)
             if not player_id:
-                raise RuntimeError(f"Shot event player not found in normalized players: {source_player_id}")
+                raise RuntimeError(
+                    f"Shot event player not found in normalized players: {source_player_id}"
+                )
 
             source_event_id = str(int(row.event_id))
-            internal_event_id = stable_id("event", f"opta_shot_events:{source_match_id}:{source_event_id}")
+            internal_event_id = stable_id(
+                "event", f"opta_shot_events:{source_match_id}:{source_event_id}"
+            )
             raw_situation = safe_text(row.situation)
+            source_on_target = (
+                None if row.source_on_target is None or pd.isna(row.source_on_target)
+                else bool(row.source_on_target)
+            )
             qualifiers = {
                 "source_type_id": type_id_int(row.type_id),
                 "body_part": safe_text(row.body_part),
@@ -255,11 +351,16 @@ def main() -> None:
                 "xgot": nullable_float(row.xgot),
                 "goalmouth_y": nullable_float(row.goalmouth_y),
                 "goalmouth_z": nullable_float(row.goalmouth_z),
-                "source_on_target": bool(row.source_on_target),
+                "source_on_target": source_on_target,
+                "source_on_target_event_identity": (
+                    "UNRESOLVED_BLOCKED_ATTEMPT" if source_on_target is None else "DIRECT"
+                ),
                 "source_is_blocked": bool(row.source_is_blocked),
                 "penalty_shot": bool(raw_situation == "Penalty"),
             }
-            qualifiers = {key: value for key, value in qualifiers.items() if value is not None}
+            qualifiers = {
+                key: value for key, value in qualifiers.items() if value is not None
+            }
 
             shot_records.append(
                 (
@@ -284,16 +385,22 @@ def main() -> None:
             )
 
         card_source = summary_events[
-            summary_events["event_type"].isin(["yellow_card", "second_yellow", "red_card"])
+            summary_events["event_type"].isin(
+                ["yellow_card", "second_yellow", "red_card"]
+            )
         ].copy()
         card_records: list[tuple] = []
         for _, row in card_source.iterrows():
             source_player_id = safe_text(row.get("player_id"))
             if not source_player_id:
-                raise RuntimeError("Card row without player_id detected:\n" + row.to_string())
+                raise RuntimeError(
+                    "Card row without player_id detected:\n" + row.to_string()
+                )
             player_id = player_source_ids.get(source_player_id)
             if not player_id:
-                raise RuntimeError(f"Card event player not found in normalized players: {source_player_id}")
+                raise RuntimeError(
+                    f"Card event player not found in normalized players: {source_player_id}"
+                )
 
             event_type = str(row["event_type"])
             if event_type == "yellow_card":
@@ -308,11 +415,16 @@ def main() -> None:
                 }
             else:
                 subtype = "RED"
-                qualifiers = {"source_event_type": event_type, "dismissal_reason": "DIRECT_RED"}
+                qualifiers = {
+                    "source_event_type": event_type,
+                    "dismissal_reason": "DIRECT_RED",
+                }
 
             source_event_id = synthetic_event_source_id(row)
             source_match_id = str(row["match_id"])
-            internal_event_id = stable_id("event", f"opta_events:{source_match_id}:{source_event_id}")
+            internal_event_id = stable_id(
+                "event", f"opta_events:{source_match_id}:{source_event_id}"
+            )
             card_records.append(
                 (
                     internal_event_id,
@@ -327,7 +439,13 @@ def main() -> None:
                     None,
                     None,
                     None,
-                    json.dumps({**qualifiers, "source_event_id_kind": "synthetic_composite"}, ensure_ascii=False),
+                    json.dumps(
+                        {
+                            **qualifiers,
+                            "source_event_id_kind": "synthetic_composite",
+                        },
+                        ensure_ascii=False,
+                    ),
                     None,
                     "opta_events",
                     source_event_id,
@@ -346,8 +464,10 @@ def main() -> None:
                 """
                 DELETE FROM match_events
                 WHERE team_id = ?
-                  AND (source_type = 'opta_shot_events'
-                       OR (source_type = 'opta_events' AND action_type = 'CARD'))
+                  AND (
+                    source_type = 'opta_shot_events'
+                    OR (source_type = 'opta_events' AND action_type = 'CARD')
+                  )
                 """,
                 [demo_team_id],
             )
@@ -370,7 +490,8 @@ def main() -> None:
             raise
 
         imported_shots = con.execute(
-            "SELECT COUNT(*) FROM match_events WHERE team_id = ? AND source_type = 'opta_shot_events'",
+            "SELECT COUNT(*) FROM match_events "
+            "WHERE team_id = ? AND source_type = 'opta_shot_events'",
             [demo_team_id],
         ).fetchone()[0]
         shot_match_coverage = con.execute(
@@ -380,30 +501,52 @@ def main() -> None:
         ).fetchone()[0]
         imported_cards = con.execute(
             "SELECT COUNT(*) FROM match_events "
-            "WHERE team_id = ? AND source_type = 'opta_events' AND action_type = 'CARD'",
+            "WHERE team_id = ? AND source_type = 'opta_events' "
+            "AND action_type = 'CARD'",
             [demo_team_id],
         ).fetchone()[0]
         outcome_rows = con.execute(
             "SELECT outcome, COUNT(*) FROM match_events "
-            "WHERE team_id = ? AND action_type = 'SHOT' GROUP BY outcome ORDER BY outcome",
+            "WHERE team_id = ? AND action_type = 'SHOT' "
+            "GROUP BY outcome ORDER BY outcome",
             [demo_team_id],
         ).fetchall()
 
-    print("DATA-03 Stage 3A semantic import complete")
+    print("DATA-03 Stage 3A conservative semantic import complete")
     print(f"Raw demo shot-event rows: {len(shot_events)}")
-    print(f"Own-goal rows excluded from attacking shots: {checks['own_goals_excluded']}")
+    print(
+        f"Own-goal rows excluded from attacking shots: {checks['own_goals_excluded']}"
+    )
     print(f"Normalized/imported SHOT rows: {imported_shots}")
     print(f"Shot coverage: {shot_match_coverage}/{EXPECTED_MATCHES}")
-    print("Independent source-metric validation mismatches:")
-    for metric in ["total_shots", "shots_on_target", "shots_off_target", "shots_blocked", "goals", "shots_penalty"]:
+    print("Source-metric validation mismatches:")
+    for metric in [
+        "total_shots",
+        "shots_on_target",
+        "shots_off_target",
+        "shots_blocked",
+        "goals",
+        "shots_penalty",
+    ]:
         print(f"  {metric}: {checks[metric]}")
-    print(f"Events simultaneously source_on_target + source_is_blocked: {checks['source_on_target_and_blocked']}")
+    print(
+        "Blocked attempts with unresolved event-level on-target identity: "
+        f"{checks['ambiguous_on_target_events']} events across "
+        f"{checks['ambiguous_on_target_player_matches']} player-matches"
+    )
+    print(
+        "Player-matches where Opta aggregate on-target requires at least one "
+        "ambiguous blocked attempt: "
+        f"{checks['source_on_target_requires_ambiguous_block']}"
+    )
     print("Normalized collector-facing shot outcomes:")
     for outcome, count in outcome_rows:
         print(f"  {outcome}: {count}")
     print(f"Imported CARD rows: {imported_cards}")
     print("Goals from opta_events skipped to avoid double counting with shot_events.")
-    print("Atomic pass/dribble/defensive/foul events were not invented from this summary export.")
+    print(
+        "Atomic pass/dribble/defensive/foul events were not invented from this summary export."
+    )
 
 
 if __name__ == "__main__":
