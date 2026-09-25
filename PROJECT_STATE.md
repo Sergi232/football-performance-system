@@ -26,7 +26,8 @@ DSAI-04 ROLE-LABEL AUDIT            CERRADO / REFORMULATE_LABELS — ISSUE #34
 DSAI-05 ROLE TARGET RECONSTRUCTION  CERRADO / VALIDADO — ISSUE #35
 DSAI-06 SUPERVISED ROLE FEASIBILITY CERRADO / LIMITED_EXPERIMENT_ONLY — ISSUE #36
 DSAI-07 ROLE CLASSIFICATION BASELINE CERRADO / EXPERIMENTAL_SIGNAL / NO_DEPLOY — ISSUE #45
-DSAI-08 ROLE GRANULARITY AUDIT      ACTIVO — ISSUE #46 / SCRIPT IMPLEMENTADO
+DSAI-08 ROLE GRANULARITY AUDIT      CERRADO / LIMITED_SOURCE_POSITION_BASELINE — ISSUE #46
+DSAI-09 SOURCE POSITION BASELINE    ACTIVO — ISSUE #49 / SCRIPT IMPLEMENTADO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
@@ -36,39 +37,51 @@ FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 candidate_rows=418
 evaluated_rows=302
 evaluated_labels=19
-skipped_no_other_player_prior_label=116
 logreg_accuracy=0.1325
 logreg_balanced_accuracy=0.0823
 logreg_macro_f1=0.0722
 majority_accuracy=0.0033
 majority_balanced_accuracy=0.0016
 majority_macro_f1=0.0005
-conclusion=LIMITED_BASELINE_EXPERIMENT_COMPLETE_NO_DEPLOYMENT_DECISION
 ```
 
-Decisión: `EXPERIMENTAL_SIGNAL / NO_DEPLOY`.
+Decisión: `EXPERIMENTAL_SIGNAL / NO_DEPLOY`. FEATURE-01 contiene señal sobre el rol observado, pero la granularidad detallada de 22 clases es demasiado fragmentada para producto.
 
-La regresión logística supera claramente el baseline de clase mayoritaria bajo validación temporal e independiente de identidad, pero el rendimiento absoluto sigue siendo bajo. Las 22 clases detalladas están demasiado fragmentadas para producto.
+## DSAI-08 — resultado cerrado
 
-Los warnings de scikit-learn reflejan conjuntos temporales pequeños y muchas clases; no invalidan la ejecución, pero son evidencia adicional de fragmentación.
+```text
+rows=418
+detailed_labels=22
+source_positions=7
+players=24
+matches=38
+strict_past_position_seen=402/418
+identity_independent_strict_past=363/418
+single_player_positions=1
+positions_without_any_strict_past=0
+positions_without_other_player_strict_past=1
+parsing_anomalies=0
+conclusion=LIMITED_SOURCE_POSITION_BASELINE
+```
 
-## DSAI-08 — activo
+La taxonomía `source_position` se recupera de forma determinista desde DATA-02, separando `position` de `position_side`; no es una agrupación intuitiva. La estructura mejora de 22 a 7 clases y aumenta la cobertura de validación independiente de identidad de 302 a 363 filas, aunque una posición sigue dependiendo de un único jugador.
 
-Issue #46.
+## DSAI-09 — activo
 
-Script: `dsai/role_granularity_audit.py`.
+Issue #49.
 
-Objetivo: auditar una granularidad de target recuperada directamente de la semántica de DATA-02. El importador construye el rol como `position | position_side`; DSAI-08 recupera únicamente `position` de forma determinista. No es una agrupación intuitiva.
+Script: `dsai/source_position_classification_baseline.py`.
 
-Se audita:
-- labels detallados vs posiciones fuente;
-- filas, jugadores y partidos por posición;
-- soporte strict-past;
-- soporte strict-past en otro jugador;
-- clases dependientes de un único jugador;
-- anomalías de parsing.
-
-Salida posible: `GO_SOURCE_POSITION_BASELINE`, `LIMITED_SOURCE_POSITION_BASELINE` o `NO_GO_SOURCE_POSITION`.
+Objetivo: repetir el baseline supervisado bajo la granularidad de fuente `source_position` con exactamente el mismo diseño leakage-safe:
+- target de titulares directamente observado;
+- `source_position` derivado determinísticamente del label DATA-02;
+- únicamente FEATURE-01 como predictores;
+- train con fechas estrictamente anteriores al test;
+- jugador evaluado excluido completamente del train;
+- solo se evalúa una fila si su `source_position` ya existía previamente en otro jugador;
+- imputación y escalado ajustados solo dentro del train;
+- comparación LogisticRegression vs baseline de clase mayoritaria;
+- sin threshold de despliegue, player-fit, ranking o recomendación.
 
 ## Líneas todavía bloqueadas
 
@@ -81,7 +94,7 @@ Salida posible: `GO_SOURCE_POSITION_BASELINE`, `LIMITED_SOURCE_POSITION_BASELINE
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\role_granularity_audit.py
+python dsai\source_position_classification_baseline.py
 ```
 
 No instalar nada.
