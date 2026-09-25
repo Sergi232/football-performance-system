@@ -1,9 +1,10 @@
 name: tests
 
+# Durante el desarrollo los tests automáticos por push están desactivados para
+# evitar notificaciones repetitivas. Rehabilitar push/pull_request antes de la
+# publicación final del repositorio.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   test:
