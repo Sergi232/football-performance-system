@@ -4,7 +4,7 @@
 
 Este archivo es la memoria técnica operativa del proyecto. Si contradice un chat antiguo, prevalece este estado documentado.
 
-## 1. Fase actual
+## 1. Estado actual
 
 ```text
 Arquitectura base                         HECHO
@@ -27,11 +27,11 @@ EXPERT-07 N13000 recommendation gate     CERRADO / VALIDADO
 MOTOR EXPERTO BASE N1000-N13000          CERRADO / VALIDADO
 DASHBOARD-01 Streamlit MVP               DATA CONTRACT PASS / REVISIÓN VISUAL ABIERTA
 LLM-01 contexto + asistente seguro       CERRADO / VALIDADO
-LLM-02 proveedor OpenAI opcional         PREPARADO / PENDIENTE VALIDACIÓN LOCAL
-PDF                                      DESPUÉS DE LLM-02 / DASHBOARD
+LLM-02 proveedor OpenAI opcional         CERRADO / VALIDADO
+PDF-01                                   SIGUIENTE BLOQUE
 ```
 
-El Collector puede recibir mejoras UX posteriormente, pero su contrato de datos ya no bloquea el desarrollo.
+El Collector puede recibir mejoras UX posteriormente, pero su contrato ya no bloquea el producto.
 
 ## 2. Producto
 
@@ -62,6 +62,7 @@ TEAM MODE es principal. PLAYER MODE es complementario. RIVAL MODE queda como ext
 - GitHub es la fuente de verdad técnica.
 - Priorizar MVP funcional antes de aumentar complejidad.
 - No crear scores de fit/recomendación antes de disponer de política validada.
+- Ninguna API key o secreto se sube al repositorio.
 
 ## 4. Arquitectura materializada
 
@@ -73,8 +74,8 @@ features/        variables deterministas, temporales y condicionadas a rol
 decision_tree/   sistema experto auditable
 app/             dashboard web Streamlit
 llm/             contexto, guardrails y proveedor generativo opcional
+reports/         informes PDF
 models/          ML opcional posterior
-reports/         PDF posterior
 tests/           regresión y validación
 ```
 
@@ -82,14 +83,7 @@ DuckDB. Unidad principal: `player_match = jugador + partido`.
 
 Tablas clave: `teams`, `players`, `matches`, `team_match`, `player_match`, `player_role_stints`, `match_events`, `player_match_raw_stats`, `collector_sessions`, `gps_imports`, `gps_player_map`, `gps_observations`, `player_match_features`, `decision_results`.
 
-Versiones de esquema:
-
-```text
-0.1.0 core
-0.2.0 player_match_raw_stats
-0.3.0 tackles_won + goals_conceded
-0.4.0 GPS normalization
-```
+Versiones de esquema: 0.1.0 core; 0.2.0 player_match_raw_stats; 0.3.0 expansión raw; 0.4.0 GPS normalization.
 
 ## 5. Caso demostrador
 
@@ -129,24 +123,19 @@ CARD sin player_id 2
 `shots_blocked` queda `AGGREGATE_CANONICAL`.
 
 ### DATA-04
-835/835 filas, 38/38 partidos, 36 jugadores. Validación PASS.
-
-27 raw stats aprobadas: pases total/completados, asistencias, largos, centros, regates, turnovers, dispossessed, remates, bloqueados, goles, tackles total/ganados, intercepciones, blocked passes, despejes, faltas cometidas/recibidas, tarjetas, penaltis concedidos/ganados, paradas y goles encajados.
+835/835 filas, 38/38 partidos, 36 jugadores. Validación PASS. 27 raw stats aprobadas: pases total/completados, asistencias, largos, centros, regates, turnovers, dispossessed, remates, bloqueados, goles, tackles total/ganados, intercepciones, blocked passes, despejes, faltas cometidas/recibidas, tarjetas, penaltis concedidos/ganados, paradas y goles encajados.
 
 `key_passes` no tiene columna verificada. No se aproxima. Los NULL se preservan.
 
-### Fechas
-`opta_fixtures.match_date` usa `YYYY-MM-DDZ`. Los 38 `matches.match_date` fueron reparados desde fuente real; no se infirió cronología por ID u orden.
+Fechas: `opta_fixtures.match_date` usa `YYYY-MM-DDZ`; 38/38 fechas reparadas desde fuente real, sin inferir cronología por ID u orden.
 
 ## 7. COLLECTOR-01 — CERRADO FUNCIONALMENTE
 
-Catálogo `collector/event_catalog.json` v0.3.0.
-
-Acciones: PASS NORMAL/LONG/CROSS SUCCESS/FAIL; DRIBBLE; SHOT GOAL/ON_TARGET/OFF_TARGET/BLOCKED; TACKLE; INTERCEPTION; BLOCK; CLEARANCE; FOUL; CARD; LOSS OTHER; PENALTY WON/CONCEDED GOAL/MISSED; CORNER FOR/AGAINST; GK SAVE/GOAL_CONCEDED.
+Catálogo `collector/event_catalog.json` v0.3.0. Acciones: PASS NORMAL/LONG/CROSS SUCCESS/FAIL; DRIBBLE; SHOT GOAL/ON_TARGET/OFF_TARGET/BLOCKED; TACKLE; INTERCEPTION; BLOCK; CLEARANCE; FOUL; CARD; LOSS OTHER; PENALTY WON/CONCEDED GOAL/MISSED; CORNER FOR/AGAINST; GK SAVE/GOAL_CONCEDED.
 
 Qualifiers: `key_pass`, `assist`, `second_yellow`, `set_piece_result`, `penalty_taker_player_id`.
 
-Decisiones: LONG/CROSS cuentan como pase; PASS FAIL y DRIBBLE FAIL generan pérdida derivada; LOSS solo otras pérdidas; falta peligrosa se derivará desde x/y; clips ABP conservan tiempo partido/vídeo.
+Decisiones: LONG/CROSS cuentan como pase; PASS FAIL y DRIBBLE FAIL generan pérdida derivada; LOSS solo otras pérdidas; falta peligrosa se deriva desde x/y; clips ABP conservan tiempo partido/vídeo.
 
 `collector/data_collector_futbol_mvp.html`. Validación local PASS 20/20.
 
@@ -154,53 +143,18 @@ Decisiones: LONG/CROSS cuentan como pase; PASS FAIL y DRIBBLE FAIL generan pérd
 
 Contrato multi-proveedor normalizado. Unidades canónicas: ms, m, m/s, m/s² y x/y cuando el mapping espacial es seguro. Mapping declarativo, conversiones, acumulada→incremental, `gps_player_map`, metadatos y QC. Sin fuzzy matching silencioso ni umbrales sprint/HIE/carga inventados.
 
-`GPS-01 VALIDATION: PASS`.
-
 ## 9. FEATURE ENGINE — CERRADO / VALIDADO
 
 ### FEATURE-01 — `0.1.0`
-28 features: 7 ratios + 21 por90.
-
-```text
-FEATURE-01 VALIDATION: PASS
-feature rows 23380/23380
-non-null 6324
-coverage 38 matches / 36 players
-```
+28 features: 7 ratios + 21 por90. 23.380 filas; 6.324 no nulas; 38 partidos / 36 jugadores. Sin ratings, pesos, percentiles ni umbrales.
 
 ### FEATURE-02 — `0.2.0`
-Por cada feature: `history_n`, `prev`, `prior_mean`, `prior_std`, `delta_prev`, `delta_prior_mean`, `prior_slope`.
-
-```text
-FEATURE-02 VALIDATION: PASS
-feature rows 163660/163660
-coverage 38 / 36
-history_n PASS
-prior_std PASS
-first-date strict-past PASS
-```
-
-Strict-past: solo fechas anteriores; partido actual y misma fecha no entran; futuros no entran; NULL no se vuelve 0; sin ventanas arbitrarias 3/5/10.
+Por feature: `history_n`, `prev`, `prior_mean`, `prior_std`, `delta_prev`, `delta_prior_mean`, `prior_slope`. 163.660 filas. Strict-past: solo fechas anteriores; partido actual, misma fecha y futuros excluidos. Sin ventanas arbitrarias 3/5/10.
 
 ### FEATURE-03 — `0.3.0`
-Historial separado por jugador + rol observado + feature.
-
-```text
-FEATURE-03 VALIDATION: PASS
-feature rows 117735/117735
-non-null 43060
-player_match con rol observado 590/835
-roles observados distintos 23
-role source identity PASS
-missing-role NULL PASS
-strict-past first-observation PASS
-```
-
-No se infiere rol ni se crea score de fit.
+Historial por jugador + rol observado + feature. 117.735 filas; 43.060 no nulas; 590/835 player-match con rol observado; 23 roles. No se infiere rol ni se crea score de fit.
 
 ## 10. SISTEMA EXPERTO — MOTOR BASE CERRADO
-
-Arquitectura:
 
 ```text
 N1000  disponibilidad / actividad
@@ -220,55 +174,28 @@ N13000 recommendation gate
 
 Cada nodo: `entrada → condición → resultado → confianza → justificación`.
 
-### EXPERT-01 — `expert_0.1.0`
-48.430 decisiones. N1000=835, N2000=835, N3000=46.760. Sin duplicados ni etiquetas prematuras.
+Validaciones cerradas:
+- EXPERT-01 `expert_0.1.0`: 48.430 decisiones.
+- EXPERT-02 `expert_0.2.0`: 68.470 decisiones.
+- EXPERT-03 `expert_0.3.0`: 72.645 decisiones; GPS observado demo = 0 y ausencia explícita.
+- EXPERT-04 `expert_0.4.0`: 94.355 decisiones; same-role strict-past; sin fit score.
+- EXPERT-05 `expert_0.5.0`: 141.115 decisiones; `prior_std` + `prior_slope`, sin etiquetas evaluativas.
+- EXPERT-06 `expert_0.6.0`: 151.970 decisiones; 10.855 N12000; 501 player-match con evidencia same-role evaluable.
+- EXPERT-07 `expert_0.7.0`: 154.475 decisiones; 2.505 N13000; carry-forward exacto PASS.
 
-### EXPERT-02 — `expert_0.2.0`
-68.470 decisiones. N4000-N7000 como evidencia descriptiva own-history. Carry-forward exacto PASS.
-
-### EXPERT-03 — `expert_0.3.0`
-72.645 decisiones. N8000 contexto propio equipo y N9000 GPS opcional. GPS observado en demo: 0.
-
-### EXPERT-04 — `expert_0.4.0`
-94.355 decisiones. N10000 usa FEATURE-03 same-role strict-past. 590/835 player-match con rol observado. Sin fit score.
-
-### EXPERT-05 — `expert_0.5.0`
-141.115 decisiones. N11000 expone `prior_std` y `prior_slope` exactos para 28 features. No clasifica consistency/improving/declining sin umbral validado.
-
-### EXPERT-06 — `expert_0.6.0`
-151.970 decisiones. N12000=10.855. 501 player-match con evidencia same-role evaluable. Expone cobertura y conteos exactos, no score.
-
-### EXPERT-07 — `expert_0.7.0` — CERRADO / VALIDADO
+N13000 mantiene tres estados seguros:
 
 ```text
-EXPERT-07 VALIDATION: PASS
-player_match rows: 835
-N13000 nodes/player-match: 3
-decision rows: 154475/154475
-N13000 rows: 2505/2505
-N13000 outputs checked: 2505
-N1000-N12000 exact carry-forward: PASS
-recommendation evidence gate identity contract: PASS
-recommendation policy remains explicitly unvalidated: PASS
-RECOMMENDATION_NOT_ISSUED_NO_EVIDENCE: 89
-RECOMMENDATION_NOT_ISSUED_POLICY_UNVALIDATED: 501
-RECOMMENDATION_NOT_ISSUED_ROLE_UNKNOWN: 245
+RECOMMENDATION_NOT_ISSUED_ROLE_UNKNOWN
+RECOMMENDATION_NOT_ISSUED_NO_EVIDENCE
+RECOMMENDATION_NOT_ISSUED_POLICY_UNVALIDATED
 ```
 
-El motor experto base N1000-N13000 queda completado y validado. Una política futura de recomendación solo podrá sustituir este gate cuando esté justificada con literatura, datos o experimentación.
+No existe todavía una política final de recomendación validada.
 
 ## 11. DASHBOARD-01 — DATA CONTRACT PASS / REVISIÓN VISUAL ABIERTA
 
-Archivos principales:
-
-```text
-app/__init__.py
-app/data_access.py
-app/validate_dashboard.py
-app/streamlit_app.py
-```
-
-Validación local:
+Archivos: `app/data_access.py`, `app/validate_dashboard.py`, `app/streamlit_app.py`.
 
 ```text
 DASHBOARD-01 DATA CONTRACT: PASS
@@ -282,11 +209,9 @@ N13000 rows: 2505
 Final recommendation gate safety: PASS
 ```
 
-Streamlit arrancó correctamente en `localhost:8501`. TEAM / PLAYER / PARTITS están disponibles. La revisión visual final sigue abierta antes de cerrar formalmente DASHBOARD-01.
+Streamlit arrancó correctamente en `localhost:8501`. Modos disponibles: TEAM / PLAYER / PARTITS / ASSISTENT. Pendiente confirmar visualmente el flujo completo antes de cerrar formalmente DASHBOARD-01.
 
-Los warnings `use_container_width` se han eliminado en la versión preparada para LLM-02 usando `width='stretch'`.
-
-## 12. LLM
+## 12. LLM — CERRADO EN MVP
 
 Arquitectura obligatoria: `DATA → ANALYTICS → DECISION ENGINE → LLM → COACH`.
 
@@ -303,36 +228,42 @@ unsupported ranking/recommendation question guardrail: PASS
 N12000/N13000 provenance explanation: PASS
 ```
 
-No recalcula métricas ni crea rankings/recomendaciones.
+### LLM-02 — CERRADO / VALIDADO
 
-### LLM-02 — PREPARADO / PENDIENTE VALIDACIÓN LOCAL
-
-Añadido `llm/openai_provider.py` y routing opcional a OpenAI.
-
-Contrato:
-- usa Responses API;
-- `store=False`;
-- model por defecto `gpt-5.6-luna`, configurable con `FPS_LLM_MODEL`;
-- requiere `OPENAI_API_KEY` solo para modo generativo;
-- sin clave funciona el fallback determinista;
-- preguntas de ranking/recomendación se bloquean antes de cualquier llamada externa;
-- el proveedor solo recibe el contexto estructurado ya calculado;
-- datos del contexto se tratan como datos, no instrucciones;
-- si falla el proveedor, vuelve al asistente determinista.
-
-Archivos:
+Proveedor OpenAI opcional implementado en `llm/openai_provider.py`; routing y fallback en `llm/assistant_service.py`; validación en `llm/validate_stage2.py`.
 
 ```text
-llm/openai_provider.py
-llm/validate_stage2.py
-tests/test_openai_provider.py
+LLM-02 PROVIDER ROUTING CONTRACT: PASS
+configured model: gpt-5.6-luna
+OpenAI API key configured: NO
+blocked ranking/recommendation intercepted before external provider: PASS
+deterministic fallback: PASS
+N12000/N13000 provenance preserved: PASS
+No external API call was made by this validation script.
 ```
 
-La validación `llm/validate_stage2.py` no realiza ninguna llamada externa.
+Contrato vigente:
+- el proveedor recibe solo contexto estructurado ya calculado;
+- `store=False`;
+- no recalcula métricas críticas;
+- no crea scores, pesos, percentiles, rankings ni umbrales;
+- no convierte ABOVE/BELOW o slope en good/bad o improving/declining;
+- no emite recomendación táctica mientras N13000 mantenga la política no validada;
+- preguntas bloqueadas se interceptan antes de cualquier llamada externa;
+- sin `OPENAI_API_KEY` o si falla el proveedor, fallback determinista;
+- el modelo se puede configurar con `FPS_LLM_MODEL`;
+- nunca guardar API keys en GitHub.
+
+La conexión generativa real es opcional y no bloquea el MVP.
 
 ## 13. PDF
 
-Pendiente. Será exportación estática de la web con datos calculados, gráficos y texto explicativo generado exclusivamente desde resultados estructurados.
+PDF-01 es el siguiente bloque. Los PDF serán exportaciones estáticas de la web, no el producto principal. Deben consumir datos/features/decisiones ya calculados y podrán añadir texto explicativo sin introducir nuevas conclusiones analíticas.
+
+Tipos previstos:
+- informe de jugador;
+- informe de partido;
+- informe de equipo/período.
 
 ## 14. Decisiones descartadas / restricciones vigentes
 
@@ -350,13 +281,12 @@ Pendiente. Será exportación estática de la web con datos calculados, gráfico
 - No interpretar conteos N12000 como score de fit.
 - No emitir recomendación N13000 mientras la política final siga sin validar.
 - El LLM no puede recalcular métricas críticas ni sobreescribir el motor analítico.
-- Ninguna API key o secreto se sube al repositorio.
 
 ## 15. Problemas abiertos
 
-- validar localmente LLM-02;
 - confirmar visualmente TEAM / PLAYER / PARTITS / ASSISTENT y cerrar DASHBOARD-01;
-- probar llamada generativa real solo cuando `OPENAI_API_KEY` esté configurada localmente;
+- implementar PDF-01;
+- prueba generativa real opcional cuando exista `OPENAI_API_KEY` local;
 - estudiar política futura de recomendación con literatura/datos/experimentos;
 - añadir features físicas cuando haya GPS real o definiciones justificadas;
 - script de anonimización para publicación;
@@ -366,12 +296,6 @@ Pendiente. Será exportación estática de la web con datos calculados, gráfico
 
 ## 16. Siguiente paso exacto
 
-```powershell
-pip install -r requirements.txt
-python llm\validate_stage2.py
-streamlit run app\streamlit_app.py
-```
-
-Esperado: `LLM-02 PROVIDER ROUTING CONTRACT: PASS`.
-
-Esta validación no hace ninguna llamada externa. Si después se configura `OPENAI_API_KEY` localmente, el modo Assistent podrá usar OpenAI manteniendo los mismos guardrails. No enviar la clave por chat ni subirla a GitHub.
+1. Mantener la app Streamlit para revisión visual de TEAM / PLAYER / PARTITS / ASSISTENT.
+2. Construir PDF-01 como exportación de datos estructurados ya calculados.
+3. La prueba generativa real con OpenAI queda opcional y se hará solo con `OPENAI_API_KEY` configurada localmente; la clave nunca se comparte ni se versiona.
