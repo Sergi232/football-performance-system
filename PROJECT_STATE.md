@@ -14,8 +14,9 @@ DATA-03 shots + cards                    CERRADO / VALIDADO
 DATA-04 player-match raw stats           CERRADO / VALIDADO
 COLLECTOR-01 MVP                         CERRADO FUNCIONALMENTE
 GPS-01 contrato multi-proveedor          CERRADO / VALIDADO
-FEATURE-01 base determinista             SIGUIENTE
-Sistema experto                          DESPUÉS DE FEATURES
+FEATURE-01 base determinista             CERRADO / VALIDADO
+FEATURE-02 evolución temporal            CERRADO / VALIDADO
+EXPERT-01 N1000-N3000                    PREPARADO / PENDIENTE VALIDACIÓN LOCAL
 Dashboard                                DESPUÉS DEL MOTOR
 LLM / PDF                                DESPUÉS DEL DASHBOARD BASE
 ```
@@ -55,10 +56,10 @@ TEAM MODE es el producto principal. PLAYER MODE es complementario. RIVAL MODE qu
 ## 4. Arquitectura materializada
 
 ```text
-collector/       captura de vídeo/manual y taxonomía
+collector/       captura manual/vídeo y taxonomía
 data/            esquema, imports y datos normalizados
 gps/             contrato y normalización multi-proveedor
-features/        variables derivadas
+features/        variables derivadas deterministas y temporales
 engine/          análisis determinista
 decision_tree/   sistema experto auditable
 models/          ML opcional
@@ -69,8 +70,6 @@ tests/           regresión y validación
 ```
 
 Base: DuckDB. Unidad analítica principal: `player_match = jugador + partido`.
-
-## 5. Base de datos
 
 Tablas principales:
 
@@ -100,37 +99,24 @@ Versiones de esquema:
 0.4.0 GPS normalization contract
 ```
 
-### Regla de procedencia
-
-No se fuerza a que todas las métricas procedan de eventos atómicos. Cada métrica debe usar la fuente canónica más fiable y conservar su procedencia.
-
-## 6. Caso demostrador
+## 5. Caso demostrador
 
 ```text
 Deportivo Alavés — LaLiga 2025/26
 Opta team id: 4dtdjgnpdq9uw4sdutti0vaar
 38 partidos
 36 jugadores tras lineups
+835 player_match
 ```
 
-Antes de publicar se anonimizará:
+Antes de publicar se anonimizará como TEAM_001 / PLAYER_001 / OPP_001 con IDs internos. Nunca se publicarán datasets completos originales de PannaData/Opta.
 
-```text
-TEAM_001
-PLAYER_001...
-OPP_001...
-IDs internos
-```
-
-Nunca se publicarán datasets completos originales de PannaData/Opta.
-
-## 7. DATA — estado cerrado
+## 6. DATA — CERRADO
 
 ### DATA-01
 
 - 38 fixtures.
 - 590 player_match iniciales con participación.
-- 0 duplicados de partido.
 - validación PASS.
 
 ### DATA-02
@@ -140,7 +126,7 @@ Nunca se publicarán datasets completos originales de PannaData/Opta.
 - 245 suplentes con 0 minutos incorporados desde lineups.
 - 36 jugadores distintos.
 - no se infiere formación desde `formation_place`.
-- no se crean role stints que la fuente no permite reconstruir.
+- no se crean role stints ficticios.
 
 ### DATA-03
 
@@ -155,61 +141,43 @@ SHOT importados                        463
 cobertura                            38/38
 ```
 
-Validación de contrato:
-
-```text
-total_shots mismatches                  0
-shots_off_target mismatches             0
-goals mismatches                        0
-shots_penalty mismatches                0
-shots_on_target bound mismatches        0
-on_target + blocked mismatches          0
-shots_blocked          AGGREGATE_CANONICAL
-```
-
-Tarjetas: 98 importadas; 2 son eventos de equipo sin atribución de jugador y se guardan con `player_id=NULL`.
+`shots_blocked` queda `AGGREGATE_CANONICAL`. Tarjetas: 98 importadas; 2 son eventos de equipo sin atribución de jugador y se guardan con `player_id=NULL`.
 
 ### DATA-04
 
 `player_match_raw_stats`: 835/835 filas, 38/38 partidos, 36 jugadores. Validación PASS.
 
-27 estadísticas raw:
+27 estadísticas raw aprobadas: pases totales/completados, asistencias, largos, centros, regates, pérdidas, dispossessions, remates, bloqueados, goles, tackles total/ganados, intercepciones, bloqueos de pase, despejes, faltas cometidas/recibidas, tarjetas, penaltis concedidos/ganados, paradas y goles encajados.
 
-```text
-passes_total
-passes_completed
-assists
-long_balls_total
-long_balls_completed
-crosses_total
-crosses_completed
-dribbles_total
-dribbles_won
-turnovers
-dispossessed
-shots_total
-shots_blocked
-goals
-tackles_total
-tackles_won
-interceptions
-blocked_passes
-clearances
-fouls_committed
-fouls_received
-yellow_cards
-red_cards
-penalties_conceded
-penalties_won
-saves
-goals_conceded
-```
-
-`key_passes` es una variable útil del sistema/Collector, pero este export no contiene una columna verificada equivalente. No se aproxima con otra estadística.
+`key_passes` es útil para el sistema/Collector, pero este export no tiene una columna verificada equivalente. No se aproxima.
 
 Los `NULL` de la fuente se preservan como `NULL`.
 
-## 8. COLLECTOR-01 — CERRADO FUNCIONALMENTE
+### Reparación de fecha de partido
+
+FEATURE-02 detectó que los 38 `matches.match_date` estaban a NULL por un problema de parsing del formato real de Opta.
+
+Fuente real:
+
+```text
+opta_fixtures.match_date
+formato: YYYY-MM-DDZ
+```
+
+Reparación validada:
+
+```text
+DATA MATCH-DATE REPAIR: PASS
+source column: match_date
+source encoding: YYYY-MM-DDZ
+fixtures: 38/38
+distinct dates: 38
+dates repaired: 38
+```
+
+No se infirió cronología desde IDs ni orden de filas.
+
+## 7. COLLECTOR-01 — CERRADO FUNCIONALMENTE
 
 Catálogo: `collector/event_catalog.json` v0.3.0.
 
@@ -231,45 +199,19 @@ CORNER FOR/AGAINST
 GK SAVE/GOAL_CONCEDED
 ```
 
-Qualifiers controlados:
+Qualifiers: `key_pass`, `assist`, `second_yellow`, `set_piece_result`, `penalty_taker_player_id`.
 
-```text
-key_pass
-assist
-second_yellow
-set_piece_result
-penalty_taker_player_id
-```
-
-Decisiones:
-
-- LONG/CROSS cuentan también como pase total.
-- PASS FAIL y DRIBBLE FAIL generan pérdida derivada.
-- LOSS se reserva a otras pérdidas.
-- poste agrupado en OFF_TARGET en MVP.
-- tackles total/ganado quedan diferenciados.
-- falta peligrosa no es un botón subjetivo: se captura x/y y se derivará cuando exista criterio validado.
-- córners/faltes conservan tiempo de partido/vídeo para clips ABP.
+Decisiones clave: LONG/CROSS ya cuentan como pase total; PASS FAIL y DRIBBLE FAIL generan pérdida derivada; poste agrupado en OFF_TARGET; falta peligrosa no se captura subjetivamente, se deriva posteriormente desde x/y; córners/faltas conservan tiempo de partido/vídeo para clips ABP.
 
 Versión funcional: `collector/data_collector_futbol_mvp.html`.
 
-Validación local:
+Validación local: PASS, 20/20 acciones cubiertas. Retocs visuales/UX quedan en backlog no bloqueante.
 
-```text
-COLLECTOR MVP VALIDATION: PASS
-catalog actions covered: 20/20
-CSV eventos + CSV resumen + JSON: OK
-foul x/y + ABP: OK
-role/side + formation changes: OK
-```
+## 8. GPS-01 — CERRADO / VALIDADO
 
-Aceptado funcionalmente el 25/09/2026. Retocs visuals/UX: backlog no bloqueante.
+Contrato normalizado multi-proveedor en `gps/`.
 
-## 9. GPS-01 — CERRADO / VALIDADO
-
-GPS es opcional. Contrato normalizado multi-proveedor implementado en `gps/`.
-
-Unitats canòniques:
+Unidades canónicas:
 
 ```text
 timestamp_ms      milisegundos
@@ -279,36 +221,80 @@ acceleration_m_s2 m/s²
 x/y               metros cuando el mapping espacial es seguro
 ```
 
-Implementado:
+Incluye mapping declarativo, conversión de unidades, distancia acumulada→incremental, `gps_player_map`, metadatos de importación y controles de calidad. No hay fuzzy matching silencioso ni umbrales inventados de sprint/HIE/carga.
 
-- `gps/mapping_schema.example.json`: mapping declarativo por proveedor.
-- `gps/normalize_csv.py`: normalizador CSV genérico.
-- distancia acumulada puede convertirse a incremento por muestra.
-- `gps_player_map`: mapping explícito de identidad del proveedor a `player_id`.
-- metadatos de proveedor, mapping y unidades en `gps_imports`.
-- flags de calidad para timestamps, resets y valores físicamente imposibles.
-- no hay fuzzy matching silencioso de jugadores.
-- métricas propietarias del proveedor no se convierten automáticamente en features canónicas.
+Validación local: `GPS-01 VALIDATION: PASS`.
+
+## 9. FEATURE-01 — CERRADO / VALIDADO
+
+Catálogo: `features/catalog.json` v0.1.0.
+
+28 features deterministas:
+
+- 7 ratios de efectividad;
+- 21 variables por 90 minutos.
+
+Reglas:
+
+- ratio solo si numerador/denominador existen y denominador > 0;
+- por90 solo si `minutes_played > 0`;
+- NULL raw permanece NULL;
+- sin ratings, pesos, percentiles ni umbrales expertos.
 
 Validación local 25/09/2026:
 
 ```text
-GPS-01 VALIDATION: PASS
-schema_version: 0.4.0
-mapping_version: 0.1.0
-synthetic rows: 6
-synthetic players: 2
-quality-control flagged rows: 1
-unit conversions: PASS
-cumulative -> delta distance: PASS
-gps_player_map + import metadata: PASS
+FEATURE-01 VALIDATION: PASS
+feature rows: 23380/23380
+non-null values: 6324
+coverage: 38 matches / 36 players
+ratio domains [0,1]: PASS
+per-90 + zero-minute NULL: PASS
+raw NULL preservation: PASS
 ```
 
-No se han inventado umbrales de sprint, HIE o carga.
+## 10. FEATURE-02 — CERRADO / VALIDADO
 
-Cuando exista un fichero GPS real, solo habrá que crear/adaptar el mapping del proveedor y volver a validar.
+Catálogo: `features/temporal_catalog.json` v0.2.0.
 
-## 10. Sistema experto previsto
+Para cada una de las 28 features base se crean 7 primitivas temporales:
+
+```text
+history_n
+prev
+prior_mean
+prior_std
+delta_prev
+delta_prior_mean
+prior_slope
+```
+
+Contrato anti-leakage:
+
+- solo usa observaciones con `match_date` estrictamente anterior;
+- un partido nunca entra en su propio baseline;
+- partidos de la misma fecha no se informan entre sí;
+- futuros nunca entran;
+- NULL no se convierte a cero;
+- no se introducen ventanas arbitrarias 3/5/10 partidos.
+
+Validación local 25/09/2026:
+
+```text
+FEATURE-02 VALIDATION: PASS
+feature_version: 0.2.0
+base features: 28
+temporal operators: 7
+feature rows: 163660/163660
+coverage: 38 matches / 36 players
+history_n integer/non-negative: PASS
+prior_std non-negative: PASS
+first-date strict-past contract: PASS
+```
+
+## 11. Sistema experto
+
+Arquitectura prevista:
 
 ```text
 N1000  disponibilidad / actividad
@@ -332,9 +318,34 @@ Cada nodo debe mantener:
 entrada → condición → resultado → confianza → justificación
 ```
 
-No se fijan ramas/umbrales finales antes de validar las features disponibles.
+### EXPERT-01 preparado
 
-## 11. LLM
+Archivos:
+
+```text
+decision_tree/catalog.json
+decision_tree/build_stage1.py
+decision_tree/validate_stage1.py
+decision_tree/run_stage1.py
+tests/test_decision_tree_stage1.py
+```
+
+Motor: `expert_0.1.0`.
+
+Primer bloque:
+
+- `N1000.100`: estado observado de actividad/listado a partir de minutos + titularidad. No infiere lesión o disponibilidad médica.
+- `N2000.100`: rol estructural observado. No infiere todavía arquetipo ni player-fit.
+- `N3000.*.DELTA_PRIOR_MEAN`: posición matemática del valor actual respecto a la media histórica estrictamente anterior.
+- `N3000.*.PRIOR_SLOPE`: dirección matemática de la pendiente histórica estrictamente anterior.
+
+La frontera 0 se usa solo para describir el signo exacto de diferencia/pendiente. No es un umbral de significancia práctica. `ABOVE_PRIOR_MEAN` no significa automáticamente “mejor”, especialmente en métricas negativas como pérdidas.
+
+`confidence=1.0` en esta primera capa significa que el estado se deriva determinísticamente de los inputs disponibles; no es una probabilidad calibrada de rendimiento.
+
+No se generan todavía etiquetas GOOD/BAD, IMPROVING/DECLINING, ratings, pesos ni recomendaciones.
+
+## 12. LLM
 
 Arquitectura obligatoria:
 
@@ -344,39 +355,42 @@ DATA → ANALYTICS → DECISION ENGINE → LLM → COACH
 
 El LLM explica y consulta resultados estructurados. No inventa métricas ni sustituye cálculos críticos.
 
-## 12. Decisiones descartadas / restricciones
+## 13. Decisiones descartadas / restricciones
 
 - No usar todas las variables Opta solo porque existan.
 - No duplicar pérdidas derivadas.
 - No inferir formación sin evidencia.
 - No crear role stints ficticios.
-- No forzar semántica event-level desde agregados ambiguos de Opta.
+- No forzar semántica event-level desde agregados ambiguos.
 - No tratar `opta_events` como feed atómico completo.
-- No hacer que una estadística raw positiva cambie automáticamente los minutos de participación.
+- No hacer que una estadística raw positiva cambie automáticamente los minutos.
 - No inventar umbrales GPS de sprint/HIE/carga antes de justificarlos.
 - No usar fuzzy matching silencioso para identidades GPS.
-- No convertir automáticamente métricas propietarias GPS en variables analíticas canónicas.
+- No convertir automáticamente métricas propietarias GPS en features canónicas.
+- No convertir dirección matemática de N3000 en juicio de rendimiento sin una regla validada por métrica.
 
-## 13. Problemas abiertos
+## 14. Problemas abiertos
 
-- construir Feature Engine determinista v0.1;
-- decidir posteriormente reglas de elegibilidad/muestra mínima para interpretación, sin alterar raw;
-- añadir features físicas solo cuando haya datos GPS reales o una definición suficientemente justificada;
+- validar localmente EXPERT-01;
+- después diseñar N4000-N7000 usando únicamente features existentes y semántica por métrica;
+- decidir reglas de muestra mínima/significancia práctica con validación, no por intuición;
+- añadir componente físico cuando exista GPS real o definición suficientemente justificada;
 - crear script de anonimización para publicación;
 - mejorar reejecución incremental de algunos imports;
-- retocar UX del Collector al final de la fase funcional;
-- determinar fuente de `key_passes` si aparece otro export fiable.
+- retocar UX del Collector al final;
+- determinar fuente fiable de `key_passes` si aparece otro export.
 
-## 14. Siguiente paso exacto
+## 15. Siguiente paso exacto
 
-Construir **FEATURE-01** sobre `player_match_raw_stats` + `player_match`:
+Ejecutar:
 
-1. catálogo explícito de features y procedencia;
-2. ratios de efectividad puramente deterministas;
-3. normalizaciones por 90 minutos solo cuando `minutes_played > 0`;
-4. preservar `NULL` si falta el raw necesario;
-5. no aplicar todavía ratings, pesos, percentiles, etiquetas de rendimiento o umbrales expertos;
-6. escribir resultados versionados en `player_match_features`;
-7. validar idempotencia, dominios y cobertura sobre los 38 partidos.
+```powershell
+python decision_tree\run_stage1.py
+```
 
-Después de FEATURE-01: incorporar tendencia/ventanas temporales leakage-safe y preparar las primeras ramas N1000/N2000/N3000 del sistema experto.
+Si pasa:
+
+1. cerrar EXPERT-01;
+2. mantener N1000-N3000 como capa descriptiva auditable;
+3. construir N4000 amenaza ofensiva, N5000 creación/progresión, N6000 defensa y N7000 finalización;
+4. no usar aún un score global ni recomendación final hasta validar reglas y pesos.
