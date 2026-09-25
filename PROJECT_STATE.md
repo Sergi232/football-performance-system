@@ -25,11 +25,11 @@ EXPERT-05 N11000 consistencia/tendencia  CERRADO / VALIDADO
 EXPERT-06 N12000 player-fit evidence     CERRADO / VALIDADO
 EXPERT-07 N13000 recommendation gate     CERRADO / VALIDADO
 MOTOR EXPERTO BASE N1000-N13000          CERRADO / VALIDADO
-DASHBOARD-01 Streamlit MVP               DATA CONTRACT PASS / REVISIÓN VISUAL ABIERTA
 LLM-01 contexto + asistente seguro       CERRADO / VALIDADO
 LLM-02 proveedor OpenAI opcional         CERRADO / VALIDADO
-REPORTS-01 motor PDF común               PREPARADO / PENDIENTE VALIDACIÓN LOCAL
-PUBLICACIÓN / ANONIMIZACIÓN              DESPUÉS DE REPORTS-01
+REPORTS-01 motor PDF común               CERRADO / VALIDADO
+DASHBOARD-01 Streamlit MVP               INTEGRACIÓN FINAL / REVISIÓN VISUAL
+PUBLICACIÓN / ANONIMIZACIÓN              SIGUIENTE MACROBLOQUE
 ```
 
 El Collector puede recibir mejoras UX posteriormente, pero su contrato ya no bloquea el producto.
@@ -64,6 +64,7 @@ TEAM MODE es principal. PLAYER MODE es complementario. RIVAL MODE queda como ext
 - Priorizar MVP funcional antes de aumentar complejidad.
 - No crear scores de fit/recomendación antes de disponer de política validada.
 - Ninguna API key o secreto se sube al repositorio.
+- No repetir `pip install -r requirements.txt` en cada fase: solo instalar cuando aparezca una dependencia nueva o al preparar un entorno limpio.
 
 ## 4. Arquitectura materializada
 
@@ -194,7 +195,7 @@ RECOMMENDATION_NOT_ISSUED_POLICY_UNVALIDATED
 
 No existe todavía una política final de recomendación validada.
 
-## 11. DASHBOARD-01 — DATA CONTRACT PASS / REVISIÓN VISUAL ABIERTA
+## 11. DASHBOARD-01 — INTEGRACIÓN FINAL / REVISIÓN VISUAL
 
 Archivos: `app/data_access.py`, `app/validate_dashboard.py`, `app/streamlit_app.py`.
 
@@ -210,7 +211,15 @@ N13000 rows: 2505
 Final recommendation gate safety: PASS
 ```
 
-Streamlit arrancó correctamente en `localhost:8501`. Modos disponibles: TEAM / PLAYER / PARTITS / ASSISTENT. Pendiente confirmar visualmente el flujo completo antes de cerrar formalmente DASHBOARD-01.
+Streamlit ha arrancado correctamente en `localhost:8501`. Modos disponibles: TEAM / PLAYER / PARTITS / ASSISTENT.
+
+Integración final ya preparada:
+- TEAM: botón de descarga PDF del equipo;
+- PLAYER: botón de descarga PDF del jugador seleccionado;
+- PARTITS: botón de descarga PDF del partido seleccionado;
+- ASSISTENT: LLM opcional + fallback determinista + guardrails.
+
+Pendiente: una revisión visual rápida de estas cuatro vistas después del último `git pull`. Si no hay error visual/funcional, DASHBOARD-01 queda cerrado.
 
 ## 12. LLM — CERRADO EN MVP
 
@@ -245,11 +254,11 @@ No external API call was made by validation.
 
 El modo generativo real es opcional. Sin `OPENAI_API_KEY`, el producto funciona con fallback determinista.
 
-## 13. REPORTS-01 — PREPARADO / PENDIENTE VALIDACIÓN LOCAL
+## 13. REPORTS-01 — CERRADO / VALIDADO
 
-Motor único per TEAM / PLAYER / MATCH, amb una sola base de codi.
+Motor único TEAM / PLAYER / MATCH con una sola base de código.
 
-Archivos preparados:
+Archivos:
 
 ```text
 reports/__init__.py
@@ -259,7 +268,21 @@ reports/validate_reports.py
 tests/test_reports_engine.py
 ```
 
-`requirements.txt` incorpora `reportlab>=4.2`.
+Validación local 25/09/2026:
+
+```text
+REPORTS-01 PDF CONTRACT: PASS
+team: Deportivo Alavés
+player: Antonio Sivera
+match opponent: Rayo Vallecano de Madrid
+team payload matches: 38
+team payload squad: 36
+match lineup rows: 23
+recommendation/report guardrails: PASS
+team PDF: 10638 bytes
+player PDF: 6291 bytes
+match PDF: 5562 bytes
+```
 
 Contrato:
 - payloads read-only desde `app.data_access`;
@@ -269,7 +292,7 @@ Contrato:
 - Match report: contexto del partido y estadísticas player-match observadas;
 - no crea métricas críticas nuevas;
 - no crea scores, rankings ni recomendaciones;
-- `validate_reports.py` genera los tres PDF demo dentro de `reports/output/`.
+- los tres informes ya están integrados como descargas dentro de Streamlit.
 
 ## 14. Decisiones descartadas / restricciones vigentes
 
@@ -292,22 +315,23 @@ Contrato:
 
 ## 15. Problemas abiertos
 
-- validar localmente REPORTS-01 y revisar los tres PDF generados;
-- confirmar visualmente TEAM / PLAYER / PARTITS / ASSISTENT y cerrar DASHBOARD-01;
-- integrar botones de descarga PDF dentro de Streamlit después de validar el motor PDF;
+- confirmar visualmente TEAM / PLAYER / PARTITS / ASSISTENT con la integración final y cerrar DASHBOARD-01;
+- construir script de anonimización y dataset demo publicable;
+- README final, instalación limpia, tests globales y capturas para GitHub;
 - estudiar política futura de recomendación con literatura/datos/experimentos;
 - añadir features físicas cuando haya GPS real o definiciones justificadas;
-- script de anonimización para publicación;
 - mejorar reejecución incremental;
 - retocar UX Collector al final;
 - localizar fuente fiable de `key_passes` si aparece otro export.
 
 ## 16. Siguiente paso exacto
 
+No hay ninguna dependencia nueva que instalar. Ejecutar:
+
 ```powershell
 git pull
-pip install -r requirements.txt
-python reports\validate_reports.py
+python app\validate_dashboard.py
+streamlit run app\streamlit_app.py
 ```
 
-Esperado: `REPORTS-01 PDF CONTRACT: PASS` y tres PDF dentro de `reports/output/`.
+Revisar TEAM / PLAYER / PARTITS / ASSISTENT y probar un botón PDF en cada una de las tres vistas con informe. Si todo abre sin error, cerrar DASHBOARD-01 y pasar directamente al macrobloc de publicación/anonimización.
