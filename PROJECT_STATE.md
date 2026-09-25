@@ -17,7 +17,7 @@ REPORTS-01                          PROTOTYPE v0.1 / CONTRATO PASS
 PUBLICATION-01                      CERRADO / VALIDADO TÉCNICAMENTE
 DASHBOARD-01                        PROTOTYPE v0.1 / CONTRACT PASS
 ARCHITECTURE-01                     CERRADO — ISSUE #25
-ANALYTICS-01                        ACTIVO — ISSUE #26
+ANALYTICS-01                        IMPLEMENTADO / PENDIENTE VALIDACIÓN LOCAL — ISSUE #26
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
@@ -61,7 +61,7 @@ Regla: una capa superior no puede inventar métricas, rankings, evaluaciones o r
 ```text
 ARCHITECTURE-01              CERRADO
         ↓
-ANALYTICS-01                 ACTIVO
+ANALYTICS-01                 IMPLEMENTADO / VALIDACIÓN PENDIENTE
         ↓
 DECISION POLICY / N13000
         ↓
@@ -95,7 +95,6 @@ No se considera definitivo:
 - PDF ReportLab actual, prueba técnica y no informe profesional;
 - proveedor/arquitectura final del LLM;
 - política final N13000;
-- capa Analytics de insights;
 - Product Service Layer común para web/report/assistant.
 
 ## 6. Caso de desarrollo
@@ -124,7 +123,44 @@ N13000 mantiene `RECOMMENDATION_NOT_ISSUED_*` mientras no exista policy validada
 
 El árbol existente se conserva como baseline auditable. La futura policy debe construirse encima de Analytics validado, no mediante intuición ni LLM.
 
-## 9. Prototipos de producto
+## 9. ANALYTICS-01
+
+Issue #26.
+
+### DG-AN-01 — APROBADO
+
+Sergi aprueba opción **C**: usar ambas comparaciones de forma separada y etiquetada.
+
+```text
+SELF_ROLE_PRIOR
+jugador vs su propio historial strict-past en el mismo rol observado
+
+PEER_ROLE_PRIOR
+jugador vs otros jugadores del mismo equipo y mismo rol observado,
+utilizando solo información strict-past
+```
+
+La comparación peer:
+- excluye al jugador actual;
+- excluye misma fecha y futuro;
+- calcula primero la media previa de cada peer en ese rol;
+- resume después esas medias, dando el mismo peso a cada peer.
+
+Implementación preparada:
+
+```text
+analytics/__init__.py
+analytics/contract.json
+analytics/build_stage1.py
+analytics/validate_stage1.py
+analytics/README.md
+```
+
+Output previsto: tabla `analytics_evidence` con dos scopes por cada fila FEATURE-01.
+
+Analytics-01 no crea score, ranking, percentil, etiqueta bueno/malo, mínimo de muestra, confianza de recomendación ni recomendación táctica. Expone conteos y estadísticos para que la policy posterior pueda validarlos.
+
+## 10. Prototipos de producto
 
 ### Dashboard
 Contract PASS. TEAM / PLAYER / MATCH / ASSISTANT funcionan técnicamente. Problema detectado: predominio de tablas y falta de insights estructurados.
@@ -135,7 +171,7 @@ REPORTS-01 PASS. Los tres PDF se generan. Problema detectado: son prueba técnic
 ### Assistant
 LLM-01/02 PASS en contratos y guardrails. Decisión final local/cloud/híbrida pendiente. El assistant final solo explicará outputs estructurados.
 
-## 10. Agents / ownership
+## 11. Agents / ownership
 
 Definidos en `docs/WORKFLOW.md`:
 - A0 Architect/Integrator;
@@ -151,47 +187,18 @@ Definidos en `docs/WORKFLOW.md`:
 
 A0 y A9 acompañan todo el proyecto. Los agentes de interfaz no crean lógica analítica.
 
-## 11. Decision gates
+## 12. Decision gates
 
 Registro: `docs/DECISIONS.md`.
 
-Solo se pide intervención de Sergi en decisiones estructurales. Gates previstos:
-- `DG-AN-01` comparaciones analíticas;
-- `DG-N13-01` policy de recomendación;
-- `DG-UX-01` jerarquía de producto;
-- `DG-LLM-01` local/cloud/híbrido;
-- `DG-REP-01` estructura final de informes;
-- `DG-PUB-01` dataset público.
+- `DG-AN-01` comparaciones analíticas — **APPROVED C**;
+- `DG-N13-01` policy de recomendación — pendiente;
+- `DG-UX-01` jerarquía de producto — pendiente;
+- `DG-LLM-01` local/cloud/híbrido — pendiente;
+- `DG-REP-01` estructura final de informes — pendiente;
+- `DG-PUB-01` dataset público — pendiente/derechos.
 
-No se preguntan detalles técnicos reversibles/rutinarios.
-
-## 12. Fase activa — ANALYTICS-01
-
-Issue #26.
-
-Objetivo: construir la capa de evidencia entre Feature Engine y Decision Engine.
-
-Debe definir:
-- evolución;
-- cambio;
-- consistencia;
-- sample sufficiency;
-- incertidumbre;
-- comparaciones;
-- priorización de insights;
-- output contract reutilizable por Expert / Product / Reports / Assistant.
-
-### Gate activo: DG-AN-01
-
-Decisión necesaria antes de cerrar comparaciones evaluativas:
-
-```text
-A — jugador vs su propio historial en el mismo rol
-B — jugador vs pares del mismo rol
-C — ambas, separadas y etiquetadas
-```
-
-Recomendación arquitectónica: **C**.
+Solo se pide intervención de Sergi cuando el gate bloquea la fase siguiente.
 
 ## 13. Restricciones vigentes
 
@@ -206,6 +213,14 @@ Recomendación arquitectónica: **C**.
 
 ## 14. Siguiente paso exacto
 
-Sergi no debe ejecutar scripts ahora.
+Sergi debe ejecutar una sola validación local, sin instalar nada:
 
-Solo debe resolver `DG-AN-01` cuando se le pregunte. Una vez decidido, A3 Analytics construirá el contrato y la implementación; después se validará y se pasará a N13000 policy.
+```powershell
+cd C:\Users\sergi\Desktop\football-performance-system
+git pull
+python analytics\validate_stage1.py
+```
+
+Esperado: `ANALYTICS-01 EVIDENCE CONTRACT: PASS`.
+
+Si pasa, cerrar ANALYTICS-01 y abrir el siguiente gate estructural: `DG-N13-01` para la policy final de N13000.
