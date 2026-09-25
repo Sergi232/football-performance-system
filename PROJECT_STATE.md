@@ -18,10 +18,11 @@ PUBLICATION-01                      CERRADO / VALIDADO TÉCNICAMENTE
 DASHBOARD-01                        PROTOTYPE v0.1 / CONTRACT PASS
 ARCHITECTURE-01                     CERRADO — ISSUE #25
 ANALYTICS-01                        CERRADO / VALIDADO — ISSUE #26
-DECISION POLICY / N13000            GATE C APROBADO — ISSUE #27 CERRADO
+DECISION POLICY / N13000            GATE APROBADO — ISSUE #27 CERRADO
 DSAI-01A FEASIBILITY AUDIT          CERRADO — ISSUE #28
 DSAI-02 CHANGE DETECTION            CERRADO EXPERIMENTAL / NO DEPLOY — ISSUE #29
-DSAI-03 PLAYER SIMILARITY           ACTIVO — ISSUE #32
+DSAI-03 PLAYER SIMILARITY           CERRADO EXPLORATORIO / NO DEPLOY — ISSUE #32
+DSAI-04 ROLE-LABEL AUDIT            ACTIVO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
@@ -86,9 +87,9 @@ Roles observados: 590/835 player-match con rol; 23 raw labels.
 DG-AN-01 = C:
 - `SELF_ROLE_PRIOR`;
 - `PEER_ROLE_PRIOR`;
-- sempre separats.
+- siempre separados.
 
-Validació:
+Validación:
 ```text
 analytics rows=46760
 SELF_ROLE_PRIOR=23380
@@ -102,19 +103,19 @@ no score/ranking/recommendation=PASS
 
 DG-N13-01 = C.
 
-Contracte objectiu futur:
-- recomanació;
-- confiança/calibració;
-- evidència;
-- justificació;
-- limitacions;
+Contrato objetivo futuro:
+- recomendación;
+- confianza/calibración;
+- evidencia;
+- justificación;
+- limitaciones;
 - alternativa.
 
-Encara no s’autoritza cap recomanació perquè no hi ha criteris/thresholds/calibració validats. N13000 manté `RECOMMENDATION_NOT_ISSUED_*`.
+Aún no se autoriza ninguna recomendación porque no hay criterios/thresholds/calibración validados. N13000 mantiene `RECOMMENDATION_NOT_ISSUED_*`.
 
 ## 8. DSAI-01A — FEASIBILITY AUDIT CERRADO
 
-Resultat:
+Resultado:
 ```text
 player_similarity_profiles        GO_EXPLORATORY
 change_detection_evolution        GO_EXPERIMENT
@@ -124,7 +125,7 @@ expert_vs_ml                      BLOCKED_SHARED_TARGET
 n13000_recommendation_calibration BLOCKED_GROUND_TRUTH
 ```
 
-Més dades:
+Más datos:
 ```text
 player-role sequences=87
 repeated=67
@@ -138,11 +139,6 @@ GPS observations=0
 
 Script: `dsai/change_detection_experiment.py`.
 
-Estadístic experimental:
-```text
-abs(current - same_role_prior_mean) / same_role_prior_std
-```
-
 Cobertura:
 ```text
 evaluable_rows=3647
@@ -151,7 +147,7 @@ roles=18
 features=25
 ```
 
-Validació sintètica:
+Validación sintética:
 ```text
 0.5 std  AUC=0.2365  median uplift=-0.4645
 1.0 std  AUC=0.5341  median uplift= 0.0355
@@ -159,75 +155,91 @@ Validació sintètica:
 2.0 std  AUC=0.8024  median uplift= 1.0355
 ```
 
-Interpretació:
-- mediana natural aproximada ≈ `0.9645σ`;
-- 0.5σ queda dins la variació natural;
-- 1σ té molt solapament;
-- 1.5–2σ ofereixen separació creixent;
-- no existeix ground truth real de change-points.
+Decisión: `EXPERIMENTALLY_USEFUL / NO_DEPLOY`.
 
-Decisió: `EXPERIMENTALLY_USEFUL / NO_DEPLOY`.
+Motivo: muestra sensibilidad estadística para cambios suficientemente grandes, pero no existe ground truth real de change-points para calibrar alertas operativas.
 
-No s’ha creat threshold operatiu, alerta, ranking ni recomanació.
-
-## 10. DSAI-03 — PLAYER SIMILARITY ACTIU
+## 10. DSAI-03 — PLAYER SIMILARITY CERRADO EXPLORATORIO
 
 Issue #32.
 
-Implementat:
+Script:
 ```text
 dsai/player_similarity_experiment.py
 ```
 
-Unitat:
+Unidad:
 ```text
 player_id + exact observed primary_role
 ```
 
-Mètode inicial:
-- perfil = mitjana de FEATURE-01 en partits jugats dins del mateix rol;
-- `Substitute` exclòs de comparacions tàctiques;
-- z-standardisation per feature;
-- sense imputació de missing values;
-- distància RMS sobre features comuns no nuls;
-- comparació només entre el mateix rol observat;
-- nearest-neighbour exploratori;
-- validació temporal primera vs segona meitat;
-- escalat temporal ajustat només amb primera meitat.
+Ejecución local:
+```text
+profiles=64
+players=24
+roles=22
+features=28
+profiles_with_neighbour=61
+temporal_eligible=22
+same_neighbour=5
+retention_rate=0.22727272727272727
+pair_distance_corr=0.2143880082112036
+```
 
-Guardrails:
-- similarity ≠ quality;
-- similarity ≠ player fit;
-- similarity ≠ recommendation;
-- cap score global de rendiment;
-- cap target N12000/N13000.
+Interpretación:
+- cobertura descriptiva razonable para un experimento exploratorio;
+- solo 22 perfiles permiten validación temporal;
+- nearest-neighbour retention = 22.7%;
+- correlación de distancias entre mitades = 0.214;
+- la estabilidad temporal es insuficiente para desplegar ahora una funcionalidad de “jugadores similares”.
 
-## 11. DSAI-04 — ROLE-LABEL AUDIT PENDENT
+Decisión: `EXPLORATORY_RESULT / NO_DEPLOY`.
 
-Abans de qualsevol classificació supervisada de rol:
-- revisar 23 labels;
-- tractar `Substitute` com estat no tàctic fins aclarir semàntica;
-- no agrupar rols per intuïció.
+Se conserva como resultado académico negativo/limitado y como base para repetir con más partidos, temporadas/equipos y una taxonomía de roles validada. Similarity no equivale a calidad, fit ni recomendación.
 
-## 12. Línies bloquejades
+## 11. DSAI-04 — ROLE-LABEL AUDIT ACTIVO
 
-- role/player fit: sense target independent;
-- Expert vs ML: sense shared target independent;
-- N13000 calibration: sense ground truth;
-- GPS ML: 0 observacions en dataset actual.
+Objetivo: decidir si `primary_role` puede utilizarse de forma defendible como target supervisado antes de entrenar ningún clasificador.
 
-## 13. Producte actual
+Motivo:
+- hay 23 raw labels;
+- `Substitute` concentra 172 filas en el feasibility audit;
+- la importación de lineups documenta que `position='Substitute'` es un estado de banquillo y no un rol táctico específico;
+- no se agruparán etiquetas por intuición.
 
-Dashboard, Reports i Assistant funcionen tècnicament, però continuen com prototip v0.1.
+Audit requerido:
+- distribución exacta por label, jugadores, titularidad y minutos;
+- diagnóstico específico de `Substitute`;
+- coexistencia del mismo jugador con roles tácticos en otros partidos;
+- transiciones temporales de labels;
+- clases con muy pocos jugadores/observaciones;
+- conclusión metodológica sobre si el target raw es entrenable tal cual, requiere depuración basada en fuente o debe descartarse.
 
-Pendents després del nucli DS/IA:
+Script previsto:
+```text
+dsai/role_label_audit.py
+```
+
+## 12. Líneas bloqueadas
+
+- role/player fit: sin target independiente;
+- Expert vs ML: sin shared target independiente;
+- N13000 calibration: sin ground truth;
+- GPS ML: 0 observaciones en dataset actual;
+- role classification: bloqueada hasta cerrar DSAI-04.
+
+## 13. Producto actual
+
+Dashboard, Reports y Assistant funcionan técnicamente, pero continúan como prototipo v0.1.
+
+Pendientes después del núcleo DS/IA:
 - Product UX insight-first;
-- Reports-02 professionals;
+- Reports-02 profesionales;
 - arquitectura final LLM local/cloud/híbrida;
-- Product Service Layer comú;
-- publicació final i TFM.
+- Product Service Layer común;
+- publicación final y TFM.
 
-## 14. Decision gates pendents
+## 14. Decision gates pendientes
 
 - `DG-UX-01`;
 - `DG-LLM-01`;
@@ -236,12 +248,12 @@ Pendents després del nucli DS/IA:
 
 ## 15. Siguiente paso exacto
 
-No cal instal·lar res.
+No instalar nada. Ejecutar DSAI-04 cuando el script esté disponible:
 
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\player_similarity_experiment.py
+python dsai\role_label_audit.py
 ```
 
-Després A5 revisa cobertura i estabilitat temporal i decideix si la funcionalitat de similitud és defensable o queda només com a experiment exploratori.
+Después A5 decide si una tarea supervisada de clasificación de rol es metodológicamente defendible y con qué target exacto, o si se documenta como no viable con este dataset.
