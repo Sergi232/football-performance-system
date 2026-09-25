@@ -31,10 +31,10 @@ def main() -> None:
     )
 
     run(
-        "DATA-04 — IMPORT RAW PLAYER-MATCH AGGREGATES",
+        "DATA-04 — IMPORT RAW PLAYER-MATCH AGGREGATES V2",
         [
             sys.executable,
-            str(DATA_DIR / "import_demo_player_match_stats.py"),
+            str(DATA_DIR / "import_demo_player_match_stats_v2.py"),
             "--input-dir",
             str(args.input_dir),
             "--db",

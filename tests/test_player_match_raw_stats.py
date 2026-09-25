@@ -11,7 +11,7 @@ DATA_DIR = REPO_ROOT / "data"
 if str(DATA_DIR) not in sys.path:
     sys.path.insert(0, str(DATA_DIR))
 
-from import_demo_player_match_stats import (  # noqa: E402
+from import_demo_player_match_stats_v2 import (  # noqa: E402
     STAT_COLUMNS,
     nullable_count,
     validate_count_frame,
@@ -39,9 +39,17 @@ def make_frame() -> pd.DataFrame:
             "shots_total": 2.0,
             "shots_blocked": 1.0,
             "goals": 1.0,
+            "tackles_total": 4.0,
+            "tackles_won": 3.0,
+            "goals_conceded": 2.0,
         }
     )
     return pd.DataFrame([row])
+
+
+def test_approved_v2_columns_present() -> None:
+    assert STAT_COLUMNS["tackles_won"] == "wonTackle"
+    assert STAT_COLUMNS["goals_conceded"] == "goalsConceded"
 
 
 def test_nullable_count_preserves_null_and_accepts_integral_double() -> None:
@@ -58,6 +66,13 @@ def test_validate_count_frame_rejects_completed_above_total() -> None:
     frame = make_frame()
     frame.loc[0, "passes_completed"] = 11.0
     with pytest.raises(RuntimeError, match="passes_completed > passes_total"):
+        validate_count_frame(frame)
+
+
+def test_validate_count_frame_rejects_tackles_won_above_total() -> None:
+    frame = make_frame()
+    frame.loc[0, "tackles_won"] = 5.0
+    with pytest.raises(RuntimeError, match="tackles_won > tackles_total"):
         validate_count_frame(frame)
 
 

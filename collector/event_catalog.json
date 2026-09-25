@@ -1,7 +1,7 @@
 {
-  "catalog_version": "0.1.0",
+  "catalog_version": "0.2.0",
   "status": "working",
-  "notes": "Catálogo del MVP. Los eventos approved pueden implementarse. Los pending requieren cierre metodológico antes de activarse en la interfaz.",
+  "notes": "Catálogo MVP. Los eventos approved pueden implementarse. Los pending requieren cierre metodológico antes de activarse en la interfaz.",
   "events": [
     {"action_type": "PASS", "subtype": "NORMAL", "outcomes": ["SUCCESS", "FAIL"], "status": "approved"},
     {"action_type": "PASS", "subtype": "LONG", "outcomes": ["SUCCESS", "FAIL"], "status": "approved"},
@@ -11,7 +11,7 @@
 
     {"action_type": "SHOT", "subtype": null, "outcomes": ["GOAL", "ON_TARGET", "OFF_TARGET", "BLOCKED"], "status": "approved"},
 
-    {"action_type": "TACKLE", "subtype": null, "outcomes": [], "status": "approved"},
+    {"action_type": "TACKLE", "subtype": null, "outcomes": ["SUCCESS", "FAIL"], "status": "approved"},
     {"action_type": "INTERCEPTION", "subtype": null, "outcomes": [], "status": "approved"},
     {"action_type": "BLOCK", "subtype": null, "outcomes": [], "status": "approved"},
     {"action_type": "CLEARANCE", "subtype": null, "outcomes": [], "status": "approved"},
@@ -22,6 +22,9 @@
     {"action_type": "CARD", "subtype": "RED", "outcomes": [], "status": "approved"},
 
     {"action_type": "LOSS", "subtype": "OTHER", "outcomes": [], "status": "approved"},
+
+    {"action_type": "GK", "subtype": "SAVE", "outcomes": [], "status": "approved"},
+    {"action_type": "GK", "subtype": "GOAL_CONCEDED", "outcomes": [], "status": "approved"},
 
     {"action_type": "PENALTY", "subtype": "WON", "outcomes": ["GOAL", "MISSED"], "status": "partial"},
     {"action_type": "PENALTY", "subtype": "CONCEDED", "outcomes": ["GOAL", "MISSED"], "status": "partial"},
@@ -60,6 +63,10 @@
     },
     {
       "rule": "Every SHOT outcome counts automatically toward total shots",
+      "status": "approved"
+    },
+    {
+      "rule": "Every TACKLE counts toward tackles_total; TACKLE SUCCESS counts toward tackles_won",
       "status": "approved"
     }
   ]
