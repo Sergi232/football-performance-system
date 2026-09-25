@@ -1,0 +1,4 @@
+*.duckdb
+*.db
+source_schema_audit.json
+*.parquet
