@@ -7,7 +7,6 @@ for the licensed/raw development sources.
 from __future__ import annotations
 
 import argparse
-import shutil
 from pathlib import Path
 
 import duckdb
@@ -43,39 +42,45 @@ def case_map(column: str, mapping: dict[str, str]) -> str:
     return f"CASE CAST({column} AS VARCHAR) {' '.join(parts)} ELSE CAST({column} AS VARCHAR) END"
 
 
-def available_tables(con: duckdb.DuckDBPyConnection, schema: str = "main") -> set[str]:
+def available_tables(con: duckdb.DuckDBPyConnection, catalog: str = "football_performance", schema: str = "main") -> set[str]:
     rows = con.execute(
         """
         SELECT table_name
         FROM information_schema.tables
-        WHERE table_schema = ? AND table_type = 'BASE TABLE'
+        WHERE table_catalog = ? AND table_schema = ? AND table_type = 'BASE TABLE'
         """,
-        [schema],
+        [catalog, schema],
     ).fetchall()
     return {row[0] for row in rows}
 
 
-def table_columns(con: duckdb.DuckDBPyConnection, table: str) -> list[str]:
-    return [row[1] for row in con.execute(f"PRAGMA table_info('{table}')").fetchall()]
+def source_columns(con: duckdb.DuckDBPyConnection, table: str) -> list[str]:
+    rows = con.execute(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_catalog = 'src' AND table_schema = 'main' AND table_name = ?
+        ORDER BY ordinal_position
+        """,
+        [table],
+    ).fetchall()
+    return [row[0] for row in rows]
 
 
 def build_mappings(con: duckdb.DuckDBPyConnection) -> tuple[dict[str, str], dict[str, str], dict[str, str], str | None]:
     team_rows = con.execute("SELECT team_id FROM teams ORDER BY team_id").fetchall()
     team_ids = [str(r[0]) for r in team_rows]
 
-    main_team = None
-    if "player_match" in available_tables(con):
-        row = con.execute(
-            """
-            SELECT team_id, COUNT(*) AS n
-            FROM player_match
-            GROUP BY team_id
-            ORDER BY n DESC, team_id
-            LIMIT 1
-            """
-        ).fetchone()
-        if row:
-            main_team = str(row[0])
+    row = con.execute(
+        """
+        SELECT team_id, COUNT(*) AS n
+        FROM player_match
+        GROUP BY team_id
+        ORDER BY n DESC, team_id
+        LIMIT 1
+        """
+    ).fetchone()
+    main_team = None if row is None else str(row[0])
 
     team_map: dict[str, str] = {}
     if main_team is not None:
@@ -100,11 +105,12 @@ def transformed_select(
     team_map: dict[str, str],
     player_map: dict[str, str],
     match_map: dict[str, str],
-    main_team: str | None,
 ) -> str:
-    columns = table_columns(con, table)
-    expressions: list[str] = []
+    columns = source_columns(con, table)
+    if not columns:
+        raise RuntimeError(f"Could not introspect src.main.{table}")
 
+    expressions: list[str] = []
     for col in columns:
         quoted = f'"{col}"'
         if col in {"team_id", "opponent_team_id", "home_team_id", "away_team_id"}:
@@ -146,16 +152,16 @@ def build_public_demo(source: Path, output: Path) -> dict[str, int]:
         output.unlink()
 
     with duckdb.connect(str(source), read_only=True) as src:
-        source_tables = available_tables(src)
+        source_tables = {row[0] for row in src.execute("SHOW TABLES").fetchall()}
         missing = [name for name in PUBLIC_TABLES if name not in source_tables]
         if missing:
             raise RuntimeError(f"Required public-demo tables missing: {missing}")
-        team_map, player_map, match_map, main_team = build_mappings(src)
+        team_map, player_map, match_map, _ = build_mappings(src)
 
     with duckdb.connect(str(output)) as dst:
         dst.execute(f"ATTACH {sql_literal(str(source))} AS src (READ_ONLY)")
         for table in PUBLIC_TABLES:
-            query = transformed_select(dst, table, team_map, player_map, match_map, main_team)
+            query = transformed_select(dst, table, team_map, player_map, match_map)
             dst.execute(f'CREATE TABLE "{table}" AS {query}')
         dst.execute(
             """
