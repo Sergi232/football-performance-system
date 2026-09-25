@@ -140,6 +140,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Generated product outputs
+# Generated product / experiment outputs
 reports/output/
 publication/output/
+dsai/output/
