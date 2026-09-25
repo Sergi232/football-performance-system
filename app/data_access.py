@@ -1,0 +1,308 @@
+"""Read-only data access for DASHBOARD-01.
+
+The dashboard reads validated database layers only. It does not calculate critical
+metrics itself and it never upgrades a descriptive signal into a recommendation.
+"""
+from __future__ import annotations
+
+from pathlib import Path
+
+import duckdb
+import pandas as pd
+
+
+BASE_FEATURE_VERSION = "0.1.0"
+FINAL_ENGINE_VERSION = "expert_0.7.0"
+
+
+def connect_read_only(db_path: Path) -> duckdb.DuckDBPyConnection:
+    db_path = Path(db_path).expanduser().resolve()
+    if not db_path.exists():
+        raise FileNotFoundError(f"Database not found: {db_path}")
+    return duckdb.connect(str(db_path), read_only=True)
+
+
+def list_teams(db_path: Path) -> pd.DataFrame:
+    with connect_read_only(db_path) as con:
+        return con.execute(
+            """
+            SELECT
+                t.team_id,
+                t.display_name,
+                COUNT(DISTINCT pm.match_id) AS matches,
+                COUNT(DISTINCT pm.player_id) AS players
+            FROM teams t
+            JOIN player_match pm ON pm.team_id = t.team_id
+            GROUP BY t.team_id, t.display_name
+            ORDER BY matches DESC, t.display_name
+            """
+        ).df()
+
+
+def get_team_overview(db_path: Path, team_id: str) -> dict:
+    with connect_read_only(db_path) as con:
+        row = con.execute(
+            """
+            SELECT
+                COUNT(DISTINCT pm.match_id) AS matches,
+                COUNT(DISTINCT pm.player_id) AS players,
+                SUM(pm.minutes_played) AS player_minutes,
+                SUM(rs.goals) AS goals,
+                SUM(rs.assists) AS assists
+            FROM player_match pm
+            LEFT JOIN player_match_raw_stats rs
+              ON rs.match_id = pm.match_id
+             AND rs.player_id = pm.player_id
+             AND rs.team_id = pm.team_id
+            WHERE pm.team_id = ?
+            """,
+            [team_id],
+        ).fetchone()
+        if row is None:
+            return {"matches": 0, "players": 0, "player_minutes": None, "goals": None, "assists": None}
+        keys = ["matches", "players", "player_minutes", "goals", "assists"]
+        return dict(zip(keys, row))
+
+
+def get_team_matches(db_path: Path, team_id: str) -> pd.DataFrame:
+    with connect_read_only(db_path) as con:
+        return con.execute(
+            """
+            SELECT
+                m.match_id,
+                m.match_date,
+                CASE WHEN tm.is_home THEN 'H' ELSE 'A' END AS venue,
+                opp.display_name AS opponent,
+                tm.score_for,
+                tm.score_against,
+                tm.starting_formation
+            FROM team_match tm
+            JOIN matches m ON m.match_id = tm.match_id
+            LEFT JOIN teams opp ON opp.team_id = tm.opponent_team_id
+            WHERE tm.team_id = ?
+            ORDER BY m.match_date DESC, m.match_id
+            """,
+            [team_id],
+        ).df()
+
+
+def get_squad_summary(db_path: Path, team_id: str) -> pd.DataFrame:
+    with connect_read_only(db_path) as con:
+        return con.execute(
+            """
+            SELECT
+                p.player_id,
+                p.display_name AS player,
+                COUNT(*) FILTER (WHERE pm.minutes_played > 0) AS appearances,
+                SUM(CASE WHEN pm.started THEN 1 ELSE 0 END) AS starts,
+                SUM(pm.minutes_played) AS minutes,
+                SUM(rs.goals) AS goals,
+                SUM(rs.assists) AS assists,
+                string_agg(DISTINCT pm.primary_role, ', ' ORDER BY pm.primary_role)
+                    FILTER (WHERE pm.primary_role IS NOT NULL) AS observed_roles
+            FROM player_match pm
+            JOIN players p ON p.player_id = pm.player_id
+            LEFT JOIN player_match_raw_stats rs
+              ON rs.match_id = pm.match_id
+             AND rs.player_id = pm.player_id
+             AND rs.team_id = pm.team_id
+            WHERE pm.team_id = ?
+            GROUP BY p.player_id, p.display_name
+            ORDER BY minutes DESC NULLS LAST, p.display_name
+            """,
+            [team_id],
+        ).df()
+
+
+def get_player_match_history(db_path: Path, team_id: str, player_id: str) -> pd.DataFrame:
+    with connect_read_only(db_path) as con:
+        return con.execute(
+            """
+            SELECT
+                m.match_id,
+                m.match_date,
+                CASE WHEN tm.is_home THEN 'H' ELSE 'A' END AS venue,
+                opp.display_name AS opponent,
+                pm.started,
+                pm.minutes_played AS minutes,
+                pm.primary_role,
+                rs.passes_total,
+                rs.passes_completed,
+                rs.assists,
+                rs.shots_total,
+                rs.goals,
+                rs.tackles_total,
+                rs.tackles_won,
+                rs.interceptions,
+                rs.turnovers,
+                rs.dispossessed
+            FROM player_match pm
+            JOIN matches m ON m.match_id = pm.match_id
+            JOIN team_match tm ON tm.match_id = pm.match_id AND tm.team_id = pm.team_id
+            LEFT JOIN teams opp ON opp.team_id = tm.opponent_team_id
+            LEFT JOIN player_match_raw_stats rs
+              ON rs.match_id = pm.match_id
+             AND rs.player_id = pm.player_id
+             AND rs.team_id = pm.team_id
+            WHERE pm.team_id = ? AND pm.player_id = ?
+            ORDER BY m.match_date DESC, m.match_id
+            """,
+            [team_id, player_id],
+        ).df()
+
+
+def list_base_features(db_path: Path, player_id: str | None = None) -> list[str]:
+    with connect_read_only(db_path) as con:
+        if player_id is None:
+            rows = con.execute(
+                """
+                SELECT DISTINCT feature_name
+                FROM player_match_features
+                WHERE feature_version = ?
+                ORDER BY feature_name
+                """,
+                [BASE_FEATURE_VERSION],
+            ).fetchall()
+        else:
+            rows = con.execute(
+                """
+                SELECT DISTINCT feature_name
+                FROM player_match_features
+                WHERE feature_version = ? AND player_id = ?
+                ORDER BY feature_name
+                """,
+                [BASE_FEATURE_VERSION, player_id],
+            ).fetchall()
+    return [row[0] for row in rows]
+
+
+def get_player_feature_history(db_path: Path, player_id: str, feature_name: str) -> pd.DataFrame:
+    with connect_read_only(db_path) as con:
+        return con.execute(
+            """
+            SELECT
+                m.match_date,
+                opp.display_name AS opponent,
+                pm.primary_role,
+                pm.minutes_played AS minutes,
+                f.feature_value
+            FROM player_match_features f
+            JOIN player_match pm
+              ON pm.match_id = f.match_id AND pm.player_id = f.player_id
+            JOIN matches m ON m.match_id = f.match_id
+            JOIN team_match tm ON tm.match_id = pm.match_id AND tm.team_id = pm.team_id
+            LEFT JOIN teams opp ON opp.team_id = tm.opponent_team_id
+            WHERE f.player_id = ?
+              AND f.feature_version = ?
+              AND f.feature_name = ?
+            ORDER BY m.match_date, f.match_id
+            """,
+            [player_id, BASE_FEATURE_VERSION, feature_name],
+        ).df()
+
+
+def get_latest_player_gate(db_path: Path, team_id: str, player_id: str) -> dict | None:
+    """Return the latest played-match N12000/N13000 state from the validated final engine."""
+    with connect_read_only(db_path) as con:
+        row = con.execute(
+            """
+            SELECT
+                m.match_date,
+                MAX(CASE WHEN dr.node_id = 'N12000.100' THEN dr.result_value END) AS observed_role,
+                MAX(CASE WHEN dr.node_id = 'N12000.110' THEN dr.result_value END) AS same_role_history,
+                MAX(CASE WHEN dr.node_id = 'N12000.120' THEN dr.result_value END) AS evaluable_signals,
+                MAX(CASE WHEN dr.node_id = 'N12000.170' THEN dr.result_value END) AS evidence_coverage,
+                MAX(CASE WHEN dr.node_id = 'N12000.180' THEN dr.result_value END) AS evidence_availability,
+                MAX(CASE WHEN dr.node_id = 'N13000.100' THEN dr.result_value END) AS recommendation_gate,
+                MAX(CASE WHEN dr.node_id = 'N13000.110' THEN dr.result_value END) AS policy_status,
+                MAX(CASE WHEN dr.node_id = 'N13000.120' THEN dr.result_value END) AS final_status
+            FROM decision_results dr
+            JOIN matches m ON m.match_id = dr.match_id
+            JOIN player_match pm
+              ON pm.match_id = dr.match_id
+             AND pm.player_id = dr.player_id
+            WHERE dr.engine_version = ?
+              AND dr.player_id = ?
+              AND pm.team_id = ?
+              AND pm.minutes_played > 0
+              AND dr.node_id IN (
+                'N12000.100','N12000.110','N12000.120','N12000.170','N12000.180',
+                'N13000.100','N13000.110','N13000.120'
+              )
+            GROUP BY dr.match_id, m.match_date
+            ORDER BY m.match_date DESC, dr.match_id DESC
+            LIMIT 1
+            """,
+            [FINAL_ENGINE_VERSION, player_id, team_id],
+        ).fetchone()
+    if row is None:
+        return None
+    keys = [
+        "match_date", "observed_role", "same_role_history", "evaluable_signals",
+        "evidence_coverage", "evidence_availability", "recommendation_gate",
+        "policy_status", "final_status",
+    ]
+    return dict(zip(keys, row))
+
+
+def get_match_lineup(db_path: Path, team_id: str, match_id: str) -> pd.DataFrame:
+    with connect_read_only(db_path) as con:
+        return con.execute(
+            """
+            SELECT
+                p.display_name AS player,
+                pm.shirt_number,
+                pm.started,
+                pm.minutes_played AS minutes,
+                pm.primary_role,
+                rs.passes_total,
+                rs.passes_completed,
+                rs.assists,
+                rs.shots_total,
+                rs.goals,
+                rs.tackles_total,
+                rs.tackles_won,
+                rs.interceptions,
+                rs.turnovers,
+                rs.dispossessed
+            FROM player_match pm
+            JOIN players p ON p.player_id = pm.player_id
+            LEFT JOIN player_match_raw_stats rs
+              ON rs.match_id = pm.match_id
+             AND rs.player_id = pm.player_id
+             AND rs.team_id = pm.team_id
+            WHERE pm.team_id = ? AND pm.match_id = ?
+            ORDER BY pm.started DESC, pm.minutes_played DESC NULLS LAST, pm.shirt_number NULLS LAST, p.display_name
+            """,
+            [team_id, match_id],
+        ).df()
+
+
+def get_engine_status(db_path: Path) -> dict:
+    with connect_read_only(db_path) as con:
+        player_match_rows = con.execute("SELECT COUNT(*) FROM player_match").fetchone()[0]
+        engine_rows = con.execute(
+            "SELECT COUNT(*) FROM decision_results WHERE engine_version = ?",
+            [FINAL_ENGINE_VERSION],
+        ).fetchone()[0]
+        n13000_rows = con.execute(
+            """
+            SELECT COUNT(*) FROM decision_results
+            WHERE engine_version = ? AND node_id LIKE 'N13000.%'
+            """,
+            [FINAL_ENGINE_VERSION],
+        ).fetchone()[0]
+        unsafe = con.execute(
+            """
+            SELECT COUNT(*) FROM decision_results
+            WHERE engine_version = ? AND node_id = 'N13000.120'
+              AND result_value NOT LIKE 'RECOMMENDATION_NOT_ISSUED_%'
+            """,
+            [FINAL_ENGINE_VERSION],
+        ).fetchone()[0]
+    return {
+        "player_match_rows": player_match_rows,
+        "engine_rows": engine_rows,
+        "n13000_rows": n13000_rows,
+        "unsafe_final_states": unsafe,
+    }
