@@ -1,0 +1,30 @@
+{
+  "analytics_version": "analytics_0.1.0",
+  "source_feature_version": "0.1.0",
+  "source_role_feature_version": "0.3.0",
+  "status": "descriptive_evidence",
+  "comparison_scopes": {
+    "SELF_ROLE_PRIOR": "Current player vs own strictly-prior history in the exact observed role.",
+    "PEER_ROLE_PRIOR": "Current player vs other players from the same team with the exact observed role, using only strictly-prior data. Each peer contributes one prior mean so players with more matches do not receive more weight."
+  },
+  "evidence_states": [
+    "ROLE_UNKNOWN",
+    "CURRENT_VALUE_MISSING",
+    "NO_PRIOR_EVIDENCE",
+    "EVIDENCE_AVAILABLE"
+  ],
+  "comparison_directions": [
+    "ABOVE_MEAN",
+    "BELOW_MEAN",
+    "EQUAL_MEAN"
+  ],
+  "principles": [
+    "DG-AN-01 option C is approved: self-history and peer-role comparison are both retained and explicitly separated.",
+    "All baselines are strict-past by match_date; the current date and future dates never enter the reference set.",
+    "Peer-role comparison excludes the current player from the peer pool.",
+    "Peer-role reference is equal-player weighted: first calculate each peer's prior mean, then summarize those peer means.",
+    "No minimum sample threshold is invented in Analytics-01. Counts are exposed and sufficiency policy is deferred to validated decision rules.",
+    "ABOVE/BELOW/EQUAL are mathematical directions only, not good/bad performance labels.",
+    "Analytics-01 creates no score, ranking, recommendation, tactical instruction or confidence policy."
+  ]
+}
