@@ -1,0 +1,46 @@
+{
+  "engine_version": "expert_0.2.0",
+  "parent_engine_version": "expert_0.1.0",
+  "status": "domain_evidence_layer",
+  "dependencies": {
+    "feature_base_version": "0.1.0",
+    "feature_temporal_version": "0.2.0"
+  },
+  "principles": [
+    "N1000-N3000 are carried forward unchanged from expert_0.1.0.",
+    "N4000-N7000 are domain-specific evidence nodes built only from existing deterministic and strict-past features.",
+    "No cross-player percentile, score, weight, role-fit recommendation or practical-significance threshold is introduced.",
+    "Relative states compare a player only with that same player's strict-past baseline.",
+    "Higher/lower is descriptive unless a later validated rule explicitly assigns value.",
+    "confidence=1.0 means deterministic rule execution, not calibrated performance probability."
+  ],
+  "domain_nodes": [
+    {"node_id":"N4000.100","family":"N4000","label":"shot_volume","feature":"shots_total_per90","metric_role":"volume"},
+    {"node_id":"N4000.110","family":"N4000","label":"dribble_volume","feature":"dribbles_total_per90","metric_role":"volume"},
+    {"node_id":"N4000.120","family":"N4000","label":"fouls_drawn_volume","feature":"fouls_received_per90","metric_role":"volume"},
+    {"node_id":"N4000.130","family":"N4000","label":"penalties_won_volume","feature":"penalties_won_per90","metric_role":"volume"},
+
+    {"node_id":"N5000.100","family":"N5000","label":"assist_output","feature":"assists_per90","metric_role":"output"},
+    {"node_id":"N5000.110","family":"N5000","label":"pass_volume","feature":"passes_total_per90","metric_role":"volume"},
+    {"node_id":"N5000.120","family":"N5000","label":"pass_completion","feature":"pass_completion_rate","metric_role":"efficiency"},
+    {"node_id":"N5000.130","family":"N5000","label":"long_ball_volume","feature":"long_balls_total_per90","metric_role":"volume"},
+    {"node_id":"N5000.140","family":"N5000","label":"long_ball_completion","feature":"long_ball_completion_rate","metric_role":"efficiency"},
+    {"node_id":"N5000.150","family":"N5000","label":"cross_volume","feature":"crosses_total_per90","metric_role":"volume"},
+    {"node_id":"N5000.160","family":"N5000","label":"cross_completion","feature":"cross_completion_rate","metric_role":"efficiency"},
+    {"node_id":"N5000.170","family":"N5000","label":"turnover_volume","feature":"turnovers_per90","metric_role":"cost"},
+    {"node_id":"N5000.180","family":"N5000","label":"dispossessed_volume","feature":"dispossessed_per90","metric_role":"cost"},
+
+    {"node_id":"N6000.100","family":"N6000","label":"tackle_volume","feature":"tackles_total_per90","metric_role":"volume"},
+    {"node_id":"N6000.110","family":"N6000","label":"tackle_success","feature":"tackle_success_rate","metric_role":"efficiency"},
+    {"node_id":"N6000.120","family":"N6000","label":"interception_volume","feature":"interceptions_per90","metric_role":"volume"},
+    {"node_id":"N6000.130","family":"N6000","label":"blocked_pass_volume","feature":"blocked_passes_per90","metric_role":"volume"},
+    {"node_id":"N6000.140","family":"N6000","label":"clearance_volume","feature":"clearances_per90","metric_role":"volume"},
+    {"node_id":"N6000.150","family":"N6000","label":"fouls_committed_volume","feature":"fouls_committed_per90","metric_role":"cost"},
+    {"node_id":"N6000.160","family":"N6000","label":"penalties_conceded_volume","feature":"penalties_conceded_per90","metric_role":"cost"},
+
+    {"node_id":"N7000.100","family":"N7000","label":"goal_output","feature":"goals_per90","metric_role":"output"},
+    {"node_id":"N7000.110","family":"N7000","label":"goal_per_shot_efficiency","feature":"goal_per_shot_rate","metric_role":"efficiency"},
+    {"node_id":"N7000.120","family":"N7000","label":"blocked_shot_share","feature":"blocked_shot_rate","metric_role":"context"},
+    {"node_id":"N7000.130","family":"N7000","label":"shot_volume_finishing_context","feature":"shots_total_per90","metric_role":"volume"}
+  ]
+}
