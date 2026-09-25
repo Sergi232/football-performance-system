@@ -23,40 +23,54 @@ DSAI-01A FEASIBILITY AUDIT          CERRADO — ISSUE #28
 DSAI-02 CHANGE DETECTION            CERRADO EXPERIMENTAL / NO DEPLOY — ISSUE #29
 DSAI-03 PLAYER SIMILARITY           CERRADO EXPLORATORIO / NO DEPLOY — ISSUE #32
 DSAI-04 ROLE-LABEL AUDIT            CERRADO / REFORMULATE_LABELS — ISSUE #34
-DSAI-05 ROLE TARGET RECONSTRUCTION  ACTIVO — ISSUE #35 / SCRIPT IMPLEMENTADO
+DSAI-05 ROLE TARGET RECONSTRUCTION  CERRADO / VALIDADO — ISSUE #35
+DSAI-06 SUPERVISED ROLE FEASIBILITY ACTIVO — ISSUE #36 / SCRIPT IMPLEMENTADO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
-## DSAI-04 — resultado cerrado
+## DSAI-05 — resultado cerrado
 
 ```text
-labeled_rows=590
-raw_labels=23
-labeled_players=28
-Substitute rows=172
-Substitute players=23
-players_also_with_tactical_role=19
-conclusion=RAW_TARGET_REQUIRES_SOURCE_BASED_CLEANING_BEFORE_SUPERVISED_MODELLING
+rows=835
+played=590
+starters=418
+substitute_appearances=172
+unused_bench=245
+clean_target_rows=418
+labels=22
+players=24
+single_player_labels=3
+withheld_substitute_appearances=172
+invalid_starter_rows=0
+substitute_labels_remaining=0
+conclusion=CLEAN_TARGET_RECONSTRUCTED_SUPERVISED_FEASIBILITY_STILL_REQUIRED
 ```
 
-Decisión: `REFORMULATE_LABELS`.
+Decisión: target táctico semánticamente limpio y validado. `Substitute` queda separado como estado de participación y no existe en el target táctico. No se infiere ningún rol para suplentes.
 
-`Substitute` es un estado de participación y no una clase táctica. No se entrena ningún clasificador sobre los 23 labels brutos.
+## DSAI-06 — activo
 
-## DSAI-05 — activo
+Issue #36.
 
-Issue #35.
+Script: `dsai/role_supervised_feasibility.py`.
 
-Script: `dsai/role_target_reconstruction.py`.
+Objetivo: determinar si las 418 observaciones, 22 clases y 24 jugadores permiten un experimento supervisado defendible sin memorizar identidad.
 
-Objetivo:
-- separar `participation_status` de `tactical_role`;
-- conservar únicamente roles tácticos directamente observados;
-- dejar sin rol táctico los suplentes cuando la fuente no lo proporciona;
-- no imputar por historial, posición habitual ni intuición;
-- cuantificar cobertura, clases y dependencia por jugador antes de decidir si procede ML supervisado.
+Audita:
+- cobertura de FEATURE-01 en las filas del target limpio;
+- soporte de cada clase por jugadores y partidos;
+- elegibilidad temporal strict-past;
+- soporte strict-past del mismo label en otro jugador;
+- clases de un único jugador;
+- diseño de validación leakage-safe.
 
-La reconstrucción no modifica la base normalizada y genera CSV/JSON/Markdown reproducibles.
+Guardrails:
+- no entrena ningún modelo;
+- no fusiona ni elimina clases por conveniencia;
+- `player_id`, nombres, `primary_role`, FEATURE-03 y outputs N12000/N13000 no pueden ser predictores;
+- no introduce mínimos de muestra arbitrarios.
+
+Salida posible: `GO_BASELINE_EXPERIMENT`, `LIMITED_EXPERIMENT_ONLY` o `NO_GO_SUPERVISED`.
 
 ## Líneas todavía bloqueadas
 
@@ -69,7 +83,7 @@ La reconstrucción no modifica la base normalizada y genera CSV/JSON/Markdown re
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\role_target_reconstruction.py
+python dsai\role_supervised_feasibility.py
 ```
 
 No instalar nada.
