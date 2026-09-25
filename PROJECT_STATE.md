@@ -16,18 +16,18 @@ LLM-01/02                           PROTOTYPE v0.1 / CONTRATOS PASS
 REPORTS-01                          PROTOTYPE v0.1 / CONTRATO PASS
 PUBLICATION-01                      CERRADO / VALIDADO TÉCNICAMENTE
 DASHBOARD-01                        PROTOTYPE v0.1 / CONTRACT PASS
-ARCHITECTURE-01                     ACTIVO — ISSUE #25
+ARCHITECTURE-01                     CERRADO — ISSUE #25
+ANALYTICS-01                        ACTIVO — ISSUE #26
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
-## 2. Cambio de forma de trabajo
+## 2. Forma de trabajo vigente
 
-A partir de 25/09/2026 el proyecto pasa a flujo **architecture-first + gated**.
+El proyecto usa flujo **architecture-first + gated**.
 
-No se seguirá añadiendo funcionalidad al dashboard/report/assistant por parches. Primero se cierra la arquitectura y luego se avanza por capas con contratos de entrada/salida.
+No se añaden parches de producto antes de cerrar la capa propietaria de la lógica. GitHub es la memoria técnica definitiva.
 
 Fuente de verdad:
-
 1. `PROJECT_STATE.md` — estado operativo;
 2. `docs/ARCHITECTURE.md` — arquitectura vigente;
 3. `docs/DECISIONS.md` — decisiones estructurales/gates;
@@ -59,9 +59,9 @@ Regla: una capa superior no puede inventar métricas, rankings, evaluaciones o r
 ## 4. Orden obligatorio de trabajo
 
 ```text
-ARCHITECTURE-01
+ARCHITECTURE-01              CERRADO
         ↓
-ANALYTICS-01
+ANALYTICS-01                 ACTIVO
         ↓
 DECISION POLICY / N13000
         ↓
@@ -76,13 +76,11 @@ ML si aporta valor
 FINAL PRODUCT / PUBLICATION / TFM
 ```
 
-## 5. Estado real del prototipo actual
+## 5. Estado real del prototipo
 
-El backend está más avanzado que la capa de producto.
-
-Se reutiliza:
+Se reutiliza como infraestructura válida:
 - DuckDB y esquema;
-- Collector;
+- Collector funcional;
 - GPS normalization;
 - FEATURE-01/02/03;
 - baseline experto N1000-N13000;
@@ -94,7 +92,7 @@ Se reutiliza:
 
 No se considera definitivo:
 - UX Streamlit actual, demasiado orientada a tablas;
-- PDF ReportLab actual, válido como prueba técnica pero no como informe profesional;
+- PDF ReportLab actual, prueba técnica y no informe profesional;
 - proveedor/arquitectura final del LLM;
 - política final N13000;
 - capa Analytics de insights;
@@ -126,22 +124,16 @@ N13000 mantiene `RECOMMENDATION_NOT_ISSUED_*` mientras no exista policy validada
 
 El árbol existente se conserva como baseline auditable. La futura policy debe construirse encima de Analytics validado, no mediante intuición ni LLM.
 
-## 9. Prototipos de producto ya validados técnicamente
+## 9. Prototipos de producto
 
 ### Dashboard
-DATA CONTRACT PASS. TEAM / PLAYER / MATCH / ASSISTANT arrancan y consumen datos reales/anonimizados.
-
-Problema de producto detectado: predominio de tablas y falta de capa de insights suficientemente desarrollada.
+Contract PASS. TEAM / PLAYER / MATCH / ASSISTANT funcionan técnicamente. Problema detectado: predominio de tablas y falta de insights estructurados.
 
 ### Reports
-REPORTS-01 PASS. Los tres PDF se generan.
-
-Problema de producto detectado: el PDF actual es una prueba técnica, no un informe final entregable al cuerpo técnico.
+REPORTS-01 PASS. Los tres PDF se generan. Problema detectado: son prueba técnica, no informes finales entregables.
 
 ### Assistant
-LLM-01/02 PASS en contratos y guardrails. OpenAI opcional y fallback determinista.
-
-Decisión pendiente: arquitectura final local/cloud/híbrida. El asistente final solo explicará outputs estructurados.
+LLM-01/02 PASS en contratos y guardrails. Decisión final local/cloud/híbrida pendiente. El assistant final solo explicará outputs estructurados.
 
 ## 10. Agents / ownership
 
@@ -157,9 +149,9 @@ Definidos en `docs/WORKFLOW.md`:
 - A8 AI Assistant;
 - A9 QA/Publication.
 
-A0 y A9 acompañan todo el proyecto. Los agentes de interfaz no pueden crear lógica analítica.
+A0 y A9 acompañan todo el proyecto. Los agentes de interfaz no crean lógica analítica.
 
-## 11. Decisions gates
+## 11. Decision gates
 
 Registro: `docs/DECISIONS.md`.
 
@@ -171,9 +163,37 @@ Solo se pide intervención de Sergi en decisiones estructurales. Gates previstos
 - `DG-REP-01` estructura final de informes;
 - `DG-PUB-01` dataset público.
 
-No se preguntarán detalles técnicos reversibles/rutinarios.
+No se preguntan detalles técnicos reversibles/rutinarios.
 
-## 12. Restricciones vigentes
+## 12. Fase activa — ANALYTICS-01
+
+Issue #26.
+
+Objetivo: construir la capa de evidencia entre Feature Engine y Decision Engine.
+
+Debe definir:
+- evolución;
+- cambio;
+- consistencia;
+- sample sufficiency;
+- incertidumbre;
+- comparaciones;
+- priorización de insights;
+- output contract reutilizable por Expert / Product / Reports / Assistant.
+
+### Gate activo: DG-AN-01
+
+Decisión necesaria antes de cerrar comparaciones evaluativas:
+
+```text
+A — jugador vs su propio historial en el mismo rol
+B — jugador vs pares del mismo rol
+C — ambas, separadas y etiquetadas
+```
+
+Recomendación arquitectónica: **C**.
+
+## 13. Restricciones vigentes
 
 - no inventar eventos atómicos desde agregados ambiguos;
 - no inferir rol/formación sin evidencia;
@@ -182,21 +202,10 @@ No se preguntarán detalles técnicos reversibles/rutinarios.
 - no usar LLM para cálculo crítico;
 - no emitir recomendación N13000 sin policy validada;
 - no publicar datos profesionales solo por estar anonimizados;
-- no rediseñar web/report/assistant antes de cerrar la capa Analytics correspondiente.
+- no rediseñar web/report/assistant antes de cerrar Analytics correspondiente.
 
-## 13. Fase activa y siguiente paso exacto
+## 14. Siguiente paso exacto
 
-**ARCHITECTURE-01 — issue #25.**
+Sergi no debe ejecutar scripts ahora.
 
-Documentación creada/actualizada:
-
-```text
-docs/ARCHITECTURE.md
-docs/WORKFLOW.md
-docs/DECISIONS.md
-PROJECT_STATE.md
-```
-
-Siguiente transición: cerrar ARCHITECTURE-01 y abrir **ANALYTICS-01**.
-
-El primer gate que puede afectar Analytics es `DG-AN-01` (self-history / peer-role / ambas). El Architect debe presentarlo de forma breve cuando sea necesario; hasta entonces Sergi no debe ejecutar ningún script ni decidir detalles técnicos.
+Solo debe resolver `DG-AN-01` cuando se le pregunte. Una vez decidido, A3 Analytics construirá el contrato y la implementación; después se validará y se pasará a N13000 policy.
