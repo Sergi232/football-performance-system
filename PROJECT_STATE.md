@@ -26,29 +26,6 @@ DSAI-04 ROLE-LABEL AUDIT            ACTIVO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
-## Flujo vigente
-
-`DATA → FEATURES → ANALYTICS → EXPERT → DSAI → PRODUCT → LLM → QA/PUBLICATION`
-
-GitHub es la fuente de verdad. Una capa superior no puede inventar métricas, rankings, scores o recomendaciones.
-
-## Baseline
-
-```text
-matches=38
-players=36
-player_match=835
-FEATURE-01=28
-observed-role rows=590
-raw role labels=23
-analytics rows=46760
-GPS observations=0
-```
-
-## DSAI-02 — change detection
-
-Decisión: `EXPERIMENTALLY_USEFUL / NO_DEPLOY`.
-
 ## DSAI-03 — player similarity
 
 ```text
@@ -67,37 +44,12 @@ Decisión: `EXPLORATORY_RESULT / NO_DEPLOY` por baja estabilidad temporal.
 
 ## DSAI-04 — role-label audit ACTIVO
 
-Objetivo: auditar `primary_role` antes de cualquier clasificador supervisado.
+Objetivo: auditar `primary_role` antes de cualquier clasificador supervisado. No agrupar labels por intuición.
 
-Puntos obligatorios:
-- distribución por label;
-- jugadores, titularidad y minutos;
-- `Substitute` como posible estado no táctico;
-- coexistencia del mismo jugador con roles tácticos;
-- transiciones temporales;
-- sparsity;
-- decisión final sobre target raw.
-
-No agrupar labels por intuición.
-
-## Líneas bloqueadas
-
-- role/player fit;
-- Expert vs ML;
-- N13000 calibration;
-- GPS ML;
-- role classification hasta cerrar DSAI-04.
-
-## Producto
-
-Dashboard, Reports y Assistant siguen como prototipo v0.1. Después del núcleo DS/IA: Product UX insight-first → Reports-02 → arquitectura LLM final → Product Service Layer → publicación/TFM.
-
-## Siguiente paso exacto
+Siguiente paso:
 
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
 python dsai\role_label_audit.py
 ```
-
-No instalar nada.
