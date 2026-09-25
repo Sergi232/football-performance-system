@@ -272,11 +272,11 @@ GPS es opcional. Contrato normalizado multi-proveedor implementado en `gps/`.
 Unitats canòniques:
 
 ```text
-timestamp_ms     milisegundos
-distance_m       metros
-speed_m_s        m/s
+timestamp_ms      milisegundos
+distance_m        metros
+speed_m_s         m/s
 acceleration_m_s2 m/s²
-x/y              metros cuando el mapping espacial es seguro
+x/y               metros cuando el mapping espacial es seguro
 ```
 
 Implementado:
@@ -353,7 +353,7 @@ El LLM explica y consulta resultados estructurados. No inventa métricas ni sust
 - No forzar semántica event-level desde agregados ambiguos de Opta.
 - No tratar `opta_events` como feed atómico completo.
 - No hacer que una estadística raw positiva cambie automáticamente los minutos de participación.
-- No inventar umbrals GPS de sprint/HIE/carga antes de justificarlos.
+- No inventar umbrales GPS de sprint/HIE/carga antes de justificarlos.
 - No usar fuzzy matching silencioso para identidades GPS.
 - No convertir automáticamente métricas propietarias GPS en variables analíticas canónicas.
 
