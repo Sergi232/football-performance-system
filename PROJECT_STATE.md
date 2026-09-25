@@ -17,15 +17,14 @@ REPORTS-01                          PROTOTYPE v0.1 / CONTRATO PASS
 PUBLICATION-01                      CERRADO / VALIDADO TÉCNICAMENTE
 DASHBOARD-01                        PROTOTYPE v0.1 / CONTRACT PASS
 ARCHITECTURE-01                     CERRADO — ISSUE #25
-ANALYTICS-01                        IMPLEMENTADO / HOTFIX VALIDACIÓN PENDIENTE — ISSUE #26
+ANALYTICS-01                        CERRADO / VALIDADO — ISSUE #26
+DECISION POLICY / N13000            ACTIVO — ISSUE #27
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
 ## 2. Forma de trabajo vigente
 
-El proyecto usa flujo **architecture-first + gated**.
-
-No se añaden parches de producto antes de cerrar la capa propietaria de la lógica. GitHub es la memoria técnica definitiva.
+El proyecto usa flujo **architecture-first + gated**. GitHub es la memoria técnica definitiva.
 
 Fuente de verdad:
 1. `PROJECT_STATE.md` — estado operativo;
@@ -37,9 +36,7 @@ Fuente de verdad:
 
 ## 3. Prioridad académica del TFM — Data Science + IA
 
-El máster es de Data Science e Inteligencia Artificial. La aplicación web es el producto final, pero la contribución académica principal debe quedar demostrada en datos, feature engineering, analytics, sistema experto, ML, validación y explicabilidad.
-
-Cadena metodológica prioritaria:
+La aplicación web es el producto final, pero la contribución académica principal debe quedar demostrada en datos, feature engineering, analytics, sistema experto, ML, validación y explicabilidad.
 
 ```text
 DATA
@@ -52,9 +49,7 @@ DATA
 → LLM
 ```
 
-Regla: no convertir el proyecto en un dashboard con un LLM añadido. El rediseño visual no debe absorber tiempo que corresponda al núcleo científico.
-
-Documento específico: `docs/DATA_SCIENCE_AI_STRATEGY.md`.
+No convertir el proyecto en un dashboard con un LLM añadido. Debe existir al menos un bloque experimental DS/IA serio y reproducible.
 
 ## 4. Arquitectura vigente
 
@@ -76,22 +71,22 @@ WEB / REPORTS / AI ASSISTANT
 QA / PUBLICATION
 ```
 
-Regla: una capa superior no puede inventar métricas, rankings, evaluaciones o recomendaciones que no existan en una capa inferior validada.
+Una capa superior no puede inventar métricas, rankings, evaluaciones o recomendaciones que no existan en una capa inferior validada.
 
 ## 5. Orden obligatorio de trabajo
 
 ```text
 ARCHITECTURE-01              CERRADO
         ↓
-ANALYTICS-01                 IMPLEMENTADO / REVALIDACIÓN PENDIENTE
+ANALYTICS-01                 CERRADO / PASS
         ↓
-DECISION POLICY / N13000
+DECISION POLICY / N13000     ACTIVO
         ↓
 DS/AI EXPERIMENTAL CORE
   ├─ validación estadística
   ├─ player similarity / profiles
   ├─ change detection
-  └─ expert vs ML cuando sea metodológicamente válido
+  └─ Expert vs ML quan sigui metodològicament vàlid
         ↓
 PRODUCT UX
         ↓
@@ -100,15 +95,14 @@ REPORTS-02 + ASSISTANT ARCHITECTURE
 FINAL PRODUCT / PUBLICATION / TFM
 ```
 
-La fase ML/IA experimental no es un adorno opcional: debe existir al menos un bloque experimental serio y reproducible. Si una tarea concreta no dispone de datos/labels suficientes, el resultado puede ser no desplegar ese modelo, pero el estudio de viabilidad y la justificación deben quedar documentados.
-
 ## 6. Estado real del prototipo
 
-Se reutiliza como infraestructura válida:
+Infraestructura reutilizable:
 - DuckDB y esquema;
 - Collector funcional;
 - GPS normalization;
 - FEATURE-01/02/03;
+- Analytics-01;
 - baseline experto N1000-N13000;
 - acceso read-only a datos;
 - guardrails LLM;
@@ -116,7 +110,7 @@ Se reutiliza como infraestructura válida:
 - tooling de anonimización;
 - tests existentes.
 
-No se considera definitivo:
+No definitivo:
 - UX Streamlit actual, demasiado orientada a tablas;
 - PDF ReportLab actual, prueba técnica y no informe profesional;
 - proveedor/arquitectura final del LLM;
@@ -141,7 +135,29 @@ FEATURE-03 `0.3.0`: historial jugador + rol observado + feature; 590/835 player-
 
 El Feature Engine no decide si una métrica es buena/mala.
 
-## 9. Sistema experto baseline
+## 9. ANALYTICS-01 — CERRADO / VALIDADO
+
+Issue #26 cerrado.
+
+DG-AN-01 aprobado: opción C, con evidencias separadas:
+- `SELF_ROLE_PRIOR` — jugador vs su historial strict-past en el mismo rol;
+- `PEER_ROLE_PRIOR` — jugador vs peers del mismo equipo/rol, strict-past, excluyendo al jugador actual y con equal-player weighting.
+
+Validación final:
+
+```text
+ANALYTICS-01 EVIDENCE CONTRACT: PASS
+base FEATURE-01 rows: 23380
+analytics rows: 46760
+SELF_ROLE_PRIOR rows: 23380
+PEER_ROLE_PRIOR rows: 23380
+peer strict-past samples independently checked: 30
+FEATURE-03 self-history provenance: PASS
+Peer-role strict-past / current-player exclusion / equal-player weighting: PASS
+No score, ranking, recommendation, sample threshold or good/bad label: PASS
+```
+
+## 10. Sistema experto baseline
 
 Motor `expert_0.7.0`: 154.475 decisiones; 2.505 N13000.
 
@@ -149,73 +165,27 @@ N13000 mantiene `RECOMMENDATION_NOT_ISSUED_*` mientras no exista policy validada
 
 El árbol existente se conserva como baseline auditable. La futura policy debe construirse encima de Analytics validado, no mediante intuición ni LLM.
 
-## 10. ANALYTICS-01
+## 11. Núcleo Data Science / ML posterior a N13000 policy
 
-Issue #26.
-
-### DG-AN-01 — APROBADO
-
-Sergi aprueba opción **C**: usar ambas comparaciones de forma separada y etiquetada.
-
-```text
-SELF_ROLE_PRIOR
-jugador vs su propio historial strict-past en el mismo rol observado
-
-PEER_ROLE_PRIOR
-jugador vs otros jugadores del mismo equipo y mismo rol observado,
-utilizando solo información strict-past
-```
-
-La comparación peer:
-- excluye al jugador actual;
-- excluye misma fecha y futuro;
-- calcula primero la media previa de cada peer en ese rol;
-- resume después esas medias, dando el mismo peso a cada peer.
-
-Implementación:
-
-```text
-analytics/__init__.py
-analytics/contract.json
-analytics/build_stage1.py
-analytics/validate_stage1.py
-analytics/README.md
-```
-
-Output: tabla `analytics_evidence` con dos scopes por cada fila FEATURE-01.
-
-Analytics-01 no crea score, ranking, percentil, etiqueta bueno/malo, mínimo de muestra, confianza de recomendación ni recomendación táctica. Expone conteos y estadísticos para que la policy posterior pueda validarlos.
-
-### Última validación local
-
-El build completó correctamente y escribió 46.760 filas. La validación detectó un bug del propio test en `peer_std`: DuckDB devolvía `0` para un único peer mientras el contrato del builder define desviación estándar como `NULL` cuando hay menos de 2 peers.
-
-Hotfix aplicado en GitHub: el validador ahora exige `STDDEV_POP` solo cuando `COUNT(*) >= 2`, manteniendo el contrato estadístico sin debilitar la prueba.
-
-Pendiente: repetir `python analytics\\validate_stage1.py`.
-
-## 11. Núcleo Data Science / ML posterior a Analytics
-
-Antes del cierre de producto se deberá trabajar y documentar:
-
+Prioridades:
 1. **Player profiles / similarity** — clustering o similitud condicionada a rol;
 2. **Change detection / evolución** — métodos estadísticos o ML comparados con baselines simples;
 3. **Role/player fit** — solo con target/labels defendibles y sin circularidad con el sistema experto;
 4. **Expert vs ML** — al menos un caso comparable si los datos lo permiten;
-5. **Validación** — temporal split cuando proceda, leakage control, métricas, análisis de error, incertidumbre, reproducibilidad y ablations cuando aporten valor.
+5. **Validación** — temporal split, leakage control, métricas, análisis de error, incertidumbre, reproducibilidad y ablations cuando aporten valor.
 
-No se obliga a desplegar un modelo que no sea válido. Sí se obliga a que la parte DS/IA tenga experimentación y evaluación explícitas.
+No se obliga a desplegar un modelo inválido. Sí se exige experimentación DS/IA explícita.
 
 ## 12. Prototipos de producto
 
 ### Dashboard
-Contract PASS. TEAM / PLAYER / MATCH / ASSISTANT funcionan técnicamente. Problema detectado: predominio de tablas y falta de insights estructurados.
+Contract PASS. TEAM / PLAYER / MATCH / ASSISTANT funcionan técnicamente, pero predominan tablas y faltan insights estructurados.
 
 ### Reports
-REPORTS-01 PASS. Los tres PDF se generan. Problema detectado: son prueba técnica, no informes finales entregables.
+REPORTS-01 PASS. Los tres PDF se generan, pero son prueba técnica y no informes finales entregables.
 
 ### Assistant
-LLM-01/02 PASS en contratos y guardrails. Decisión final local/cloud/híbrida pendiente. El assistant final solo explicará outputs estructurados. La IA generativa es una capa de interacción, no el núcleo científico del TFM.
+LLM-01/02 PASS en contratos y guardrails. Decisión final local/cloud/híbrida pendiente. La IA generativa es capa de interacción, no el núcleo científico del TFM.
 
 ## 13. Agents / ownership
 
@@ -231,20 +201,18 @@ Definidos en `docs/WORKFLOW.md`:
 - A8 AI Assistant;
 - A9 QA/Publication.
 
-A0 y A9 acompañan todo el proyecto. A5 gana prioridad académica antes del pulido final de producto. Los agentes de interfaz no crean lógica analítica.
+A0 y A9 acompañan todo el proyecto. A5 tiene prioridad académica antes del pulido final de producto.
 
 ## 14. Decision gates
 
 Registro: `docs/DECISIONS.md`.
 
 - `DG-AN-01` comparaciones analíticas — **APPROVED C**;
-- `DG-N13-01` policy de recomendación — pendiente;
+- `DG-N13-01` policy de recomendación — **ACTIVO, issue #27**;
 - `DG-UX-01` jerarquía de producto — pendiente;
 - `DG-LLM-01` local/cloud/híbrido — pendiente;
 - `DG-REP-01` estructura final de informes — pendiente;
 - `DG-PUB-01` dataset público — pendiente/derechos.
-
-Solo se pide intervención de Sergi cuando el gate bloquea la fase siguiente.
 
 ## 15. Restricciones vigentes
 
@@ -256,18 +224,18 @@ Solo se pide intervención de Sergi cuando el gate bloquea la fase siguiente.
 - no emitir recomendación N13000 sin policy validada;
 - no crear targets ML circulares a partir del propio sistema experto;
 - no publicar datos profesionales solo por estar anonimizados;
-- no rediseñar web/report/assistant antes de cerrar Analytics correspondiente.
+- no rediseñar web/report/assistant antes del núcleo DS/IA prioritario.
 
 ## 16. Siguiente paso exacto
 
-Sergi debe repetir una sola validación local, sin instalar nada:
+No hay scripts pendientes.
 
-```powershell
-cd C:\\Users\\sergi\\Desktop\\football-performance-system
-git pull
-python analytics\\validate_stage1.py
+Resolver `DG-N13-01` en issue #27. Opciones:
+
+```text
+A — evidència i alertes, sense recomanació final
+B — recomanació només si supera criteris validats
+C — recomanació + confiança + justificació + alternativa/limitacions
 ```
 
-Esperado: `ANALYTICS-01 EVIDENCE CONTRACT: PASS`.
-
-Si pasa, cerrar ANALYTICS-01 y abrir el siguiente gate estructural: `DG-N13-01`. Después de la policy de decisión, el siguiente macrobloque prioritario será DS/AI experimental antes del pulido final de producto.
+Recomendación arquitectónica: **C como objetivo final**, sin inventar todavía pesos, umbrales ni confianza. Tras cerrar este gate, iniciar el macrobloque DS/AI experimental.
