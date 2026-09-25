@@ -53,11 +53,17 @@ if ($Push) {
     Push-Location $RepoRoot
     try {
         git add -- "collector/data_collector_futbol.html"
+        if ($LASTEXITCODE -ne 0) { throw "git add ha fallat." }
+
         $status = git status --porcelain -- "collector/data_collector_futbol.html"
         if ($status) {
-            git commit -m "Import existing data collector prototype"
+            git -c user.name="Sergi232" -c user.email="215590015+Sergi232@users.noreply.github.com" commit -m "Import existing data collector prototype"
+            if ($LASTEXITCODE -ne 0) { throw "git commit ha fallat; l'HTML NO s'ha pujat." }
+
             git push origin main
-            Write-Host "HTML pujat a GitHub."
+            if ($LASTEXITCODE -ne 0) { throw "git push ha fallat; el commit existeix només en local." }
+
+            Write-Host "HTML pujat correctament a GitHub."
         } else {
             Write-Host "L'HTML ja coincideix amb la versio del repositori; no cal commit."
         }
