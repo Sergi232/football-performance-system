@@ -4,7 +4,24 @@ Esta carpeta contiene la fase experimental de Data Science / IA del TFM.
 
 ## DSAI-01A — feasibility audit — CERRADO
 
-Base validada: 38 partidos, 36 jugadores, 835 player-match, 28 FEATURE-01.
+El audit local confirmó:
+
+```text
+matches=38
+players=36
+player_match=835
+observed-role rows=590
+raw role labels=23
+labeled_players=28
+player-role sequences=87
+repeated sequences=67
+median matches=5
+max matches=38
+FEATURE-01 names=28
+FEATURE-01 non-null=6324/23380
+analytics rows=46760
+GPS observations=0
+```
 
 ## DSAI-02 — change detection / evolution — CERRADO
 
@@ -16,17 +33,17 @@ Resultado: `EXPLORATORY_RESULT / NO_DEPLOY` por baja estabilidad temporal.
 
 ## DSAI-04 — role-label audit — CERRADO
 
-Resultado: `REFORMULATE_LABELS`; `Substitute` mezclaba participación y rol táctico.
+Resultado: `REFORMULATE_LABELS` porque `Substitute` mezclaba estado de participación y rol táctico.
 
 ## DSAI-05 — role target reconstruction — CERRADO
 
-Target limpio: 418 filas, 22 labels, 24 jugadores. El rol de suplentes no se infiere.
+Target limpio: 418 filas, 22 labels, 24 jugadores. `Substitute` queda fuera del target táctico y no se infiere el rol de suplentes.
 
 ## DSAI-06 — supervised role feasibility — CERRADO
 
-Resultado: `LIMITED_EXPERIMENT_ONLY`. 302/418 filas tienen soporte strict-past del mismo label en otro jugador; 3 labels no permiten validación independiente de identidad.
+Resultado: `LIMITED_EXPERIMENT_ONLY`. Hay 302/418 filas con soporte strict-past del mismo label en otro jugador, pero 3 labels no tienen validación independiente de identidad.
 
-## DSAI-07 — role classification baseline — CERRADO
+## DSAI-07 — detailed-role baseline — CERRADO
 
 ```text
 candidate_rows=418
@@ -40,17 +57,46 @@ majority_balanced_accuracy=0.0016
 majority_macro_f1=0.0005
 ```
 
-Decisión: `EXPERIMENTAL_SIGNAL / NO_DEPLOY`. FEATURE-01 contiene señal respecto al baseline, pero el rendimiento absoluto y la fragmentación de 22 clases no justifican producto.
+Decisión: `EXPERIMENTAL_SIGNAL / NO_DEPLOY`. FEATURE-01 aporta señal, pero las 22 clases detalladas están demasiado fragmentadas.
 
-## DSAI-08 — role granularity audit — ACTIVO
+## DSAI-08 — source-position granularity audit — CERRADO
 
-```powershell
-python dsai\role_granularity_audit.py
+```text
+rows=418
+detailed_labels=22
+source_positions=7
+players=24
+matches=38
+strict_past_position_seen=402/418
+identity_independent_strict_past=363/418
+single_player_positions=1
+positions_without_any_strict_past=0
+positions_without_other_player_strict_past=1
+parsing_anomalies=0
+conclusion=LIMITED_SOURCE_POSITION_BASELINE
 ```
 
-DATA-02 almacena el rol observado como `position | position_side`. DSAI-08 recupera el componente `position` de manera determinista y audita si esa granularidad de fuente permite una validación más defendible. No es una agrupación intuitiva y no se entrena ningún modelo en esta fase.
+`source_position` se obtiene únicamente invirtiendo la representación validada de DATA-02 `position | position_side`. No es una agrupación creada a posteriori para mejorar métricas.
 
-Salida: `GO_SOURCE_POSITION_BASELINE`, `LIMITED_SOURCE_POSITION_BASELINE` o `NO_GO_SOURCE_POSITION`.
+## DSAI-09 — source-position classification baseline — ACTIVO
+
+Ejecutar:
+
+```powershell
+python dsai\source_position_classification_baseline.py
+```
+
+Diseño:
+- target de titulares directamente observado;
+- target `source_position` derivado determinísticamente de DATA-02;
+- únicamente FEATURE-01;
+- train estrictamente anterior a cada fila de test;
+- jugador evaluado excluido completamente del train;
+- fila evaluable solo si la posición objetivo ya existía en otro jugador en strict-past;
+- imputación mediana y escalado fit solo sobre train;
+- LogisticRegression vs baseline de clase mayoritaria;
+- accuracy, balanced accuracy y macro-F1;
+- sin threshold de despliegue, player-fit, ranking o recomendación.
 
 ## Líneas bloqueadas
 
@@ -58,4 +104,4 @@ Salida: `GO_SOURCE_POSITION_BASELINE`, `LIMITED_SOURCE_POSITION_BASELINE` o `NO_
 
 ## Regla metodológica
 
-La fase DSAI puede producir experimentos negativos o `NO_DEPLOY`. El criterio académico es que hipótesis, datos, baselines, validación, leakage, métricas, error y limitaciones queden documentados de forma reproducible.
+La fase DSAI puede producir experimentos negativos o `NO_DEPLOY`. El criterio académico es que hipótesis, datos, baselines, validación temporal, leakage, métricas, error y limitaciones queden documentados de forma reproducible.
