@@ -43,15 +43,37 @@ pair_distance_corr=0.2143880082112036
 
 Decisión: `EXPLORATORY_RESULT / NO_DEPLOY` por baja estabilidad temporal.
 
-## DSAI-04 — role-label audit — ACTIVO
+## DSAI-04 — role-label audit — CERRADO
+
+Resultado:
+
+```text
+labeled_rows=590
+raw_labels=23
+labeled_players=28
+Substitute rows=172
+Substitute players=23
+players_also_with_tactical_role=19
+```
+
+Decisión: `REFORMULATE_LABELS`.
+
+`Substitute` mezcla semántica de participación con rol táctico y no puede usarse como clase deportiva en un target supervisado.
+
+## DSAI-05 — role target reconstruction — ACTIVO
 
 Ejecutar:
 
 ```powershell
-python dsai\role_label_audit.py
+python dsai\role_target_reconstruction.py
 ```
 
-Se audita `primary_role` antes de cualquier clasificador supervisado. No se agrupan etiquetas por intuición y no se entrena ningún modelo en esta fase.
+El script separa:
+- `participation_status`: `STARTER`, `SUBSTITUTE_APPEARANCE`, `UNUSED_BENCH`, etc.;
+- `tactical_role`: únicamente cuando el rol está directamente observado y no es `Substitute`;
+- `target_state`: explica por qué una fila entra o no entra en el target táctico.
+
+No hay imputación de rol por historial, posición habitual, forward-fill/back-fill ni agrupación intuitiva de clases. La base normalizada no se modifica.
 
 ## Líneas bloqueadas
 
