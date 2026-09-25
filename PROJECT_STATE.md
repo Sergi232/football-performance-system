@@ -1,6 +1,6 @@
 # PROJECT_STATE
 
-Última actualización: 25/09/2026
+Última actualización: 26/09/2026
 
 Memoria técnica operativa del proyecto. Si contradice un chat antiguo, prevalece este archivo.
 
@@ -20,6 +20,7 @@ ARCHITECTURE-01                     CERRADO — ISSUE #25
 ANALYTICS-01                        CERRADO / VALIDADO — ISSUE #26
 DECISION POLICY / N13000            GATE APROBADO C — ISSUE #27 CERRADO
 DSAI-01                             ACTIVO — ISSUE #28
+DSAI-01A FEASIBILITY AUDIT          IMPLEMENTADO / PENDIENTE EJECUCIÓN LOCAL
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
@@ -65,6 +66,8 @@ ANALYTICS ENGINE
       ↓
 DECISION ENGINE
       ↓
+DS / ML EXPERIMENTAL CORE
+      ↓
 PRODUCT SERVICE LAYER
       ↓
 WEB / REPORTS / AI ASSISTANT
@@ -84,7 +87,7 @@ ANALYTICS-01                 CERRADO / PASS
 DECISION POLICY / N13000     GATE C APROBADO
         ↓
 DS/AI EXPERIMENTAL CORE      ACTIVO
-  ├─ feasibility audit
+  ├─ DSAI-01A feasibility audit
   ├─ validación estadística
   ├─ player similarity / profiles
   ├─ change detection
@@ -180,32 +183,54 @@ La aprobación del contrato no autoriza a inventar pesos, umbrales ni confianza.
 
 Issue #28.
 
-Primer entregable: `DSAI-01A feasibility audit`.
+### DSAI-01A — feasibility audit
 
-Para cada caso de uso se debe fijar:
-- unidad de análisis;
-- tamaño de muestra y cobertura;
-- missingness;
-- features candidatas;
-- target o ausencia de target;
-- split temporal;
-- baseline simple;
-- métricas;
+Implementado:
+
+```text
+dsai/__init__.py
+dsai/feasibility_audit.py
+dsai/README.md
+```
+
+Objetivo: auditar antes de entrenar modelos:
+- muestra;
+- cobertura y missingness;
+- distribución de roles;
+- longitud de secuencias temporales;
+- targets independientes disponibles;
 - riesgo de leakage;
-- decisión `GO / NO-GO / REFORMULAR`.
+- baselines posibles;
+- viabilidad metodológica.
 
-Casos prioritarios:
+El audit no entrena modelos y no crea scores, thresholds, rankings ni recomendaciones.
+
+Estados metodológicos incluidos:
+- `GO_EXPLORATORY`;
+- `GO_EXPERIMENT`;
+- `CANDIDATE_SUPERVISED`;
+- `REFORMULATE_TARGET`;
+- `BLOCKED_SHARED_TARGET`;
+- `BLOCKED_GROUND_TRUTH`.
+
+Casos auditados:
 1. player similarity / profiles;
 2. change detection / evolution;
-3. role/player fit solo si existe target defendible;
-4. Expert vs ML cuando exista una tarea común válida.
+3. observed role classification como posible tarea supervisada con label real `primary_role`;
+4. role/player fit;
+5. Expert vs ML;
+6. calibración N13000.
 
-Reglas:
-- no targets circulares derivados del propio sistema experto;
-- no modelo complejo sin baseline;
-- no usar futuro;
-- no presentar clustering como verdad sin estabilidad/utilidad;
-- un resultado NO-GO es válido si queda metodológicamente justificado.
+Regla clave: N12000/N13000 no pueden usarse como ground truth independiente del ML.
+
+Outputs locales:
+
+```text
+dsai/output/feasibility_audit.json
+dsai/output/feasibility_audit.md
+```
+
+`dsai/output/` está ignorado por Git.
 
 ## 12. Prototipos de producto
 
@@ -245,13 +270,13 @@ Registro: `docs/DECISIONS.md`.
 - `DG-REP-01` — pendiente;
 - `DG-PUB-01` — pendiente/derechos.
 
-No hay gate de Sergi necesario antes del feasibility audit de DSAI-01.
+No hay gate de Sergi necesario antes de ejecutar DSAI-01A.
 
 ## 15. Restricciones vigentes
 
 - no inventar eventos atómicos desde agregados ambiguos;
 - no inferir rol/formación sin evidencia;
-- no crear scores/umbrals por intuición;
+- no crear scores/umbrales por intuición;
 - no mezclar self-history y peer comparison silenciosamente;
 - no usar LLM para cálculo crítico;
 - no emitir recomendación N13000 sin criterios/calibración validados;
@@ -261,6 +286,12 @@ No hay gate de Sergi necesario antes del feasibility audit de DSAI-01.
 
 ## 16. Siguiente paso exacto
 
-No hay decisión pendiente de Sergi ahora.
+Sergi debe ejecutar una única auditoría local; no hay que instalar nada:
 
-A5 debe ejecutar `DSAI-01A — feasibility audit` antes de entrenar modelos. El resultado debe seleccionar qué experimentos ML son realmente defendibles y en qué orden.
+```powershell
+cd C:\Users\sergi\Desktop\football-performance-system
+git pull
+python dsai\feasibility_audit.py
+```
+
+Después, A5 usa esos resultados para congelar el plan experimental real: qué experimentos se hacen, qué target/split/baseline/métricas tendrá cada uno y qué líneas se descartan o reformulan antes de entrenar modelos.
