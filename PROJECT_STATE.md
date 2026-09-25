@@ -22,40 +22,54 @@ DECISION POLICY / N13000            GATE APROBADO — ISSUE #27 CERRADO
 DSAI-01A FEASIBILITY AUDIT          CERRADO — ISSUE #28
 DSAI-02 CHANGE DETECTION            CERRADO EXPERIMENTAL / NO DEPLOY — ISSUE #29
 DSAI-03 PLAYER SIMILARITY           CERRADO EXPLORATORIO / NO DEPLOY — ISSUE #32
-DSAI-04 ROLE-LABEL AUDIT            ACTIVO — ISSUE #34 / SCRIPT IMPLEMENTADO
+DSAI-04 ROLE-LABEL AUDIT            CERRADO / REFORMULATE_LABELS — ISSUE #34
+DSAI-05 ROLE TARGET RECONSTRUCTION  ACTIVO — ISSUE #35 / SCRIPT IMPLEMENTADO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
-## DSAI-03
+## DSAI-04 — resultado cerrado
 
 ```text
-profiles=64
-players=24
-roles=22
-features=28
-profiles_with_neighbour=61
-temporal_eligible=22
-same_neighbour=5
-retention_rate=0.22727272727272727
-pair_distance_corr=0.2143880082112036
+labeled_rows=590
+raw_labels=23
+labeled_players=28
+Substitute rows=172
+Substitute players=23
+players_also_with_tactical_role=19
+conclusion=RAW_TARGET_REQUIRES_SOURCE_BASED_CLEANING_BEFORE_SUPERVISED_MODELLING
 ```
 
-Decisión: `EXPLORATORY_RESULT / NO_DEPLOY` por baja estabilidad temporal. El experimento se conserva como baseline académico, no como funcionalidad de producto actual.
+Decisión: `REFORMULATE_LABELS`.
 
-## DSAI-04
+`Substitute` es un estado de participación y no una clase táctica. No se entrena ningún clasificador sobre los 23 labels brutos.
 
-Issue #34.
+## DSAI-05 — activo
 
-Script: `dsai/role_label_audit.py`.
+Issue #35.
 
-Audita `primary_role` antes de cualquier clasificador supervisado. No entrena modelos ni agrupa labels por intuición. Debe resolver si el target observado permite `GO_SUPERVISED`, necesita `REFORMULATE_LABELS` o queda `NO_GO`.
+Script: `dsai/role_target_reconstruction.py`.
+
+Objetivo:
+- separar `participation_status` de `tactical_role`;
+- conservar únicamente roles tácticos directamente observados;
+- dejar sin rol táctico los suplentes cuando la fuente no lo proporciona;
+- no imputar por historial, posición habitual ni intuición;
+- cuantificar cobertura, clases y dependencia por jugador antes de decidir si procede ML supervisado.
+
+La reconstrucción no modifica la base normalizada y genera CSV/JSON/Markdown reproducibles.
+
+## Líneas todavía bloqueadas
+
+- `role_player_fit`: sin target independiente defendible;
+- `expert_vs_ml`: sin shared target independiente;
+- calibración N13000: sin ground truth de recomendación.
 
 ## Siguiente paso exacto
 
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\role_label_audit.py
+python dsai\role_target_reconstruction.py
 ```
 
 No instalar nada.
