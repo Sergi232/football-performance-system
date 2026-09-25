@@ -1,5 +1,7 @@
 # Data Collector MVP — contrato funcional
 
+Estado: **aceptado funcionalmente**. Los retoques visuales/UX quedan como mejora posterior y no bloquean GPS ni Feature Engine.
+
 ## Objetivo
 
 Registrar durante o después de un partido de 90 minutos solo acciones observables, rápidas de introducir y útiles para el sistema final. El Collector no calcula métricas avanzadas: guarda eventos y contexto; el Feature Engine calcula después tasas, tendencias, consistencia y perfiles.
@@ -125,20 +127,18 @@ No se usa una categoría manual `CHANCE`, porque sería menos reproducible. El o
 - `assist=true` implica `key_pass=true` y pase completado.
 - los agregados de equipo no se escriben manualmente si pueden derivarse de los eventos.
 
-## Funciones del prototipo que deben conservarse al simplificar el HTML
+## Funciones preservadas del prototipo
 
 - selección rápida de jugador;
 - roster editable y carga rápida de nombres;
 - botones agrupados por familias;
-- atajos de teclado cuando realmente reduzcan tiempo;
+- atajos de teclado cuando reducen tiempo;
 - entrada/salida y cálculo automático de minutos;
-- tabla en directo de acciones/estadísticas;
+- resumen en directo derivado de eventos;
 - deshacer última acción;
-- exportación CSV;
+- exportación CSV de eventos y resumen;
 - guardado JSON;
 - autosave local del navegador.
-
-La simplificación debe eliminar pasos innecesarios, no estas funciones operativas.
 
 ## Variables que NO se capturan manualmente en el MVP
 
@@ -150,6 +150,12 @@ La simplificación debe eliminar pasos innecesarios, no estas funciones operativ
 - métricas avanzadas de zonas/transiciones;
 - tasas, porcentajes, tendencias o índices ya derivados.
 
-## Estado
+## Archivos
 
-La taxonomía MVP queda cerrada en `collector/event_catalog.json` v0.3.0. El siguiente trabajo de Collector es adaptar el HTML existente a este contrato, no rediseñar el producto desde cero.
+- `collector/event_catalog.json` — taxonomía v0.3.0.
+- `collector/data_collector_futbol_mvp.html` — implementación funcional aceptada.
+- `collector/data_collector_futbol.html` — entrada principal que abre la versión MVP.
+- `collector/validate_collector_mvp.py` — validador standalone.
+- `tests/test_collector_contract.py` — tests de contrato.
+
+La taxonomía MVP queda cerrada. Los cambios visuales posteriores no deben alterar el contrato de datos sin una decisión explícita.
