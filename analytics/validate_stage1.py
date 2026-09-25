@@ -99,7 +99,7 @@ def validate_peer_samples(con: duckdb.DuckDBPyConnection, limit: int = 30) -> in
                    COALESCE(SUM(obs_n), 0) AS observations_n,
                    AVG(peer_mean) AS peer_mean,
                    MEDIAN(peer_mean) AS peer_median,
-                   STDDEV_POP(peer_mean) AS peer_std
+                   CASE WHEN COUNT(*) >= 2 THEN STDDEV_POP(peer_mean) ELSE NULL END AS peer_std
             FROM peer_prior
             """,
             [BASE_VERSION, team_id, role, feature_name, match_date, player_id],
