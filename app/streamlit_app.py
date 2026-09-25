@@ -24,6 +24,12 @@ from app.data_access import (  # noqa: E402
     list_base_features,
     list_teams,
 )
+from llm.assistant_service import answer_from_context  # noqa: E402
+from llm.context_builder import (  # noqa: E402
+    build_match_context,
+    build_player_context,
+    build_team_context,
+)
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 
@@ -81,6 +87,21 @@ def cached_gate(path: str, team_id: str, player_id: str) -> dict | None:
 @st.cache_data(show_spinner=False)
 def cached_lineup(path: str, team_id: str, match_id: str) -> pd.DataFrame:
     return get_match_lineup(Path(path), team_id, match_id)
+
+
+@st.cache_data(show_spinner=False)
+def cached_team_context(path: str, team_id: str) -> dict:
+    return build_team_context(Path(path), team_id)
+
+
+@st.cache_data(show_spinner=False)
+def cached_player_context(path: str, team_id: str, player_id: str, feature_name: str | None) -> dict:
+    return build_player_context(Path(path), team_id, player_id, feature_name)
+
+
+@st.cache_data(show_spinner=False)
+def cached_match_context(path: str, team_id: str, match_id: str) -> dict:
+    return build_match_context(Path(path), team_id, match_id)
 
 
 def safe_int(value) -> str:
@@ -243,6 +264,80 @@ def render_matches(path: str, team_id: str) -> None:
     st.caption("Aquesta vista mostra dades player-match brutes/observades. Les features derivades es calculen en la capa Feature Engine.")
 
 
+def render_assistant(path: str, team_id: str) -> None:
+    st.header("Assistent")
+    st.caption(
+        "LLM-01: capa d'interacció segura sobre resultats estructurats. Aquesta versió encara és determinista "
+        "i serveix per validar el contracte abans de connectar un LLM generatiu."
+    )
+
+    scope = st.radio("Context", ["Equip", "Jugador", "Partit"], horizontal=True)
+    question = ""
+
+    if scope == "Equip":
+        context = cached_team_context(path, team_id)
+        question = st.text_input(
+            "Pregunta",
+            value="Resumeix les dades disponibles de l'equip",
+            key="assistant_team_question",
+        )
+
+    elif scope == "Jugador":
+        squad = cached_squad(path, team_id)
+        labels = {str(row.player_id): str(row.player) for row in squad.itertuples(index=False)}
+        player_id = st.selectbox(
+            "Jugador",
+            options=list(labels),
+            format_func=lambda value: labels[value],
+            key="assistant_player",
+        )
+        features = cached_features(path, player_id)
+        feature_name = st.selectbox(
+            "Feature per a preguntes d'evolució",
+            options=[None] + features,
+            format_func=lambda value: "Cap" if value is None else value,
+            key="assistant_feature",
+        )
+        context = cached_player_context(path, team_id, player_id, feature_name)
+        question = st.text_input(
+            "Pregunta",
+            value="Quin és el seu rol i encaix?",
+            key="assistant_player_question",
+        )
+
+    else:
+        matches = cached_matches(path, team_id)
+        options = {}
+        for row in matches.itertuples(index=False):
+            date_text = pd.to_datetime(row.match_date).date().isoformat()
+            score = "—" if pd.isna(row.score_for) or pd.isna(row.score_against) else f"{int(row.score_for)}-{int(row.score_against)}"
+            options[str(row.match_id)] = f"{date_text} · {row.venue} · {row.opponent} · {score}"
+        match_id = st.selectbox(
+            "Partit",
+            options=list(options),
+            format_func=lambda value: options[value],
+            key="assistant_match",
+        )
+        context = cached_match_context(path, team_id, match_id)
+        question = st.text_input(
+            "Pregunta",
+            value="Resumeix aquest partit",
+            key="assistant_match_question",
+        )
+
+    if st.button("Analitza", type="primary"):
+        st.subheader("Resposta")
+        st.write(answer_from_context(question, context))
+
+    with st.expander("Context estructurat utilitzat"):
+        st.json(context)
+
+    st.info(
+        "Preguntes que exigeixen ranking, 'millor/pitjor jugador' o recomanació tàctica es bloquegen mentre "
+        "la política de recomanació continuï sense validar."
+    )
+
+
 def main() -> None:
     path = db_path()
     st.title("Football Performance System")
@@ -271,7 +366,7 @@ def main() -> None:
     }
 
     st.sidebar.title("Navegació")
-    mode = st.sidebar.radio("Mode", ["Equip", "Jugador", "Partits"])
+    mode = st.sidebar.radio("Mode", ["Equip", "Jugador", "Partits", "Assistent"])
     team_id = st.sidebar.selectbox(
         "Equip",
         options=list(team_labels),
@@ -284,8 +379,10 @@ def main() -> None:
         render_team(str(path), team_id, team_name)
     elif mode == "Jugador":
         render_player(str(path), team_id)
-    else:
+    elif mode == "Partits":
         render_matches(str(path), team_id)
+    else:
+        render_assistant(str(path), team_id)
 
 
 if __name__ == "__main__":
