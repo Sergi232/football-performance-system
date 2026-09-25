@@ -16,7 +16,8 @@ COLLECTOR-01 MVP                         CERRADO FUNCIONALMENTE
 GPS-01 contrato multi-proveedor          CERRADO / VALIDADO
 FEATURE-01 base determinista             CERRADO / VALIDADO
 FEATURE-02 evolución temporal            CERRADO / VALIDADO
-EXPERT-01 N1000-N3000                    PREPARADO / PENDIENTE VALIDACIÓN LOCAL
+EXPERT-01 N1000-N3000                    CERRADO / VALIDADO
+EXPERT-02 N4000-N7000                    PREPARADO / PENDIENTE VALIDACIÓN LOCAL
 Dashboard                                DESPUÉS DEL MOTOR
 LLM / PDF                                DESPUÉS DEL DASHBOARD BASE
 ```
@@ -105,7 +106,7 @@ Versiones de esquema:
 Deportivo Alavés — LaLiga 2025/26
 Opta team id: 4dtdjgnpdq9uw4sdutti0vaar
 38 partidos
-36 jugadores tras lineups
+36 jugadores
 835 player_match
 ```
 
@@ -132,8 +133,6 @@ Antes de publicar se anonimizará como TEAM_001 / PLAYER_001 / OPP_001 con IDs i
 
 `opta_events.parquet` no es un feed atómico completo en este export. No se inventan pases, regates, tackles, intercepciones, faltas o pérdidas.
 
-Remates:
-
 ```text
 shot_events fuente                    464
 autogol excluido                        1
@@ -147,7 +146,37 @@ cobertura                            38/38
 
 `player_match_raw_stats`: 835/835 filas, 38/38 partidos, 36 jugadores. Validación PASS.
 
-27 estadísticas raw aprobadas: pases totales/completados, asistencias, largos, centros, regates, pérdidas, dispossessions, remates, bloqueados, goles, tackles total/ganados, intercepciones, bloqueos de pase, despejes, faltas cometidas/recibidas, tarjetas, penaltis concedidos/ganados, paradas y goles encajados.
+27 estadísticas raw aprobadas:
+
+```text
+passes_total
+passes_completed
+assists
+long_balls_total
+long_balls_completed
+crosses_total
+crosses_completed
+dribbles_total
+dribbles_won
+turnovers
+dispossessed
+shots_total
+shots_blocked
+goals
+tackles_total
+tackles_won
+interceptions
+blocked_passes
+clearances
+fouls_committed
+fouls_received
+yellow_cards
+red_cards
+penalties_conceded
+penalties_won
+saves
+goals_conceded
+```
 
 `key_passes` es útil para el sistema/Collector, pero este export no tiene una columna verificada equivalente. No se aproxima.
 
@@ -155,24 +184,13 @@ Los `NULL` de la fuente se preservan como `NULL`.
 
 ### Reparación de fecha de partido
 
-FEATURE-02 detectó que los 38 `matches.match_date` estaban a NULL por un problema de parsing del formato real de Opta.
-
-Fuente real:
+FEATURE-02 detectó que `matches.match_date` estaba a NULL por parsing incorrecto del formato real de Opta.
 
 ```text
-opta_fixtures.match_date
+fuente: opta_fixtures.match_date
 formato: YYYY-MM-DDZ
-```
-
-Reparación validada:
-
-```text
-DATA MATCH-DATE REPAIR: PASS
-source column: match_date
-source encoding: YYYY-MM-DDZ
-fixtures: 38/38
+fixtures reparados: 38/38
 distinct dates: 38
-dates repaired: 38
 ```
 
 No se infirió cronología desde IDs ni orden de filas.
@@ -201,7 +219,14 @@ GK SAVE/GOAL_CONCEDED
 
 Qualifiers: `key_pass`, `assist`, `second_yellow`, `set_piece_result`, `penalty_taker_player_id`.
 
-Decisiones clave: LONG/CROSS ya cuentan como pase total; PASS FAIL y DRIBBLE FAIL generan pérdida derivada; poste agrupado en OFF_TARGET; falta peligrosa no se captura subjetivamente, se deriva posteriormente desde x/y; córners/faltas conservan tiempo de partido/vídeo para clips ABP.
+Decisiones clave:
+
+- LONG/CROSS cuentan también como pase total.
+- PASS FAIL y DRIBBLE FAIL generan pérdida derivada.
+- LOSS se reserva para otras pérdidas.
+- poste agrupado en OFF_TARGET en MVP.
+- falta peligrosa no es un botón subjetivo: se captura x/y y se derivará cuando exista criterio validado.
+- córners/faltas conservan tiempo de partido/vídeo para clips ABP.
 
 Versión funcional: `collector/data_collector_futbol_mvp.html`.
 
@@ -272,11 +297,11 @@ prior_slope
 Contrato anti-leakage:
 
 - solo usa observaciones con `match_date` estrictamente anterior;
-- un partido nunca entra en su propio baseline;
+- el partido actual nunca entra en su propio baseline;
 - partidos de la misma fecha no se informan entre sí;
 - futuros nunca entran;
 - NULL no se convierte a cero;
-- no se introducen ventanas arbitrarias 3/5/10 partidos.
+- no hay ventanas arbitrarias 3/5/10.
 
 Validación local 25/09/2026:
 
@@ -312,13 +337,15 @@ N12000 player fit
 N13000 recomendación final
 ```
 
-Cada nodo debe mantener:
+Cada nodo mantiene:
 
 ```text
 entrada → condición → resultado → confianza → justificación
 ```
 
-### EXPERT-01 preparado
+### EXPERT-01 — CERRADO / VALIDADO
+
+Motor: `expert_0.1.0`.
 
 Archivos:
 
@@ -330,20 +357,56 @@ decision_tree/run_stage1.py
 tests/test_decision_tree_stage1.py
 ```
 
-Motor: `expert_0.1.0`.
+Nodos:
 
-Primer bloque:
+- `N1000.100`: actividad/listado observada desde minutos + titularidad; no infiere lesión ni disponibilidad médica.
+- `N2000.100`: rol estructural observado; no infiere arquetipo ni player-fit.
+- `N3000.*.DELTA_PRIOR_MEAN`: valor actual frente a media strict-past.
+- `N3000.*.PRIOR_SLOPE`: dirección matemática de la pendiente strict-past.
 
-- `N1000.100`: estado observado de actividad/listado a partir de minutos + titularidad. No infiere lesión o disponibilidad médica.
-- `N2000.100`: rol estructural observado. No infiere todavía arquetipo ni player-fit.
-- `N3000.*.DELTA_PRIOR_MEAN`: posición matemática del valor actual respecto a la media histórica estrictamente anterior.
-- `N3000.*.PRIOR_SLOPE`: dirección matemática de la pendiente histórica estrictamente anterior.
+Validación local 25/09/2026:
 
-La frontera 0 se usa solo para describir el signo exacto de diferencia/pendiente. No es un umbral de significancia práctica. `ABOVE_PRIOR_MEAN` no significa automáticamente “mejor”, especialmente en métricas negativas como pérdidas.
+```text
+EXPERT-01 VALIDATION: PASS
+engine_version: expert_0.1.0
+player_match rows: 835
+base features: 28
+decision rows: 48430/48430
+family coverage: N1000=835, N2000=835, N3000=46760
+duplicate node outputs: 0
+deterministic confidence contract: PASS
+no premature good/bad/improving/declining/recommendation labels: PASS
+```
 
-`confidence=1.0` en esta primera capa significa que el estado se deriva determinísticamente de los inputs disponibles; no es una probabilidad calibrada de rendimiento.
+`confidence=1.0` significa ejecución determinista de la regla, no probabilidad calibrada de rendimiento.
 
-No se generan todavía etiquetas GOOD/BAD, IMPROVING/DECLINING, ratings, pesos ni recomendaciones.
+La frontera 0 describe únicamente el signo matemático. `ABOVE_PRIOR_MEAN` no equivale automáticamente a “mejor”.
+
+### EXPERT-02 — PREPARADO / PENDIENTE VALIDACIÓN LOCAL
+
+Motor: `expert_0.2.0`.
+
+Archivos:
+
+```text
+decision_tree/domain_catalog.json
+decision_tree/build_stage2.py
+decision_tree/validate_stage2.py
+decision_tree/run_stage2.py
+tests/test_decision_tree_stage2.py
+```
+
+Diseño:
+
+- N1000-N3000 se arrastran exactamente desde `expert_0.1.0`.
+- N4000 añade evidencia de amenaza ofensiva.
+- N5000 añade creación/progresión y costes de pérdida.
+- N6000 añade contribución defensiva y costes disciplinarios defensivos.
+- N7000 añade output y contexto de finalización.
+- cada señal se compara únicamente con el historial strict-past del mismo jugador.
+- `metric_role = volume/output/efficiency/cost/context` es metadata semántica, no un peso.
+- no hay scores, pesos, percentiles, ajuste por rol, recomendaciones ni umbrales de significancia práctica.
+- la escritura en DuckDB se hace en bloque para evitar el cuello de botella de `executemany` observado en EXPERT-01.
 
 ## 12. LLM
 
@@ -366,15 +429,17 @@ El LLM explica y consulta resultados estructurados. No inventa métricas ni sust
 - No hacer que una estadística raw positiva cambie automáticamente los minutos.
 - No inventar umbrales GPS de sprint/HIE/carga antes de justificarlos.
 - No usar fuzzy matching silencioso para identidades GPS.
-- No convertir automáticamente métricas propietarias GPS en features canónicas.
-- No convertir dirección matemática de N3000 en juicio de rendimiento sin una regla validada por métrica.
+- No convertir métricas propietarias GPS en features canónicas automáticamente.
+- No convertir la dirección matemática de N3000-N7000 en juicio de rendimiento sin una regla validada por métrica.
+- No usar un score global ni recomendación final antes de validar reglas y pesos.
 
 ## 14. Problemas abiertos
 
-- validar localmente EXPERT-01;
-- después diseñar N4000-N7000 usando únicamente features existentes y semántica por métrica;
+- validar localmente EXPERT-02;
+- diseñar después N8000 contexto del equipo con variables realmente disponibles;
+- N9000 debe funcionar como rama opcional cuando no haya GPS;
 - decidir reglas de muestra mínima/significancia práctica con validación, no por intuición;
-- añadir componente físico cuando exista GPS real o definición suficientemente justificada;
+- añadir features físicas de rendimiento cuando exista GPS real o definición suficientemente justificada;
 - crear script de anonimización para publicación;
 - mejorar reejecución incremental de algunos imports;
 - retocar UX del Collector al final;
@@ -385,12 +450,12 @@ El LLM explica y consulta resultados estructurados. No inventa métricas ni sust
 Ejecutar:
 
 ```powershell
-python decision_tree\run_stage1.py
+python decision_tree\run_stage2.py
 ```
 
 Si pasa:
 
-1. cerrar EXPERT-01;
-2. mantener N1000-N3000 como capa descriptiva auditable;
-3. construir N4000 amenaza ofensiva, N5000 creación/progresión, N6000 defensa y N7000 finalización;
-4. no usar aún un score global ni recomendación final hasta validar reglas y pesos.
+1. cerrar EXPERT-02;
+2. construir N8000 contexto del equipo sin depender del rival;
+3. diseñar N9000 como rama física opcional y degradable cuando GPS no exista;
+4. preparar N10000 rol/encaje utilizando primero evidencia auditable antes de cualquier score o recomendación.
