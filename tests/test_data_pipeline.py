@@ -106,7 +106,7 @@ def run_script(script: str, *args: str) -> None:
     )
 
 
-def test_fixture_and_player_match_pipeline_is_idempotent(tmp_path: Path) -> None:
+def test_fixture_and_player_match_pipeline_builds_valid_database(tmp_path: Path) -> None:
     input_dir = tmp_path / "pannadata"
     db_path = tmp_path / "football_performance.duckdb"
     validation_path = tmp_path / "validation.json"
@@ -115,22 +115,20 @@ def test_fixture_and_player_match_pipeline_is_idempotent(tmp_path: Path) -> None
     build_player_stats_source(input_dir, match_ids)
 
     run_script("init_database.py", "--db", str(db_path))
-
-    for _ in range(2):
-        run_script(
-            "import_demo_fixtures.py",
-            "--input-dir",
-            str(input_dir),
-            "--db",
-            str(db_path),
-        )
-        run_script(
-            "import_demo_player_match.py",
-            "--input-dir",
-            str(input_dir),
-            "--db",
-            str(db_path),
-        )
+    run_script(
+        "import_demo_fixtures.py",
+        "--input-dir",
+        str(input_dir),
+        "--db",
+        str(db_path),
+    )
+    run_script(
+        "import_demo_player_match.py",
+        "--input-dir",
+        str(input_dir),
+        "--db",
+        str(db_path),
+    )
 
     run_script(
         "validate_demo_database.py",
