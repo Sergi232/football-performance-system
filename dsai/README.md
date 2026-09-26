@@ -74,7 +74,6 @@ conclusion=LIMITED_SOURCE_POSITION_BASELINE
 candidate_rows=418
 evaluated_rows=363
 evaluated_positions=6
-skipped_no_other_player_prior_position=55
 logreg_accuracy=0.5537
 logreg_balanced_accuracy=0.3482
 logreg_macro_f1=0.3614
@@ -85,32 +84,55 @@ majority_macro_f1=0.0302
 
 Decisión: `EXPERIMENTAL_SIGNAL_IMPROVED / NO_DEPLOY`.
 
-La granularidad de 7 posiciones mejora sustancialmente el baseline de 22 roles. Sin embargo, FEATURE-01 contiene estadísticas del partido actual, por lo que este experimento mide asociación post-partido entre comportamiento y posición observada; no es una predicción pre-partido.
+FEATURE-01 del mismo partido contiene señal clara sobre la posición observada, pero el experimento sigue siendo post-partido.
 
-## DSAI-10 — pre-match source-position baseline — ACTIVO
+## DSAI-10 — pre-match source-position baseline — CERRADO
+
+```text
+candidate_rows=418
+evaluated_rows=362
+evaluated_positions=6
+safe_features=140
+skipped_no_prematch_history=12
+skipped_no_other_player_prior_position=44
+logreg_accuracy=0.4834
+logreg_balanced_accuracy=0.3121
+logreg_macro_f1=0.3002
+majority_accuracy=0.0967
+majority_balanced_accuracy=0.0426
+majority_macro_f1=0.0302
+```
+
+Decisión: `PREMATCH_EXPERIMENTAL_SIGNAL / NO_DEPLOY`.
+
+El modelo conserva señal usando exclusivamente FEATURE-02 strict-past (`history_n`, `prev`, `prior_mean`, `prior_std`, `prior_slope`). `delta_prev`, `delta_prior_mean`, FEATURE-01 actual y FEATURE-03 quedan excluidos.
+
+La validación mantiene train estrictamente anterior y exclusión completa del jugador evaluado. El resultado todavía no demuestra player-fit ni justifica producto porque el baseline de clase mayoritaria es demasiado débil.
+
+## DSAI-11 — pre-match robustness and football baselines — ACTIVO
 
 Script:
 
 ```powershell
-python dsai\source_position_prematch_baseline.py
+python dsai\source_position_prematch_robustness.py
 ```
 
-Predictores: únicamente FEATURE-02 strict-past con `history_n`, `prev`, `prior_mean`, `prior_std` y `prior_slope`.
+Objetivo: comprobar si DSAI-10 aporta valor incremental respecto a baselines futbolísticos simples y fuertes disponibles antes del partido.
 
-Quedan excluidos:
-- `delta_prev` y `delta_prior_mean`, porque incorporan el valor del partido actual;
-- FEATURE-03, porque está condicionado al rol;
-- identidad del jugador, nombres, rol observado y outputs N12000/N13000.
+Comparaciones:
+- modelo completo con los 140 FEATURE-02 pre-match seguros;
+- ablation `prior_mean_only`;
+- ablation `prev_only`;
+- mayoría del train;
+- última `source_position` observada del jugador;
+- posición modal histórica del jugador, con desempate por la más reciente.
 
-Validación:
-- train estrictamente anterior a cada test;
-- jugador evaluado excluido del train;
-- posición real previamente observada en otro jugador;
-- al menos una observación histórica real disponible para la fila de test;
-- imputación y escalado fit solo sobre train;
-- LogisticRegression vs baseline de clase mayoritaria.
+También se analiza:
+- partidos donde el jugador mantiene posición;
+- partidos donde cambia de posición;
+- head-to-head del ML frente al baseline de última posición.
 
-DSAI-10 es el primer test de esta línea cuyo input es completamente pre-match. Sigue sin producir player-fit, ranking o recomendación.
+Todos los baselines de jugador usan únicamente titularidades estrictamente anteriores. No se usa información del partido actual.
 
 ## Líneas bloqueadas
 
