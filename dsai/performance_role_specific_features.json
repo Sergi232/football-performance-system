@@ -1,0 +1,30 @@
+{
+  "version": "performance_role_specific_features_0.1.0",
+  "status": "validated_role_specific_candidates_no_score_no_weight",
+  "features": [
+    {
+      "feature_name": "save_rate",
+      "primary_dimension": "goalkeeping",
+      "scope": "goalkeeper_only",
+      "direction_status": "POSITIVE_SUPPORTED_WITH_CONTEXT",
+      "formula": "saves / (saves + goals_conceded)",
+      "denominator": "saves + goals_conceded",
+      "calculation_rule": "source_position == Goalkeeper AND saves non-null AND goals_conceded non-null AND denominator > 0",
+      "validation": {
+        "perf_06": "GOALKEEPER_SAVE_RATE_DERIVABLE_CONTEXT_VALIDATION_REQUIRED",
+        "perf_07": "SAVE_RATE_GOALKEEPER_CONTEXT_VALIDATED_FEATURE_ADMISSION_READY",
+        "validated_rows": 31,
+        "validated_players": 1,
+        "validated_matches": 31,
+        "direct_role_conflicts": 0,
+        "positive_save_current_non_gk": 0
+      },
+      "limitations": [
+        "No xGOT/PSxG or shot-quality adjustment is available.",
+        "The metric measures observed save efficiency, not shot-quality-adjusted goal prevention.",
+        "It must never be applied to outfield rows.",
+        "It is not yet assigned any weight or threshold."
+      ]
+    }
+  ]
+}
