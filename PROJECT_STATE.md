@@ -13,11 +13,12 @@ GPS-01                              CERRADO / VALIDADO ESTRUCTURALMENTE
 FEATURE-01/02/03                    CERRADO / VALIDADO
 EXPERT-01..07 N1000-N13000          BASELINE CERRADO / VALIDADO
 LLM-01                              PROTOTYPE v0.1 / CONTRATOS PASS
-LLM-02 LOCAL COACH COPILOT          IMPLEMENTADO / VALIDACIÓN OLLAMA LOCAL PENDIENTE
+LLM-02 LOCAL COACH COPILOT          IMPLEMENTADO / QA ADAPTATIVO LOCAL EN CURSO
 REPORTS-01                          PROTOTYPE v0.1 / CONTRATO PASS
 REPORTS-02 PROFESSIONAL PDF         ACTIVO — ISSUE #94 / GATE VISUAL PENDIENTE
 DASHBOARD-01                        CONTRACT PASS
 DASHBOARD PROFESSIONAL REDESIGN     IMPLEMENTADO / CHECK VISUAL LOCAL PENDIENTE
+PRODUCT-SPIRAL-01                   PREPARADO — UI/PDF SAFE AUTO-IMPROVEMENT + REGRESSION QA
 ARCHITECTURE-01                     CERRADO — ISSUE #25
 ANALYTICS-01                        CERRADO / VALIDADO — ISSUE #26
 DECISION POLICY / N13000            GATE APROBADO — ISSUE #27 CERRADO
@@ -255,7 +256,7 @@ Solo estados auditables de contexto/calidad. Sin diagnóstico de rendimiento, le
 Implementado:
 
 - `llm/coach_agent.py`: bucle agentic local sobre API de Ollama (`127.0.0.1:11434`);
-- modelo por defecto `qwen3.5:4b`, configurable mediante `FPS_LOCAL_LLM_MODEL`;
+- provider local configurable mediante `FPS_LOCAL_LLM_MODEL`;
 - preguntas abiertas, no catálogo cerrado;
 - selección dinámica de tools y múltiples tool rounds;
 - tools read-only para equipo, jugador, stats player-match, partidos, comparación descriptiva, calidad y GPS;
@@ -263,19 +264,19 @@ Implementado:
 - memoria conversacional gestionada por la página Streamlit;
 - guardrails: no recalcular ratings, no inventar métricas, no lesión/fatiga/readiness, no XI/recomendación táctica sin policy validada;
 - `app/pages/5_Assistent_IA.py`: chat abierto local con trazabilidad de tools;
-- `llm/validate_local_agent.py`: contrato local de grounding + guardrail;
-- `llm/run_agent_overnight.py`: evaluación automática 100% local, sin API de pago;
-- `openai-agents` eliminado de dependencias obligatorias;
-- `llm/privacy.py` se conserva para un posible provider externo futuro, pero Ollama local no necesita anonimizar porque las consultas no salen del PC.
+- validadores y runners locales de QA;
+- evaluación actual ejecutada con `qwen3:1.7b` para priorizar latencia; modelos mayores quedan sujetos a benchmark A/B;
+- Auto-QA previo: 216 casos, 210 PASS; 97,22% global, pero principalmente router/tool QA y no evidencia de síntesis final production-ready;
+- runner adaptativo seguro preparado para español/catalán, failure replay y perfiles de síntesis;
+- OpenAI no es necesario para este flujo local.
 
 Pendiente para cerrar LLM-02:
 
-1. instalar/iniciar Ollama en Windows;
-2. descargar `qwen3.5:4b`;
-3. ejecutar `python llm\validate_local_agent.py`;
-4. probar preguntas abiertas en Streamlit;
-5. ejecutar evaluación local larga y revisar fallos semánticos/tool routing;
-6. decidir si 4B es suficiente o subir a 9B según hardware/calidad.
+1. finalizar QA adaptativo local;
+2. separar métricas de ROUTER/TOOLS y SYNTHESIS;
+3. corregir fallos de routing que sobrevivan;
+4. optimizar evidencia/prompt/timeout de síntesis;
+5. benchmark controlado `qwen3:1.7b` vs `qwen3:4b` antes de promover un modelo mayor.
 
 ## REPORTS-02 — professional PDFs
 
@@ -297,6 +298,42 @@ Pendiente para cerrar REPORTS-02:
 1. inspección visual de los tres PDFs generados;
 2. comprobar clipping/overlap/legibilidad;
 3. corregir diseño solo si la revisión visual detecta problemas.
+
+## PRODUCT-SPIRAL-01 — mejora automática segura de producto
+
+Objetivo: utilizar un segundo PC para mejorar y estresar la capa final de producto (web + PDF) sin mezclar esta experimentación con analytics críticos.
+
+Archivos:
+
+- `product/run_product_spiral.py` — motor principal;
+- `product/run_product_spiral_safe.py` — launcher endurecido para logging estable;
+- `product/README.md` — operación y límites.
+
+Funcionamiento:
+
+```text
+AUDIT UI/PDF
+→ SAFE PRESENTATION RECIPE
+→ COMPILE + UI + DASHBOARD + MATCH + REPORT CONTRACTS
+→ PRODUCT QUALITY SCORE
+→ ACCEPT LOCAL COMMIT / ROLLBACK
+→ REAL TEAM/PLAYER/MATCH PDF PROBES
+→ FAILURE REPLAY
+→ PERIODIC REGRESSION GATES
+→ FINAL SUMMARY
+```
+
+Allowlist de mutación:
+
+```text
+app/ui_theme.py
+app/coach_ui.py
+reports/pdf_engine.py
+```
+
+Protegido explícitamente: `analytics/`, `data/`, `features/`, `decision_tree/`, `models/`, `llm/`, `gps/`. El runner no modifica la DB, Match Rating, Performance Index, thresholds ni decisiones expertas. Los cambios aceptados se guardan únicamente en una rama local `product-spiral-*`; nunca se hace push o merge automático. Los resultados locales quedan en `outputs/product_spiral/` y están ignorados por Git.
+
+La fase automática mejora criterios objetivos (consistencia de superficies/estados, responsive, focus/accessibility, seguridad de paginación PDF, contract integrity y cobertura de escenarios). El gate visual humano sigue siendo obligatorio antes de integrar cambios, porque un score estructural no sustituye el juicio visual/UX.
 
 ## Collector
 
@@ -339,19 +376,20 @@ Falta revisión visual tras el rediseño profesional del dashboard.
 - GPS opcional;
 - no HSR/sprint/load/fatigue/readiness sin definición validada;
 - PDF y dashboard consumen analytics materializados, no recalculan resultados críticos;
+- Product Spiral solo puede mutar su allowlist de presentación y nunca hace push automático;
 - no desplegar ni publicar públicamente mientras se mantenga la instrucción actual del usuario.
 
 ## Siguiente paso exacto
 
-PERF-18 queda cerrado. Dashboard profesional y LLM-02 local están implementados pero necesitan gate local/visual.
+PERF-18 queda cerrado. La prioridad inmediata es convertir dashboard + PDFs + Coach Copilot en un producto final robusto y profesional.
 
 Orden inmediato:
 
-1. instalar/iniciar Ollama y descargar `qwen3.5:4b`;
-2. ejecutar `python llm\validate_local_agent.py`;
-3. si PASS, dejar `python llm\run_agent_overnight.py --hours 8 --max-cases 60` trabajando localmente;
-4. revisar visualmente Home / Team / Player / Match con el rediseño aplicado;
-5. revisar visualmente los tres PDFs y cerrar REPORTS-02 si no hay clipping/overlap;
+1. PC principal: dejar finalizar el QA adaptativo del Coach Copilot y revisar su resumen separando router/tools de síntesis;
+2. segundo PC: clonar/actualizar repo, usar una copia local de la DuckDB y ejecutar `python product\run_product_spiral_safe.py --hours 10 --max-cases 100000`;
+3. revisar la rama local `product-spiral-*` y `outputs/product_spiral/<run_id>/final_summary.json` antes de integrar cambios;
+4. hacer gate visual humano Home / Team / Player / Match y tres PDFs representativos;
+5. cerrar REPORTS-02 si no hay clipping/overlap/legibilidad;
 6. mejorar Collector: castellano + móvil + simplificación UX;
 7. añadir un ejemplo GPS local claramente etiquetado para demostrar km/velocidad, sin mezclarlo con datos reales;
 8. continuar mejora del Performance Index histórico y perfiles;
