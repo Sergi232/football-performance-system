@@ -141,6 +141,9 @@ def robust_fixture_date_expr(con: duckdb.DuckDBPyConnection, fixtures: Path) -> 
     return qualified
 
 
+# Backwards-compatible public alias for downstream experiments.
+fixture_date_expr = robust_fixture_date_expr
+
 # Patch only the date resolver; all model logic remains the audited v1 implementation.
 base.fixture_date_expr = robust_fixture_date_expr
 
