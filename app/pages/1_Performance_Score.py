@@ -1,4 +1,4 @@
-"""Performance Score page for the Football Performance System dashboard."""
+"""Detailed Performance Score view for the Football Performance System."""
 from __future__ import annotations
 
 import os
@@ -19,6 +19,12 @@ from app.performance_score_access import (  # noqa: E402
     list_score_teams,
     list_team_players,
 )
+from app.ui_theme import (  # noqa: E402
+    apply_professional_theme,
+    dimension_bar,
+    position_label,
+    score_card,
+)
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 DIMENSIONS = [
@@ -29,7 +35,8 @@ DIMENSIONS = [
     ("discipline", "Disciplina"),
 ]
 
-st.set_page_config(page_title="Performance Score", page_icon="📊", layout="wide")
+st.set_page_config(page_title="Performance Score · Football Performance System", page_icon="📊", layout="wide")
+apply_professional_theme()
 
 
 def db_path() -> Path:
@@ -43,9 +50,10 @@ def fmt_score(value: object) -> str:
 
 
 st.title("Performance Score")
-st.caption(
-    f"{SCORE_VERSION} · score experimental 0–100 específic per grup posicional. "
-    "No és una etiqueta bo/dolent ni una recomanació tàctica."
+st.markdown(
+    "<div class='fps-section-note'>Vista analítica detallada del rendiment jugador-partit. "
+    "El score és descriptiu i específic per grup posicional.</div>",
+    unsafe_allow_html=True,
 )
 
 path = db_path()
@@ -63,8 +71,10 @@ if teams.empty:
     st.info("No hi ha scores materialitzats per aquesta versió.")
     st.stop()
 
+sel1, sel2 = st.columns([1, 1.4])
 team_labels = {str(row.team_id): str(row.display_name) for row in teams.itertuples(index=False)}
-team_id = st.selectbox("Equip", list(team_labels), format_func=lambda x: team_labels[x])
+with sel1:
+    team_id = st.selectbox("Equip", list(team_labels), format_func=lambda x: team_labels[x])
 players = list_team_players(path, team_id)
 
 if players.empty:
@@ -75,7 +85,9 @@ player_labels = {
     str(row.player_id): f"{row.player} · {int(row.scored_matches)} partits amb score"
     for row in players.itertuples(index=False)
 }
-player_id = st.selectbox("Jugador", list(player_labels), format_func=lambda x: player_labels[x])
+with sel2:
+    player_id = st.selectbox("Jugador", list(player_labels), format_func=lambda x: player_labels[x])
+
 history = get_player_score_history(path, team_id, player_id)
 latest = get_latest_player_score(path, team_id, player_id)
 
@@ -85,27 +97,44 @@ if latest is None:
         "no informa del rol tàctic, el sistema no imputa una posició."
     )
 else:
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Performance Score", f"{fmt_score(latest['performance_score'])}/100")
-    c2.metric("Confiança d'evidència", f"{fmt_score(latest['score_evidence_confidence'])}%")
-    c3.metric("Grup posicional", str(latest["position_group"]))
-    c4.metric("Dimensions disponibles", int(latest["dimension_coverage_count"]))
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        score_card(
+            "Performance Score",
+            f"{fmt_score(latest['performance_score'])}/100",
+            "Comparació relativa dins del grup posicional",
+        )
+    with c2:
+        score_card(
+            "Confiança d'evidència",
+            f"{fmt_score(latest['score_evidence_confidence'])}%",
+            "Pes de l'evidència prevista realment observada",
+        )
+    with c3:
+        score_card(
+            "Perfil posicional",
+            position_label(latest["position_group"]),
+            f"{int(latest['dimension_coverage_count'])} dimensions disponibles",
+        )
 
-    st.subheader("Dimensions de l'últim score")
-    dimension_rows = []
-    for key, label in DIMENSIONS:
-        dimension_rows.append({"Dimensió": label, "Score": latest.get(key)})
-    dimension_df = pd.DataFrame(dimension_rows)
-    dimension_df["Score"] = pd.to_numeric(dimension_df["Score"], errors="coerce").round(1)
-    st.dataframe(dimension_df, hide_index=True, width="stretch")
-
-st.subheader("Evolució")
-chart = history.dropna(subset=["performance_score"]).copy()
-if chart.empty:
-    st.info("No hi ha historial de scores elegibles.")
-else:
-    chart["match_date"] = pd.to_datetime(chart["match_date"])
-    st.line_chart(chart.set_index("match_date")[["performance_score"]])
+    st.write("")
+    left, right = st.columns([1, 1.35])
+    with left:
+        st.subheader("Dimensions")
+        for key, label in DIMENSIONS:
+            dimension_bar(label, latest.get(key))
+    with right:
+        st.subheader("Evolució")
+        chart = history.dropna(subset=["performance_score"]).copy()
+        if chart.empty:
+            st.info("No hi ha historial de scores elegibles.")
+        else:
+            chart["match_date"] = pd.to_datetime(chart["match_date"])
+            st.line_chart(
+                chart.set_index("match_date")[["performance_score"]],
+                height=320,
+                use_container_width=True,
+            )
 
 st.subheader("Historial jugador-partit")
 details = history.copy()
@@ -122,11 +151,12 @@ if not details.empty:
     ]
     for col in numeric:
         details[col] = pd.to_numeric(details[col], errors="coerce").round(1)
+    details["position_group"] = details["position_group"].map(position_label)
     details = details.rename(
         columns={
             "match_date": "Data",
             "primary_role": "Rol font",
-            "position_group": "Grup",
+            "position_group": "Posició",
             "dimension_coverage_count": "N dimensions",
             "attacking_threat": "Amenaça",
             "creation_progression": "Creació",
@@ -139,9 +169,11 @@ if not details.empty:
         }
     )
     details = details.drop(columns=["match_id", "position_mapping_status"], errors="ignore")
-    st.dataframe(details, hide_index=True, width="stretch")
+    st.dataframe(details, hide_index=True, use_container_width=True)
 
-st.caption(
-    "Metodologia: percentils dins del grup posicional, mínim 3 dimensions i pesos posicionals experimentals. "
-    "Els suplents sense rol tàctic observable no reben posició imputada. Porter en camí separat."
-)
+with st.expander("Metodologia"):
+    st.write(
+        f"Versió `{SCORE_VERSION}`. Percentils dins del grup posicional, mínim 3 dimensions i pesos "
+        "posicionals experimentals. Els suplents sense rol tàctic observable no reben posició imputada. "
+        "El porter manté un camí separat."
+    )
