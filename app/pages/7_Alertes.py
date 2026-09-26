@@ -13,13 +13,15 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.attention_access import ATTENTION_VERSION, get_attention_summary, get_team_attention_flags
+from app.coach_ui import metric_card, page_header, section_header
 from app.data_access import list_teams
-from app.ui_theme import apply_professional_theme, score_card
+from app.ui_theme import apply_professional_theme, sidebar_navigation
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 
-st.set_page_config(page_title="Alertes · Football Performance System", page_icon="⚠️", layout="wide")
+st.set_page_config(page_title="Qualitat i alertes · Football Performance System", page_icon="🚩", layout="wide")
 apply_professional_theme()
+sidebar_navigation()
 
 
 def db_path() -> Path:
@@ -39,9 +41,12 @@ if teams.empty:
 team_labels = {str(r.team_id): str(r.display_name) for r in teams.itertuples(index=False)}
 team_id = st.selectbox("Equip", options=list(team_labels), format_func=lambda x: team_labels[x])
 
-st.markdown("<div class='fps-kicker'>ATTENTION CENTRE</div>", unsafe_allow_html=True)
-st.title("Alertes i limitacions")
-st.caption("Només estats auditables de dades, context o evidència. Encara no s'emeten alertes de fatiga, risc de lesió o rendiment bo/dolent.")
+page_header(
+    "ATTENTION CENTRE · DATA QUALITY",
+    "Qualitat i alertes",
+    "Només limitacions auditables de dades, context o evidència. No són alertes de rendiment, fatiga ni risc de lesió.",
+    ATTENTION_VERSION,
+)
 
 try:
     flags = get_team_attention_flags(path, team_id)
@@ -54,13 +59,13 @@ except Exception as exc:
 counts = {str(r.attention_code): int(r.rows) for r in summary.itertuples(index=False)}
 cols = st.columns(3)
 with cols[0]:
-    score_card("Context de rol no disponible", str(counts.get("ROLE_CONTEXT_UNAVAILABLE", 0)), "No s'imputa cap posició")
+    metric_card("Context de rol no disponible", str(counts.get("ROLE_CONTEXT_UNAVAILABLE", 0)), "No s'imputa cap posició")
 with cols[1]:
-    score_card("Evidència insuficient", str(counts.get("INSUFFICIENT_RATING_EVIDENCE", 0)), "Rating neutral explícit")
+    metric_card("Evidència insuficient", str(counts.get("INSUFFICIENT_RATING_EVIDENCE", 0)), "Limitació explícita")
 with cols[2]:
-    score_card("Incidències GPS", str(counts.get("GPS_QUALITY_FLAGS_PRESENT", 0)), "Quality flags d'import")
+    metric_card("Incidències GPS", str(counts.get("GPS_QUALITY_FLAGS_PRESENT", 0)), "Quality flags d'import")
 
-st.write("")
+section_header("Registre de limitacions", "Filtres per grup i traçabilitat fins a la font")
 if flags.empty:
     st.success("No hi ha limitacions auditables registrades per aquest equip en aquesta versió.")
 else:
@@ -72,7 +77,7 @@ else:
     display["match_date"] = pd.to_datetime(display["match_date"], errors="coerce").dt.date
     display = display[["match_date", "player", "attention_group", "attention_code", "message", "source_layer"]]
     display.columns = ["Data", "Jugador", "Grup", "Codi", "Missatge", "Font"]
-    st.dataframe(display, hide_index=True, width="stretch")
+    st.dataframe(display, hide_index=True, width="stretch", height=560)
 
 with st.expander("Metodologia"):
     st.write(f"Versió: `{ATTENTION_VERSION}`")
