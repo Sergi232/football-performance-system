@@ -23,7 +23,7 @@ DSAI-01A..11                        CERRADO / RESULTADOS DOCUMENTADOS
 PERF-01..13                         CERRADO / SCORE POLICY VALIDADA
 PERF-14 POSITION-SPECIFIC SCORE     CERRADO — ISSUE #87
 SCORE-INTEGRATION-01                CERRADO / MATERIALIZACIÓN + CONTRACT PASS
-DASHBOARD-02                        ACTIVO — ISSUE #88 / PLAYER VIEW IMPLEMENTADA
+DASHBOARD-02                        ACTIVO — ISSUE #88 / REDISEÑO PROFESIONAL PLAYER VIEW
 FINAL-01                            DESBLOQUEADO
 ```
 
@@ -42,7 +42,7 @@ COLLECTOR + GPS opcional
 -> PDF / informes
 ```
 
-El dashboard es el producto principal. PDF/PPT son salidas estáticas complementarias.
+El dashboard web es el producto principal. PDF/PPT son salidas estáticas complementarias.
 
 ## Performance Score congelado
 
@@ -76,28 +76,17 @@ AM_W
 ST
 ```
 
-Porteros mantienen un camino separado.
+Porteros mantienen camino separado.
 
-## PERF-11 — NULL vs zero
+## Validaciones del score
 
-Validado:
-
-```text
-shots_total NULL -> 0 cuando el evento observado no ocurrió
-goals NULL       -> 0 cuando el evento observado no ocurrió
-red_cards NULL   -> 0 cuando el evento observado no ocurrió
-yellow_cards     -> NO reinterpretar como 0
-```
-
-## PERF-13 — política seleccionada
-
-Candidato aprobado para continuar:
+PERF-13 seleccionó:
 
 ```text
 AVAILABLE_3PLUS + ROLE_AWARE
 ```
 
-Resultados principales:
+Cobertura:
 
 ```text
 5D      100/552 = 18.12%
@@ -106,20 +95,7 @@ Resultados principales:
 2PLUS   552/552 = 100.00%
 ```
 
-GLOBAL vs ROLE_AWARE 3PLUS:
-
-```text
-Spearman = 0.9419
-mean absolute delta = 2.29
-```
-
-La media igual de dimensiones no se congeló porque `creation_progression` dominaba demasiado la sensibilidad agregada.
-
-## PERF-14 — cerrado
-
-Issue #87 cerrado tras validación local.
-
-Resultado final v2:
+PERF-14 final:
 
 ```text
 outfield_rows                  = 552
@@ -127,7 +103,6 @@ observable_mapped_role_rows    = 380
 eligible_rows_observable_roles = 304
 coverage_rate_observable_roles = 0.8000
 source_role_unavailable_rows   = 172
-total_outfield_coverage_rate   = 0.5507
 spearman_vs_unweighted_3plus   = 0.8964
 ```
 
@@ -141,26 +116,19 @@ AM_W    58/65 = 89.23%
 ST      62/66 = 93.94%
 ```
 
-Los 172 `Substitute` no son un fallo del score. DATA-02/DSAI-05 establece que la fuente no ofrece rol táctico fiable para esas apariciones. No se imputa desde historia, rol modal ni otro partido.
-
-Mapping aprobado:
-
-```text
-Defender | Left/Centre              -> CB
-Defender | Centre/Right             -> CB
-Midfielder | Left/Centre            -> DM_CM
-Midfielder | Centre/Right           -> DM_CM
-Defensive Midfielder | Left/Centre  -> DM_CM
-Midfielder | Left/Right             -> AM_W
-Wing Back | Left/Right              -> FB_WB
-Striker                              -> ST
-```
+Los 172 `Substitute` no se imputan: DATA-02/DSAI-05 establece que la fuente no ofrece rol táctico fiable para esas apariciones.
 
 Sensibilidad de priors: peor Spearman ante perturbaciones +/-1 aproximadamente 0.986–0.989 en los cinco grupos candidatos.
 
-Decisión: `performance_score_v0.1-experimental` queda congelado como baseline experimental de producto. Los priors siguen siendo revisables con más datos o validación externa.
+Decisión: `performance_score_v0.1-experimental` queda congelado como baseline experimental de producto. Los priors son revisables con más datos o validación externa.
 
 ## SCORE-INTEGRATION-01 — cerrado
+
+Tabla materializada:
+
+```text
+player_match_performance_score
+```
 
 Archivos:
 
@@ -169,12 +137,6 @@ analytics/build_performance_score.py
 app/performance_score_access.py
 app/pages/1_Performance_Score.py
 app/validate_performance_score.py
-```
-
-Tabla materializada:
-
-```text
-player_match_performance_score
 ```
 
 Validación local confirmada:
@@ -194,9 +156,7 @@ coverage_observable_roles=0.8000
 source_role_unavailable_rows=172
 ```
 
-La página Streamlit `Performance Score` fue verificada visualmente con score, confidence, grupo posicional, 5 dimensiones e historial.
-
-Nota operativa local: Streamlit debe leer la misma DuckDB materializada. En el entorno de Sergi:
+Nota operativa local:
 
 ```powershell
 $env:FPS_DB_PATH = "D:\Data\Sergi\Desktop\football-performance-system\data\football_performance.duckdb"
@@ -206,40 +166,68 @@ $env:FPS_DB_PATH = "D:\Data\Sergi\Desktop\football-performance-system\data\footb
 
 Issue #88.
 
-Objetivo: convertir el MVP en una herramienta de cuerpo técnico, priorizando la ficha de jugador.
+Objetivo: que el producto parezca una plataforma profesional de sports performance y no un prototipo Python/Streamlit.
 
-Implementado:
+### Criterio UX aprobado
+
+La interfaz para entrenador debe priorizar:
+
+- lectura rápida;
+- jerarquía visual;
+- KPIs de staff;
+- etiquetas humanas;
+- tendencias y alertas;
+- acceso progresivo al detalle;
+- metodología/IDs técnicos ocultos en expanders o vistas de auditoría.
+
+No mostrar en primer plano nombres internos como `AM_W`, `N12000.170`, `score_version` o nombres de columnas.
+
+### Rediseño profesional implementado
+
+Archivos:
 
 ```text
+.streamlit/config.toml
+app/ui_theme.py
+app/pages/1_Performance_Score.py
 app/pages/2_Jugador.py
 ```
 
-La vista integrada contiene:
+`app/ui_theme.py` añade:
 
-- selector de equipo y jugador;
-- apariciones, titularidades, minutos, goles y asistencias;
-- descarga de PDF;
-- Performance Score;
-- confidence de evidencia;
-- etiqueta humana del grupo posicional;
-- cinco dimensiones;
-- evolución temporal del score;
-- estado del motor experto N12000/N13000;
-- evolución de features;
-- historial de partidos.
+- identidad visual común;
+- sidebar oscura;
+- fondo y tarjetas profesionales;
+- cabecera de jugador;
+- score cards;
+- barras de dimensiones;
+- etiquetas posicionales humanas.
 
-Etiquetas humanas:
+`Jugador` se organiza ahora en:
 
 ```text
-CB      -> Central
-FB_WB   -> Lateral / Carriler
-DM_CM   -> Migcentre / Interior
-AM_W    -> Mitjapunta / Extrem
-ST      -> Davanter
-GK      -> Porter
+Resum
+Evolució
+Tècnic
+Motor expert
+Partits
 ```
 
-La página `Performance Score` se mantiene como vista analítica detallada; `Jugador` debe convertirse en la ficha operativa principal.
+Incluye:
+
+- cabecera de jugador/equipo/rol;
+- apariciones, titularidades, minutos, goles y asistencias;
+- Performance Score + confidence + posición humana;
+- dimensiones 0–100 como barras;
+- evolución del score;
+- últimas observaciones;
+- evolución de features;
+- tabla técnica player-match;
+- motor experto con detalle técnico oculto;
+- historial con score/confidence;
+- exportación PDF.
+
+La página `Performance Score` detallada utiliza el mismo lenguaje visual.
 
 ## Guardrails vigentes
 
@@ -252,11 +240,11 @@ La página `Performance Score` se mantiene como vista analítica detallada; `Jug
 - porteros mantienen camino separado;
 - el LLM no calcula ni altera el score;
 - el dashboard consume resultados materializados, no recalcula lógica crítica;
-- score y expert system se mantienen como capas diferenciadas.
+- score y expert system son capas diferentes.
 
 ## Siguiente paso exacto
 
-Validar visualmente DASHBOARD-02:
+Validar visualmente el rediseño profesional:
 
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
@@ -265,21 +253,12 @@ $env:FPS_DB_PATH = "D:\Data\Sergi\Desktop\football-performance-system\data\footb
 streamlit run app\streamlit_app.py
 ```
 
-En el navegador abrir `Jugador` y comprobar:
+Abrir `Jugador` y revisar especialmente `Resum`.
 
-1. carga de equipo/jugador;
-2. score + confidence + posición humana;
-3. tabla de dimensiones;
-4. evolución del score;
-5. motor experto;
-6. evolución de métricas;
-7. historial;
-8. descarga PDF.
+Después del check visual, sin reabrir metodología del score:
 
-Después del check visual:
-
-1. cerrar DASHBOARD-02 fase jugador;
-2. integrar score en contexto LLM;
-3. integrar score en PDF de jugador;
-4. construir Team Mode con tendencias/alertas y vistas de plantilla;
-5. pulir navegación/estética para publicación final.
+1. construir Team Mode profesional: plantilla + forma + tendencias + alertas;
+2. integrar Performance Score en contexto LLM;
+3. integrar score/evolución en PDF de jugador;
+4. construir vistas físicas/GPS;
+5. pulir navegación global para publicación final.
