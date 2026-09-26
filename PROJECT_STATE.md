@@ -51,19 +51,22 @@ El objetivo analítico central es **adjudicar un score de rendimiento jugador-pa
 
 ## PERF-11 — cerrado
 
-Resultado:
-- `shots_total`, `goals`, `red_cards`: `EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE`.
-- `yellow_cards`: `NULL_AS_ZERO_NOT_VALIDATED` por 5 contradicciones.
-- no se modifica raw data ni FEATURE-01.
+Resultado ejecutado:
+
+```text
+shots_total -> EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE
+goals -> EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE
+yellow_cards -> NULL_AS_ZERO_NOT_VALIDATED (5 contradicciones)
+red_cards -> EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE
+```
+
+No se cambia raw data ni FEATURE-01 y no se autoriza `fillna(0)` global.
 
 ## PERF-12 — activo
 
-Script:
-```text
-dsai/performance_validated_zero_impact.py
-```
+Script: `dsai/performance_validated_zero_impact.py`.
 
-Aplica solo en memoria la semántica validada y compara cobertura antes/después. No cambia DB, FEATURE-01, pesos, thresholds, rankings ni recomendaciones.
+Objetivo: aplicar solo en memoria `shots_total/goals/red_cards NULL -> zero observado`, medir cobertura antes/después y mantener `goal_per_shot_rate` indefinida si `shots_total=0`.
 
 ## Siguiente paso exacto
 
