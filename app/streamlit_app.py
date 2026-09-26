@@ -1,4 +1,4 @@
-"""DASHBOARD-01 — first functional Football Performance System web app."""
+"""Professional home for the Football Performance System coaching dashboard."""
 from __future__ import annotations
 
 import os
@@ -12,34 +12,14 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.data_access import (  # noqa: E402
-    FINAL_ENGINE_VERSION,
-    get_latest_player_gate,
-    get_match_lineup,
-    get_player_feature_history,
-    get_player_match_history,
-    get_squad_summary,
-    get_team_matches,
-    get_team_overview,
-    list_base_features,
-    list_teams,
+from app.attention_access import get_attention_summary, get_team_attention_flags
+from app.data_access import get_team_matches, get_team_overview, list_teams
+from app.gps_physical_access import get_gps_summary_status
+from app.match_rating_access import (
+    get_latest_team_match_ratings,
+    get_team_match_rating_history,
 )
-from llm.context_builder import (  # noqa: E402
-    build_match_context,
-    build_player_context,
-    build_team_context,
-)
-from llm.openai_provider import (  # noqa: E402
-    answer_question,
-    configured_model,
-    provider_available,
-)
-from reports.data_builder import (  # noqa: E402
-    build_match_report_data,
-    build_player_report_data,
-    build_team_report_data,
-)
-from reports.pdf_engine import render_pdf_bytes  # noqa: E402
+from app.ui_theme import apply_professional_theme, position_label, score_card
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 
@@ -48,414 +28,164 @@ st.set_page_config(
     page_icon="⚽",
     layout="wide",
 )
+apply_professional_theme()
 
 
 def db_path() -> Path:
     return Path(os.environ.get("FPS_DB_PATH", DEFAULT_DB)).expanduser().resolve()
 
 
-@st.cache_data(show_spinner=False)
-def cached_teams(path: str) -> pd.DataFrame:
-    return list_teams(Path(path))
-
-
-@st.cache_data(show_spinner=False)
-def cached_overview(path: str, team_id: str) -> dict:
-    return get_team_overview(Path(path), team_id)
-
-
-@st.cache_data(show_spinner=False)
-def cached_matches(path: str, team_id: str) -> pd.DataFrame:
-    return get_team_matches(Path(path), team_id)
-
-
-@st.cache_data(show_spinner=False)
-def cached_squad(path: str, team_id: str) -> pd.DataFrame:
-    return get_squad_summary(Path(path), team_id)
-
-
-@st.cache_data(show_spinner=False)
-def cached_player_history(path: str, team_id: str, player_id: str) -> pd.DataFrame:
-    return get_player_match_history(Path(path), team_id, player_id)
-
-
-@st.cache_data(show_spinner=False)
-def cached_features(path: str, player_id: str) -> list[str]:
-    return list_base_features(Path(path), player_id)
-
-
-@st.cache_data(show_spinner=False)
-def cached_feature_history(path: str, player_id: str, feature_name: str) -> pd.DataFrame:
-    return get_player_feature_history(Path(path), player_id, feature_name)
-
-
-@st.cache_data(show_spinner=False)
-def cached_gate(path: str, team_id: str, player_id: str) -> dict | None:
-    return get_latest_player_gate(Path(path), team_id, player_id)
-
-
-@st.cache_data(show_spinner=False)
-def cached_lineup(path: str, team_id: str, match_id: str) -> pd.DataFrame:
-    return get_match_lineup(Path(path), team_id, match_id)
-
-
-@st.cache_data(show_spinner=False)
-def cached_team_context(path: str, team_id: str) -> dict:
-    return build_team_context(Path(path), team_id)
-
-
-@st.cache_data(show_spinner=False)
-def cached_player_context(path: str, team_id: str, player_id: str, feature_name: str | None) -> dict:
-    return build_player_context(Path(path), team_id, player_id, feature_name)
-
-
-@st.cache_data(show_spinner=False)
-def cached_match_context(path: str, team_id: str, match_id: str) -> dict:
-    return build_match_context(Path(path), team_id, match_id)
-
-
-def safe_int(value) -> str:
+def safe_int(value: object) -> str:
     if value is None or pd.isna(value):
         return "—"
     return f"{int(value):,}".replace(",", ".")
 
 
-def safe_float(value, digits: int = 1) -> str:
-    if value is None or pd.isna(value):
+def result_text(score_for: object, score_against: object) -> str:
+    if pd.isna(score_for) or pd.isna(score_against):
         return "—"
-    return f"{float(value):.{digits}f}"
+    sf, sa = int(score_for), int(score_against)
+    return f"{'V' if sf > sa else 'E' if sf == sa else 'D'} {sf}-{sa}"
 
 
-def safe_filename(prefix: str, label: str) -> str:
-    cleaned = "_".join(str(label).strip().split())
-    cleaned = "".join(ch for ch in cleaned if ch.isalnum() or ch in {"_", "-"})
-    return f"{prefix}_{cleaned or 'report'}.pdf"
+path = db_path()
+if not path.exists():
+    st.error(f"No s'ha trobat la base de dades: {path}")
+    st.stop()
 
+teams = list_teams(path)
+if teams.empty:
+    st.info("No hi ha equips disponibles.")
+    st.stop()
 
-def result_label(row: pd.Series) -> str:
-    if pd.isna(row.get("score_for")) or pd.isna(row.get("score_against")):
-        return "—"
-    sf = int(row["score_for"])
-    sa = int(row["score_against"])
-    outcome = "W" if sf > sa else "D" if sf == sa else "L"
-    return f"{outcome} {sf}-{sa}"
+team_labels = {str(r.team_id): str(r.display_name) for r in teams.itertuples(index=False)}
+team_id = st.selectbox("Equip", options=list(team_labels), format_func=lambda x: team_labels[x])
+team_name = team_labels[team_id]
 
+overview = get_team_overview(path, team_id)
+matches = get_team_matches(path, team_id).copy()
+ratings = get_latest_team_match_ratings(path, team_id)
+rating_history = get_team_match_rating_history(path, team_id)
+try:
+    attention = get_team_attention_flags(path, team_id)
+    attention_summary = get_attention_summary(path, team_id)
+except Exception:
+    attention = pd.DataFrame()
+    attention_summary = pd.DataFrame()
+try:
+    gps_status = get_gps_summary_status(path)
+except Exception:
+    gps_status = {"rows": 0, "matches": 0, "players": 0, "imports": 0}
 
-def render_pdf_download(payload: dict, filename: str, key: str) -> None:
-    try:
-        pdf_bytes = render_pdf_bytes(payload)
-    except Exception as exc:
-        st.warning(f"No s'ha pogut generar el PDF: {exc}")
-        return
-    st.download_button(
-        "Descarregar informe PDF",
-        data=pdf_bytes,
-        file_name=filename,
-        mime="application/pdf",
-        key=key,
-    )
+if not matches.empty:
+    matches["match_date"] = pd.to_datetime(matches["match_date"])
+    matches = matches.sort_values(["match_date", "match_id"], ascending=[False, False])
+    latest_match = matches.iloc[0]
+else:
+    latest_match = None
 
+st.markdown(
+    f"""
+    <div class="fps-hero">
+        <div class="fps-kicker">FOOTBALL PERFORMANCE SYSTEM · TEAM MODE</div>
+        <div class="fps-player-name">{team_name}</div>
+        <div class="fps-player-meta">Centre operatiu del cos tècnic · rendiment, partit, jugadors, físic i assistent IA</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
-def render_team(path: str, team_id: str, team_name: str) -> None:
-    overview = cached_overview(path, team_id)
-    matches = cached_matches(path, team_id)
-    squad = cached_squad(path, team_id)
+c1, c2, c3, c4 = st.columns(4)
+with c1:
+    score_card("Partits", safe_int(overview.get("matches")), "Historial disponible")
+with c2:
+    score_card("Plantilla", safe_int(overview.get("players")), "Jugadors registrats")
+with c3:
+    median_rating = ratings["match_rating_10"].median() if not ratings.empty else None
+    score_card("Últim partit · mediana", "—" if median_rating is None else f"{median_rating:.1f}/10", "Match Rating descriptiu")
+with c4:
+    score_card("Atencions", str(len(attention)), "Flags auditables pendents de revisió")
 
-    st.header(team_name)
-    render_pdf_download(
-        build_team_report_data(Path(path), team_id),
-        safe_filename("team", team_name),
-        f"download_team_{team_id}",
-    )
+st.write("")
+left, right = st.columns([1.35, 1.0])
 
-    c1, c2, c3, c4, c5 = st.columns(5)
-    c1.metric("Partits", safe_int(overview["matches"]))
-    c2.metric("Jugadors", safe_int(overview["players"]))
-    c3.metric("Minuts jugador", safe_int(overview["player_minutes"]))
-    c4.metric("Gols", safe_int(overview["goals"]))
-    c5.metric("Assistències", safe_int(overview["assists"]))
-
-    left, right = st.columns([1.15, 1])
-    with left:
-        st.subheader("Plantilla")
-        display = squad.drop(columns=["player_id"], errors="ignore").copy()
-        st.dataframe(display, hide_index=True, width="stretch")
-
-    with right:
-        st.subheader("Partits")
-        if matches.empty:
-            st.info("No hi ha partits disponibles.")
-        else:
-            display = matches.copy()
-            display["result"] = display.apply(result_label, axis=1)
-            display["match_date"] = pd.to_datetime(display["match_date"]).dt.date
-            display = display[["match_date", "venue", "opponent", "result", "starting_formation"]]
-            display.columns = ["Data", "L/V", "Rival", "Resultat", "Formació"]
-            st.dataframe(display, hide_index=True, width="stretch")
-
-
-def render_player(path: str, team_id: str) -> None:
-    squad = cached_squad(path, team_id)
-    if squad.empty:
-        st.info("No hi ha jugadors disponibles.")
-        return
-
-    labels = {
-        str(row.player_id): str(row.player)
-        for row in squad.itertuples(index=False)
-    }
-    player_id = st.selectbox(
-        "Jugador",
-        options=list(labels),
-        format_func=lambda value: labels[value],
-    )
-    player_name = labels[player_id]
-    row = squad.loc[squad["player_id"] == player_id].iloc[0]
-    history = cached_player_history(path, team_id, player_id)
-    gate = cached_gate(path, team_id, player_id)
-
-    st.header(player_name)
-    render_pdf_download(
-        build_player_report_data(Path(path), team_id, player_id),
-        safe_filename("player", player_name),
-        f"download_player_{player_id}",
-    )
-
-    c1, c2, c3, c4, c5 = st.columns(5)
-    c1.metric("Aparicions", safe_int(row["appearances"]))
-    c2.metric("Titularitats", safe_int(row["starts"]))
-    c3.metric("Minuts", safe_int(row["minutes"]))
-    c4.metric("Gols", safe_int(row["goals"]))
-    c5.metric("Assistències", safe_int(row["assists"]))
-
-    st.caption(f"Rols observats: {row['observed_roles'] if pd.notna(row['observed_roles']) else 'sense rol observat'}")
-
-    if gate is None:
-        st.info("Aquest jugador encara no té un partit jugat amb estat N12000/N13000 disponible.")
-    else:
-        st.subheader("Evidència de rol i gate final")
-        g1, g2, g3, g4 = st.columns(4)
-        g1.metric("Rol observat", gate["observed_role"] or "—")
-        g2.metric("Historial mateix rol", gate["same_role_history"] or "—")
-        coverage = None
-        try:
-            coverage = float(gate["evidence_coverage"])
-        except (TypeError, ValueError):
-            pass
-        g3.metric("Cobertura evidència", "—" if coverage is None else f"{coverage:.0%}")
-        g4.metric("Senyals avaluables", gate["evaluable_signals"] or "—")
-        st.code(str(gate["final_status"]), language=None)
-        st.caption(
-            "N13000 no emet una recomanació tàctica perquè la política final encara no està validada. "
-            "El dashboard mostra evidència calculada pel motor, no una conclusió inventada per la interfície."
-        )
-
-    features = cached_features(path, player_id)
-    if features:
-        st.subheader("Evolució de feature")
-        preferred = [
-            "pass_completion_rate",
-            "shots_total_per90",
-            "goals_per90",
-            "assists_per90",
-            "tackle_success_rate",
-            "interceptions_per90",
-        ]
-        ordered = [f for f in preferred if f in features] + [f for f in features if f not in preferred]
-        feature_name = st.selectbox("Mètrica", ordered)
-        feature_history = cached_feature_history(path, player_id, feature_name)
-        chart = feature_history.dropna(subset=["feature_value"]).copy()
-        if chart.empty:
-            st.info("No hi ha valors disponibles per aquesta feature.")
-        else:
-            chart["match_date"] = pd.to_datetime(chart["match_date"])
-            st.line_chart(chart.set_index("match_date")[["feature_value"]])
-            details = feature_history.copy()
-            details["match_date"] = pd.to_datetime(details["match_date"]).dt.date
-            details.columns = ["Data", "Rival", "Rol", "Minuts", "Valor"]
-            st.dataframe(details, hide_index=True, width="stretch")
-
-    st.subheader("Historial de partits")
-    details = history.copy()
-    if not details.empty:
-        details["match_date"] = pd.to_datetime(details["match_date"]).dt.date
-        details = details.drop(columns=["match_id"], errors="ignore")
-    st.dataframe(details, hide_index=True, width="stretch")
-
-
-def render_matches(path: str, team_id: str) -> None:
-    matches = cached_matches(path, team_id)
-    if matches.empty:
+with left:
+    st.subheader("Últim partit")
+    if latest_match is None:
         st.info("No hi ha partits disponibles.")
-        return
-
-    options = {}
-    for row in matches.itertuples(index=False):
-        date_text = pd.to_datetime(row.match_date).date().isoformat()
-        score = "—" if pd.isna(row.score_for) or pd.isna(row.score_against) else f"{int(row.score_for)}-{int(row.score_against)}"
-        options[str(row.match_id)] = f"{date_text} · {row.venue} · {row.opponent} · {score}"
-
-    match_id = st.selectbox(
-        "Partit",
-        options=list(options),
-        format_func=lambda value: options[value],
-    )
-    lineup = cached_lineup(path, team_id, match_id)
-    selected = matches.loc[matches["match_id"] == match_id].iloc[0]
-    opponent = str(selected["opponent"])
-
-    st.header(options[match_id])
-    render_pdf_download(
-        build_match_report_data(Path(path), team_id, match_id),
-        safe_filename("match", opponent),
-        f"download_match_{match_id}",
-    )
-
-    st.subheader("Jugadors i estadístiques brutes")
-    st.dataframe(lineup, hide_index=True, width="stretch")
-    st.caption("Aquesta vista mostra dades player-match brutes/observades. Les features derivades es calculen en la capa Feature Engine.")
-
-
-def render_assistant(path: str, team_id: str) -> None:
-    st.header("Assistent")
-    st.caption(
-        "LLM-02: l'assistent pot utilitzar OpenAI per explicar resultats estructurats, però el motor analític "
-        "continua sent l'única font de mètriques, evidència i decisions."
-    )
-
-    openai_ready = provider_available()
-    if openai_ready:
-        st.success(f"OpenAI disponible · model {configured_model()}")
-        use_llm = st.toggle("Utilitza resposta generativa", value=True, key="assistant_use_llm")
     else:
-        st.info(
-            "OPENAI_API_KEY no està configurada. L'assistent continua funcionant en mode determinista. "
-            "La clau s'ha de configurar localment i no s'ha de pujar a GitHub."
+        st.markdown(
+            f"""
+            <div class="fps-muted-card">
+                <div class="fps-score-label">{latest_match['match_date'].date()} · {latest_match['venue']}</div>
+                <div style="font-size:1.45rem;font-weight:800;color:#102a43;margin-top:.25rem;">{team_name} · {result_text(latest_match['score_for'], latest_match['score_against'])} · {latest_match['opponent']}</div>
+                <div class="fps-score-sub">Formació: {latest_match['starting_formation'] or 'No disponible'}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
-        use_llm = False
-
-    scope = st.radio("Context", ["Equip", "Jugador", "Partit"], horizontal=True)
-    question = ""
-
-    if scope == "Equip":
-        context = cached_team_context(path, team_id)
-        question = st.text_input(
-            "Pregunta",
-            value="Resumeix les dades disponibles de l'equip",
-            key="assistant_team_question",
-        )
-
-    elif scope == "Jugador":
-        squad = cached_squad(path, team_id)
-        labels = {str(row.player_id): str(row.player) for row in squad.itertuples(index=False)}
-        player_id = st.selectbox(
-            "Jugador",
-            options=list(labels),
-            format_func=lambda value: labels[value],
-            key="assistant_player",
-        )
-        features = cached_features(path, player_id)
-        feature_name = st.selectbox(
-            "Feature per a preguntes d'evolució",
-            options=[None] + features,
-            format_func=lambda value: "Cap" if value is None else value,
-            key="assistant_feature",
-        )
-        context = cached_player_context(path, team_id, player_id, feature_name)
-        question = st.text_input(
-            "Pregunta",
-            value="Quin és el seu rol i encaix?",
-            key="assistant_player_question",
-        )
-
-    else:
-        matches = cached_matches(path, team_id)
-        options = {}
-        for row in matches.itertuples(index=False):
-            date_text = pd.to_datetime(row.match_date).date().isoformat()
-            score = "—" if pd.isna(row.score_for) or pd.isna(row.score_against) else f"{int(row.score_for)}-{int(row.score_against)}"
-            options[str(row.match_id)] = f"{date_text} · {row.venue} · {row.opponent} · {score}"
-        match_id = st.selectbox(
-            "Partit",
-            options=list(options),
-            format_func=lambda value: options[value],
-            key="assistant_match",
-        )
-        context = cached_match_context(path, team_id, match_id)
-        question = st.text_input(
-            "Pregunta",
-            value="Resumeix aquest partit",
-            key="assistant_match_question",
-        )
-
-    if st.button("Analitza", type="primary"):
-        result = answer_question(question, context, prefer_llm=use_llm)
-        st.subheader("Resposta")
-        st.write(result.text)
-        if result.mode == "openai":
-            st.caption(f"Resposta explicativa generada amb {result.model}; dades i decisions provenen del motor estructurat.")
-        elif result.mode == "guardrail":
-            st.caption("Pregunta interceptada pel guardrail abans de qualsevol crida externa.")
-        elif result.error:
-            st.warning(f"El proveïdor generatiu ha fallat; s'ha utilitzat el fallback determinista. {result.error}")
+        st.write("")
+        if ratings.empty:
+            st.info("Encara no hi ha Match Ratings materialitzats per l'últim partit.")
         else:
-            st.caption("Resposta determinista basada exclusivament en el context estructurat.")
+            display = ratings.copy()
+            display["Perfil"] = display["position_group"].map(lambda x: "Porter" if x == "GK" else position_label(x))
+            display["Rating"] = pd.to_numeric(display["match_rating_10"], errors="coerce").round(1)
+            display["Confiança %"] = pd.to_numeric(display["match_rating_confidence"], errors="coerce").round(0)
+            display["Min"] = pd.to_numeric(display["minutes_played"], errors="coerce").round(0)
+            display = display[["player", "Perfil", "Min", "Rating", "Confiança %"]]
+            display.columns = ["Jugador", "Perfil", "Min", "Rating", "Confiança %"]
+            st.dataframe(display, hide_index=True, use_container_width=True, height=360)
 
-    with st.expander("Context estructurat utilitzat"):
-        st.json(context)
-
-    st.info(
-        "Preguntes que exigeixen ranking, 'millor/pitjor jugador' o recomanació tàctica es bloquegen abans "
-        "de cridar cap LLM mentre la política de recomanació continuï sense validar."
-    )
-
-
-def main() -> None:
-    path = db_path()
-    st.title("Football Performance System")
-    st.caption(f"Dashboard MVP · motor {FINAL_ENGINE_VERSION}")
-
-    if not path.exists():
-        st.error(
-            f"No s'ha trobat la base de dades: {path}. "
-            "Defineix FPS_DB_PATH si la base de dades és en una altra ubicació."
-        )
-        st.stop()
-
-    try:
-        teams = cached_teams(str(path))
-    except Exception as exc:
-        st.error(f"No s'ha pogut llegir DuckDB: {exc}")
-        st.stop()
-
-    if teams.empty:
-        st.warning("La base de dades no conté cap equip amb player_match.")
-        st.stop()
-
-    team_labels = {
-        str(row.team_id): f"{row.display_name} · {int(row.matches)} partits"
-        for row in teams.itertuples(index=False)
-    }
-
-    st.sidebar.title("Navegació")
-    mode = st.sidebar.radio("Mode", ["Equip", "Jugador", "Partits", "Assistent"])
-    team_id = st.sidebar.selectbox(
-        "Equip",
-        options=list(team_labels),
-        format_func=lambda value: team_labels[value],
-    )
-    team_name = str(teams.loc[teams["team_id"] == team_id, "display_name"].iloc[0])
-    st.sidebar.caption(f"DB: {path.name}")
-
-    if mode == "Equip":
-        render_team(str(path), team_id, team_name)
-    elif mode == "Jugador":
-        render_player(str(path), team_id)
-    elif mode == "Partits":
-        render_matches(str(path), team_id)
+with right:
+    st.subheader("Centre d'atenció")
+    if attention_summary.empty:
+        st.success("No hi ha flags auditables actius per aquest equip.")
     else:
-        render_assistant(str(path), team_id)
+        summary = attention_summary.copy()
+        summary["Tipus"] = summary["attention_code"].replace({
+            "ROLE_CONTEXT_UNAVAILABLE": "Rol no disponible",
+            "INSUFFICIENT_RATING_EVIDENCE": "Evidència insuficient",
+            "GPS_QUALITY_FLAGS_PRESENT": "Qualitat GPS",
+        })
+        summary["Casos"] = pd.to_numeric(summary["rows"], errors="coerce").fillna(0).astype(int)
+        st.dataframe(summary[["Tipus", "Casos"]], hide_index=True, use_container_width=True)
+        st.caption("Són flags de traçabilitat/qualitat. No són diagnòstics de rendiment, fatiga ni risc de lesió.")
 
+    st.subheader("GPS")
+    if int(gps_status.get("rows", 0)) == 0:
+        st.info("GPS opcional · encara no hi ha dades GPS reals importades.")
+    else:
+        g1, g2 = st.columns(2)
+        g1.metric("Partits amb GPS", safe_int(gps_status.get("matches")))
+        g2.metric("Jugadors amb GPS", safe_int(gps_status.get("players")))
 
-if __name__ == "__main__":
-    main()
+st.write("")
+st.subheader("Evolució de l'equip")
+if rating_history.empty:
+    st.info("Encara no hi ha historial de Match Rating.")
+else:
+    history = rating_history.copy()
+    history["match_date"] = pd.to_datetime(history["match_date"])
+    st.line_chart(history.set_index("match_date")[["median_match_rating"]], height=280, use_container_width=True)
+    st.caption("Mediana descriptiva del Match Rating dels jugadors utilitzats en cada partit. No és una alerta ni una qualificació global de l'equip.")
+
+st.write("")
+st.subheader("Accés ràpid")
+q1, q2, q3, q4 = st.columns(4)
+with q1:
+    st.page_link("pages/3_Equip.py", label="Equip", icon="🏟️", use_container_width=True)
+    st.page_link("pages/2_Jugador.py", label="Jugadors", icon="👤", use_container_width=True)
+with q2:
+    st.page_link("pages/4_Partit.py", label="Partit", icon="⚽", use_container_width=True)
+    st.page_link("pages/1_Performance_Index.py", label="Performance Index", icon="📈", use_container_width=True)
+with q3:
+    st.page_link("pages/6_Fisic_GPS.py", label="Físic / GPS", icon="📡", use_container_width=True)
+    st.page_link("pages/7_Alertes.py", label="Alertes", icon="⚑", use_container_width=True)
+with q4:
+    st.page_link("pages/5_Assistent_IA.py", label="Assistent IA", icon="💬", use_container_width=True)
+
+with st.expander("Metodologia i límits"):
+    st.write("La home només consumeix dades i analytics ja materialitzats. No recalcula Match Ratings ni Performance Index.")
+    st.write("Les alertes mostrades són estats auditables de qualitat/context. No s'han creat llindars de fatiga, risc de lesió, readiness ni rendiment bo/dolent.")
+    st.write("GPS continua sent opcional i el producte principal funciona sense aquesta font.")
