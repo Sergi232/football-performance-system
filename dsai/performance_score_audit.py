@@ -4,9 +4,13 @@ This stage deliberately does NOT create a score. It inventories:
 - FEATURE-01 coverage on played player-match rows;
 - coverage of the existing N4000-N7000 performance domains;
 - tactical-role context availability;
-- possible external rating/score fields in the professional source that could be
-  investigated as independent validation anchors;
+- possible external holistic player-rating fields in the professional source that
+  could be investigated as independent validation anchors;
 - variables whose performance direction/weight is still unvalidated.
+
+Important: lexical matches such as home_score, away_score or bigChanceScored are
+not accepted as player-performance anchors. A candidate must pass semantic name
+validation before it can affect the audit conclusion.
 
 No weights, signs, thresholds, rankings or performance ratings are produced here.
 """
@@ -14,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 import duckdb
@@ -25,9 +30,57 @@ DEFAULT_INPUT = Path(r"C:\Users\sergi\Desktop\analisi_futbol\input\pannadata")
 FEATURE_CATALOG = ROOT / "features" / "catalog.json"
 DOMAIN_CATALOG = ROOT / "decision_tree" / "domain_catalog.json"
 OUTPUT_DIR = Path(__file__).with_name("output")
-VERSION = "performance_score_audit_0.1.0"
+VERSION = "performance_score_audit_0.2.0"
 
-ANCHOR_TOKENS = ("rating", "score", "grade", "index", "performance", "rank")
+# Broad scan tokens are used only to inventory possible names. They do NOT make a
+# field a valid anchor by themselves.
+LEXICAL_SCAN_TOKENS = ("rating", "score", "grade", "index", "performance", "rank")
+
+# Strong semantic anchor names. These describe a holistic player evaluation rather
+# than a match result or an atomic football action.
+EXACT_HOLISTIC_ANCHORS = {
+    "rating",
+    "player_rating",
+    "match_rating",
+    "performance_rating",
+    "player_grade",
+    "match_grade",
+    "performance_grade",
+    "player_score",
+    "performance_score",
+    "player_index",
+    "performance_index",
+    "player_rank",
+    "performance_rank",
+}
+
+# Terms that indicate context/outcome/component statistics rather than an independent
+# holistic player-performance evaluation.
+ANCHOR_BLOCKERS = {
+    "home",
+    "away",
+    "team",
+    "opponent",
+    "fixture",
+    "matchscore",
+    "goal",
+    "goals",
+    "scored",
+    "chance",
+    "chances",
+    "shot",
+    "shots",
+    "assist",
+    "assists",
+    "pass",
+    "passes",
+    "card",
+    "cards",
+    "foul",
+    "fouls",
+    "save",
+    "saves",
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -77,23 +130,53 @@ def domain_spec() -> list[dict]:
     return load_json(DOMAIN_CATALOG).get("domain_nodes", [])
 
 
+def normalized_column_name(name: str) -> str:
+    # bigChanceScored -> big_chance_scored; home-score -> home_score
+    value = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name)
+    value = re.sub(r"[^A-Za-z0-9]+", "_", value)
+    return value.strip("_").lower()
+
+
+def semantic_anchor_status(name: str) -> tuple[bool, str]:
+    normalized = normalized_column_name(name)
+    tokens = {token for token in normalized.split("_") if token}
+
+    if normalized in EXACT_HOLISTIC_ANCHORS:
+        return True, "EXACT_HOLISTIC_PLAYER_EVALUATION_NAME"
+
+    if tokens & ANCHOR_BLOCKERS:
+        return False, "REJECTED_CONTEXT_OR_COMPONENT_STAT"
+
+    # rating/grade are strong enough when they are isolated semantic tokens.
+    if "rating" in tokens or "grade" in tokens:
+        return True, "HOLISTIC_RATING_OR_GRADE_NAME"
+
+    # Generic score/index/rank are accepted only when explicitly qualified as a
+    # player/performance construct. This prevents home_score / away_score false positives.
+    if tokens & {"score", "index", "rank"} and tokens & {"player", "performance"}:
+        return True, "QUALIFIED_HOLISTIC_SCORE_INDEX_OR_RANK"
+
+    return False, "REJECTED_LEXICAL_MATCH_NOT_HOLISTIC"
+
+
 def source_anchor_candidates(
     con: duckdb.DuckDBPyConnection,
     input_dir: Path,
     normalized_raw_columns: set[str],
-) -> tuple[list[dict], dict]:
+) -> tuple[list[dict], list[dict], dict]:
     source_path = input_dir / "opta_player_stats.parquet"
     if not source_path.exists():
-        return [], {"source_exists": False, "source_path": str(source_path)}
+        return [], [], {"source_exists": False, "source_path": str(source_path)}
 
     escaped = sql_path(source_path)
     schema = con.execute(
         f"DESCRIBE SELECT * FROM read_parquet('{escaped}')"
     ).fetchdf()
     schema["column_name"] = schema["column_name"].astype(str)
-    candidates = schema[
+
+    lexical = schema[
         schema["column_name"].str.lower().apply(
-            lambda name: any(token in name for token in ANCHOR_TOKENS)
+            lambda name: any(token in name for token in LEXICAL_SCAN_TOKENS)
         )
     ].copy()
 
@@ -110,9 +193,10 @@ def source_anchor_candidates(
     ).fetchdf()
     con.register("performance_audit_keys", key_frame)
 
-    output: list[dict] = []
+    accepted: list[dict] = []
+    rejected: list[dict] = []
     try:
-        for row in candidates.itertuples(index=False):
+        for row in lexical.itertuples(index=False):
             column = str(row.column_name)
             qcol = quote_ident(column)
             stats = con.execute(
@@ -128,26 +212,35 @@ def source_anchor_candidates(
                  AND CAST(s.player_id AS VARCHAR) = k.source_player_id
                 """
             ).fetchone()
-            output.append(
-                {
-                    "column": column,
-                    "source_type": str(row.column_type),
-                    "rows_joined": int(stats[0]),
-                    "non_null_rows": int(stats[1]),
-                    "distinct_values": int(stats[2]),
-                    "non_null_played_rows": int(stats[3]),
-                    "already_in_normalized_raw_table": column in normalized_raw_columns,
-                    "status": "CANDIDATE_ONLY_REQUIRES_SEMANTIC_VALIDATION",
-                }
-            )
+
+            is_anchor, semantic_status = semantic_anchor_status(column)
+            item = {
+                "column": column,
+                "normalized_name": normalized_column_name(column),
+                "source_type": str(row.column_type),
+                "rows_joined": int(stats[0]),
+                "non_null_rows": int(stats[1]),
+                "distinct_values": int(stats[2]),
+                "non_null_played_rows": int(stats[3]),
+                "already_in_normalized_raw_table": column in normalized_raw_columns,
+                "semantic_status": semantic_status,
+            }
+            if is_anchor:
+                item["status"] = "CANDIDATE_ONLY_REQUIRES_EMPIRICAL_VALIDATION"
+                accepted.append(item)
+            else:
+                item["status"] = "REJECTED_NOT_AN_INDEPENDENT_HOLISTIC_PLAYER_ANCHOR"
+                rejected.append(item)
     finally:
         con.unregister("performance_audit_keys")
 
-    return output, {
+    return accepted, rejected, {
         "source_exists": True,
         "source_path": str(source_path.resolve()),
         "source_columns": int(len(schema)),
-        "candidate_columns": int(len(output)),
+        "lexical_matches": int(len(lexical)),
+        "semantically_accepted_candidates": int(len(accepted)),
+        "semantically_rejected_matches": int(len(rejected)),
     }
 
 
@@ -183,7 +276,7 @@ def build_audit(db_path: Path, input_dir: Path) -> dict:
         normalized_raw_columns = {
             str(row[1]) for row in con.execute("PRAGMA table_info('player_match_raw_stats')").fetchall()
         }
-        anchors, source_meta = source_anchor_candidates(
+        anchors, rejected_anchor_matches, source_meta = source_anchor_candidates(
             con, input_dir.expanduser().resolve(), normalized_raw_columns
         )
 
@@ -262,6 +355,7 @@ def build_audit(db_path: Path, input_dir: Path) -> dict:
             "rows_without_tactical_role_context": int(total_played - tactical_role_mask.sum()),
             "domain_nodes": len(domain_nodes),
             "external_anchor_candidates_with_values": len(anchor_with_values),
+            "rejected_lexical_anchor_matches": len(rejected_anchor_matches),
             "conclusion": conclusion,
         },
         "feature_coverage": records(coverage.sort_values(["group", "feature_name"])),
@@ -276,6 +370,7 @@ def build_audit(db_path: Path, input_dir: Path) -> dict:
         },
         "source_anchor_scan": source_meta,
         "external_anchor_candidates": anchor_with_values,
+        "rejected_anchor_matches": rejected_anchor_matches,
         "role_policy": (
             "Role/position may be used as contextual normalization/comparison when directly observed; "
             "it is not the primary prediction target of the performance score."
@@ -284,6 +379,8 @@ def build_audit(db_path: Path, input_dir: Path) -> dict:
             "No performance score, rating or ranking is created in PERF-01.",
             "No feature direction is assumed merely from volume or correlation.",
             "No weights or practical thresholds are invented.",
+            "A lexical score/rating/index match is not sufficient: the field must represent a holistic player evaluation.",
+            "Match scores and atomic/component statistics are rejected as external player-performance anchors.",
             "External provider fields, if found, are validation candidates only and are not product inputs.",
             "GPS remains optional and is excluded from the base score while the development dataset has no GPS observations.",
         ],
@@ -318,20 +415,35 @@ def render_markdown(result: dict) -> str:
             f"{row['played_rows_with_any_evidence']} | {row['played_rows']} | {coverage_text} |"
         )
 
-    lines.extend(["", "## External anchor candidates"])
+    lines.extend(["", "## Accepted external anchor candidates"])
     if result["external_anchor_candidates"]:
         lines.extend([
             "",
-            "| Column | Type | Non-null played rows | Distinct | Status |",
+            "| Column | Type | Non-null played rows | Distinct | Semantic status |",
             "|---|---|---:|---:|---|",
         ])
         for row in result["external_anchor_candidates"]:
             lines.append(
                 f"| {row['column']} | {row['source_type']} | {row['non_null_played_rows']} | "
-                f"{row['distinct_values']} | {row['status']} |"
+                f"{row['distinct_values']} | {row['semantic_status']} |"
             )
     else:
-        lines.append("- No source column matching the candidate anchor tokens had values on played rows.")
+        lines.append("- No semantically valid holistic player-performance anchor was found with values on played rows.")
+
+    lines.extend(["", "## Rejected lexical matches"])
+    if result["rejected_anchor_matches"]:
+        lines.extend([
+            "",
+            "| Column | Normalized name | Non-null played rows | Reason |",
+            "|---|---|---:|---|",
+        ])
+        for row in result["rejected_anchor_matches"]:
+            lines.append(
+                f"| {row['column']} | {row['normalized_name']} | {row['non_null_played_rows']} | "
+                f"{row['semantic_status']} |"
+            )
+    else:
+        lines.append("- None.")
 
     lines.extend(["", "## Guardrails"])
     for rule in result["rules"]:
@@ -350,6 +462,7 @@ def main() -> None:
     s = result["summary"]
 
     print("PERF-01 PERFORMANCE SCORE AUDIT: COMPLETE")
+    print(f"version={VERSION}")
     print(f"db: {db_path}")
     print(
         f"played_rows={s['played_player_match_rows']} players={s['players']} "
@@ -361,10 +474,13 @@ def main() -> None:
     )
     print(
         f"domain_nodes={s['domain_nodes']} "
-        f"external_anchor_candidates={s['external_anchor_candidates_with_values']}"
+        f"external_anchor_candidates={s['external_anchor_candidates_with_values']} "
+        f"rejected_lexical_matches={s['rejected_lexical_anchor_matches']}"
     )
     if result["external_anchor_candidates"]:
-        print("anchor_columns=" + ",".join(row["column"] for row in result["external_anchor_candidates"]))
+        print("accepted_anchor_columns=" + ",".join(row["column"] for row in result["external_anchor_candidates"]))
+    if result["rejected_anchor_matches"]:
+        print("rejected_anchor_columns=" + ",".join(row["column"] for row in result["rejected_anchor_matches"]))
     print(f"conclusion={s['conclusion']}")
     print("No score, weights, directions, ranking or recommendation was created.")
 
