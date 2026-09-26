@@ -30,7 +30,7 @@ DSAI-08 ROLE GRANULARITY AUDIT      CERRADO / LIMITED_SOURCE_POSITION_BASELINE �
 DSAI-09 SOURCE POSITION BASELINE    CERRADO / EXPERIMENTAL_SIGNAL_IMPROVED / NO DEPLOY — ISSUE #49
 DSAI-10 PREMATCH POSITION BASELINE  CERRADO / PREMATCH_EXPERIMENTAL_SIGNAL / NO DEPLOY — ISSUE #50
 DSAI-11 PREMATCH ROBUSTNESS         ATURADO / CONTEXT ONLY — ISSUE #51
-PERF-01 PERFORMANCE SCORE AUDIT     ACTIVO — ISSUE #52 / SCRIPT IMPLEMENTADO
+PERF-01 PERFORMANCE SCORE AUDIT     ACTIVO — ISSUE #52 / v0.2 PENDIENTE DE REEJECUCIÓN
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
@@ -57,42 +57,45 @@ No existe todavía una fórmula de score aprobada. No se inventan pesos, signos,
 
 Issue #51 cerrada como `not_planned` por reorientación metodológica.
 
-El script de robustez de posición existe, pero **no se registra ninguna métrica final como validada mientras no se disponga de la salida completa**. La decisión de detener esta línea no depende de su resultado: se toma porque la clasificación de posición estaba desplazando el objetivo principal del TFM.
-
-El trabajo DSAI-04..10 se conserva como evidencia académica de:
-- auditoría de target;
-- control de leakage;
-- validación temporal;
-- clasificación supervisada;
-- reformulación de labels.
-
-A partir de ahora, posición/rol queda como contexto de rendimiento.
+El trabajo DSAI-04..10 se conserva como evidencia académica de auditoría de target, leakage control, validación temporal, clasificación supervisada y reformulación de labels. A partir de ahora, posición/rol queda como contexto de rendimiento.
 
 ## PERF-01 — activo
 
 Issue #52.
 
-Script:
+La primera ejecución de PERF-01 devolvió:
 
-```powershell
-python dsai\performance_score_audit.py
+```text
+played_rows=590
+players=28
+matches=38
+features=28
+feature_values=6324/16520
+role_context=418/590
+domain_nodes=24
+external_anchor_candidates=3
+anchor_columns=home_score,away_score,bigChanceScored
+conclusion=SUPERVISED_ANCHOR_CANDIDATE
 ```
 
-Objetivo: auditar qué necesitamos para construir un score de rendimiento defendible antes de calcularlo.
+Esta conclusión **no se acepta** porque los tres nombres son falsos positivos semánticos del escaneo lexical:
+- `home_score` y `away_score` son contexto/resultado del partido, no una valoración individual independiente;
+- `bigChanceScored` es una estadística componente de rendimiento, no un rating holístico externo.
 
-Se audita:
-- cobertura real de FEATURE-01 en player-match con minutos;
-- cobertura por dimensiones N4000-N7000;
-- disponibilidad de contexto táctico observado;
-- posibles anchors externos de validación en `opta_player_stats.parquet` (`rating`, `score`, `grade`, etc.);
-- variables cuya dirección/peso todavía no está validada.
+Se ha corregido `dsai/performance_score_audit.py` a `performance_score_audit_0.2.0` para separar coincidencia lexical de anchor semánticamente válido. Un campo `score/index/rank` solo puede aceptarse si está explícitamente cualificado como constructo de jugador/rendimiento; `rating/grade` también debe pasar bloqueadores de contexto/componentes.
+
+Objetivo de la reejecución:
+- confirmar cobertura FEATURE-01 y dominios N4000-N7000;
+- registrar falsos positivos rechazados;
+- determinar si existe realmente un anchor holístico de jugador;
+- si no existe, la ruta esperada pasa a `EXPERT_WEIGHT_VALIDATION_REQUIRED`.
 
 Reglas:
 - no crear score todavía;
 - no asumir que más volumen = mejor;
-- no usar ratings externos como input del producto; solo podrían servir como anchor de validación;
-- GPS fuera del score base mientras no haya observaciones reales;
-- escala final del score pendiente de validación.
+- no usar ratings externs como input del producte; només com possible anchor de validació;
+- GPS fora del score base mentre no hi hagi observacions reals;
+- escala final del score pendent de validació.
 
 ## Líneas todavía bloqueadas
 
