@@ -52,6 +52,15 @@ def norm(value) -> str | None:
     return text or None
 
 
+def truthy(value) -> bool:
+    """Match build_on_pitch_goal_context starter parsing exactly."""
+    if value is None or pd.isna(value):
+        return False
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "t", "yes", "y"}
+    return bool(value)
+
+
 def event_second(minute, second) -> int | None:
     if minute is None or pd.isna(minute):
         return None
@@ -109,10 +118,11 @@ def main() -> None:
         pid = norm(r.player_id)
         ons = on_times.get((mid, pid), [])
         offs = off_times.get((mid, pid), [])
-        start = 0 if bool(r.is_starter) else (min(ons) if ons else None)
+        started = truthy(r.is_starter)
+        start = 0 if started else (min(ons) if ons else None)
         end = min(offs) if offs else None
         if start is not None and end is not None and end < start:
-            conflicts.append((mid, pid, r.player_name, r.is_starter, r.minutes_played, r.sub_on_minute, r.sub_off_minute, ons, offs))
+            conflicts.append((mid, pid, r.player_name, started, r.minutes_played, r.sub_on_minute, r.sub_off_minute, ons, offs))
 
     print("ON-PITCH INTERVAL CONFLICT AUDIT")
     print(f"conflicts={len(conflicts)}")
