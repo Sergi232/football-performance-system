@@ -29,7 +29,7 @@ DSAI-07 ROLE CLASSIFICATION BASELINE CERRADO / EXPERIMENTAL_SIGNAL / NO DEPLOY �
 DSAI-08 ROLE GRANULARITY AUDIT      CERRADO / LIMITED_SOURCE_POSITION_BASELINE — ISSUE #46
 DSAI-09 SOURCE POSITION BASELINE    CERRADO / EXPERIMENTAL_SIGNAL_IMPROVED / NO DEPLOY — ISSUE #49
 DSAI-10 PREMATCH POSITION BASELINE  CERRADO / PREMATCH_EXPERIMENTAL_SIGNAL / NO DEPLOY — ISSUE #50
-DSAI-11 PREMATCH ROBUSTNESS         CERRADO / POSITION CONTEXT ONLY — ISSUE #51
+DSAI-11 PREMATCH ROBUSTNESS         ATURADO / CONTEXT ONLY — ISSUE #51
 PERF-01 PERFORMANCE SCORE AUDIT     ACTIVO — ISSUE #52 / SCRIPT IMPLEMENTADO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
@@ -53,33 +53,20 @@ Rol/posición se usa como contexto de comparación/normalización cuando existe 
 
 No existe todavía una fórmula de score aprobada. No se inventan pesos, signos, percentiles, escalas ni thresholds.
 
-## DSAI-11 — resultado cerrado
+## DSAI-11 — línea detenida
 
-```text
-candidate_rows=418
-evaluated_rows=353
-evaluated_positions=6
-rows_with_prior_position=341
-model_all_safe_accuracy=0.4929
-model_all_safe_balanced_accuracy=0.3176
-model_all_safe_macro_f1=0.3054
-model_prev_only_accuracy=0.5552
-player_last_position_accuracy=0.8944
-player_last_position_balanced_accuracy=0.6982
-player_last_position_macro_f1=0.6934
-player_modal_position_accuracy=0.8915
-switches=36
-stays=305
-ml_switch_accuracy=0.3611
-head_to_head_model_only=13
-head_to_head_last_only=150
-both_correct=155
-both_wrong=23
-```
+Issue #51 cerrada como `not_planned` por reorientación metodológica.
 
-Decisión: `POSITION_CLASSIFICATION_LINE_CLOSED / CONTEXT_ONLY`.
+El script de robustez de posición existe, pero **no se registra ninguna métrica final como validada mientras no se disponga de la salida completa**. La decisión de detener esta línea no depende de su resultado: se toma porque la clasificación de posición estaba desplazando el objetivo principal del TFM.
 
-La regla simple y estrictamente pre-match de última posición observada (89,44% accuracy) supera ampliamente al ML (49,29%). No se justifica seguir optimizando esta línea. Se conserva la evidencia académica ya generada y la posición pasa a ser contexto para rendimiento.
+El trabajo DSAI-04..10 se conserva como evidencia académica de:
+- auditoría de target;
+- control de leakage;
+- validación temporal;
+- clasificación supervisada;
+- reformulación de labels.
+
+A partir de ahora, posición/rol queda como contexto de rendimiento.
 
 ## PERF-01 — activo
 
