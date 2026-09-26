@@ -2,149 +2,158 @@
 
 Fecha: 26/09/2026
 
-Este documento congela el plan experimental derivado de `DSAI-01A — feasibility audit`. No define métricas de producto, recomendaciones tácticas ni umbrales operativos. Su función es fijar qué experimentos son metodológicamente defendibles, en qué orden y con qué validación.
+Este documento fija el plan experimental metodológico del TFM. No define por sí solo métricas de producto, recomendaciones tácticas ni umbrales operativos.
 
-## Evidencia disponible
+## Objetivo principal actualizado
 
-Resultado local de DSAI-01A:
-
-```text
-matches=38
-players=36
-player_match=835
-observed-role rows=590
-raw observed-role labels=23
-labeled_players=28
-player-role sequences=87
-repeated player-role sequences=67
-median repeated sequence length=5
-max sequence length=38
-FEATURE-01 names=28
-FEATURE-01 non-null=6324/23380
-analytics rows=46760
-GPS observations=0
-```
-
-Estados obtenidos:
+El objetivo central de la fase DS/ML es apoyar la construcción y validación de un **score de rendimiento jugador-partido**.
 
 ```text
-player_similarity_profiles        GO_EXPLORATORY
-change_detection_evolution        GO_EXPERIMENT
-observed_role_classification      CANDIDATE_SUPERVISED
-role_player_fit                   REFORMULATE_TARGET
-expert_vs_ml                      BLOCKED_SHARED_TARGET
-n13000_recommendation_calibration BLOCKED_GROUND_TRUTH
+PLAYER-MATCH DATA
+→ PERFORMANCE DIMENSIONS
+→ VALIDATED PERFORMANCE SCORE
+→ EVOLUTION / CONSISTENCY
+→ ROLE CONTEXT
+→ COACH INSIGHTS
 ```
 
-## Orden experimental congelado
+La posición/rol queda como contexto de comparación y normalización, no como target principal.
 
-### DSAI-02 — Change detection / evolution — PRIORIDAD 1
+## Evidencia ya cerrada
 
-**Estado:** GO.
+### DSAI-02 — Change detection
+Resultado: `EXPERIMENTALLY_USEFUL / NO_DEPLOY`.
 
-**Pregunta:** ¿podemos detectar cambios relevantes en una serie jugador-rol-métrica sin usar información futura?
+### DSAI-03 — Player similarity
+Resultado: `EXPLORATORY_RESULT / NO_DEPLOY` por baja estabilidad temporal.
 
-**Unidad:** secuencia `player_id + observed primary_role + FEATURE-01 metric` ordenada por `match_date`.
+### DSAI-04..08 — Auditoría y reconstrucción del target de rol
+Se detectó y corrigió la mezcla de `Substitute` con roles tácticos y se obtuvo una granularidad de fuente de 7 posiciones.
 
-**Baseline:** evidencia temporal strict-past ya validada en FEATURE-03 / Analytics.
+### DSAI-09 — Clasificación post-partido de `source_position`
+Resultado:
+```text
+accuracy=0.5537
+balanced_accuracy=0.3482
+macro_f1=0.3614
+```
+Decisión: `EXPERIMENTAL_SIGNAL_IMPROVED / NO_DEPLOY`.
 
-**Diseño experimental:**
-- usar exclusivamente el historial estrictamente anterior para construir la referencia;
-- evaluar estadísticos de desviación respecto al prior sin fijar todavía un umbral de producto;
-- validar sensibilidad mediante inyección sintética de cambios en el valor actual, de modo que el baseline strict-past permanezca intacto;
-- evaluar varios tamaños de cambio y reportar separación/ROC-AUC experimental, cobertura y casos no evaluables;
-- análisis de falsos avisos y de sensibilidad por longitud de historial;
-- no desplegar ninguna alerta final hasta validar un criterio operativo.
+### DSAI-10 — Clasificación pre-match de `source_position`
+Resultado:
+```text
+accuracy=0.4834
+balanced_accuracy=0.3121
+macro_f1=0.3002
+```
+Decisión: `PREMATCH_EXPERIMENTAL_SIGNAL / NO_DEPLOY`.
 
-**Motivo para ir primero:** 67 de 87 secuencias jugador-rol tienen repetición y ya existe infraestructura temporal leakage-safe.
+### DSAI-11 — Robustez de la línea de posición
+Resultado clave:
+```text
+ML all-safe accuracy=0.4929
+last observed position accuracy=0.8944
+modal historical position accuracy=0.8915
+head-to-head ML only correct=13
+last-position only correct=150
+```
 
-### DSAI-03 — Player similarity / profiles — PRIORIDAD 2
+Decisión: `POSITION_CLASSIFICATION_LINE_CLOSED / CONTEXT_ONLY`.
 
-**Estado:** GO EXPLORATORY.
+La posición es muy persistente y una heurística pre-match simple supera ampliamente al ML. No se justifica seguir consumiendo tiempo en optimizar esta tarea. La posición se conserva como variable contextual para analizar rendimiento.
 
-**Pregunta:** ¿podemos representar jugadores por perfiles comparables sin convertir la similitud en una verdad táctica?
+## PERF-01 — Performance score audit — PRIORIDAD ACTUAL
 
-**Unidad:** perfil agregado `player + observed role` construido únicamente con FEATURE-01 válidas y partidos con minutos > 0.
+**Pregunta:** ¿qué evidencia y validación necesitamos para construir un score global de rendimiento sin inventar pesos ni convertir volumen en calidad de forma automática?
 
-**Baseline:** distancia estandarizada / nearest-neighbour simple.
+**Unidad:** `player_id + match_id` con minutos > 0.
 
-**Validación obligatoria:**
-- cobertura de cada feature;
-- estandarización calculada dentro del conjunto de referencia apropiado;
-- estabilidad ante bootstrap o cambio de ventana temporal;
-- sensibilidad a features escasas;
-- coherencia descriptiva con rol observado;
-- no interpretar proximidad como “mejor jugador” ni como recomendación.
+**Inputs candidatos:** únicamente variables aprobadas y recollibles de FEATURE-01/Analytics/Expert evidence. GPS solo cuando exista información real.
 
-**Limitación principal:** solo 36 jugadores y varios roles con muy pocos jugadores distintos.
+**Auditoría:**
+- cobertura por feature;
+- cobertura por dimensiones N4000-N7000;
+- disponibilidad de contexto de rol;
+- búsqueda de anchors externos de validación en la fuente profesional;
+- identificación explícita de métricas con dirección/valor no validado.
 
-### DSAI-04 — Observed-role classification — HOLD / AUDIT DE LABELS
+**Script:**
+```powershell
+python dsai\performance_score_audit.py
+```
 
-**Estado:** candidato supervisado, no autorizado todavía para entrenamiento final.
+**Guardrails:**
+- no producir score en la auditoría;
+- no asumir que más volumen implica mejor rendimiento;
+- no introducir pesos iguales por defecto;
+- no usar el propio sistema experto como ground truth independiente;
+- un rating externo, si existe, solo puede ser anchor de validación y nunca input obligatorio del producto amateur.
 
-Existe `primary_role` observado como label independiente, pero el audit muestra 23 etiquetas con fuerte dispersión y una etiqueta `Substitute` con 172 filas, que no es equivalente a un rol táctico específico.
+## Fases siguientes condicionadas a PERF-01
 
-Antes de entrenar:
-1. auditar semántica y procedencia de `primary_role`;
-2. separar estado de suplencia de rol táctico cuando la fuente lo permita de forma verificable;
-3. no agrupar clases por intuición;
-4. volver a medir soporte por clase/jugador;
-5. definir split temporal y control de player leakage.
+### Ruta A — existe anchor externo defendible
+Auditar semántica, cobertura e independencia. Si pasa, estudiar un modelo supervisado que aproxime rendimiento usando únicamente features recollibles. El anchor no se incorpora al producto.
 
-Hasta cerrar este audit, no se usa esta tarea como demostración supervisada principal.
+### Ruta B — no existe anchor externo defendible
+Validar el constructo mediante:
+- literatura;
+- criterio experto/entrenador independiente;
+- análisis de estabilidad y sensibilidad;
+- ablations;
+- validación convergente/externa disponible.
 
-### Role/player fit — REFORMULAR
+No se usarán pesos inventados para acelerar la construcción.
 
-No existe ground truth independiente de “fit”. N12000 es evidencia descriptiva y N13000 es un gate; ninguno puede convertirse en target ML y después presentarse como validación independiente.
+### Dimensiones antes que score global
+El score global no se construye directamente. Primero deben quedar defendibles dimensiones separadas de rendimiento basadas en las familias ya existentes (amenaza, creación/progresión, defensa, finalización y, en el futuro, componente físico).
 
-Solo se reabre si aparece un target externo defendible: valoración de entrenador, minutos/selección futura con definición causalmente prudente, etiqueta experta independiente u otro outcome previamente especificado.
+## Líneas bloqueadas
 
-### Expert vs ML — BLOQUEADO
+### Role/player fit
+Sigue `REFORMULATE_TARGET`. No existe ground truth independiente de fit.
 
-La comparación directa necesita una tarea y un ground truth que puedan predecir ambos métodos. No se comparará el ML contra etiquetas creadas por el propio sistema experto.
+### Expert vs ML
+Sigue `BLOCKED_SHARED_TARGET` hasta que ambos métodos puedan resolver la misma tarea contra una referencia independiente común.
 
-Puede reabrirse más adelante si una tarea compartida válida emerge del trabajo de DSAI-02/03/04 o de labels externos.
-
-### N13000 recommendation calibration — BLOQUEADO
-
-No hay ground truth de recomendación ni outcome validado para calibrar confianza. El contrato C aprobado sigue siendo el objetivo final, pero N13000 debe mantener `RECOMMENDATION_NOT_ISSUED_*` hasta disponer de criterios y calibración defendibles.
+### N13000 recommendation calibration
+Sigue `BLOCKED_GROUND_TRUTH`.
 
 ## GPS
 
-El audit devuelve `GPS observations=0`. Por tanto, ningún experimento actual usa GPS. La arquitectura GPS se mantiene preparada, pero no se atribuye valor experimental a datos inexistentes.
+El desarrollo actual tiene `GPS observations=0`. GPS no entra en el score base ni en experimentos que pretendan validar datos inexistentes. La arquitectura de importación queda preparada.
 
 ## Criterios comunes de validación
-
-Todos los experimentos deberán cumplir:
 
 ```text
 baseline simple primero
 → split temporal cuando proceda
 → cero data leakage
-→ métricas adecuadas a la tarea
-→ análisis de cobertura/missingness
+→ target/constructo independiente cuando sea necesario
+→ métricas adecuadas
+→ cobertura y missingness
 → análisis de error
 → estabilidad / sensibilidad
+→ ablations
 → limitaciones explícitas
-→ seed y scripts reproducibles cuando aplique
+→ reproducibilidad
 ```
 
-Un resultado negativo o `NO DEPLOY` es válido académicamente si el experimento está bien formulado y documentado.
+Un resultado negativo o `NO_DEPLOY` sigue siendo válido académicamente si está bien formulado y documentado.
 
-## Secuencia de trabajo
+## Secuencia actual
 
 ```text
-DSAI-01A feasibility audit     CERRADO / PASS
+DSAI-02..11               CERRADOS
         ↓
-DSAI-02 change detection       ACTIVO
+PERF-01 score audit       ACTIVO
         ↓
-DSAI-03 similarity/profiles
+validación de dimensiones
         ↓
-DSAI-04 role-label audit
+validación de pesos / target
         ↓
-revisión de bloqueados
+performance score v0.x
+        ↓
+evolución + contexto de rol
         ↓
 Product UX / Reports / Assistant
 ```
-
-No se vuelve al pulido del dashboard antes de completar como mínimo DSAI-02 y DSAI-03 con resultados reproducibles.
