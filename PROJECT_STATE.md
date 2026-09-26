@@ -31,7 +31,7 @@ DSAI-09 SOURCE POSITION BASELINE    CERRADO / EXPERIMENTAL_SIGNAL_IMPROVED / NO 
 DSAI-10 PREMATCH POSITION BASELINE  CERRADO / PREMATCH_EXPERIMENTAL_SIGNAL / NO DEPLOY — ISSUE #50
 DSAI-11 PREMATCH ROBUSTNESS         CERRADO / POSITION CONTEXT ONLY — ISSUE #51
 PERF-01 PERFORMANCE SCORE AUDIT     CERRADO / EXPERT_WEIGHT_VALIDATION_REQUIRED — ISSUE #52
-PERF-02 DIMENSION EVIDENCE AUDIT    ACTIVO — ISSUE #53 / SCRIPT IMPLEMENTADO
+PERF-02 DIMENSION EVIDENCE AUDIT    ACTIVO — ISSUE #53 / v0.1.1 PENDIENTE DE REEJECUCIÓN
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
@@ -98,6 +98,13 @@ Se audita:
 - disponibilidad de contexto de rol;
 - métricas de `output`, `efficiency`, `cost`, `volume` y `context` sin convertir esos roles semánticos en signos automáticos;
 - cobertura específica de portero y disciplina, que no puede quedar oculta por el score general.
+
+Primera ejecución: error técnico de serialización en `clean()` porque `pd.isna()` recibió valores array-like (`families`, `node_labels`, `metric_roles`). No afecta a la lógica de la auditoría.
+
+Corrección `performance_dimension_audit_0.1.1`:
+- listas, tuplas, sets y diccionarios se limpian recursivamente;
+- arrays se convierten con `tolist()`;
+- `pd.isna()` solo se aplica a escalares.
 
 Reglas:
 - no crear score;
