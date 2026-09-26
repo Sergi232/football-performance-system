@@ -39,7 +39,8 @@ PERF-06 GOALKEEPER EFFICIENCY       CERRADO / SAVE_RATE DERIVABLE — ISSUE #58
 PERF-07 GK SAVE_RATE CONTEXT        CERRADO / FEATURE ADMISSION READY — ISSUE #59
 PERF-08 AGGREGATION FEASIBILITY     CERRADO / BASELINE FEASIBLE WITH 1 DEGENERATE — ISSUE #60
 PERF-09 EXPERIMENTAL SCORE          CERRADO / BASELINE CREATED, COVERAGE BOTTLENECK — ISSUE #61
-PERF-10 COVERAGE / OBSERVABILITY    ACTIVO — ISSUE #70 / SCRIPT IMPLEMENTADO
+PERF-10 COVERAGE / OBSERVABILITY    CERRADO / POLICY REDESIGN REQUIRED — ISSUE #70
+PERF-11 NULL VS ZERO SEMANTICS      ACTIVO — ISSUE #77 / SCRIPT IMPLEMENTADO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
@@ -55,6 +56,8 @@ PLAYER-MATCH DATA
 → NORMALIZACIÓN / AGREGACIÓN
 → SCORE EXPERIMENTAL
 → COBERTURA / OBSERVABILIDAD
+→ SEMÁNTICA NULL VS ZERO
+→ POLÍTICA DE SCORE
 → SENSIBILIDAD / ABLATIONS
 → ESTABILIDAD TEMPORAL / CONTEXTO
 → SCORE GLOBAL VALIDADO
@@ -64,76 +67,83 @@ PLAYER-MATCH DATA
 
 Rol/posición se usa como contexto de comparación/normalización, no como objetivo principal ni como componente directo del score.
 
-## PERF-09 — cerrado
+## PERF-10 — cerrado
 
-Resultado ejecutado:
+Resultado:
 
 ```text
-played_rows=590
-outfield_eligible_rows=552
-direct_gk_rows=38
-unknown_gk_evidence_excluded=0
+outfield_rows=552
 signed_candidates=11
 used_features=10
-excluded_degenerate=1
+degenerate=1
 dimensions=5
-complete_outfield_score_rows=3
-goalkeeper_score_rows=31
-excluded_features=penalties_conceded_per90
-outfield_score=min:37.1014 p25:40.2510 median:43.4006 p75:48.7546 max:54.1085
-goalkeeper_score=min:3.2258 p25:24.1935 median:51.6129 p75:77.4194 max:96.7742
-conclusion=EXPERIMENTAL_SCORE_BASELINE_CREATED_SENSITIVITY_REQUIRED
+full_five_rows=3
+full_five_coverage=0.005434782608695652
+dimension_count_distribution=0:59,1:168,2:185,3:106,4:31,5:3
+bottleneck_dimensions=finishing
+leave_one_out=attacking_threat:3,creation_progression:3,defensive_contribution:3,finishing:25,discipline:12
+conclusion=FULL_DIMENSION_COVERAGE_INCOMPLETE_POLICY_REDESIGN_REQUIRED
 ```
 
 Decisión:
-- el primer score experimental existe y funciona técnicamente;
-- sigue `EXPERIMENTAL / NO_DEPLOY`;
-- `penalties_conceded_per90` queda excluida solo por degeneración en esta muestra;
-- portería sigue separada mediante `save_rate`;
-- **solo 3/552 filas outfield tienen las cinco dimensiones disponibles**;
-- por esa cobertura, no se pasa todavía a sensibilidad de pesos: primero hay que entender el cuello de botella.
+- exigir las cinco dimensiones simultáneas no es viable con la semántica actual;
+- `finishing` es el cuello de botella principal, pero no el único;
+- eliminar una sola dimensión tampoco resuelve el problema;
+- no se aprueba ningún mínimo arbitrario de 3/5 o 4/5;
+- no se convierte missing a cero.
 
-No se relaja el requisito de 5 dimensiones de forma arbitraria y missing no se convierte en cero.
+## Hallazgo metodológico previo a rediseñar el score
 
-## PERF-10 — activo
+DATA-04 preserva los `NULL` del proveedor. Sin embargo, el propio importador DATA-04 valida `shots_total` y `goals` contra DATA-03 atómico usando `NULL` como cero cuando no hay eventos correspondientes.
 
-Issue #70.
+FEATURE-01 mantiene cualquier raw `NULL` como feature `NULL`.
+
+Por tanto, parte de la baja cobertura puede ser una diferencia entre:
+- **dato realmente ausente**;
+- **conteo observado de cero codificado como NULL por el proveedor**.
+
+No se cambia ninguna semántica hasta validarla con evidencia independiente.
+
+## PERF-11 — activo
+
+Issue #77.
 
 Script:
 ```text
-dsai/performance_score_coverage_audit.py
+dsai/performance_null_zero_semantics_audit.py
 ```
 
-Objetivo: explicar la baja cobertura completa del score antes de cambiar política de agregación.
+Compara raw aggregates con `match_events` para:
+- `shots_total`;
+- `goals`;
+- `yellow_cards`;
+- `red_cards`.
 
-Audita:
-- cobertura por feature signada;
-- cobertura por dimensión;
-- distribución de filas con 0..5 dimensiones disponibles;
-- patrones de dimensiones ausentes;
-- leave-one-dimension-out para identificar cuellos de botella;
-- para per90: raw NULL vs raw zero vs raw >0;
-- para ratios: inputs missing vs denominador zero vs denominador positivo;
-- contexto descriptivo por `source_position`.
+Para cada métrica audita:
+- raw NULL + event count 0;
+- raw NULL + event count >0;
+- raw non-null vs event count;
+- discrepancias después de interpretar provisionalmente NULL como cero.
 
-Reglas:
-- no crea un score nuevo;
-- no aprueba un mínimo de dimensiones;
-- no imputa missing como cero;
-- una ratio con denominador 0 se trata como indefinida, no como mal rendimiento;
-- rol/posición = diagnóstico contextual;
-- no se tocan pesos ni rankings.
+Solo una métrica con evidencia atómica completa y cero contradicciones puede quedar marcada como:
+`EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE`.
 
-Conclusiones posibles:
-- `FULL_DIMENSION_COVERAGE_COMPLETE_SENSITIVITY_READY`;
-- `FULL_DIMENSION_COVERAGE_INCOMPLETE_POLICY_REDESIGN_REQUIRED`.
+Esto **no modifica todavía**:
+- `player_match_raw_stats`;
+- FEATURE-01;
+- score;
+- pesos;
+- thresholds.
+
+Las ratios con denominador 0 siguen siendo indefinidas.
 
 ## Guardrails del score
 
 - ningún threshold de bueno/malo;
 - ningún ranking/recomendación de producto;
 - ningún peso aprobado;
-- no convertir missing a cero;
+- ningún `fillna(0)` global;
+- solo se admite cero observado con evidencia de fuente/atomic events;
 - no usar PCA/correlación/varianza como definición de calidad;
 - score outfield y score de portero no se comparan directamente;
 - rol/posición = contexto, no target;
@@ -147,7 +157,7 @@ Los ficheros auxiliares redundantes `docs/PERF_05_*` siguen pendientes de limpie
 
 ## Líneas todavía bloqueadas
 
-- score global validado: hasta resolver cobertura + sensibilidad/ablations + estabilidad;
+- score global validado: hasta resolver semántica NULL/zero + política de cobertura + sensibilidad/ablations + estabilidad;
 - `role_player_fit`: sin target independiente defendible;
 - `expert_vs_ml`: sin shared target independiente;
 - calibración N13000: sin ground truth de recomendación.
@@ -157,7 +167,7 @@ Los ficheros auxiliares redundantes `docs/PERF_05_*` siguen pendientes de limpie
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\performance_score_coverage_audit.py
+python dsai\performance_null_zero_semantics_audit.py
 ```
 
 No instalar nada.
