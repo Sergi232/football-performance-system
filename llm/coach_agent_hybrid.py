@@ -131,9 +131,7 @@ def _compact_payload(name: str, payload: dict[str, Any]) -> dict[str, Any]:
             "recent_team_rating_history": [
                 _pick_row(r, history_keys) for r in (payload.get("recent_team_rating_history") or [])[-4:]
             ],
-            "player_recent_form": [
-                _pick_row(r, player_keys) for r in players[:6]
-            ],
+            "player_recent_form": [_pick_row(r, player_keys) for r in players[:6]],
             "definition": payload.get("definition"),
         }
     if name == "get_data_quality":
@@ -266,7 +264,7 @@ def _deterministic_fallback(question: str, evidence: dict[str, Any], tools_used:
         return "No hi ha prou evidència estructurada disponible per respondre aquesta pregunta."
     body = "\n".join(f"- {line}" for line in useful)
     return (
-        "No he pogut generar la síntesi lingüística local a temps, però aquestes són les dades estructurades disponibles:\n"
+        "Síntesi local no disponible dins del límit de temps. Dades estructurades disponibles:\n"
         f"{body}\n"
         f"Evidència consultada: {', '.join(tools_used)}."
     )
@@ -274,15 +272,16 @@ def _deterministic_fallback(question: str, evidence: dict[str, Any], tools_used:
 
 def _synthesize(question: str, evidence: dict[str, Any], *, history: list[dict[str, str]] | None, model: str, base_url: str) -> str:
     lines = _flatten_lines(evidence)
-    evidence_text = "\n".join(lines[:45])
-    evidence_text = evidence_text[:4500]
+    max_lines = max(8, int(os.environ.get("FPS_AGENT_EVIDENCE_LINES", "28")))
+    max_chars = max(800, int(os.environ.get("FPS_AGENT_EVIDENCE_CHARS", "2800")))
+    evidence_text = "\n".join(lines[:max_lines])[:max_chars]
 
     messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM_PROMPT}]
     if history:
         last = history[-1]
         if last.get("role") in {"user", "assistant"} and last.get("content"):
-            messages.append({"role": str(last["role"]), "content": str(last["content"])[:250]})
-    messages.append({"role": "user", "content": f"QUESTION:\n{question[:500]}\n\nEVIDENCE:\n{evidence_text}"})
+            messages.append({"role": str(last["role"]), "content": str(last["content"])[:200]})
+    messages.append({"role": "user", "content": f"QUESTION:\n{question[:400]}\n\nEVIDENCE:\n{evidence_text}"})
 
     payload = {
         "model": model,
@@ -292,11 +291,11 @@ def _synthesize(question: str, evidence: dict[str, Any], *, history: list[dict[s
         "keep_alive": "30m",
         "options": {
             "temperature": 0.1,
-            "num_ctx": int(os.environ.get("FPS_AGENT_NUM_CTX", "2048")),
-            "num_predict": int(os.environ.get("FPS_AGENT_NUM_PREDICT", "160")),
+            "num_ctx": int(os.environ.get("FPS_AGENT_NUM_CTX", "1536")),
+            "num_predict": int(os.environ.get("FPS_AGENT_NUM_PREDICT", "128")),
         },
     }
-    timeout = int(os.environ.get("FPS_AGENT_TIMEOUT", "20"))
+    timeout = int(os.environ.get("FPS_AGENT_TIMEOUT", "18"))
     response = _core._request_json(f"{base_url.rstrip('/')}/api/chat", payload=payload, timeout=timeout)
     message = response.get("message") or {}
     text = str(message.get("content") or "").strip()
@@ -343,10 +342,15 @@ def run_coach_agent_turn(
     try:
         text = _synthesize(question, evidence, history=history, model=selected_model, base_url=selected_url)
         return CoachAgentResult(text, selected_model, 1 if tools_used else 0, tuple(tools_used), None)
-    except Exception:
-        # Product must remain usable even when local generation is temporarily slow.
+    except Exception as exc:
         fallback = _deterministic_fallback(question, evidence, tools_used)
-        return CoachAgentResult(fallback, selected_model, 1 if tools_used else 0, tuple(tools_used), None)
+        return CoachAgentResult(
+            fallback,
+            selected_model,
+            1 if tools_used else 0,
+            tuple(tools_used),
+            f"SYNTHESIS_FALLBACK:{type(exc).__name__}: {exc}",
+        )
 
 
 def run_coach_agent(*args: Any, **kwargs: Any) -> str:
