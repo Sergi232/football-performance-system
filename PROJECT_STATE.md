@@ -88,7 +88,12 @@ Decisión:
 - `save_rate = saves / (saves + goals_conceded)` queda admitida como feature **role-specific de portero** para la línea de performance score;
 - no se inventa xGOT/PSxG ni ajuste por calidad del tiro.
 
-`save_rate` se registra fuera de FEATURE-01 por ahora para no romper el contrato actual del feature engine. Su integración formal se hará junto al score engine cuando la política de normalización quede cerrada.
+Registro role-specific:
+```text
+dsai/performance_role_specific_features.json
+```
+
+`save_rate` se mantiene fuera de FEATURE-01 v0.1.0 por ahora para no romper su contrato actual. Su integración formal se hará junto al score engine cuando la política de normalización quede cerrada.
 
 ## PERF-08 — activo
 
@@ -104,7 +109,7 @@ Entrada:
 
 Auditará:
 - cobertura, dispersión, valores únicos y zero-inflation de cada feature signada;
-- viabilidad de normalización global robusta/rank-based sin imponer todavía una fórmula;
+- viabilidad de normalización robusta/rank-based sin imponer todavía una fórmula;
 - cobertura de cada dimensión con evidencia disponible;
 - soporte de contexto por `source_position` sin exigir posición como target;
 - separación estructural outfield / goalkeeper.
