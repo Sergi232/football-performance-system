@@ -1,8 +1,9 @@
-"""Coach Command Center — operational home for technical staff."""
+"""Coach Command Center — professional operational dashboard for technical staff."""
 from __future__ import annotations
 
 import os
 import sys
+from html import escape
 from pathlib import Path
 
 import pandas as pd
@@ -40,9 +41,83 @@ from app.ui_theme import apply_professional_theme, position_label, sidebar_navig
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 
-st.set_page_config(page_title="Coach Command Center · FPS", page_icon="⚽", layout="wide")
+st.set_page_config(
+    page_title="Coach Command Center · FPS",
+    page_icon="⚽",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 apply_professional_theme()
 sidebar_navigation()
+
+st.markdown(
+    """
+    <style>
+    .fps-command-strip {
+        display:flex;
+        gap:.55rem;
+        flex-wrap:wrap;
+        margin:.1rem 0 1rem 0;
+    }
+    .fps-command-pill {
+        background:#FFFFFF;
+        border:1px solid #DDE5EB;
+        border-radius:999px;
+        padding:.38rem .72rem;
+        font-size:.76rem;
+        font-weight:750;
+        color:#486173;
+    }
+    .fps-command-pill strong { color:#0B1F33; }
+
+    .fps-status-panel {
+        background:#FFFFFF;
+        border:1px solid #DDE5EB;
+        border-radius:14px;
+        padding:1rem 1.05rem;
+        min-height:100%;
+    }
+    .fps-status-label {
+        font-size:.68rem;
+        font-weight:850;
+        letter-spacing:.075em;
+        color:#718493;
+        text-transform:uppercase;
+        margin-bottom:.25rem;
+    }
+    .fps-status-value {
+        color:#102A43;
+        font-size:1.05rem;
+        font-weight:850;
+        line-height:1.2;
+    }
+    .fps-status-sub {
+        color:#607D8B;
+        font-size:.77rem;
+        line-height:1.35;
+        margin-top:.25rem;
+    }
+
+    [data-testid="stPageLink"] a {
+        border:1px solid #DDE5EB;
+        border-radius:10px;
+        padding:.55rem .75rem;
+        background:#FFFFFF;
+        text-decoration:none;
+        font-weight:750;
+    }
+    [data-testid="stPageLink"] a:hover {
+        border-color:#AFC5D2;
+        background:#F8FAFB;
+    }
+
+    @media (max-width: 900px) {
+        .fps-command-strip { gap:.35rem; }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 def db_path() -> Path:
@@ -60,9 +135,27 @@ if teams.empty:
     st.stop()
 
 team_labels = {str(r.team_id): str(r.display_name) for r in teams.itertuples(index=False)}
-selector, _ = st.columns([1.0, 2.3])
-with selector:
-    team_id = st.selectbox("Equip", options=list(team_labels), format_func=lambda x: team_labels[x])
+
+control_team, control_nav = st.columns([1.0, 2.8], gap="large")
+with control_team:
+    team_id = st.selectbox(
+        "Equip",
+        options=list(team_labels),
+        format_func=lambda x: team_labels[x],
+    )
+
+with control_nav:
+    st.caption("Accés ràpid")
+    n1, n2, n3, n4 = st.columns(4)
+    with n1:
+        st.page_link("pages/3_Equip.py", label="Equip")
+    with n2:
+        st.page_link("pages/4_Partit.py", label="Partit")
+    with n3:
+        st.page_link("pages/2_Jugador.py", label="Jugador")
+    with n4:
+        st.page_link("pages/5_Assistent_IA.py", label="Assistent IA")
+
 team_name = team_labels[team_id]
 
 overview = get_team_overview(path, team_id)
@@ -70,12 +163,14 @@ matches = get_team_matches(path, team_id).copy()
 ratings = get_latest_team_match_ratings(path, team_id)
 rating_history = get_team_match_rating_history(path, team_id)
 rating_snapshot = get_team_player_rating_snapshot(path, team_id)
+
 try:
     attention = get_team_attention_flags(path, team_id)
     attention_summary = get_attention_summary(path, team_id)
 except Exception:
     attention = pd.DataFrame()
     attention_summary = pd.DataFrame()
+
 try:
     gps_status = get_gps_summary_status(path)
 except Exception:
@@ -91,7 +186,7 @@ else:
 page_header(
     "TEAM MODE · COACH COMMAND CENTER",
     team_name,
-    "Una sola vista per entendre l'últim partit, la forma recent, els canvis de la plantilla i la qualitat de l'evidència.",
+    "Visió executiva de l'últim partit, evolució recent, plantilla i qualitat de l'evidència.",
     "Match Rating V5",
 )
 
@@ -99,89 +194,253 @@ if latest_match is None:
     st.info("No hi ha partits disponibles.")
     st.stop()
 
-median_rating = pd.to_numeric(ratings.get("match_rating_10"), errors="coerce").median() if not ratings.empty else None
-median_conf = pd.to_numeric(ratings.get("match_rating_confidence"), errors="coerce").median() if not ratings.empty else None
+median_rating = (
+    pd.to_numeric(ratings.get("match_rating_10"), errors="coerce").median()
+    if not ratings.empty
+    else None
+)
+median_conf = (
+    pd.to_numeric(ratings.get("match_rating_confidence"), errors="coerce").median()
+    if not ratings.empty
+    else None
+)
+
 role_flags = 0
 if not attention_summary.empty:
-    row = attention_summary.loc[attention_summary["attention_code"] == "ROLE_CONTEXT_UNAVAILABLE", "rows"]
-    role_flags = int(row.iloc[0]) if not row.empty else 0
+    rows = attention_summary.loc[
+        attention_summary["attention_code"] == "ROLE_CONTEXT_UNAVAILABLE",
+        "rows",
+    ]
+    if not rows.empty:
+        role_flags = int(rows.iloc[0])
 
-# --- Immediate staff brief ---------------------------------------------------
-left, right = st.columns([1.55, 1.0], gap="large")
+rising, falling = (
+    describe_trend(rating_snapshot)
+    if not rating_snapshot.empty
+    else (pd.DataFrame(), pd.DataFrame())
+)
+
+ranked = (
+    ratings.dropna(subset=["match_rating_10"]).sort_values("match_rating_10", ascending=False)
+    if not ratings.empty
+    else pd.DataFrame()
+)
+top_three = ranked.head(3)
+gps_rows = int(gps_status.get("rows", 0))
+
+last_date = str(pd.to_datetime(latest_match["match_date"]).date())
+venue_value = latest_match.get("venue")
+venue_text = "Local" if venue_value in {"H", "Home", "Local"} else "Visitant"
+
+st.markdown(
+    f"""
+    <div class="fps-command-strip">
+      <div class="fps-command-pill">Últim partit · <strong>{escape(last_date)}</strong></div>
+      <div class="fps-command-pill">Forma L5 · <strong>{escape(recent_record(matches, 5))}</strong></div>
+      <div class="fps-command-pill">Plantilla · <strong>{safe_int(overview.get("players"))}</strong></div>
+      <div class="fps-command-pill">Partits · <strong>{safe_int(overview.get("matches"))}</strong></div>
+      <div class="fps-command-pill">GPS · <strong>{"Disponible" if gps_rows else "Sense dades"}</strong></div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+left, right = st.columns([1.45, 1.0], gap="large")
+
 with left:
     scoreboard_card(
         team_name,
         safe_text(latest_match.get("opponent"), "Rival no disponible"),
         latest_match.get("score_for"),
         latest_match.get("score_against"),
-        str(pd.to_datetime(latest_match["match_date"]).date()),
-        "Local" if latest_match.get("venue") == "H" else "Visitant",
+        last_date,
+        venue_text,
         safe_text(latest_match.get("starting_formation"), "No disponible"),
     )
-    m1, m2, m3 = st.columns(3)
-    with m1:
-        metric_card("Rating equip · mediana", safe_number(median_rating, 2, "/10"), "Jugadors utilitzats a l'últim partit")
-    with m2:
-        metric_card("Confiança · mediana", safe_number(median_conf, 0, "%"), "Cobertura de l'evidència del rating")
-    with m3:
-        metric_card("Forma recent", recent_record(matches, 5), "Últims 5 partits · ordre del més recent")
 
 with right:
-    section_header("Brief del cos tècnic", "Senyals descriptius; no són recomanacions automàtiques")
-    if not ratings.empty:
-        ranked = ratings.dropna(subset=["match_rating_10"]).sort_values("match_rating_10", ascending=False)
-        top = ranked.head(3)
-        if not top.empty:
-            names = " · ".join(f"{r.player} {float(r.match_rating_10):.1f}" for r in top.itertuples(index=False))
-            insight_card("Ratings més alts · últim partit", names, "Ordenació descriptiva del Match Rating V5", "positive")
-    rising, falling = describe_trend(rating_snapshot) if not rating_snapshot.empty else (pd.DataFrame(), pd.DataFrame())
-    insight_card("Canvi recent positiu", names_with_delta(rising), "Delta: mitjana últims 5 menys 5 anteriors", "positive")
-    insight_card("Canvi recent negatiu", names_with_delta(falling), "Delta descriptiu; no és una alerta de rendiment", "negative")
-    context_text = f"{role_flags} aparicions històriques sense rol tàctic fiable"
-    if int(gps_status.get("rows", 0)) == 0:
-        context_text += " · GPS encara sense dades reals"
-    insight_card("Qualitat de dades", context_text, "Limitacions visibles i auditables", "warning" if role_flags else "neutral")
+    section_header("Estat de l'equip", "Lectura immediata del darrer partit")
+    r1, r2 = st.columns(2)
+    with r1:
+        metric_card(
+            "Match Rating",
+            safe_number(median_rating, 2, "/10"),
+            "Mediana de l'últim partit",
+        )
+    with r2:
+        metric_card(
+            "Confiança",
+            safe_number(median_conf, 0, "%"),
+            "Mediana d'evidència",
+        )
+    r3, r4 = st.columns(2)
+    with r3:
+        metric_card("Forma L5", recent_record(matches, 5), "Últims cinc partits")
+    with r4:
+        metric_card("Context de rol", str(role_flags), "Aparicions amb rol no fiable")
 
-# --- Team evolution ---------------------------------------------------------
-section_header("Evolució del rendiment", "Mediana de Match Rating per partit + mitjana mòbil descriptiva de 5 partits")
-if rating_history.empty:
-    st.info("Encara no hi ha historial de Match Rating.")
+section_header("Coach Brief", "Què ha passat i què convé revisar primer")
+b1, b2, b3, b4 = st.columns(4, gap="medium")
+
+if not top_three.empty:
+    top_names = " · ".join(
+        f"{r.player} {float(r.match_rating_10):.1f}"
+        for r in top_three.itertuples(index=False)
+    )
 else:
-    st.plotly_chart(rating_trend_chart(rating_history), width="stretch", config={"displayModeBar": False})
+    top_names = "Sense dades"
 
-# --- Squad status -----------------------------------------------------------
-section_header("Plantilla · estat recent", "Nivell recent i canvi respecte als cinc partits anteriors")
-col_matrix, col_latest = st.columns([1.2, 1.0], gap="large")
-with col_matrix:
+with b1:
+    insight_card(
+        "Destacats · últim partit",
+        top_names,
+        "Match Rating V5",
+        "positive",
+    )
+with b2:
+    insight_card(
+        "Millora recent",
+        names_with_delta(rising),
+        "Mitjana L5 vs 5 anteriors",
+        "positive",
+    )
+with b3:
+    insight_card(
+        "Descens recent",
+        names_with_delta(falling),
+        "Senyal descriptiu, no diagnòstic",
+        "negative",
+    )
+with b4:
+    quality_text = f"{role_flags} registres amb context de rol limitat"
+    if gps_rows == 0:
+        quality_text += " · GPS no disponible"
+    insight_card(
+        "Qualitat de dades",
+        quality_text,
+        "Limitacions visibles abans d'interpretar",
+        "warning" if role_flags or gps_rows == 0 else "neutral",
+    )
+
+section_header(
+    "Evolució de rendiment",
+    "Match Rating agregat per partit i context temporal",
+)
+trend_col, context_col = st.columns([1.65, 0.75], gap="large")
+
+with trend_col:
+    if rating_history.empty:
+        st.info("Encara no hi ha historial de Match Rating.")
+    else:
+        st.plotly_chart(
+            rating_trend_chart(rating_history),
+            width="stretch",
+            config={"displayModeBar": False},
+        )
+
+with context_col:
+    st.markdown(
+        f"""
+        <div class="fps-status-panel">
+          <div class="fps-status-label">Temporada disponible</div>
+          <div class="fps-status-value">{safe_int(overview.get("matches"))} partits</div>
+          <div class="fps-status-sub">Historial utilitzat pel dashboard.</div>
+          <br>
+          <div class="fps-status-label">Plantilla registrada</div>
+          <div class="fps-status-value">{safe_int(overview.get("players"))} jugadors</div>
+          <div class="fps-status-sub">Perfils amb dades dins del sistema.</div>
+          <br>
+          <div class="fps-status-label">GPS</div>
+          <div class="fps-status-value">{"Disponible" if gps_rows else "No disponible"}</div>
+          <div class="fps-status-sub">Font complementària; no condiciona el Team Mode.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+section_header(
+    "Plantilla",
+    "Nivell recent, evolució individual i últim partit",
+)
+
+tab_map, tab_match = st.tabs(["Mapa de plantilla", "Ratings · últim partit"])
+
+with tab_map:
     if rating_snapshot.empty:
         st.info("No hi ha snapshot de plantilla disponible.")
     else:
-        st.plotly_chart(squad_matrix_chart(rating_snapshot), width="stretch", config={"displayModeBar": False})
-        st.caption("Cada punt és un jugador. L'eix vertical és canvi recent, no una classificació de qualitat.")
-with col_latest:
-    section_header("Últim partit · tots els ratings", "Ordenats per nota; la confiança es mostra al hover")
+        st.plotly_chart(
+            squad_matrix_chart(rating_snapshot),
+            width="stretch",
+            config={"displayModeBar": False},
+        )
+        st.caption(
+            "Cada punt representa un jugador. "
+            "L'eix vertical mostra canvi recent i no una classificació absoluta."
+        )
+
+with tab_match:
     if ratings.empty:
         st.info("No hi ha ratings disponibles.")
     else:
         chart_ratings = ratings.copy()
         chart_ratings["position_group"] = chart_ratings["position_group"].map(position_label)
-        st.plotly_chart(player_rating_chart(chart_ratings), width="stretch", config={"displayModeBar": False})
+        st.plotly_chart(
+            player_rating_chart(chart_ratings),
+            width="stretch",
+            config={"displayModeBar": False},
+        )
 
-# --- Review queue -----------------------------------------------------------
-section_header("Cua de revisió", "Context que pot requerir verificació humana abans d'interpretar les dades")
+section_header(
+    "Qualitat i revisió",
+    "Incidències de context o cobertura que poden afectar la lectura",
+)
 q1, q2, q3 = st.columns(3)
+
 with q1:
-    metric_card("Limitacions de rol", str(role_flags), "Aparicions històriques amb fallback explícit")
+    metric_card(
+        "Context de rol",
+        str(role_flags),
+        "Aparicions amb fallback explícit",
+    )
 with q2:
-    metric_card("GPS", safe_int(gps_status.get("rows")), "Mostres GPS normalitzades disponibles")
+    metric_card(
+        "GPS",
+        safe_int(gps_rows),
+        "Mostres normalitzades",
+    )
 with q3:
-    metric_card("Plantilla", safe_int(overview.get("players")), f"{safe_int(overview.get('matches'))} partits disponibles")
+    metric_card(
+        "Cobertura",
+        safe_int(overview.get("players")),
+        f"{safe_int(overview.get('matches'))} partits",
+    )
 
 if not attention.empty:
-    with st.expander("Veure detall de qualitat i context"):
-        detail = attention[["match_date", "player", "attention_code", "message"]].copy()
-        detail["match_date"] = pd.to_datetime(detail["match_date"], errors="coerce").dt.date
+    with st.expander("Veure incidències de qualitat i context", expanded=False):
+        detail = attention[
+            ["match_date", "player", "attention_code", "message"]
+        ].copy()
+        detail["match_date"] = pd.to_datetime(
+            detail["match_date"],
+            errors="coerce",
+        ).dt.date
         detail.columns = ["Data", "Jugador", "Codi", "Context"]
-        st.dataframe(detail, hide_index=True, width="stretch", height=300)
+        st.dataframe(
+            detail,
+            hide_index=True,
+            width="stretch",
+            height=320,
+        )
 
-st.caption("El Command Center consumeix analytics materialitzats. No recalcula ratings ni genera conclusions crítiques amb un LLM.")
+with st.expander("Metodologia i límits del dashboard", expanded=False):
+    st.markdown(
+        """
+        - El **Match Rating** és una nota jugador-partit materialitzada pel motor analític.
+        - Les tendències són descriptives i no constitueixen diagnòstics.
+        - Les limitacions de rol i cobertura es mostren explícitament.
+        - El GPS és opcional.
+        - El dashboard **no recalcula** ratings.
+        - L'LLM no genera conclusions crítiques ni modifica mètriques.
+        """
+    )
