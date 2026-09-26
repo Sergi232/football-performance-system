@@ -36,8 +36,9 @@ PERF-03 DIMENSION MAPPING AUDIT     CERRADO / MAPPING COMPLETE — ISSUE #54
 PERF-04 DIRECTION VALIDATION        CERRADO / CONTEXTUAL METRICS RETAINED — ISSUE #56
 PERF-05 SIGNED CORE FEASIBILITY     CERRADO / OUTFIELD CORE AVAILABLE — ISSUE #57
 PERF-06 GOALKEEPER EFFICIENCY       CERRADO / SAVE_RATE DERIVABLE — ISSUE #58
-PERF-07 GK SAVE_RATE CONTEXT         CERRADO / FEATURE ADMISSION READY — ISSUE #59
-PERF-08 AGGREGATION FEASIBILITY      ACTIVO — ISSUE #60
+PERF-07 GK SAVE_RATE CONTEXT        CERRADO / FEATURE ADMISSION READY — ISSUE #59
+PERF-08 AGGREGATION FEASIBILITY     CERRADO / BASELINE FEASIBLE WITH 1 DEGENERATE — ISSUE #60
+PERF-09 EXPERIMENTAL SCORE          ACTIVO — ISSUE #61 / SCRIPT IMPLEMENTADO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
@@ -52,88 +53,107 @@ PLAYER-MATCH DATA
 → NÚCLEO PUNTUABLE
 → NORMALIZACIÓN / AGREGACIÓN
 → SCORE EXPERIMENTAL
-→ SENSIBILIDAD / ESTABILIDAD
+→ SENSIBILIDAD / ABLATIONS
+→ ESTABILIDAD TEMPORAL / CONTEXTO
 → SCORE GLOBAL VALIDADO
 → EVOLUCIÓN / CONSISTENCIA
-→ CONTEXTO DE ROL
 → CONCLUSIONES / RECOMENDACIONES
 ```
 
-Rol/posición se usa como contexto de comparación/normalización, no como objetivo principal.
+Rol/posición se usa como contexto de comparación/normalización, no como objetivo principal ni como componente directo del score.
 
-## PERF-07 — cerrado
+## PERF-08 — cerrado
 
 Resultado v0.1.1:
 
 ```text
 played_rows=590
-candidate_rows=31
-players=1
-matches=31
-direct_gk_candidates=31
-validated_context_rows=31
-direct_conflicts=0
-unknown_mixed=0
-unknown_no_gk_evidence=0
-positive_save_rows=34
-positive_save_current_non_gk=0
-current_positions=Goalkeeper:31
-conclusion=SAVE_RATE_GOALKEEPER_CONTEXT_VALIDATED_FEATURE_ADMISSION_READY
+outfield_rows=552
+known_role_rows=418
+direct_gk_rows=38
+signed_features=11
+outfield_dimensions=5
+rank_feasible=10
+robust_z_feasible=10
+degenerate=1
+robust_z_limited=0
+dimensions_without_evidence=0
+degenerate_features=penalties_conceded_per90
+goalkeeper_save_rate_rows=31
+goalkeeper_rank_feasible=True
+conclusion=AGGREGATION_BASELINE_BLOCKED_DEGENERATE_SIGNED_FEATURES
 ```
 
-Decisión:
-- las 31 filas derivables de `save_rate` son directamente `Goalkeeper`;
-- no existe contaminación por `saves > 0` en roles no-portero;
-- `goals_conceded` en jugadores de campo se conserva como contexto informativo y no bloquea;
-- `save_rate = saves / (saves + goals_conceded)` queda admitida como feature **role-specific de portero** para la línea de performance score;
-- no se inventa xGOT/PSxG ni ajuste por calidad del tiro.
+Decisión metodológica final:
+- el bloqueo proviene únicamente de `penalties_conceded_per90`, que no presenta variación suficiente en esta muestra;
+- la feature **no se elimina ni cambia de dirección**;
+- queda excluida solo del primer baseline experimental porque una variable degenerada no puede aportar información ordinal;
+- debe poder reentrar en futuros datasets cuando exista variación;
+- las otras 10 features signadas son rank-normalizables;
+- las 5 dimensiones outfield conservan evidencia;
+- `save_rate` es normalizable en la ruta separada de portero.
 
-Registro role-specific:
+Resultado operativo:
+`EXPERIMENTAL_BASELINE_FEASIBLE_WITH_DEGENERATE_FEATURE_EXCLUDED`.
+
+## PERF-09 — activo
+
+Issue #61.
+
+Script:
 ```text
-dsai/performance_role_specific_features.json
+dsai/performance_score_experimental.py
 ```
 
-`save_rate` se mantiene fuera de FEATURE-01 v0.1.0 por ahora para no romper su contrato actual. Su integración formal se hará junto al score engine cuando la política de normalización quede cerrada.
+Objetivo: crear el primer score jugador-partido **EXPERIMENTAL / NO_DEPLOY**.
 
-## PERF-08 — activo
+Política baseline nulo:
+1. usar únicamente features con dirección respaldada y variación observable;
+2. aplicar normalización empírica rank/percentile 0–100;
+3. invertir ordinalmente las features `NEGATIVE_SUPPORTED` para que un valor normalizado más alto represente mejor resultado;
+4. agregar con pesos iguales entre features disponibles dentro de cada dimensión;
+5. agregar las cinco dimensiones outfield con peso igual;
+6. emitir score global outfield solo cuando las cinco dimensiones tengan evidencia;
+7. conservar missing como missing;
+8. excluir `penalties_conceded_per90` solo mientras sea degenerada;
+9. mantener portería separada con percentile de `save_rate`;
+10. excluir de la ruta outfield cualquier fila de `Goalkeeper` y cualquier fila con rol desconocido pero `saves > 0`, sin imputar una posición.
 
-Issue #60.
+Los pesos iguales son exclusivamente un **baseline nulo experimental**. No quedan aprobados para producto.
 
-Objetivo: comprobar si el núcleo signado puede normalizarse y agregarse de forma transparente antes de crear el primer score experimental.
+Salidas previstas:
+```text
+dsai/output/performance_score_experimental.json
+dsai/output/performance_score_experimental.md
+dsai/output/performance_score_experimental.csv
+```
 
-Entrada:
-- 11 FEATURE-01 con dirección respaldada;
-- `save_rate` role-specific para portero;
-- mapping primario de dimensiones;
-- rol/posición únicamente como contexto.
+PERF-09 debe terminar en una de dos conclusiones:
+- `EXPERIMENTAL_SCORE_BASELINE_CREATED_SENSITIVITY_REQUIRED`;
+- `EXPERIMENTAL_SCORE_BLOCKED_NO_COMPLETE_DIMENSION_ROWS`.
 
-Auditará:
-- cobertura, dispersión, valores únicos y zero-inflation de cada feature signada;
-- viabilidad de normalización robusta/rank-based sin imponer todavía una fórmula;
-- cobertura de cada dimensión con evidencia disponible;
-- soporte de contexto por `source_position` sin exigir posición como target;
-- separación estructural outfield / goalkeeper.
+Si se crea el baseline, el siguiente paso será sensibilidad/ablations antes de cualquier decisión de despliegue.
 
-No crea todavía:
-- score;
-- pesos aprobados;
-- thresholds;
-- rankings;
-- recomendaciones.
+## Guardrails del score
 
-## Política de agregación que se evaluará
+- ningún threshold de bueno/malo;
+- ningún ranking/recomendación de producto;
+- ningún peso aprobado;
+- no convertir missing a cero;
+- no usar PCA/correlación/varianza como definición de calidad;
+- score outfield y score de portero no se comparan directamente;
+- rol/posición = contexto, no target;
+- el LLM no recalcula el score.
 
-La ruta preferente para el primer experimento, si PERF-08 pasa, será un **baseline nulo y auditable**:
-1. transformar cada feature respetando su signo;
-2. normalizar con método robusto/rank-based validado por la distribución;
-3. agregar primero feature → dimensión;
-4. agregar después dimensión → global para evitar que una dimensión domine solo por tener más variables;
-5. tratar pesos iguales únicamente como baseline experimental, nunca como peso final aprobado;
-6. ejecutar sensibilidad/ablations antes de cualquier uso de producto.
+## Incidencias de repositorio
+
+Los issues #62, #64, #65, #66, #67, #68 y #69 fueron artefactos accidentales del conector y quedaron cerrados como `not_planned`. El #63 fue una planificación prematura y también quedó cerrado. Ninguno contiene trabajo del proyecto.
+
+Los ficheros auxiliares redundantes `docs/PERF_05_*` siguen pendientes de limpieza; no son fuente de verdad.
 
 ## Líneas todavía bloqueadas
 
-- score global final: hasta PERF-08 + baseline experimental + sensibilidad;
+- score global validado: hasta PERF-09 + sensibilidad/ablations + estabilidad;
 - `role_player_fit`: sin target independiente defendible;
 - `expert_vs_ml`: sin shared target independiente;
 - calibración N13000: sin ground truth de recomendación.
@@ -143,7 +163,7 @@ La ruta preferente para el primer experimento, si PERF-08 pasa, será un **basel
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\performance_aggregation_feasibility.py
+python dsai\performance_score_experimental.py
 ```
 
 No instalar nada.
