@@ -1,8 +1,14 @@
-"""Build validated player-match on-pitch goal context for PERF-17.
+"""Build validated player-match on-pitch goal context for PERF-18.
 
 Uses source lineup substitution context plus goal events to count team goals for/against
 while each player was actually on the pitch. This is team context, not an individual
 causal attribution.
+
+V0.2 adds an auditable interval resolver. Event-second substitution data remains the
+preferred source, but contradictory event boundaries no longer abort the whole build:
+we fall back to coherent lineup-minute boundaries or, only when necessary, a boundary
+derived from canonical played minutes. Every fallback is surfaced in timing_precision
+and aggregate diagnostics.
 """
 from __future__ import annotations
 
@@ -16,7 +22,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
-CONTEXT_VERSION = "on_pitch_goal_context_v0.1"
+CONTEXT_VERSION = "on_pitch_goal_context_v0.2"
 
 
 def parse_args() -> argparse.Namespace:
@@ -51,6 +57,135 @@ def _event_second(minute: Any, second: Any) -> int | None:
     m = int(float(minute))
     s = 0 if second is None or pd.isna(second) else int(float(second))
     return m * 60 + s
+
+
+def _minute_boundary(value: Any) -> int | None:
+    if value is None or pd.isna(value):
+        return None
+    return int(float(value)) * 60
+
+
+def _valid_interval(start: int | None, end: int | None) -> bool:
+    return start is not None and start >= 0 and (end is None or end >= start)
+
+
+def _resolve_interval(
+    *,
+    mid: str,
+    source_player_id: str,
+    started: bool,
+    minutes_played: float,
+    lineup_on: int | None,
+    lineup_off: int | None,
+    event_on: int | None,
+    event_off: int | None,
+) -> tuple[int, int | None, str, str, str, bool]:
+    """Resolve one on-pitch interval with explicit provenance.
+
+    Priority:
+    1) event-second boundaries when coherent;
+    2) lineup-minute boundaries when event data conflict;
+    3) canonical minutes_played to reconstruct only the missing/conflicting boundary.
+
+    Returns start, end, start_source, end_source, timing_precision, conflict_fallback.
+    """
+    # Preferred event-aware candidate.
+    if started:
+        start = 0
+        start_source = "STARTER"
+    elif event_on is not None:
+        start = event_on
+        start_source = "EVENT_SECOND"
+    else:
+        start = lineup_on
+        start_source = "LINEUP_MINUTE" if lineup_on is not None else "MISSING"
+
+    if event_off is not None:
+        end = event_off
+        end_source = "EVENT_SECOND"
+    elif lineup_off is not None:
+        end = lineup_off
+        end_source = "LINEUP_MINUTE"
+    else:
+        end = None
+        end_source = "MATCH_END"
+
+    if _valid_interval(start, end):
+        minute_fallback = start_source == "LINEUP_MINUTE" or end_source == "LINEUP_MINUTE"
+        precision = "MINUTE_FALLBACK" if minute_fallback else "SECOND_OR_BOUNDARY_EXACT"
+        return int(start), None if end is None else int(end), start_source, end_source, precision, False
+
+    # Event data conflict: prefer coherent lineup-only boundaries.
+    fallback_start = 0 if started else lineup_on
+    fallback_end = lineup_off
+    if _valid_interval(fallback_start, fallback_end):
+        return (
+            int(fallback_start),
+            None if fallback_end is None else int(fallback_end),
+            "STARTER" if started else "LINEUP_MINUTE_CONFLICT_FALLBACK",
+            "LINEUP_MINUTE_CONFLICT_FALLBACK" if fallback_end is not None else "MATCH_END",
+            "MINUTE_CONFLICT_FALLBACK",
+            True,
+        )
+
+    # Last-resort boundary reconstruction from canonical lineup minutes.
+    duration = max(1, int(round(float(minutes_played) * 60.0)))
+    if started:
+        derived_start = 0
+        # Only derive an end if source says the player left the pitch; otherwise
+        # retaining MATCH_END is safer than inventing stoppage-time precision.
+        if lineup_off is not None:
+            derived_end = lineup_off
+            end_src = "LINEUP_MINUTE_DURATION_FALLBACK"
+        elif event_off is not None and event_off >= 0:
+            derived_end = event_off
+            end_src = "EVENT_SECOND_DURATION_FALLBACK"
+        elif minutes_played < 89.5:
+            derived_end = duration
+            end_src = "MINUTES_PLAYED_DERIVED"
+        else:
+            derived_end = None
+            end_src = "MATCH_END"
+        if _valid_interval(derived_start, derived_end):
+            return 0, derived_end, "STARTER", end_src, "DURATION_CONFLICT_FALLBACK", True
+    else:
+        # Prefer a known lineup on-boundary, then a plausible event on-boundary.
+        if lineup_on is not None:
+            derived_start = lineup_on
+            derived_end = lineup_off if lineup_off is not None and lineup_off >= derived_start else derived_start + duration
+            if _valid_interval(derived_start, derived_end):
+                return (
+                    int(derived_start), int(derived_end),
+                    "LINEUP_MINUTE_DURATION_FALLBACK",
+                    "LINEUP_OR_MINUTES_DERIVED",
+                    "DURATION_CONFLICT_FALLBACK", True,
+                )
+        if event_on is not None:
+            derived_start = event_on
+            derived_end = derived_start + duration
+            if _valid_interval(derived_start, derived_end):
+                return (
+                    int(derived_start), int(derived_end),
+                    "EVENT_SECOND_DURATION_FALLBACK",
+                    "MINUTES_PLAYED_DERIVED",
+                    "DURATION_CONFLICT_FALLBACK", True,
+                )
+        if lineup_off is not None:
+            derived_end = lineup_off
+            derived_start = max(0, derived_end - duration)
+            if _valid_interval(derived_start, derived_end):
+                return (
+                    int(derived_start), int(derived_end),
+                    "MINUTES_PLAYED_DERIVED",
+                    "LINEUP_MINUTE_DURATION_FALLBACK",
+                    "DURATION_CONFLICT_FALLBACK", True,
+                )
+
+    raise RuntimeError(
+        "Could not resolve on-pitch interval after audited fallbacks: "
+        f"{mid} / {source_player_id} / started={started} / minutes={minutes_played} / "
+        f"event_on={event_on} event_off={event_off} lineup_on={lineup_on} lineup_off={lineup_off}"
+    )
 
 
 def discover_input_dir(explicit: Path | None) -> Path:
@@ -146,9 +281,7 @@ def main() -> None:
 
         source_matches = match_meta["source_match_id"].astype(str).tolist()
         match_map = dict(zip(match_meta["source_match_id"].astype(str), match_meta["match_id"].astype(str)))
-        meta_by_source = {
-            str(r.source_match_id): r for r in match_meta.itertuples(index=False)
-        }
+        meta_by_source = {str(r.source_match_id): r for r in match_meta.itertuples(index=False)}
         in_list = ", ".join("'" + x.replace("'", "''") + "'" for x in source_matches)
         team_literal = "'" + source_team_id.replace("'", "''") + "'"
 
@@ -227,7 +360,6 @@ def main() -> None:
                 scoring_team = event_team
             goals_by_match[mid].append((sec, scoring_team))
 
-        # Validate reconstructed score before using goal timing anywhere downstream.
         score_errors: list[str] = []
         for mid, meta in meta_by_source.items():
             goals = goals_by_match[mid]
@@ -241,6 +373,7 @@ def main() -> None:
         rows: list[tuple] = []
         minute_fallback_rows = 0
         exact_timing_rows = 0
+        conflict_fallback_rows = 0
         boundary_ambiguity_total = 0
 
         for row in played.itertuples(index=False):
@@ -250,35 +383,21 @@ def main() -> None:
                 raise RuntimeError(f"Played lineup player not mapped: {mid} / {row.player_id}")
             player_id = player_map[source_player_id]
             started = _truthy(row.is_starter)
+            minutes_played = float(row.minutes_played)
 
-            if started:
-                start_second = 0
-                start_source = "STARTER"
-            elif (mid, source_player_id) in sub_on:
-                start_second = sub_on[(mid, source_player_id)]
-                start_source = "EVENT_SECOND"
-            elif row.sub_on_minute is not None and not pd.isna(row.sub_on_minute):
-                start_second = int(float(row.sub_on_minute)) * 60
-                start_source = "LINEUP_MINUTE"
-            else:
-                raise RuntimeError(f"Played substitute without sub-on time: {mid} / {source_player_id}")
-
-            if (mid, source_player_id) in sub_off:
-                end_second = sub_off[(mid, source_player_id)]
-                end_source = "EVENT_SECOND"
-            elif row.sub_off_minute is not None and not pd.isna(row.sub_off_minute):
-                end_second = int(float(row.sub_off_minute)) * 60
-                end_source = "LINEUP_MINUTE"
-            else:
-                end_second = None
-                end_source = "MATCH_END"
-
-            if end_second is not None and end_second < start_second:
-                raise RuntimeError(f"Invalid on-pitch interval: {mid} / {source_player_id}")
-
-            minute_fallback = start_source == "LINEUP_MINUTE" or end_source == "LINEUP_MINUTE"
-            timing_precision = "MINUTE_FALLBACK" if minute_fallback else "SECOND_OR_BOUNDARY_EXACT"
-            if minute_fallback:
+            start_second, end_second, start_source, end_source, timing_precision, conflict_fallback = _resolve_interval(
+                mid=mid,
+                source_player_id=source_player_id,
+                started=started,
+                minutes_played=minutes_played,
+                lineup_on=_minute_boundary(row.sub_on_minute),
+                lineup_off=_minute_boundary(row.sub_off_minute),
+                event_on=sub_on.get((mid, source_player_id)),
+                event_off=sub_off.get((mid, source_player_id)),
+            )
+            if conflict_fallback:
+                conflict_fallback_rows += 1
+            if "MINUTE" in timing_precision or "DURATION" in timing_precision:
                 minute_fallback_rows += 1
             else:
                 exact_timing_rows += 1
@@ -293,10 +412,10 @@ def main() -> None:
                     gf += 1
                 else:
                     ga += 1
-                if minute_fallback:
-                    if start_source == "LINEUP_MINUTE" and sec // 60 == start_second // 60:
+                if timing_precision != "SECOND_OR_BOUNDARY_EXACT":
+                    if "LINEUP_MINUTE" in start_source and sec // 60 == start_second // 60:
                         ambiguous += 1
-                    if end_source == "LINEUP_MINUTE" and end_second is not None and sec // 60 == end_second // 60:
+                    if "LINEUP_MINUTE" in end_source and end_second is not None and sec // 60 == end_second // 60:
                         ambiguous += 1
 
             boundary_ambiguity_total += ambiguous
@@ -329,12 +448,13 @@ def main() -> None:
             rows,
         )
 
-    print("PERF-17 ON-PITCH GOAL CONTEXT: PASS")
+    print("PERF-18 ON-PITCH GOAL CONTEXT: PASS")
     print(f"context_version={CONTEXT_VERSION}")
     print(f"input_dir={input_dir}")
     print(f"rows={len(rows)}")
     print(f"exact_timing_rows={exact_timing_rows}")
-    print(f"minute_fallback_rows={minute_fallback_rows}")
+    print(f"minute_or_duration_fallback_rows={minute_fallback_rows}")
+    print(f"conflict_fallback_rows={conflict_fallback_rows}")
     print(f"boundary_ambiguity_goals={boundary_ambiguity_total}")
     print("goal_timeline_vs_final_score=PASS")
     print("Interpretation: team context while player was on pitch; not individual causal responsibility.")
