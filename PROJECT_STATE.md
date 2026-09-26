@@ -12,10 +12,12 @@ COLLECTOR-01 MVP                    CERRADO FUNCIONALMENTE / UX+ES+MÓVIL PENDIE
 GPS-01                              CERRADO / VALIDADO ESTRUCTURALMENTE
 FEATURE-01/02/03                    CERRADO / VALIDADO
 EXPERT-01..07 N1000-N13000          BASELINE CERRADO / VALIDADO
-LLM-01/02                           PROTOTYPE v0.1 / CONTRATOS PASS
+LLM-01                              PROTOTYPE v0.1 / CONTRATOS PASS
+LLM-02 LOCAL COACH COPILOT          IMPLEMENTADO / VALIDACIÓN OLLAMA LOCAL PENDIENTE
 REPORTS-01                          PROTOTYPE v0.1 / CONTRATO PASS
 REPORTS-02 PROFESSIONAL PDF         ACTIVO — ISSUE #94 / GATE VISUAL PENDIENTE
-DASHBOARD-01                        PROTOTYPE v0.1 / CONTRACT PASS
+DASHBOARD-01                        CONTRACT PASS
+DASHBOARD PROFESSIONAL REDESIGN     IMPLEMENTADO / CHECK VISUAL LOCAL PENDIENTE
 ARCHITECTURE-01                     CERRADO — ISSUE #25
 ANALYTICS-01                        CERRADO / VALIDADO — ISSUE #26
 DECISION POLICY / N13000            GATE APROBADO — ISSUE #27 CERRADO
@@ -31,8 +33,7 @@ MATCH MODE                          CONTRACT PASS / OPERATIVO DESDE PARTIDO 1
 LLM MATCH RATING CONTEXT            CONTRACT PASS / V5
 DASHBOARD-04 PHYSICAL/GPS           CERRADO / VALIDADO — ISSUE #92
 ALERTS-01 ATTENTION CENTRE          CERRADO / VALIDADO — v0.3
-FINAL DASHBOARD HOME                IMPLEMENTADA / PENDIENTE CHECK VISUAL
-UI COMPATIBILITY                    GATE ESTÁTICO AÑADIDO / LIMPIEZA DEPRECATIONS EN CURSO
+UI COMPATIBILITY                    PASS 26/09/2026
 FINAL-01                            DESBLOQUEADO
 PUBLIC DEPLOYMENT                   NO HACER — decisión explícita actual
 ```
@@ -51,6 +52,19 @@ COLLECTOR + GPS opcional
 ```
 
 La web es el producto principal. PDF/PPT son salidas estáticas complementarias.
+
+Arquitectura LLM local actual:
+
+```text
+DuckDB local
+→ analytics / expert system materializados
+→ tools Python read-only
+→ Ollama localhost
+→ Coach Copilot
+→ entrenador
+```
+
+El modelo local no recibe acceso directo a DuckDB y no calcula ratings, features críticas ni decisiones expertas. OpenAI queda desacoplado como provider opcional antiguo; no es necesario para el producto local.
 
 ## Rendimiento
 
@@ -218,17 +232,17 @@ PDFs generados correctamente
 
 ## Producto actual
 
-### Home
-`app/streamlit_app.py` es la home operativa del staff con equipo, último partido, ratings V5, evolución, Centre d'Atenció, estado GPS y accesos rápidos.
+### Home / Command Center
+`app/streamlit_app.py` ha sido rediseñada como Coach Command Center: último partido, brief operativo, forma, tendencias, cambios 5-vs-5, ratings destacados, calidad de datos y accesos principales. Check visual local pendiente después del rediseño.
 
 ### Jugador
-Match Rating V5, confidence, perfil, Performance Index, dimensiones, evolución, técnico, motor experto, partidos y PDF.
+Match Rating V5, confidence, perfil, Performance Index, dimensiones, evolución, técnico, motor experto, partidos y PDF. Rediseño visual profesional aplicado; check visual local pendiente.
 
 ### Equipo
-Match Rating V5 operativo, plantilla, evolución, Performance Index complementario, historial y PDF.
+Match Rating V5 operativo, forma, matriz de plantilla, tendencias, participación, Performance Index complementario, historial y PDF. Rediseño visual profesional aplicado; check visual local pendiente.
 
 ### Partido
-Ratings V5, confidence, roles, minutos, dimensiones, observaciones deterministas y PDF desde partido 1.
+Ratings V5, confidence, roles, minutos, distribución, dimensiones, observaciones deterministas y PDF desde partido 1. Rediseño visual profesional aplicado; check visual local pendiente.
 
 ### Físico / GPS
 Capa descriptiva opcional sobre GPS canónico. Sin HSR/sprint/load/fatigue/readiness no validados. La base local aún no contiene observaciones GPS reales; falta ejemplo local claramente etiquetado si se quiere demostrar km/velocidad en UI.
@@ -236,8 +250,32 @@ Capa descriptiva opcional sobre GPS canónico. Sin HSR/sprint/load/fatigue/readi
 ### Alertas
 Solo estados auditables de contexto/calidad. Sin diagnóstico de rendimiento, lesión o fatiga.
 
-### Asistente IA
-Consume analytics estructurados. No calcula ni altera ratings ni puede saltarse guardrails.
+### Asistente IA — LLM-02 Local Coach Copilot
+
+Implementado:
+
+- `llm/coach_agent.py`: bucle agentic local sobre API de Ollama (`127.0.0.1:11434`);
+- modelo por defecto `qwen3.5:4b`, configurable mediante `FPS_LOCAL_LLM_MODEL`;
+- preguntas abiertas, no catálogo cerrado;
+- selección dinámica de tools y múltiples tool rounds;
+- tools read-only para equipo, jugador, stats player-match, partidos, comparación descriptiva, calidad y GPS;
+- resolución robusta de nombres/fragmentos de jugador y rival;
+- memoria conversacional gestionada por la página Streamlit;
+- guardrails: no recalcular ratings, no inventar métricas, no lesión/fatiga/readiness, no XI/recomendación táctica sin policy validada;
+- `app/pages/5_Assistent_IA.py`: chat abierto local con trazabilidad de tools;
+- `llm/validate_local_agent.py`: contrato local de grounding + guardrail;
+- `llm/run_agent_overnight.py`: evaluación automática 100% local, sin API de pago;
+- `openai-agents` eliminado de dependencias obligatorias;
+- `llm/privacy.py` se conserva para un posible provider externo futuro, pero Ollama local no necesita anonimizar porque las consultas no salen del PC.
+
+Pendiente para cerrar LLM-02:
+
+1. instalar/iniciar Ollama en Windows;
+2. descargar `qwen3.5:4b`;
+3. ejecutar `python llm\validate_local_agent.py`;
+4. probar preguntas abiertas en Streamlit;
+5. ejecutar evaluación local larga y revisar fallos semánticos/tool routing;
+6. decidir si 4B es suficiente o subir a 9B según hardware/calidad.
 
 ## REPORTS-02 — professional PDFs
 
@@ -277,7 +315,15 @@ Gate disponible:
 app/validate_ui_compatibility.py
 ```
 
-Detecta `use_container_width` residual y el icono inválido conocido. Falta completar revisión visual de la home/páginas y deprecations residuales.
+Última ejecución 26/09/2026:
+
+```text
+STREAMLIT UI COMPATIBILITY: PASS
+deprecated_use_container_width=0
+known_invalid_navigation_icons=0
+```
+
+Falta revisión visual tras el rediseño profesional del dashboard.
 
 ## Guardrails
 
@@ -288,6 +334,8 @@ Detecta `use_container_width` residual y el icono inválido conocido. Falta comp
 - suplentes sin rol táctico no reciben rol inventado;
 - porteros usan camino separado;
 - LLM downstream del motor;
+- LLM local no tiene acceso directo a DuckDB: opera mediante tools read-only;
+- preguntas abiertas permitidas; las conclusiones siguen limitadas por outputs validados;
 - GPS opcional;
 - no HSR/sprint/load/fatigue/readiness sin definición validada;
 - PDF y dashboard consumen analytics materializados, no recalculan resultados críticos;
@@ -295,15 +343,16 @@ Detecta `use_container_width` residual y el icono inválido conocido. Falta comp
 
 ## Siguiente paso exacto
 
-PERF-18 queda cerrado. El siguiente bloque es producto/UX, no seguir ajustando el rating sin nueva evidencia.
+PERF-18 queda cerrado. Dashboard profesional y LLM-02 local están implementados pero necesitan gate local/visual.
 
 Orden inmediato:
 
-1. ejecutar `python app\validate_ui_compatibility.py`;
-2. revisar visualmente Home / Team / Player / Match con V5 activa;
-3. revisar visualmente los tres PDFs ya generados y cerrar REPORTS-02 si no hay clipping/overlap;
-4. mejorar Collector: castellano + móvil + simplificación UX;
-5. mejorar diseño del dashboard;
-6. añadir un ejemplo GPS local claramente etiquetado para demostrar km/velocidad, sin mezclarlo con datos reales;
-7. continuar mejora del Performance Index histórico y perfiles;
-8. preparar documentación final del TFM, sin despliegue público.
+1. instalar/iniciar Ollama y descargar `qwen3.5:4b`;
+2. ejecutar `python llm\validate_local_agent.py`;
+3. si PASS, dejar `python llm\run_agent_overnight.py --hours 8 --max-cases 60` trabajando localmente;
+4. revisar visualmente Home / Team / Player / Match con el rediseño aplicado;
+5. revisar visualmente los tres PDFs y cerrar REPORTS-02 si no hay clipping/overlap;
+6. mejorar Collector: castellano + móvil + simplificación UX;
+7. añadir un ejemplo GPS local claramente etiquetado para demostrar km/velocidad, sin mezclarlo con datos reales;
+8. continuar mejora del Performance Index histórico y perfiles;
+9. preparar documentación final del TFM, sin despliegue público.
