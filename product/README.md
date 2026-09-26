@@ -7,14 +7,14 @@ It is intentionally downstream of analytics. It does **not** modify Match Rating
 ## What it does
 
 1. Creates a dedicated local `product-spiral-*` branch.
-2. Audits the shared UI/PDF presentation layer and computes a reproducible `product_quality_score`.
-3. Applies a small catalog of deterministic, presentation-only improvement recipes.
-4. Runs compile/UI contracts after every candidate change.
-5. Rolls back candidates that break a contract or reduce the quality score.
-6. Commits accepted presentation changes **locally only**.
-7. Stress-tests TEAM / PLAYER / MATCH PDFs and product contracts repeatedly.
-8. Replays failing scenarios more often and writes checkpoints, CSV case logs and a final summary.
-9. Never pushes or merges automatically.
+2. Uses the real GitHub UI/PDF code as the starting point.
+3. Repeatedly mutates presentation parameters for web and PDF.
+4. Evaluates each candidate with browser layout probes, synthetic TEAM/PLAYER/MATCH PDFs and repository contracts.
+5. Keeps only candidates that improve the objective product score.
+6. Uses the accepted candidate as the baseline for the next iteration: **real iterative spiral**.
+7. Rolls back candidates that fail contracts or do not improve the score.
+8. Saves desktop/mobile screenshots of accepted best candidates when Chrome/Edge is already installed.
+9. Commits accepted presentation changes **locally only** and never pushes or merges automatically.
 
 ## Two automatic modes
 
@@ -24,32 +24,47 @@ Use the hardened launcher:
 python product\run_product_spiral_safe.py --hours 10 --max-cases 100000
 ```
 
-It chooses the mode automatically:
+It chooses the mode automatically.
 
 ### REAL-DB mode
 
-If `football_performance.duckdb` exists, the loop uses the real local team/player/match data and runs the DB-dependent product validators.
+If `football_performance.duckdb` exists, the loop uses the real local team/player/match data and DB-dependent product validators.
 
-### DB-FREE synthetic-contract mode
+### TRUE ITERATIVE DB-FREE OPTIMIZER
 
-If the private DuckDB is not available, the loop uses the **real GitHub UI/PDF code** plus deterministic synthetic fixtures with the same production field shapes.
+If the private DuckDB is not available, the launcher now uses `run_product_spiral_optimizer.py`.
 
-The DB-free mode includes:
+The loop is:
 
-- TEAM / PLAYER / MATCH payloads;
+```text
+current best web/PDF
+→ mutate presentation parameters
+→ compile + UI contracts
+→ browser desktop/mobile layout probe
+→ TEAM/PLAYER/MATCH synthetic PDF stress
+→ objective score
+→ better? keep + local commit
+→ worse/fail? rollback
+→ mutate the new best
+→ repeat
+```
+
+The DB-free optimizer uses:
+
+- the real Streamlit presentation code from GitHub;
+- contract-compatible TEAM / PLAYER / MATCH synthetic payloads;
 - normal, sparse, long-text, dense and dense+long-text scenarios;
-- bounded fixture mutation;
-- PDF rendering stress tests;
-- code-level web product audit;
-- failure replay;
-- no Ollama or model download;
-- no private database download.
-
-It is useful on a second or work PC and is explicitly not a replacement for the final gate on the real database.
+- desktop and mobile browser layout checks when Chrome/Edge is already installed;
+- PDF rendering and pagination stress;
+- bounded search over spacing, width, card density, hierarchy and PDF typography;
+- no Ollama/model download;
+- no private database download;
+- no browser download;
+- no paid API.
 
 ## Safety boundary
 
-Mutation allowlist:
+Automatic mutations are limited to presentation files:
 
 - `app/ui_theme.py`
 - `app/coach_ui.py`
@@ -57,7 +72,7 @@ Mutation allowlist:
 
 Protected areas include `analytics/`, `data/`, `features/`, `decision_tree/`, `models/`, `llm/` and `gps/`.
 
-If protected files are already dirty locally, the run refuses to start.
+If protected files are dirty locally, the run refuses to start.
 
 The launcher configures a repository-local Git identity for Product Spiral commits if the machine has no Git identity configured. It does not change global Git configuration.
 
@@ -65,6 +80,7 @@ The launcher configures a repository-local Git identity for Product Spiral commi
 
 ```powershell
 cd $HOME\Desktop\football-performance-system
+git reset --hard
 git switch main
 git pull
 python product\run_product_spiral_safe.py --hours 10 --max-cases 100000
@@ -88,16 +104,16 @@ Local-only outputs are written under:
 outputs/product_spiral/<run_id>/
 ```
 
-Main artifacts:
+Main artifacts in iterative optimizer mode:
 
-- `recipes.json` — accepted/rolled-back presentation recipes;
-- `cases.csv` — TEAM/PLAYER/MATCH product scenario probes;
-- `checkpoint.json` — current run state;
-- `latest_gates.json` — latest regression gates;
-- `final_summary.json` — final product score, pass rate and failures.
+- `leaderboard.csv` — every candidate and its score;
+- `best_config.json` — best accepted presentation configuration;
+- `checkpoint.json` — current search state;
+- desktop/mobile PNG screenshots of accepted best states when a browser is available;
+- `final_summary.json` — attempts, accepted improvements, best score, PDF stress and final contracts.
 
 These outputs are ignored by Git.
 
 ## Important limitation
 
-This loop can automatically improve and stress-test **objective product qualities** such as consistency, responsive behavior, accessibility states, PDF pagination safety, contract integrity and scenario robustness. It is not a substitute for the final human visual gate: aesthetic judgement, information hierarchy and coaching usefulness still require inspecting the web and representative PDFs before merging the local branch.
+The optimizer improves **objective, measurable product qualities**: responsive layout, overflow/clipping risk, spacing/density balance, presentation consistency, PDF rendering/pagination robustness and contract integrity. It cannot replace the final human visual gate for aesthetics, information hierarchy and usefulness to a coaching staff. Accepted changes therefore remain on a local branch until reviewed.
