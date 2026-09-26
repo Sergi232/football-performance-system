@@ -14,9 +14,14 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
+_PROCESS_SECRET = os.environ.get("FPS_ANON_SECRET", "") or secrets.token_urlsafe(32)
+
+
 @dataclass
 class AliasBook:
-    secret: str = field(default_factory=lambda: os.environ.get("FPS_ANON_SECRET", "") or secrets.token_urlsafe(32))
+    # Stable during one Python process. For aliases that must survive process
+    # restarts, set FPS_ANON_SECRET locally; never commit that secret.
+    secret: str = field(default_factory=lambda: _PROCESS_SECRET)
     real_to_alias: dict[str, str] = field(default_factory=dict)
     alias_to_real: dict[str, str] = field(default_factory=dict)
     player_alias_to_id: dict[str, str] = field(default_factory=dict)
@@ -84,9 +89,8 @@ class AliasBook:
         if value in self.player_alias_to_id:
             return self.player_alias_to_id[value]
         real = self.alias_to_real.get(value)
-        if real and real in self.real_to_alias:
-            # A raw player ID may have been mapped through an ID alias.
-            for alias, player_id in self.player_alias_to_id.items():
+        if real:
+            for player_id in self.player_alias_to_id.values():
                 if player_id == real:
                     return player_id
         return None
@@ -97,7 +101,7 @@ class AliasBook:
             return self.match_alias_to_id[value]
         real = self.alias_to_real.get(value)
         if real:
-            for alias, match_id in self.match_alias_to_id.items():
+            for match_id in self.match_alias_to_id.values():
                 if match_id == real:
                     return match_id
         return None
