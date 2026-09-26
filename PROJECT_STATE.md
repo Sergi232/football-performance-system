@@ -33,7 +33,8 @@ DSAI-11 PREMATCH ROBUSTNESS         CERRADO / POSITION CONTEXT ONLY — ISSUE #5
 PERF-01 PERFORMANCE SCORE AUDIT     CERRADO / EXPERT_WEIGHT_VALIDATION_REQUIRED — ISSUE #52
 PERF-02 DIMENSION EVIDENCE AUDIT    CERRADO / MAPPING+DIRECTION REQUIRED — ISSUE #53
 PERF-03 DIMENSION MAPPING AUDIT     CERRADO / MAPPING COMPLETE — ISSUE #54
-PERF-04 DIRECTION VALIDATION        ACTIVO — ISSUE #56 / SCRIPT IMPLEMENTADO
+PERF-04 DIRECTION VALIDATION        CERRADO / CONTEXTUAL METRICS RETAINED — ISSUE #56
+PERF-05 SIGNED CORE FEASIBILITY     ACTIVO — ISSUE #57 / SCRIPT IMPLEMENTADO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
@@ -45,6 +46,7 @@ El objetivo analítico central es **adjudicar un score de rendimiento jugador-pa
 PLAYER-MATCH DATA
 → DIMENSIONES DE RENDIMIENTO
 → VALIDACIÓN DE DIRECCIONES
+→ AUDITORÍA DEL NÚCLEO PUNTUABLE
 → VALIDACIÓN DE PESOS / AGREGACIÓN
 → SCORE GLOBAL VALIDADO
 → EVOLUCIÓN / CONSISTENCIA
@@ -54,91 +56,60 @@ PLAYER-MATCH DATA
 
 Rol/posición se usa como contexto de comparación/normalización. No existe todavía una fórmula de score aprobada.
 
-## DSAI-11 — cerrado
-
-La persistencia simple de última posición observada (89,44% accuracy) supera ampliamente el ML pre-match (49,29%). La clasificación de posición queda cerrada como `CONTEXT_ONLY`.
-
-## PERF-01 — cerrado
-
-Resultado final: `EXPERT_WEIGHT_VALIDATION_REQUIRED`.
-
-No existe un anchor holístico individual independiente en la fuente auditada. El score se construirá como constructo validado; no como copia/predicción de un rating de proveedor.
-
-## PERF-02 — cerrado
-
-Resultado final: `DIMENSION_MAPPING_AND_DIRECTION_VALIDATION_REQUIRED`.
-
-```text
-approved_features=28
-mapped_unique_features=23
-unmapped_approved_features=5
-duplicate_mapped_features=1
-```
-
-Detectó 5 features sin mapping explícito y la duplicación de `shots_total_per90`.
-
 ## PERF-03 — cerrado
 
-Resultado:
+Resultado: `DIMENSION_MAPPING_COMPLETE_DIRECTION_VALIDATION_REQUIRED`.
+
+28/28 features tienen exactamente una `primary_dimension`, sin features desconocidas ni duplicación primaria. `goalkeeping` es role-specific y `shots_total_per90` solo puede contarse una vez.
+
+## PERF-04 — cerrado
+
+Resultado ejecutado:
 
 ```text
 approved_features=28
-mapping_entries=28
-mapped_unique_features=28
-dimensions=6
+direction_entries=28
+covered_unique_features=28
+positive_supported=6
+negative_supported=5
+context_dependent=17
+pending_evidence=0
 missing=0
 unknown=0
-duplicate_primary=0
-goalkeeping_scope_ok=True
-shots_primary_once=True
-shots_secondary_finishing_context=True
-dimension_counts=attacking_threat:5,creation_progression:9,defensive_contribution:7,discipline:2,finishing:3,goalkeeping:2
-conclusion=DIMENSION_MAPPING_COMPLETE_DIRECTION_VALIDATION_REQUIRED
+duplicates=0
+invalid_statuses=0
+mapping_missing=0
+conclusion=DIRECTION_CLASSIFICATION_COMPLETE_CONTEXTUAL_METRICS_RETAINED
 ```
 
 Decisión:
-- 28/28 features tienen exactamente una `primary_dimension`;
-- no hay features desconocidas ni duplicación primaria;
-- `goalkeeping` es role-specific;
-- `shots_total_per90` solo puede contarse una vez y conserva finalización como contexto secundario.
+- 11 features tienen dirección respaldada (6 positiva, 5 negativa);
+- 17 se mantienen `CONTEXT_DEPENDENT` y no se fuerzan dentro de un score;
+- ninguna feature queda sin evidencia administrativa (`PENDING_EVIDENCE=0`), pero contextual no significa puntuable;
+- ningún peso, threshold o score queda aprobado.
 
-Ficheros:
-```text
-dsai/performance_dimension_map.json
-dsai/performance_dimension_mapping_audit.py
-```
-
-## PERF-04 — activo
-
-Issue #56.
-
-Objetivo: validar la dirección de cada feature antes de construir prototipos de dimensiones o pesos.
-
-Estados permitidos:
-- `POSITIVE_SUPPORTED`
-- `NEGATIVE_SUPPORTED`
-- `CONTEXT_DEPENDENT`
-- `PENDING_EVIDENCE`
-
-La evidencia se registra en:
+Registro:
 ```text
 dsai/performance_direction_evidence.json
 dsai/performance_direction_audit.py
 ```
 
-Principios:
-- semántica directa de evento puede justificar una dirección cuando el outcome es inequívoco;
-- literatura académica se usa como evidencia convergente, no como ground truth individual cuando el estudio es team-level;
-- métricas de volumen no se convierten automáticamente en mejor/peor;
-- métricas de portero y oportunidad siguen siendo contextuales/role-specific;
-- ninguna dirección autoriza todavía pesos o score.
+## PERF-05 — activo
 
-Literatura inicial documentada:
-- Kempe et al. 2018 — DOI 10.2174/1875399X01811010003;
-- Wang et al. 2022 — DOI 10.1371/journal.pone.0265540 / PMID 35298562;
-- World Cup match-statistics study — PMID 23487020;
-- Bayrakdaroğlu et al. 2026 — PMID 42216227;
-- Bar-Eli et al. 2006 — PMID 17115523.
+Issue #57.
+
+Objetivo: auditar si las features con dirección respaldada forman un núcleo puntuable suficiente por dimensión antes de construir cualquier agregado.
+
+Se comprobará:
+- cobertura real de las 11 features `POSITIVE_SUPPORTED`/`NEGATIVE_SUPPORTED` en los 590 player-match jugados;
+- qué dimensiones disponen de al menos una feature firmada;
+- qué dimensiones dependen exclusivamente de métricas contextuales;
+- separación explícita de `goalkeeping`;
+- cobertura de filas por dimensión sin crear medias, z-scores, pesos o rankings.
+
+Regla estructural importante:
+- si `goalkeeping` no tiene ninguna feature con dirección defendible, no se forzará dentro del mismo score de jugadores de campo;
+- el resultado decidirá si procede un núcleo outfield separado y qué validación adicional necesita portería.
 
 ## Incidencias de issues
 
@@ -146,7 +117,7 @@ Issue #55 fue un artefacto accidental del conector y quedó cerrado inmediatamen
 
 ## Líneas todavía bloqueadas
 
-- score global final: hasta validar direcciones y pesos;
+- score global final: hasta validar núcleo puntuable y pesos;
 - `role_player_fit`: sin target independiente defendible;
 - `expert_vs_ml`: sin shared target independiente;
 - calibración N13000: sin ground truth de recomendación.
@@ -156,7 +127,7 @@ Issue #55 fue un artefacto accidental del conector y quedó cerrado inmediatamen
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\performance_direction_audit.py
+python dsai\performance_signed_core_audit.py
 ```
 
 No instalar nada.
