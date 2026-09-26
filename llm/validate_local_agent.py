@@ -10,7 +10,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.data_access import list_teams
-from llm.coach_agent import DEFAULT_MODEL, ollama_status, run_coach_agent_turn
+from llm.coach_agent_fast import DEFAULT_MODEL, ollama_status, run_coach_agent_turn
 
 
 def main() -> None:
@@ -34,6 +34,7 @@ def main() -> None:
     print(f"team={team_name}")
     print(f"ollama_available={status['available']}")
     print(f"model={model}")
+    print("thinking=False | num_ctx=" + os.environ.get("FPS_AGENT_NUM_CTX", "8192"))
 
     if not status["available"]:
         print(f"error={status['error']}")
@@ -50,7 +51,11 @@ def main() -> None:
 
     passed = 0
     for label, question, expect_tools in cases:
-        result = run_coach_agent_turn(question, db_path=db_path, team_id=team_id, model=model)
+        try:
+            result = run_coach_agent_turn(question, db_path=db_path, team_id=team_id, model=model)
+        except Exception as exc:
+            print(f"{label}: FAIL exception={type(exc).__name__}: {exc}")
+            continue
         nonempty = bool(result.text.strip())
         grounded = bool(result.tools_used) if expect_tools else True
         no_error = result.error is None
