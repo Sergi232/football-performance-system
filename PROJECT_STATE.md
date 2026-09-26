@@ -41,8 +41,9 @@ PERF-08 AGGREGATION FEASIBILITY     CERRADO / BASELINE FEASIBLE WITH 1 DEGENERAT
 PERF-09 EXPERIMENTAL SCORE          CERRADO / BASELINE CREATED, COVERAGE BOTTLENECK — ISSUE #61
 PERF-10 COVERAGE / OBSERVABILITY    CERRADO / POLICY REDESIGN REQUIRED — ISSUE #70
 PERF-11 NULL VS ZERO SEMANTICS      CERRADO / 3 VALIDATED CANDIDATES — ISSUE #77
-PERF-12 VALIDATED ZERO IMPACT       ACTIVO — ISSUE #78 / SCRIPT IMPLEMENTADO
-FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
+PERF-12 VALIDATED ZERO IMPACT       CERRADO / COVERAGE 5D 3→100
+PERF-13 SCORE POLICY + ROLE-AWARE   ACTIVO — ISSUE #78 / SCRIPT IMPLEMENTADO
+FINAL-01                            BLOQUEADO HASTA DECISIÓN PERF-13
 ```
 
 ## Objetivo principal confirmado
@@ -58,16 +59,87 @@ yellow_cards -> NULL_AS_ZERO_NOT_VALIDATED (5 contradicciones)
 red_cards -> EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE
 ```
 
-## PERF-12 — activo
+## PERF-12 — resultado
 
-`dsai/performance_validated_zero_impact.py` aplica solo en memoria la semántica validada y compara cobertura antes/después. No modifica DB, FEATURE-01, pesos, thresholds, rankings ni recomendaciones.
+Se aplicó solo en memoria la semántica validada de PERF-11.
+
+```text
+outfield_rows=552
+full_five_before=3
+full_five_after=100
+gain=97
+finishing: 37 -> 552
+discipline: 87 -> 552
+attacking_threat: 196 -> 196
+creation_progression: 413 -> 413
+defensive_contribution: 262 -> 262
+dimension_count_after:
+  2 dimensiones = 67
+  3 dimensiones = 199
+  4 dimensiones = 186
+  5 dimensiones = 100
+residual_bottleneck=attacking_threat
+```
+
+Conclusión: la semántica NULL→0 validada mejora mucho la cobertura, pero exigir 5/5 dimensiones sigue descartando demasiados jugador-partido.
+
+## PERF-13 — activo
+
+Script:
+
+`dsai/performance_score_policy_experiment.py`
+
+Compara, sin modificar DB ni FEATURE-01:
+
+1. `COMPLETE_5D`
+2. `AVAILABLE_4PLUS`
+3. `AVAILABLE_3PLUS`
+4. `AVAILABLE_2PLUS`
+
+Cada política se evalúa con dos variantes:
+
+- `GLOBAL`: percentiles sobre toda la población outfield.
+- `ROLE_AWARE`: percentiles dentro de `source_position` cuando la muestra permite estimarlos; fallback global si no.
+
+La posición se usa como contexto de comparación, no como target ni como peso directo. Esto permite probar un score realmente comparable por posición antes de introducir pesos específicos por rol que todavía no están validados.
+
+El experimento calcula:
+
+- cobertura;
+- distribución del score;
+- cobertura y sesgo descriptivo por posición;
+- sensibilidad leave-one-dimension-out;
+- correlación de rangos entre políticas;
+- comparación GLOBAL vs ROLE_AWARE;
+- evidencia disponible por jugador-partido.
+
+Guardrails:
+
+- solo se reinterpretan como 0 `shots_total`, `goals` y `red_cards` según PERF-11;
+- `yellow_cards` missing no se convierte a 0;
+- `goal_per_shot_rate` sigue undefined si no hay remates;
+- no hay pesos definitivos por posición;
+- no hay threshold bueno/malo;
+- no hay ranking/recomendación de producto;
+- porter separado;
+- LLM no calcula ni altera el score.
 
 ## Siguiente paso exacto
 
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\performance_validated_zero_impact.py
+python dsai\performance_score_policy_experiment.py
 ```
 
 No instalar nada.
+
+Al terminar deben generarse:
+
+```text
+dsai/output/performance_score_policy_experiment.json
+dsai/output/performance_score_policy_experiment.csv
+dsai/output/performance_score_policy_experiment.md
+```
+
+La decisión siguiente será escoger la política candidata de `performance_score_v0.1-experimental` según cobertura + estabilidad + comparabilidad por posición. Después, y solo después, se evaluarán pesos específicos por posición/rol.
