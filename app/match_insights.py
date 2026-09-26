@@ -74,8 +74,8 @@ def get_match_observations(db_path: Path, team_id: str, match_id: str) -> dict:
     goals = pd.to_numeric(frame.get("goals"), errors="coerce")
     assists = pd.to_numeric(frame.get("assists"), errors="coerce")
 
-    goal_rows = frame.loc[goals.fillna(0) > 0, ["player", "goals"]].copy()
-    assist_rows = frame.loc[assists.fillna(0) > 0, ["player", "assists"]].copy()
+    goal_rows = frame.loc[goals.notna() & goals.gt(0), ["player", "goals"]].copy()
+    assist_rows = frame.loc[assists.notna() & assists.gt(0), ["player", "assists"]].copy()
 
     goal_scorers = [
         {"player": str(r.player), "goals": int(r.goals)}
