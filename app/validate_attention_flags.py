@@ -5,7 +5,8 @@ import os
 from pathlib import Path
 import duckdb
 
-ATTENTION_VERSION = "attention_flags_v0.1-auditable"
+MATCH_RATING_VERSION = "match_rating_v0.2-candidate"
+ATTENTION_VERSION = "attention_flags_v0.2-auditable"
 DEFAULT_DB = Path(__file__).resolve().parents[1] / "data" / "football_performance.duckdb"
 APPROVED_CODES = {
     "ROLE_CONTEXT_UNAVAILABLE",
@@ -31,10 +32,22 @@ def main() -> None:
         ).fetchall())
 
         role_expected = con.execute(
-            "SELECT COUNT(*) FROM player_match_rating WHERE match_rating_context='GENERIC_ROLE_UNAVAILABLE'"
+            """
+            SELECT COUNT(*)
+            FROM player_match_rating
+            WHERE match_rating_version=?
+              AND match_rating_context='GENERIC_ROLE_UNAVAILABLE'
+            """,
+            [MATCH_RATING_VERSION],
         ).fetchone()[0]
         evidence_expected = con.execute(
-            "SELECT COUNT(*) FROM player_match_rating WHERE match_rating_status LIKE 'NEUTRAL_%'"
+            """
+            SELECT COUNT(*)
+            FROM player_match_rating
+            WHERE match_rating_version=?
+              AND match_rating_status LIKE '%NEUTRAL_%'
+            """,
+            [MATCH_RATING_VERSION],
         ).fetchone()[0]
         gps_expected = con.execute(
             """
@@ -65,6 +78,7 @@ def main() -> None:
 
     print("ATTENTION FLAGS CONTRACT: PASS")
     print(f"attention_version={ATTENTION_VERSION}")
+    print(f"match_rating_version={MATCH_RATING_VERSION}")
     for code in sorted(APPROVED_CODES):
         print(f"{code}={actual.get(code, 0)}")
     print("No performance/fatigue/injury-risk threshold is part of this contract.")
