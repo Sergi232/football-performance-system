@@ -19,8 +19,13 @@ from app.data_access import (
     list_base_features,
     list_teams,
 )
+from app.match_rating_access import (
+    MATCH_RATING_VERSION,
+    get_match_ratings,
+    get_player_match_ratings,
+)
 
-REPORT_SCHEMA_VERSION = "0.1.0"
+REPORT_SCHEMA_VERSION = "0.2.0"
 
 
 def _clean(value: Any) -> Any:
@@ -49,10 +54,7 @@ def _clean(value: Any) -> Any:
 def _records(frame: pd.DataFrame, limit: int | None = None) -> list[dict[str, Any]]:
     if limit is not None:
         frame = frame.head(limit)
-    return [
-        {str(key): _clean(value) for key, value in row.items()}
-        for row in frame.to_dict(orient="records")
-    ]
+    return [{str(key): _clean(value) for key, value in row.items()} for row in frame.to_dict(orient="records")]
 
 
 def _team_identity(db_path: Path, team_id: str) -> dict[str, Any]:
@@ -61,10 +63,7 @@ def _team_identity(db_path: Path, team_id: str) -> dict[str, Any]:
     if selected.empty:
         raise ValueError(f"Unknown team_id: {team_id}")
     row = selected.iloc[0]
-    return {
-        "team_id": team_id,
-        "display_name": _clean(row["display_name"]),
-    }
+    return {"team_id": team_id, "display_name": _clean(row["display_name"])}
 
 
 def _guardrails() -> dict[str, bool]:
@@ -83,6 +82,7 @@ def build_team_report_data(db_path: Path, team_id: str) -> dict[str, Any]:
         "schema_version": REPORT_SCHEMA_VERSION,
         "engine_version": FINAL_ENGINE_VERSION,
         "feature_version": BASE_FEATURE_VERSION,
+        "match_rating_version": MATCH_RATING_VERSION,
         "team": _team_identity(db_path, team_id),
         "overview": {k: _clean(v) for k, v in get_team_overview(db_path, team_id).items()},
         "matches": _records(get_team_matches(db_path, team_id)),
@@ -91,11 +91,7 @@ def build_team_report_data(db_path: Path, team_id: str) -> dict[str, Any]:
     }
 
 
-def build_player_report_data(
-    db_path: Path,
-    team_id: str,
-    player_id: str,
-) -> dict[str, Any]:
+def build_player_report_data(db_path: Path, team_id: str, player_id: str) -> dict[str, Any]:
     db_path = Path(db_path)
     squad = get_squad_summary(db_path, team_id)
     selected = squad.loc[squad["player_id"] == player_id]
@@ -104,16 +100,13 @@ def build_player_report_data(
 
     summary = _records(selected, 1)[0]
     history = get_player_match_history(db_path, team_id, player_id)
+    ratings = get_player_match_ratings(db_path, team_id, player_id)
     gate = get_latest_player_gate(db_path, team_id, player_id)
 
     available = set(list_base_features(db_path, player_id))
     preferred = [
-        "pass_completion_rate",
-        "shots_total_per90",
-        "goals_per90",
-        "assists_per90",
-        "tackle_success_rate",
-        "interceptions_per90",
+        "pass_completion_rate", "shots_total_per90", "goals_per90",
+        "assists_per90", "tackle_success_rate", "interceptions_per90",
     ]
     feature_history: dict[str, list[dict[str, Any]]] = {}
     for feature_name in preferred:
@@ -128,34 +121,48 @@ def build_player_report_data(
         "schema_version": REPORT_SCHEMA_VERSION,
         "engine_version": FINAL_ENGINE_VERSION,
         "feature_version": BASE_FEATURE_VERSION,
+        "match_rating_version": MATCH_RATING_VERSION,
         "team": _team_identity(db_path, team_id),
         "player_id": player_id,
         "summary": summary,
         "match_history": _records(history, 15),
+        "match_ratings": _records(ratings.sort_values("match_date", ascending=False), 15),
         "latest_role_fit_gate": None if gate is None else {k: _clean(v) for k, v in gate.items()},
         "feature_history": feature_history,
         "guardrails": _guardrails(),
     }
 
 
-def build_match_report_data(
-    db_path: Path,
-    team_id: str,
-    match_id: str,
-) -> dict[str, Any]:
+def build_match_report_data(db_path: Path, team_id: str, match_id: str) -> dict[str, Any]:
     db_path = Path(db_path)
     matches = get_team_matches(db_path, team_id)
     selected = matches.loc[matches["match_id"] == match_id]
     if selected.empty:
         raise ValueError(f"Unknown match_id for team: {match_id}")
 
+    lineup = get_match_lineup(db_path, team_id, match_id)
+    ratings = get_match_ratings(db_path, team_id, match_id)
+    if not ratings.empty:
+        rating_cols = [
+            "player_id", "match_rating_10", "match_rating_confidence",
+            "match_rating_status", "match_rating_context", "position_group",
+        ]
+        # lineup currently has player names rather than player_id, so merge on player name
+        rating_names = ratings[[
+            "player", "match_rating_10", "match_rating_confidence",
+            "match_rating_status", "match_rating_context", "position_group",
+        ]].copy()
+        lineup = lineup.merge(rating_names, on="player", how="left")
+
     return {
         "report_type": "match",
         "schema_version": REPORT_SCHEMA_VERSION,
         "engine_version": FINAL_ENGINE_VERSION,
         "feature_version": BASE_FEATURE_VERSION,
+        "match_rating_version": MATCH_RATING_VERSION,
         "team": _team_identity(db_path, team_id),
         "match": _records(selected, 1)[0],
-        "lineup": _records(get_match_lineup(db_path, team_id, match_id)),
+        "lineup": _records(lineup),
+        "ratings": _records(ratings),
         "guardrails": _guardrails(),
     }
