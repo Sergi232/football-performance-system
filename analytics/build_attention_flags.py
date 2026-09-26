@@ -9,8 +9,8 @@ from pathlib import Path
 
 import duckdb
 
-MATCH_RATING_VERSION = "match_rating_v0.2-candidate"
-ATTENTION_VERSION = "attention_flags_v0.2-auditable"
+MATCH_RATING_VERSION = "match_rating_v0.5-candidate"
+ATTENTION_VERSION = "attention_flags_v0.3-auditable"
 
 
 def parse_args() -> argparse.Namespace:
@@ -54,11 +54,11 @@ def main() -> None:
                 'ROLE_CONTEXT_UNAVAILABLE',
                 'CONTEXT_LIMITATION',
                 'player_match_rating',
-                'La font no informa del rol tàctic fiable d’aquesta aparició; no s’ha imputat cap posició.',
+                'La font no informa del rol tàctic fiable d’aquesta aparició; el Match Rating V5 conserva explícitament el fallback V2 sense imputar cap posició.',
                 ?
             FROM player_match_rating
             WHERE match_rating_version=?
-              AND match_rating_context='GENERIC_ROLE_UNAVAILABLE'
+              AND match_rating_context='ROLE_UNAVAILABLE_V2_FALLBACK'
             """,
             [ATTENTION_VERSION, MATCH_RATING_VERSION],
         )
