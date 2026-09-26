@@ -35,7 +35,8 @@ PERF-02 DIMENSION EVIDENCE AUDIT    CERRADO / MAPPING+DIRECTION REQUIRED — ISS
 PERF-03 DIMENSION MAPPING AUDIT     CERRADO / MAPPING COMPLETE — ISSUE #54
 PERF-04 DIRECTION VALIDATION        CERRADO / CONTEXTUAL METRICS RETAINED — ISSUE #56
 PERF-05 SIGNED CORE FEASIBILITY     CERRADO / OUTFIELD CORE AVAILABLE — ISSUE #57
-PERF-06 GOALKEEPER EFFICIENCY       ACTIVO — ISSUE #58 / SCRIPT IMPLEMENTADO
+PERF-06 GOALKEEPER EFFICIENCY       CERRADO / SAVE_RATE DERIVABLE — ISSUE #58
+PERF-07 GK SAVE_RATE CONTEXT         ACTIVO — ISSUE #59 / SCRIPT IMPLEMENTADO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
@@ -58,78 +59,57 @@ PLAYER-MATCH DATA
 
 Rol/posición se usa como contexto de comparación/normalización. No existe todavía una fórmula de score aprobada.
 
-## PERF-04 — cerrado
-
-Resultado:
-```text
-positive_supported=6
-negative_supported=5
-context_dependent=17
-pending_evidence=0
-conclusion=DIRECTION_CLASSIFICATION_COMPLETE_CONTEXTUAL_METRICS_RETAINED
-```
-
-Decisión: 11 features tienen dirección respaldada; las 17 restantes siguen contextuales y no se fuerzan en el score.
-
-## PERF-05 — cerrado
+## PERF-06 — cerrado
 
 Resultado ejecutado:
 ```text
-played_rows=590
-players=28
-matches=38
-approved_features=28
-signed_features=11
-contextual_features=17
-dimensions=6
-dimensions_without_signed_core=1
-outfield_without_signed_core=0
-goalkeeping_signed_core_present=False
-dimensions_without_signed=goalkeeping
-conclusion=OUTFIELD_SIGNED_CORE_AVAILABLE_GOALKEEPER_SEPARATE_VALIDATION_REQUIRED
+candidate_rows=397
+players=26
+matches=36
+rows_with_both_inputs=31
+positive_denominator=31
+save_rate_rows=31
+anomalies=0
+save_rate=min:0.2500 median:0.6250 max:0.8333
+conclusion=GOALKEEPER_SAVE_RATE_DERIVABLE_CONTEXT_VALIDATION_REQUIRED
 ```
 
 Decisión:
-- todas las dimensiones outfield tienen al menos una feature con dirección respaldada;
-- `goalkeeping` sigue sin núcleo firmado;
-- no se fuerza portería dentro del núcleo outfield;
-- no se ha creado ningún score, peso, normalización o threshold.
+- `save_rate = saves / (saves + goals_conceded)` es matemáticamente derivable;
+- 31 player-match tienen denominador válido;
+- no hay valores fuera de 0..1;
+- todavía no entra en FEATURE-01 hasta validar que esas filas son realmente de portero.
 
-## PERF-06 — activo
+## PERF-07 — activo
 
-Issue #58.
+Issue #59.
 
 Script:
 ```text
-dsai/goalkeeper_efficiency_feasibility.py
+dsai/goalkeeper_save_rate_context_audit.py
 ```
 
-Objetivo: comprobar si puede derivarse de los raw aprobados una métrica de eficiencia específica de portero:
-```text
-shots_on_target_faced = saves + goals_conceded
-save_rate = saves / (saves + goals_conceded)
-```
+Objetivo: validar contexto y procedencia de las 31 filas derivables antes de admitir `save_rate` como feature role-specific.
+
+Audita:
+- `primary_role` / `source_position` actual;
+- contradicciones explícitas de rol no-portero;
+- filas con rol actual desconocido y evidencia source-backed de portero del mismo jugador en otros partidos;
+- posibles eventos positivos de portero asignados a roles actuales no-portero.
 
 Reglas:
-- ambos inputs deben existir;
-- denominador > 0;
-- missing permanece missing;
-- no se inventa xGOT/PSxG ni calidad de tiro;
-- `save_rate` no entra en FEATURE-01 hasta que la auditoría pase;
-- no se crea score de portero, pesos o thresholds en PERF-06.
+- el historial de rol se usa solo para auditoría semántica, nunca como predictor o imputación de rendimiento;
+- no se inventa xGOT/PSxG;
+- no se crea score, peso, threshold, ranking o recomendación;
+- no se modifica FEATURE-01 en PERF-07.
 
-Conclusiones posibles:
-- `GOALKEEPER_SAVE_RATE_DERIVABLE_CONTEXT_VALIDATION_REQUIRED`;
-- `GOALKEEPER_EFFICIENCY_INSUFFICIENT_RAW_EVIDENCE`;
-- `GOALKEEPER_EFFICIENCY_INSUFFICIENT_DENOMINATOR_EVIDENCE`;
-- `GOALKEEPER_EFFICIENCY_DATA_INCONSISTENCY_REQUIRES_FIX`;
-- `GOALKEEPER_EFFICIENCY_BLOCKED_MISSING_RAW_COLUMNS`.
+Si el contexto queda validado, el siguiente paso será admitir `save_rate` como feature de portero con dirección positiva contextualizada y pasar a validación de agregación/pesos.
 
 ## Incidencias de repositorio
 
 Issue #55 fue un artefacto accidental del conector y quedó cerrado inmediatamente como `not_planned`.
 
-Durante la preparación de PERF-05 se generaron varios ficheros auxiliares redundantes bajo `docs/PERF_05_*`; no son fuente de verdad. Se limpiarán sin afectar metodología ni resultados. La fuente de verdad sigue siendo este archivo, `docs/PERFORMANCE_SCORE_METHOD.md` y los scripts/auditorías de `dsai/`.
+Durante la preparación de PERF-05 se generaron varios ficheros auxiliares redundantes bajo `docs/PERF_05_*`; no son fuente de verdad y se limpiarán sin afectar resultados.
 
 ## Líneas todavía bloqueadas
 
@@ -143,7 +123,7 @@ Durante la preparación de PERF-05 se generaron varios ficheros auxiliares redun
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\goalkeeper_efficiency_feasibility.py
+python dsai\goalkeeper_save_rate_context_audit.py
 ```
 
 No instalar nada.
