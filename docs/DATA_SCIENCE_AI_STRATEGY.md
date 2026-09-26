@@ -11,7 +11,7 @@ DATA
 → FEATURE ENGINE
 → ANALYTICS / STATISTICS
 → EXPERT SYSTEM
-→ DS / ML EXPERIMENTS
+→ PERFORMANCE SCORE / DS-ML VALIDATION
 → VALIDATION / EXPLAINABILITY
 → PRODUCT
 → LLM
@@ -19,7 +19,26 @@ DATA
 
 El proyecto no debe convertirse en un dashboard con un LLM añadido.
 
-## 2. Componentes Data Science obligatorios
+## 2. Objetivo analítico principal
+
+El objetivo central es construir un **score de rendimiento jugador-partido** útil para el cuerpo técnico y defendible académicamente.
+
+Arquitectura objetivo:
+
+```text
+PLAYER-MATCH DATA
+→ DIMENSIONES DE RENDIMIENTO
+→ SCORE GLOBAL VALIDADO
+→ EVOLUCIÓN / CONSISTENCIA
+→ CONTEXTO DE ROL
+→ INSIGHTS / RECOMENDACIONES
+```
+
+Rol y posición son contexto, no el objetivo principal. Pueden usarse para comparar de forma justa, contextualizar métricas o analizar encaje, pero no deben desplazar el foco del rendimiento.
+
+No existe todavía una fórmula de score aprobada. Pesos, signos, escala y thresholds deben validarse.
+
+## 3. Componentes Data Science obligatorios
 
 ### DS-1 — Data engineering y calidad
 - esquema reproducible;
@@ -34,12 +53,12 @@ El proyecto no debe convertirse en un dashboard con un LLM añadido.
 - variables por 90;
 - historial temporal strict-past;
 - evolución y tendencia;
-- variables condicionadas a rol;
+- variables condicionadas a rol cuando proceda;
 - futuras features físicas si existe GPS real.
 
 ### DS-3 — Analytics estadístico
 - comparación jugador vs self-history;
-- comparación jugador vs peers del mismo rol;
+- comparación jugador vs peers del mismo rol cuando exista rol observado;
 - variabilidad;
 - cambio temporal;
 - tamaño de muestra;
@@ -61,121 +80,88 @@ input
 → justification
 ```
 
-El contrato objetivo de N13000 queda aprobado como:
+N4000-N7000 ya estructuran dominios de rendimiento, pero su catálogo actual declara explícitamente que higher/lower es descriptivo hasta validar el valor práctico. Por tanto no se pueden sumar directamente en un rating sin validar dirección y peso.
 
-```text
-recommendation
-+ calibrated confidence
-+ evidence
-+ auditable justification
-+ limitations
-+ alternative when appropriate
-```
+### DS-5 — Performance score
+El score debe cumplir:
+- unidad principal `player_match`;
+- inputs recollibles en fútbol amateur;
+- dimensiones separadas antes de agregación global;
+- rol como contexto, no como sustituto de rendimiento;
+- GPS opcional;
+- pesos y signos justificados;
+- score reproducible y explicable;
+- validación contra referencia independiente cuando sea posible;
+- sensibilidad y ablations documentadas.
 
-Este contrato no autoriza todavía a emitir recomendaciones. Los criterios de activación, muestra y calibración deben validarse.
+No se usarán por defecto pesos iguales, PCA interpretado como calidad o una escala 0-100 sin justificación.
 
-## 3. DSAI-01 — fase experimental
+## 4. Evidencia DS/ML ya obtenida
 
-Antes de entrenar modelos se ejecuta `DSAI-01A — feasibility audit`.
+### Change detection
+Resultado experimental útil pero sin threshold de despliegue.
 
-El audit debe responder para cada caso de uso:
-- qué unidad de análisis existe;
-- cuánta muestra real hay;
-- qué missingness existe;
-- si hay secuencia temporal;
-- si existe target independiente;
-- qué split es defendible;
-- qué baseline simple debe preceder al modelo;
-- qué métricas usar;
-- qué riesgos de leakage/circularidad existen;
-- decisión `GO / REFORMULATE / BLOCKED`.
+### Player similarity
+Resultado exploratorio con estabilidad temporal insuficiente para producto.
 
-Implementación:
+### Observed role classification
+Se auditó el target, se separó `Substitute`, se redujo la taxonomía a posiciones de fuente y se ejecutaron modelos leakage-safe.
 
-```powershell
-python dsai\feasibility_audit.py
-```
+La línea queda cerrada como objetivo principal porque una regla pre-match simple basada en la última posición observada alcanza 89,44% de accuracy y supera ampliamente al ML. La posición se conserva como contexto.
 
-No entrena modelos ni crea nuevas métricas futbolísticas.
+Este resultado es útil académicamente: demuestra baseline comparison, leakage control, ablation y criterio explícito para abandonar una línea que no aporta valor incremental.
 
-## 4. Casos de uso a evaluar
+## 5. PERF-01 — auditoría del score
 
-### 4.1 Player profiles / similarity
-Objetivo: construir representaciones comparables condicionadas a rol.
+Antes de calcular un score se audita:
+- cobertura real de las FEATURE-01;
+- cobertura de dominios N4000-N7000;
+- disponibilidad de rol observado;
+- posibles anchors externos de validación en la fuente profesional;
+- direcciones/pesos todavía no validados.
 
-Candidatos:
-- escalado robusto;
-- distancia entre perfiles;
-- nearest neighbours;
-- clustering exploratorio si la muestra lo sostiene.
+Un rating externo de proveedor, si existe, solo puede usarse como referencia de validación o target experimental. No puede ser un input obligatorio del producto amateur.
 
-Validación:
-- estabilidad por resampling/ventanas;
-- coherencia con rol observado;
-- evitar interpretar un cluster como verdad táctica.
+## 6. Role / player fit
 
-### 4.2 Change detection / evolución
-Objetivo: detectar cambios respecto al historial strict-past.
-
-Baselines existentes:
-- delta vs prior mean;
-- slope temporal;
-- variabilidad previa.
-
-Métodos posteriores posibles:
-- control estadístico;
-- change-point detection;
-- anomaly detection temporal.
-
-Sin labels reales de change point, la evaluación deberá usar robustez temporal, análisis de falsas alertas y perturbaciones sintéticas controladas.
-
-### 4.3 Observed role classification
-Es una posible tarea supervisada porque `primary_role` es un label observado, no producido por el sistema experto.
-
-Objetivo académico: comprobar cuánto del rol observado puede recuperarse desde features de rendimiento, no sustituir la fuente de rol.
-
-Antes de entrenar:
-- auditar las 23 etiquetas existentes;
-- revisar sparsity/imbalance;
-- decidir si el label space original es defendible o requiere reformulación aprobada;
-- evitar leakage por jugador y tiempo;
-- baseline simple primero.
-
-### 4.4 Role / player fit
 No existe todavía un ground truth independiente de fit.
 
 N12000 es evidencia descriptiva y N13000 es un gate. Ninguno puede convertirse en target del ML y luego utilizarse como validación independiente.
 
-Estado inicial: `REFORMULATE_TARGET`.
+Estado: `REFORMULATE_TARGET`.
 
-### 4.5 Expert vs ML
+## 7. Expert vs ML
+
 Solo se puede comparar cuando ambos métodos resuelvan exactamente la misma tarea contra una referencia independiente común.
 
 N13000 no puede actuar simultáneamente como profesor del ML y como verdad de validación.
 
-Estado inicial: `BLOCKED_SHARED_TARGET` hasta formular la tarea correcta.
+Estado: `BLOCKED_SHARED_TARGET`.
 
-### 4.6 Calibración de N13000
+## 8. Calibración de N13000
+
 La confianza de recomendación necesita outcomes o labels externos defendibles. No se derivará de una regla arbitraria ni del propio score interno.
 
-Estado inicial: `BLOCKED_GROUND_TRUTH`.
+Estado: `BLOCKED_GROUND_TRUTH`.
 
-## 5. Metodología de validación
+## 9. Metodología de validación
 
 Toda experimentación debe respetar:
 - splits temporales cuando proceda;
-- control explícito de leakage por jugador;
+- control explícito de leakage;
 - baseline simple antes del modelo complejo;
-- métricas adecuadas a la tarea;
-- análisis de clases y missingness;
-- ablations cuando aporten información;
+- target/constructo independiente cuando sea necesario;
+- métricas adecuadas;
+- análisis de clases, cobertura y missingness;
+- ablations;
 - análisis de error;
+- estabilidad y sensibilidad;
 - incertidumbre y límites;
-- reproducibilidad mediante scripts/seeds cuando corresponda.
+- reproducibilidad.
 
-Cuando no exista muestra o target suficiente, **no desplegar** es un resultado válido si la justificación queda documentada.
+Cuando no exista muestra, target o criterio suficiente, **no desplegar** es un resultado válido.
 
-## 6. Papel de la IA generativa
+## 10. Papel de la IA generativa
 
 El LLM es una capa de interacción y explicación, no el núcleo científico.
 
@@ -183,39 +169,44 @@ El LLM es una capa de interacción y explicación, no el núcleo científico.
 DATA → ANALYTICS → DECISION ENGINE → STRUCTURED CONTEXT → LLM → COACH
 ```
 
-Puede responder preguntas, explicar outputs, resumir evolución y redactar informes. No puede crear métricas críticas, sustituir validación DS/ML ni saltarse N13000.
+Puede responder preguntas, explicar outputs, resumir evolución y redactar informes. No puede crear el performance score, inventar pesos ni sustituir validación DS/ML.
 
 La arquitectura final local/cloud/híbrida se decide en `DG-LLM-01` más adelante.
 
-## 7. Orden actual
+## 11. Orden actual
 
 ```text
-ANALYTICS-01 ✓
-      ↓
-N13000 POLICY CONTRACT ✓
-      ↓
-DSAI-01A FEASIBILITY AUDIT ← ARA
-      ↓
-PLAN EXPERIMENTAL CONGELADO
-      ↓
-EXPERIMENTOS DS/ML
-      ↓
+DATA / FEATURES / ANALYTICS ✓
+        ↓
+EXPERT BASELINE ✓
+        ↓
+DSAI-02..11 ✓
+        ↓
+PERF-01 SCORE AUDIT ← ARA
+        ↓
+DIMENSION VALIDATION
+        ↓
+WEIGHT / TARGET VALIDATION
+        ↓
+PERFORMANCE SCORE
+        ↓
 PRODUCT UX
-      ↓
+        ↓
 REPORTS + ASSISTANT
-      ↓
+        ↓
 FINAL PRODUCT / TFM
 ```
 
-## 8. Criterio académico de éxito
+## 12. Criterio académico de éxito
 
 El TFM debe poder defender:
 1. cómo se capturan y estructuran los datos;
 2. cómo se crean features leakage-safe;
 3. qué evidencia estadística se deriva;
 4. cómo funciona el sistema experto;
-5. qué tareas DS/ML se consideraron y por qué;
-6. cuáles se descartaron o reformularon y por qué;
-7. cómo se validaron los modelos finalmente ejecutados;
-8. qué aporta la IA generativa y cuáles son sus límites;
-9. cómo todo ello llega a un producto usable por el entrenador.
+5. cómo se define y valida el constructo de rendimiento;
+6. cómo se construye el score sin pesos arbitrarios;
+7. qué tareas DS/ML se consideraron, descartaron o reformularon y por qué;
+8. cómo se validan estabilidad, error, contexto y evolución;
+9. qué aporta la IA generativa y cuáles son sus límites;
+10. cómo todo ello llega a un producto usable por el entrenador.
