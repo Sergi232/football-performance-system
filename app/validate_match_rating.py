@@ -2,13 +2,17 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 import duckdb
 
-from app.match_rating_access import MATCH_RATING_VERSION, get_match_rating_status
-
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from app.match_rating_access import MATCH_RATING_VERSION, get_match_rating_status  # noqa: E402
+
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 
 
