@@ -22,9 +22,11 @@ DECISION POLICY / N13000            GATE APROBADO — ISSUE #27 CERRADO
 DSAI-01A..11                        CERRADO / RESULTADOS DOCUMENTADOS
 PERF-01..14                         CERRADO / BASELINE v0.1 DOCUMENTADA
 PERF-15 COVERAGE REPAIR             CERRADO / VALIDADO — ISSUE #90
+PERF-16 MATCH RATING                ACTIVO — ISSUE #91 / PENDIENTE GATE LOCAL
 SCORE-INTEGRATION-01                v0.2 VALIDADA / CONTRACT PASS
 DASHBOARD-02 PLAYER VIEW            CERRADO — ISSUE #88 / VALIDADO VISUALMENTE
-DASHBOARD-03 TEAM MODE              ACTIVO — ISSUE #89 / REANUDADO TRAS PERF-15
+DASHBOARD-03 TEAM MODE              ACTIVO — ISSUE #89
+MATCH MODE                          IMPLEMENTADO / PENDIENTE VALIDACIÓN LOCAL
 FINAL-01                            DESBLOQUEADO
 ```
 
@@ -45,173 +47,34 @@ COLLECTOR + GPS opcional
 
 El dashboard web es el producto principal. PDF/PPT son salidas estáticas complementarias.
 
-## Variables y datos vigentes
+## Distinción de producto aprobada
 
-Las variables raw aprobadas/importadas siguen separadas de features y score. Entre las usadas por PERF-15 ya existen en `player_match_raw_stats`:
-
-```text
-passes_total / passes_completed
-long_balls_total / long_balls_completed
-crosses_total / crosses_completed
-dribbles_total / dribbles_won
-assists
-penalties_won
-tackles_total / tackles_won
-interceptions
-blocked_passes
-clearances
-shots_total / goals
-red_cards
-```
-
-No se han inventado variables nuevas.
-
-## PERF-11 — semántica NULL/0 validada
-
-Validado previamente:
+A partir de PERF-16 se separan dos conceptos:
 
 ```text
-shots_total NULL -> 0 cuando el evento observado no ocurrió
-goals NULL       -> 0 cuando el evento observado no ocurrió
-red_cards NULL   -> 0 cuando el evento observado no ocurrió
-yellow_cards     -> NO reinterpretar como 0
+MATCH RATING
+= nota inmediata de un jugador en un partido
+= debe existir desde el partido 1
+= no requiere historial previo
+
+PERFORMANCE INDEX
+= capa histórica/posicional
+= sirve para evolución, forma, consistencia, tendencia y comparación por rol
+= no es la nota del partido
 ```
 
-PERF-15 añade únicamente una identidad segura para pares éxito/intento:
-
-```text
-si attempts observado = 0 y success es NULL -> success = 0
-```
-
-Ejemplos: `tackles_total=0 => tackles_won=0`, `dribbles_total=0 => dribbles_won=0`.
-
-Todos los demás NULL permanecen NULL.
-
-## PERF-13 / PERF-14 — baseline anterior
-
-Política seleccionada:
-
-```text
-AVAILABLE_3PLUS + ROLE_AWARE
-```
-
-PERF-14 v2:
-
-```text
-outfield_rows                  = 552
-observable_mapped_role_rows    = 380
-eligible_rows_observable_roles = 304
-coverage_rate_observable_roles = 0.8000
-source_role_unavailable_rows   = 172
-spearman_vs_unweighted_3plus   = 0.8964
-```
-
-Los 172 `Substitute` siguen sin imputarse: la fuente no ofrece rol táctico fiable para esas apariciones.
-
-## Problema detectado en v0.1
-
-La baseline `performance_score_v0.1-experimental` construía dimensiones únicamente con features cuya dirección estaba explícitamente validada.
-
-Esto podía producir:
-
-```text
-no hay feature signada
-=> dimensión NULL
-=> score no elegible
-```
-
-incluso cuando existían acciones futbolísticas positivas observadas. Por tanto v0.1 queda supersedida como baseline de producto.
+La interfaz debe mostrar primero el Match Rating cuando se habla de un partido o del último rendimiento.
 
 ## PERF-15 — cerrado / validado
 
-Issue #90.
-
-Versión validada:
+Baseline histórica vigente:
 
 ```text
 performance_score_v0.2-experimental
 source experiment: performance_position_score_experiment_0.3.0
 ```
 
-Archivos:
-
-```text
-dsai/performance_position_score_experiment_v3.py
-analytics/build_performance_score.py
-app/performance_score_access.py
-app/validate_performance_score.py
-```
-
-### Principio
-
-Las dimensiones signadas de PERF-14 siguen siendo la evidencia principal.
-
-Solo si una dimensión está vacía, PERF-15 puede utilizar `CONTRIBUTION_FALLBACK` basado en acciones exitosas/positivas ya observadas.
-
-Fallbacks:
-
-```text
-attacking_threat
-- dribbles_won_per90
-- penalties_won_per90
-
-creation_progression
-- passes_completed_per90
-- long_balls_completed_per90
-- crosses_completed_per90
-- assists_per90
-
-defensive_contribution
-- tackles_won_per90
-- interceptions_per90
-- blocked_passes_per90
-- clearances_per90
-```
-
-No se usan intentos contextuales como si “más siempre fuera mejor”. El fallback representa contribución observada y queda etiquetado explícitamente.
-
-### Normalización
-
-```text
-successful actions raw
--> per90
--> percentil dentro del position_group
--> global fallback solo si la distribución del grupo no es estimable
--> rellenar únicamente dimensión previamente NULL
-```
-
-### Elegibilidad
-
-Se mantiene:
-
-```text
->=3 dimensiones + dimensión core del grupo posicional
-```
-
-No se imputa rol de suplentes.
-
-### Provenance
-
-Cada dimensión materializada queda marcada como:
-
-```text
-DIRECT_SIGNED
-CONTRIBUTION_FALLBACK
-MISSING
-```
-
-La tabla `player_match_performance_score` incluye:
-
-```text
-fallback_dimension_count
-attacking_threat_evidence
-creation_progression_evidence
-defensive_contribution_evidence
-finishing_evidence
-discipline_evidence
-```
-
-### Resultado local validado
+Resultado local:
 
 ```text
 observable_role_rows=380
@@ -221,64 +84,166 @@ recovered=75
 coverage_observable_roles=0.9974
 source_role_unavailable_rows=172
 high_participation_without_score=0
-fallback_attacking_threat=0
 fallback_creation_progression=128
 fallback_defensive_contribution=205
-fallback_finishing=0
-fallback_discipline=0
 ```
 
-Materialización:
+Contrato dashboard PASS. PERF-15 corrige el problema de dimensiones vacías sin inventar acciones.
+
+## PERF-16 — Match Rating
+
+Issue #91.
+
+Versión candidata:
 
 ```text
-rows_written=552
-eligible_observable_scores=379
-recovered_eligible_rows=75
-coverage_observable_roles=0.9974
-eligible_scores_using_fallback=179
-high_participation_without_score=0
+match_rating_v0.1-experimental
 ```
 
-Contrato dashboard:
+Archivos:
 
 ```text
-PERFORMANCE SCORE DASHBOARD CONTRACT: PASS
-score_version=performance_score_v0.2-experimental
-observable_role_rows=380
-eligible_scores=379
-coverage_observable_roles=0.9974
-fallback_score_rows=179
-high_participation_outfield_players_without_score=0
+analytics/build_match_rating.py
+app/match_rating_access.py
+app/validate_match_rating.py
+app/pages/2_Jugador.py
+app/pages/4_Partit.py
+reports/data_builder.py
+reports/pdf_engine.py
 ```
 
-Decisión: PERF-15 se cierra. `performance_score_v0.2-experimental` pasa a ser la baseline experimental vigente del producto.
+### Contrato funcional
 
-## Dashboard
+Cada `player_match` con `minutes_played > 0` debe producir una fila de Match Rating.
 
-DASHBOARD-02 está cerrado y validado visualmente. La vista de jugador tiene aspecto profesional y separa score, motor experto y datos técnicos.
+El rating debe estar disponible desde el primer partido; la evolución histórica es una capa posterior.
 
-Los porteros muestran que el camino GK está separado; no se les atribuye erróneamente el motivo de suplente sin rol.
+### Jugadores de campo
 
-DASHBOARD-03 Team Mode se reanuda tras cerrar PERF-15.
+```text
+PERF-15 dimensions disponibles
+-> pesos posicionales si rol observable
+-> pesos iguales si la fuente solo dice Substitute
+-> rating_100
+-> rating_10
+```
+
+Un suplente sin rol táctico fiable NO recibe un rol inventado. Para el informe del partido puede recibir rating con `GENERIC_ROLE_UNAVAILABLE`, explícitamente separado de evidencia táctica.
+
+Si una aparición no dispone de ninguna dimensión utilizable:
+
+```text
+rating_100 = 50 midpoint
+confidence = 0
+status = NEUTRAL_INSUFFICIENT_OUTFIELD_EVIDENCE
+```
+
+Esto es una presentación neutral para garantizar continuidad operativa, no una afirmación de rendimiento. No se inventan acciones.
+
+### Porter
+
+Camino separado:
+
+- si `saves` y `goals_conceded` están observados y hubo tiros a puerta enfrentados, señal = `save_rate`;
+- si no hubo oportunidades o la evidencia está incompleta, midpoint explícito con confidence reducida;
+- nunca se mezcla el porter con las dimensiones de jugadores de campo.
+
+### Escala
+
+Interna:
+
+```text
+match_rating_100: 0-100
+```
+
+Presentación:
+
+```text
+match_rating_10 = 4.0 + 0.06 * match_rating_100
+```
+
+Por tanto:
+
+```text
+0   -> 4.0
+50  -> 7.0
+100 -> 10.0
+```
+
+La transformación es lineal y solo visual; preserva completamente el orden. No copia ninguna fórmula propietaria.
+
+### Dashboard
+
+`Jugador` muestra ahora como KPI principal:
+
+```text
+Match Rating /10
+Confianza
+Perfil del partit
+Performance Index complementari
+```
+
+La evolución principal es Match Rating. El Performance Index queda como capa histórica secundaria.
+
+Nueva página:
+
+```text
+Partit
+```
+
+Permite seleccionar un partido y consultar:
+
+- jugadores utilizados;
+- rating /10;
+- confianza;
+- rol/perfil;
+- minutos/titularidad;
+- dimensiones del partido;
+- detalle por jugador;
+- PDF del partido.
+
+### Informes
+
+`reports/data_builder.py` y `reports/pdf_engine.py` incorporan Match Rating en:
+
+- informe de jugador;
+- informe de partido.
+
+Esto permite generar un informe presentable desde el primer partido siempre que el pipeline del partido haya sido procesado.
 
 ## Guardrails vigentes
 
 - no copiar fórmulas propietarias Sofascore/FotMob;
-- no convertir missing en 0 salvo semántica validada o identidad éxito<=intentos con intentos=0;
+- no convertir missing en 0 salvo semántica validada;
 - no threshold bueno/malo sin validación;
-- no etiqueta automática de calidad;
-- no recomendación táctica derivada directamente del score;
-- no ranking universal entre posiciones;
-- suplentes sin rol táctico observable no se imputan;
+- no recomendación táctica derivada directamente del rating;
+- Match Rating y Performance Index son capas distintas;
+- suplentes sin rol táctico no reciben rol inventado;
 - porteros mantienen camino separado;
-- el LLM no calcula ni altera el score;
-- el dashboard consume resultados materializados;
-- score y expert system son capas diferentes;
-- los fallbacks quedan auditables y no ocultan su procedencia.
+- cualquier midpoint por evidencia insuficiente debe quedar identificado y con confidence reducida;
+- el LLM no calcula ni altera ratings;
+- dashboard/PDF consumen resultados materializados.
 
-## Siguiente paso exacto
+## Gate PERF-16 pendiente
 
-1. Reiniciar Streamlit con la misma DuckDB materializada.
-2. Comprobar un caso de jugador de campo con historial amplio que antes quedaba incompleto (por ejemplo Carles Aleñá): score, dimensions y confidence.
-3. Si la vista es coherente, continuar DASHBOARD-03 Team Mode.
-4. Después: integrar score v0.2 en LLM, PDF y vistas GPS/físicas.
+Ejecutar:
+
+```powershell
+cd C:\Users\sergi\Desktop\football-performance-system
+git pull
+$env:FPS_DB_PATH = "D:\Data\Sergi\Desktop\football-performance-system\data\football_performance.duckdb"
+python analytics\build_match_rating.py --db $env:FPS_DB_PATH
+python app\validate_match_rating.py
+streamlit run app\streamlit_app.py
+```
+
+El gate debe confirmar:
+
+1. una fila de rating por cada jugador-partido con minutos;
+2. 100% de ratings no nulos;
+3. ratings presentes ya en el primer partido;
+4. porteros incluidos;
+5. número de casos genéricos por rol no observable;
+6. número de ratings neutrales por evidencia insuficiente.
+
+Después del PASS: cerrar PERF-16 y continuar Team Mode + insights automáticos del partido + integración LLM.
