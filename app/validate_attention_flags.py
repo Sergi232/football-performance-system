@@ -5,8 +5,8 @@ import os
 from pathlib import Path
 import duckdb
 
-MATCH_RATING_VERSION = "match_rating_v0.2-candidate"
-ATTENTION_VERSION = "attention_flags_v0.2-auditable"
+MATCH_RATING_VERSION = "match_rating_v0.5-candidate"
+ATTENTION_VERSION = "attention_flags_v0.3-auditable"
 DEFAULT_DB = Path(__file__).resolve().parents[1] / "data" / "football_performance.duckdb"
 APPROVED_CODES = {
     "ROLE_CONTEXT_UNAVAILABLE",
@@ -36,7 +36,7 @@ def main() -> None:
             SELECT COUNT(*)
             FROM player_match_rating
             WHERE match_rating_version=?
-              AND match_rating_context='GENERIC_ROLE_UNAVAILABLE'
+              AND match_rating_context='ROLE_UNAVAILABLE_V2_FALLBACK'
             """,
             [MATCH_RATING_VERSION],
         ).fetchone()[0]
