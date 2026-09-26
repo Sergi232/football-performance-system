@@ -1,10 +1,10 @@
-"""Low-latency local Coach Copilot: deterministic tool routing + Ollama synthesis.
+"""Low-latency local Coach Copilot: deterministic routing + compact Ollama synthesis.
 
-Why hybrid:
-- analytics/tool selection stays local, auditable and read-only;
-- only the compact evidence needed for the question is sent to Ollama localhost;
-- the LLM explains materialized outputs but never calculates critical metrics;
-- avoids the large all-tools prompt that was too slow on the target PC.
+Architecture:
+QUESTION -> LOCAL ROUTER -> READ-ONLY TOOLS -> COMPACT EVIDENCE -> OLLAMA -> COACH
+
+Critical football analytics are never calculated by the LLM. If local synthesis is
+too slow, a deterministic evidence-grounded fallback is returned instead of failing.
 """
 from __future__ import annotations
 
@@ -21,27 +21,18 @@ from llm.coach_agent_fast import DEFAULT_MODEL, DEFAULT_OLLAMA_URL, ollama_statu
 
 CoachAgentResult = _core.CoachAgentResult
 
-SYSTEM_PROMPT = """You are Coach Copilot, a local assistant for football staff.
-Use ONLY the EVIDENCE supplied below. Never invent values, metrics, thresholds, causes or model outputs.
-Match Rating, Performance Index, features and expert-system outputs are already calculated outside the LLM: do not recalculate them.
-Descriptive comparisons are allowed only from materialized fields and must preserve role/sample-size limitations.
-Do not recommend an ideal XI, starters, tactical changes, injury risk, fatigue or readiness unless the evidence explicitly contains a validated authorization.
-If evidence is insufficient, state exactly what is missing. Answer in the user's language, concisely and without hidden reasoning.
+SYSTEM_PROMPT = """You are Coach Copilot for football staff.
+Answer ONLY from the compact EVIDENCE supplied.
+Never invent values, metrics, thresholds, causes or recommendations.
+Do not recalculate Match Rating, Performance Index or expert-system outputs.
+If evidence is insufficient, say what is missing.
+Answer in the user's language in at most 6 short sentences.
 """
 
 UNSUPPORTED_PATTERNS = (
-    "qui hauria de ser titular",
-    "qui ha de ser titular",
-    "alineacio ideal",
-    "alineació ideal",
-    "onze ideal",
-    "millor onze",
-    "risc de lesio",
-    "risc de lesió",
-    "injury risk",
-    "fatiga",
-    "readiness",
-    "qui hauria de jugar",
+    "qui hauria de ser titular", "qui ha de ser titular", "alineacio ideal",
+    "alineació ideal", "onze ideal", "millor onze", "risc de lesio",
+    "risc de lesió", "injury risk", "fatiga", "readiness", "qui hauria de jugar",
 )
 
 
@@ -53,11 +44,11 @@ def _norm(value: object) -> str:
 
 def _history_text(history: list[dict[str, str]] | None) -> str:
     parts: list[str] = []
-    for item in (history or [])[-4:]:
+    for item in (history or [])[-2:]:
         role = str(item.get("role", "")).strip()
         content = str(item.get("content", "")).strip()
         if role in {"user", "assistant"} and content:
-            parts.append(content[:700])
+            parts.append(content[:350])
     return " ".join(parts)
 
 
@@ -68,13 +59,9 @@ def _find_players(db_path: Path, team_id: str, text: str) -> list[str]:
     target = _norm(text)
     names = squad["player"].dropna().astype(str).tolist()
     found: list[str] = []
-
-    # Full names first.
     for name in sorted(names, key=len, reverse=True):
         if _norm(name) and _norm(name) in target:
             found.append(name)
-
-    # Then unique surname/meaningful token aliases for natural follow-ups.
     token_to_names: dict[str, list[str]] = {}
     for name in names:
         for token in _norm(name).split():
@@ -101,66 +88,115 @@ def _resolve_match_query(db_path: Path, team_id: str, text: str) -> str | None:
     return None
 
 
-def _bounded(value: Any, *, depth: int = 0) -> Any:
-    if depth >= 4:
-        return str(value)[:500]
-    if isinstance(value, dict):
-        items = list(value.items())[:30]
-        return {str(k): _bounded(v, depth=depth + 1) for k, v in items}
-    if isinstance(value, list):
-        return [_bounded(v, depth=depth + 1) for v in value[:12]]
-    if isinstance(value, tuple):
-        return [_bounded(v, depth=depth + 1) for v in value[:12]]
-    return value
+def _scalar(value: Any) -> bool:
+    return value is None or isinstance(value, (str, int, float, bool))
+
+
+def _pick_scalars(mapping: Any, limit: int = 10) -> dict[str, Any]:
+    if not isinstance(mapping, dict):
+        return {}
+    out: dict[str, Any] = {}
+    for key, value in mapping.items():
+        if _scalar(value):
+            out[str(key)] = value
+            if len(out) >= limit:
+                break
+    return out
+
+
+def _pick_row(row: Any, preferred: tuple[str, ...], fallback_limit: int = 8) -> dict[str, Any]:
+    if not isinstance(row, dict):
+        return {}
+    selected = {k: row.get(k) for k in preferred if k in row and _scalar(row.get(k))}
+    if selected:
+        return selected
+    return _pick_scalars(row, fallback_limit)
 
 
 def _compact_payload(name: str, payload: dict[str, Any]) -> dict[str, Any]:
     if name == "get_team_snapshot":
         players = payload.get("player_recent_form") or []
-        wanted = {
-            "player", "player_id", "position", "role", "latest_match_rating",
-            "avg_last5", "avg_previous5", "trend_delta_5v5", "n_last5",
-            "n_previous5", "latest_confidence", "appearances",
-        }
-        compact_players = [
-            {k: v for k, v in row.items() if k in wanted}
-            for row in players[:14]
-            if isinstance(row, dict)
-        ]
+        player_keys = (
+            "player", "position", "role", "latest_match_rating", "avg_last5",
+            "avg_previous5", "trend_delta_5v5", "n_last5", "n_previous5",
+            "latest_confidence", "appearances",
+        )
+        history_keys = (
+            "match_date", "opponent", "score_for", "score_against", "result",
+            "team_avg_rating", "avg_match_rating", "rated_players",
+        )
         return {
-            "overview": payload.get("overview"),
+            "overview": _pick_scalars(payload.get("overview"), 10),
             "match_rating_version": payload.get("match_rating_version"),
-            "recent_team_rating_history": (payload.get("recent_team_rating_history") or [])[-8:],
-            "player_recent_form": compact_players,
+            "recent_team_rating_history": [
+                _pick_row(r, history_keys) for r in (payload.get("recent_team_rating_history") or [])[-4:]
+            ],
+            "player_recent_form": [
+                _pick_row(r, player_keys) for r in players[:6]
+            ],
             "definition": payload.get("definition"),
         }
+    if name == "get_data_quality":
+        summary = payload.get("attention_summary") or []
+        flags = payload.get("recent_flags") or []
+        return {
+            "attention_summary": [_pick_scalars(r, 8) for r in summary[:6] if isinstance(r, dict)],
+            "recent_flags": [_pick_scalars(r, 6) for r in flags[:5] if isinstance(r, dict)],
+            "attention_error": payload.get("attention_error"),
+            "gps_status": _pick_scalars(payload.get("gps_status"), 8),
+            "policy": payload.get("policy"),
+        }
     if name == "get_player_profile":
-        out = dict(payload)
-        if isinstance(out.get("recent_match_ratings"), list):
-            out["recent_match_ratings"] = out["recent_match_ratings"][-8:]
-        return _bounded(out)
+        ratings = payload.get("recent_match_ratings") or []
+        rating_keys = (
+            "match_date", "opponent", "minutes", "role", "position",
+            "match_rating", "rating", "confidence", "route", "rating_route",
+        )
+        return {
+            "player": payload.get("player"),
+            "summary": _pick_scalars(payload.get("summary"), 12),
+            "recent_match_ratings": [_pick_row(r, rating_keys) for r in ratings[-5:]],
+            "latest_performance_index": _pick_scalars(payload.get("latest_performance_index"), 10),
+            "latest_expert_gate": _pick_scalars(payload.get("latest_expert_gate"), 10),
+        }
     if name == "get_player_match_stats":
-        out = dict(payload)
-        if isinstance(out.get("rows"), list):
-            out["rows"] = [_bounded(row) for row in out["rows"][:8]]
-        return out
+        rows = payload.get("rows") or []
+        return {
+            "player": payload.get("player"),
+            "rows": [_pick_scalars(r, 12) for r in rows[:5] if isinstance(r, dict)],
+            "note": payload.get("note"),
+        }
     if name == "get_match_detail":
-        out = dict(payload)
-        if isinstance(out.get("ratings"), list):
-            wanted = {"player", "player_id", "role", "position", "minutes", "match_rating", "rating", "confidence", "route", "rating_route"}
-            out["ratings"] = [
-                {k: v for k, v in row.items() if k in wanted} or _bounded(row)
-                for row in out["ratings"][:20]
-                if isinstance(row, dict)
-            ]
-        return _bounded(out)
-    return _bounded(payload)
+        ratings = payload.get("ratings") or []
+        rating_keys = (
+            "player", "role", "position", "minutes", "match_rating", "rating",
+            "confidence", "route", "rating_route",
+        )
+        return {
+            "match": _pick_scalars(payload.get("match"), 10),
+            "ratings": [_pick_row(r, rating_keys) for r in ratings[:12]],
+            "observations": payload.get("observations") if isinstance(payload.get("observations"), (str, int, float, bool, type(None))) else str(payload.get("observations"))[:800],
+            "note": payload.get("note"),
+        }
+    if name == "compare_players":
+        return {
+            "players": [_pick_scalars(r, 12) for r in (payload.get("players") or [])[:6] if isinstance(r, dict)],
+            "unresolved": (payload.get("unresolved") or [])[:6],
+            "comparison_policy": payload.get("comparison_policy"),
+        }
+    if name == "get_player_gps":
+        return {
+            "player": payload.get("player"),
+            "gps_history": [_pick_scalars(r, 10) for r in (payload.get("gps_history") or [])[-5:] if isinstance(r, dict)],
+            "interpretation": payload.get("interpretation"),
+            "error": payload.get("error"),
+        }
+    return _pick_scalars(payload, 12)
 
 
 def _plan_tools(question: str, *, db_path: Path, team_id: str, history: list[dict[str, str]] | None) -> tuple[list[tuple[str, dict[str, Any]]], str | None]:
     combined = f"{_history_text(history)} {question}".strip()
     q = _norm(question)
-    all_text = _norm(combined)
 
     if any(_norm(pattern) in q for pattern in UNSUPPORTED_PATTERNS):
         return [], "No puc donar aquesta recomanació perquè el sistema no té una política validada per convertir aquestes dades en una decisió d'alineació, tàctica, fatiga o risc de lesió. Puc descriure l'evidència disponible sense convertir-la en una recomanació no validada."
@@ -168,43 +204,34 @@ def _plan_tools(question: str, *, db_path: Path, team_id: str, history: list[dic
     players = _find_players(db_path, team_id, combined)
     plan: list[tuple[str, dict[str, Any]]] = []
 
-    compare_terms = ("compara", "comparar", "diferencies", "diferències", "versus", " vs ")
-    if len(players) >= 2 and any(term in q for term in compare_terms):
+    if len(players) >= 2 and any(term in q for term in ("compara", "comparar", "diferencies", "diferències", "versus", " vs ")):
         plan.append(("compare_players", {"players": players[:6]}))
 
-    gps_terms = ("gps", "fisic", "físic", "distancia", "distància", "velocitat", "carrega", "càrrega")
-    if any(term in q for term in gps_terms):
+    if any(term in q for term in ("gps", "fisic", "físic", "distancia", "distància", "velocitat", "carrega", "càrrega")):
         if players:
-            for player in players[:2]:
-                plan.append(("get_player_gps", {"player": player}))
+            plan.append(("get_player_gps", {"player": players[0]}))
         else:
             plan.append(("get_data_quality", {}))
 
     match_query = _resolve_match_query(db_path, team_id, combined)
-    match_terms = ("partit", "match", "contra", "rival", "ultim", "últim", "darrer")
-    if match_query and any(term in q for term in match_terms):
+    if match_query and any(term in q for term in ("partit", "match", "contra", "rival", "ultim", "últim", "darrer")):
         plan.append(("get_match_detail", {"match": match_query}))
 
     if players and not any(name == "compare_players" for name, _ in plan):
-        for player in players[:2]:
-            plan.append(("get_player_profile", {"player": player}))
-        detail_terms = ("per que", "per què", "evoluc", "canvi", "accions", "estad", "rendiment recent")
-        if any(term in q for term in detail_terms):
-            plan.append(("get_player_match_stats", {"player": players[0], "last_n": 8}))
+        plan.append(("get_player_profile", {"player": players[0]}))
+        if any(term in q for term in ("per que", "per què", "evoluc", "canvi", "accions", "estad", "rendiment recent")):
+            plan.append(("get_player_match_stats", {"player": players[0], "last_n": 5}))
 
-    quality_terms = ("limitacions", "qualitat", "missing", "dades falten", "disponible", "evidencia", "evidència")
-    if any(term in q for term in quality_terms) and not any(name == "get_data_quality" for name, _ in plan):
-        plan.append(("get_data_quality", {}))
+    if any(term in q for term in ("limitacions", "qualitat", "missing", "dades falten", "disponible", "evidencia", "evidència")):
+        if not any(name == "get_data_quality" for name, _ in plan):
+            plan.append(("get_data_quality", {}))
 
-    team_terms = ("equip", "forma", "millorant", "empitjorant", "canvi recent", "tendencia", "tendència", "qui presenta")
-    if any(term in q for term in team_terms) and not players:
+    if any(term in q for term in ("equip", "forma", "millorant", "empitjorant", "canvi recent", "tendencia", "tendència", "qui presenta")) and not players:
         plan.append(("get_team_snapshot", {}))
 
     if not plan:
-        # Open-question fallback: provide a compact team snapshot instead of guessing.
         plan.append(("get_team_snapshot", {}))
 
-    # Remove exact duplicates and keep latency bounded.
     deduped: list[tuple[str, dict[str, Any]]] = []
     seen: set[str] = set()
     for name, args in plan:
@@ -212,24 +239,51 @@ def _plan_tools(question: str, *, db_path: Path, team_id: str, history: list[dic
         if key not in seen:
             seen.add(key)
             deduped.append((name, args))
-    return deduped[:4], None
+    return deduped[:3], None
+
+
+def _flatten_lines(value: Any, prefix: str = "", depth: int = 0) -> list[str]:
+    if depth > 2:
+        return []
+    lines: list[str] = []
+    if isinstance(value, dict):
+        for key, val in value.items():
+            p = f"{prefix}.{key}" if prefix else str(key)
+            if _scalar(val):
+                lines.append(f"{p}={val}")
+            elif isinstance(val, (dict, list)):
+                lines.extend(_flatten_lines(val, p, depth + 1))
+    elif isinstance(value, list):
+        for idx, item in enumerate(value[:6]):
+            lines.extend(_flatten_lines(item, f"{prefix}[{idx}]", depth + 1))
+    return lines
+
+
+def _deterministic_fallback(question: str, evidence: dict[str, Any], tools_used: list[str]) -> str:
+    lines = _flatten_lines(evidence)
+    useful = [line for line in lines if not line.endswith("=None")][:12]
+    if not useful:
+        return "No hi ha prou evidència estructurada disponible per respondre aquesta pregunta."
+    body = "\n".join(f"- {line}" for line in useful)
+    return (
+        "No he pogut generar la síntesi lingüística local a temps, però aquestes són les dades estructurades disponibles:\n"
+        f"{body}\n"
+        f"Evidència consultada: {', '.join(tools_used)}."
+    )
 
 
 def _synthesize(question: str, evidence: dict[str, Any], *, history: list[dict[str, str]] | None, model: str, base_url: str) -> str:
-    evidence_text = json.dumps(evidence, ensure_ascii=False, separators=(",", ":"), default=str)
-    if len(evidence_text) > 12000:
-        evidence_text = evidence_text[:12000] + "\n[TRUNCATED: ask a narrower follow-up if more detail is needed]"
+    lines = _flatten_lines(evidence)
+    evidence_text = "\n".join(lines[:45])
+    evidence_text = evidence_text[:4500]
 
     messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM_PROMPT}]
-    for item in (history or [])[-2:]:
-        role = str(item.get("role", "")).strip()
-        content = str(item.get("content", "")).strip()
-        if role in {"user", "assistant"} and content:
-            messages.append({"role": role, "content": content[:600]})
-    messages.append({
-        "role": "user",
-        "content": f"QUESTION:\n{question}\n\nEVIDENCE:\n{evidence_text}",
-    })
+    if history:
+        last = history[-1]
+        if last.get("role") in {"user", "assistant"} and last.get("content"):
+            messages.append({"role": str(last["role"]), "content": str(last["content"])[:250]})
+    messages.append({"role": "user", "content": f"QUESTION:\n{question[:500]}\n\nEVIDENCE:\n{evidence_text}"})
+
     payload = {
         "model": model,
         "messages": messages,
@@ -238,15 +292,15 @@ def _synthesize(question: str, evidence: dict[str, Any], *, history: list[dict[s
         "keep_alive": "30m",
         "options": {
             "temperature": 0.1,
-            "num_ctx": int(os.environ.get("FPS_AGENT_NUM_CTX", "4096")),
-            "num_predict": int(os.environ.get("FPS_AGENT_NUM_PREDICT", "256")),
+            "num_ctx": int(os.environ.get("FPS_AGENT_NUM_CTX", "2048")),
+            "num_predict": int(os.environ.get("FPS_AGENT_NUM_PREDICT", "160")),
         },
     }
-    timeout = int(os.environ.get("FPS_AGENT_TIMEOUT", "60"))
+    timeout = int(os.environ.get("FPS_AGENT_TIMEOUT", "20"))
     response = _core._request_json(f"{base_url.rstrip('/')}/api/chat", payload=payload, timeout=timeout)
     message = response.get("message") or {}
     text = str(message.get("content") or "").strip()
-    return text or "No he pogut generar una resposta fiable amb l'evidència disponible."
+    return text or "No hi ha prou evidència per generar una resposta fiable."
 
 
 def run_coach_agent_turn(
@@ -287,23 +341,12 @@ def run_coach_agent_turn(
         tools_used.append(name)
 
     try:
-        text = _synthesize(
-            question,
-            evidence,
-            history=history,
-            model=selected_model,
-            base_url=selected_url,
-        )
-    except Exception as exc:
-        return CoachAgentResult(
-            "No he pogut completar la síntesi local dins del temps límit. Les dades no s'han enviat fora del PC.",
-            selected_model,
-            1 if tools_used else 0,
-            tuple(tools_used),
-            f"{type(exc).__name__}: {exc}",
-        )
-
-    return CoachAgentResult(text, selected_model, 1 if tools_used else 0, tuple(tools_used), None)
+        text = _synthesize(question, evidence, history=history, model=selected_model, base_url=selected_url)
+        return CoachAgentResult(text, selected_model, 1 if tools_used else 0, tuple(tools_used), None)
+    except Exception:
+        # Product must remain usable even when local generation is temporarily slow.
+        fallback = _deterministic_fallback(question, evidence, tools_used)
+        return CoachAgentResult(fallback, selected_model, 1 if tools_used else 0, tuple(tools_used), None)
 
 
 def run_coach_agent(*args: Any, **kwargs: Any) -> str:
