@@ -1,4 +1,4 @@
-"""Validation contract for the local Ollama Coach Copilot."""
+"""Validation contract for the local hybrid Ollama Coach Copilot."""
 from __future__ import annotations
 
 import os
@@ -10,7 +10,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.data_access import list_teams
-from llm.coach_agent_fast import DEFAULT_MODEL, ollama_status, run_coach_agent_turn
+from llm.coach_agent_hybrid import DEFAULT_MODEL, ollama_status, run_coach_agent_turn
 
 
 def main() -> None:
@@ -34,6 +34,7 @@ def main() -> None:
     print(f"team={team_name}")
     print(f"ollama_available={status['available']}")
     print(f"model={model}")
+    print("architecture=hybrid_local_router_plus_ollama_synthesis")
     print("thinking=False | num_ctx=" + os.environ.get("FPS_AGENT_NUM_CTX", "4096"))
 
     if not status["available"]:
