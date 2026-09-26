@@ -25,7 +25,7 @@ DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 FEATURE_CATALOG = ROOT / "features" / "catalog.json"
 DOMAIN_CATALOG = ROOT / "decision_tree" / "domain_catalog.json"
 OUTPUT_DIR = Path(__file__).with_name("output")
-VERSION = "performance_dimension_audit_0.1.0"
+VERSION = "performance_dimension_audit_0.1.1"
 
 
 def parse_args() -> argparse.Namespace:
@@ -40,8 +40,17 @@ def load_json(path: Path) -> dict:
 
 
 def clean(value):
+    """Convert pandas/numpy/container values into JSON-safe Python values."""
     if isinstance(value, pd.Timestamp):
         return value.isoformat()
+    if isinstance(value, dict):
+        return {str(k): clean(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [clean(v) for v in value]
+    if not pd.api.types.is_scalar(value):
+        if hasattr(value, "tolist"):
+            return clean(value.tolist())
+        return value
     if pd.isna(value):
         return None
     if hasattr(value, "item"):
