@@ -14,6 +14,7 @@ FEATURE-01/02/03                    CERRADO / VALIDADO
 EXPERT-01..07 N1000-N13000          BASELINE CERRADO / VALIDADO
 LLM-01/02                           PROTOTYPE v0.1 / CONTRATOS PASS
 REPORTS-01                          PROTOTYPE v0.1 / CONTRATO PASS
+REPORTS-02 PROFESSIONAL PDF         ACTIVO — ISSUE #94 / GATE LOCAL+VISUAL PENDIENTE
 PUBLICATION-01                      CERRADO / VALIDADO TÉCNICAMENTE
 DASHBOARD-01                        PROTOTYPE v0.1 / CONTRACT PASS
 ARCHITECTURE-01                     CERRADO — ISSUE #25
@@ -31,6 +32,7 @@ LLM MATCH RATING CONTEXT            CONTRACT PASS
 DASHBOARD-04 PHYSICAL/GPS           CERRADO / VALIDADO — ISSUE #92
 ALERTS-01 ATTENTION CENTRE          CERRADO / VALIDADO — ISSUE #93
 FINAL DASHBOARD HOME                IMPLEMENTADA / PENDIENTE CHECK VISUAL
+UI COMPATIBILITY                    GATE ESTÁTICO AÑADIDO / LIMPIEZA DEPRECATIONS EN CURSO
 FINAL-01                            DESBLOQUEADO
 ```
 
@@ -70,6 +72,7 @@ match_rating_v0.1-experimental
 performance_score_v0.2-experimental
 gps_physical_summary_v0.1-descriptive
 attention_flags_v0.1-auditable
+report_schema_version=0.3.0
 ```
 
 ## Gates validados
@@ -123,6 +126,39 @@ Solo estados auditables de contexto/calidad. Sin diagnóstico de rendimiento, le
 ### Assistent IA
 Consume analytics estructurados. No calcula ni altera ratings ni puede saltarse guardrails.
 
+## REPORTS-02 — professional PDFs
+
+Issue #94.
+
+Cambios actuales:
+
+- `reports/data_builder.py` schema 0.3.0;
+- payload de equipo incorpora snapshot/historial de Match Rating;
+- payload de jugador incorpora Performance Index actual e historial;
+- payload de partido incorpora observaciones deterministas postpartido;
+- `reports/pdf_engine.py` rediseñado con identidad visual, KPIs, tablas zebra y jerarquía de secciones;
+- Match Rating destacado en jugador/partido;
+- Performance Index incluido en jugador cuando existe;
+- ningún cálculo crítico se mueve a la capa PDF.
+
+Pendiente para cerrar REPORTS-02:
+
+1. `python reports\validate_reports.py` -> PASS;
+2. render visual de un PDF de equipo, jugador y partido;
+3. comprobar clipping/overlap/legibilidad.
+
+## UI compatibility
+
+Se corrigió el crash de `st.page_link` causado por `icon="⚑"` y la página Alertes ya usa la API `width=` de Streamlit.
+
+Nuevo gate:
+
+```text
+app/validate_ui_compatibility.py
+```
+
+Este gate detecta `use_container_width` residual y el icono inválido conocido. La limpieza global de páginas secundarias queda pendiente de ejecutar/cerrar antes de publicación.
+
 ## Guardrails
 
 - no copiar fórmulas propietarias;
@@ -133,15 +169,26 @@ Consume analytics estructurados. No calcula ni altera ratings ni puede saltarse 
 - porteros usan camino separado;
 - LLM downstream del motor;
 - GPS opcional;
-- no HSR/sprint/load/fatigue/readiness sin definición validada.
+- no HSR/sprint/load/fatigue/readiness sin definición validada;
+- PDF y dashboard consumen analytics materializados, no recalculan resultados críticos.
 
 ## Siguiente paso exacto
+
+Sin reiniciar Streamlit si sigue operativo, abrir otra terminal cuando convenga y ejecutar:
 
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
 $env:FPS_DB_PATH = "D:\Data\Sergi\Desktop\football-performance-system\data\football_performance.duckdb"
-streamlit run app\streamlit_app.py
+
+python app\validate_ui_compatibility.py
+python reports\validate_reports.py
 ```
 
-Check visual de la nueva home. Después: cerrar DASHBOARD-03 #89, revisar PDFs finales, pulir navegación/labels, preparar despliegue Streamlit y actualizar README final.
+Después:
+
+1. corregir cualquier deprecation residual reportada por el gate UI;
+2. inspeccionar visualmente la home final;
+3. renderizar/revisar los tres PDF de `reports/output/`;
+4. cerrar DASHBOARD-03 #89 y REPORTS-02 #94 si pasan;
+5. preparar despliegue Streamlit y README final de publicación.
