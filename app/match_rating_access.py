@@ -24,6 +24,12 @@ def get_player_match_ratings(db_path: Path, team_id: str, player_id: str) -> pd.
                 r.match_id, r.match_date, tm.opponent_team_id,
                 opp.display_name AS opponent,
                 CASE WHEN tm.is_home THEN 'H' ELSE 'A' END AS venue,
+                tm.score_for, tm.score_against,
+                CASE
+                    WHEN tm.score_for > tm.score_against THEN 'WIN'
+                    WHEN tm.score_for < tm.score_against THEN 'LOSS'
+                    ELSE 'DRAW'
+                END AS result,
                 r.minutes_played, r.started, r.primary_role, r.position_group,
                 r.attacking_threat, r.creation_progression, r.defensive_contribution,
                 r.finishing, r.discipline, r.match_rating_100, r.match_rating_10,
@@ -146,6 +152,7 @@ def get_team_match_rating_history(db_path: Path, team_id: str) -> pd.DataFrame:
                 r.match_date,
                 opp.display_name AS opponent,
                 CASE WHEN tm.is_home THEN 'H' ELSE 'A' END AS venue,
+                tm.score_for, tm.score_against,
                 MEDIAN(r.match_rating_10) AS median_match_rating,
                 MEDIAN(r.match_rating_confidence) AS median_confidence,
                 COUNT(*) AS players_rated
@@ -153,7 +160,7 @@ def get_team_match_rating_history(db_path: Path, team_id: str) -> pd.DataFrame:
             JOIN team_match tm ON tm.match_id=r.match_id AND tm.team_id=r.team_id
             LEFT JOIN teams opp ON opp.team_id=tm.opponent_team_id
             WHERE r.match_rating_version=? AND r.team_id=?
-            GROUP BY r.match_id, r.match_date, opponent, venue
+            GROUP BY r.match_id, r.match_date, opponent, venue, tm.score_for, tm.score_against
             ORDER BY r.match_date, r.match_id
             """,
             [MATCH_RATING_VERSION, team_id],
