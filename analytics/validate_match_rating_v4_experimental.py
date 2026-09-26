@@ -3,6 +3,14 @@
 The validator checks data/contract integrity and reports football sanity cases. It
 DOES NOT promote V4. Goalkeeper validation and on-pitch goal context remain separate
 requirements before any production switch.
+
+Coverage policy
+---------------
+V4 is deliberately position-aware. It must therefore cover every V2 outfield row
+whose role can be mapped to the validated PERF-18 role taxonomy, but it must NOT
+invent a role for V2 OTHER_OUTFIELD rows with unavailable role context. Those rows
+are reported separately as role-unavailable exclusions rather than as missing V4
+coverage.
 """
 from __future__ import annotations
 
@@ -20,6 +28,7 @@ DEFAULT_METADATA = ROOT / "dsai" / "output" / "perf18_v4_local" / "match_rating_
 V2_VERSION = "match_rating_v0.2-candidate"
 V4_VERSION = "match_rating_v0.4-experimental-outfield"
 VALID_ROLES = {"CB", "FB", "DM", "CM", "AM", "W", "ST"}
+V2_ROLE_ELIGIBLE = {"CB", "FB_WB", "DM_CM", "AM_W", "ST"}
 
 
 def parse_args() -> argparse.Namespace:
@@ -66,10 +75,24 @@ def main() -> None:
             """,
             [V4_VERSION],
         ).df()
-        expected = int(con.execute(
-            "SELECT COUNT(*) FROM player_match_rating WHERE match_rating_version=? AND rating_path='OUTFIELD'",
+
+        v2_scope = con.execute(
+            """
+            SELECT position_group, COUNT(*) AS n
+            FROM player_match_rating
+            WHERE match_rating_version=? AND rating_path='OUTFIELD'
+            GROUP BY position_group
+            """,
             [V2_VERSION],
-        ).fetchone()[0])
+        ).df()
+        total_v2_outfield = int(v2_scope["n"].sum()) if not v2_scope.empty else 0
+        expected_eligible = int(
+            v2_scope.loc[v2_scope["position_group"].astype(str).isin(V2_ROLE_ELIGIBLE), "n"].sum()
+        ) if not v2_scope.empty else 0
+        role_unavailable = int(
+            v2_scope.loc[~v2_scope["position_group"].astype(str).isin(V2_ROLE_ELIGIBLE), "n"].sum()
+        ) if not v2_scope.empty else 0
+
         joined = con.execute(
             """
             SELECT
@@ -101,7 +124,9 @@ def main() -> None:
 
     print("PERF-18 MATCH RATING V4 EXPERIMENTAL VALIDATION")
     print(f"version={V4_VERSION}")
-    print(f"coverage={rows}/{expected} expected_v2_outfield_rows")
+    print(f"coverage_eligible={rows}/{expected_eligible}")
+    print(f"v2_outfield_total={total_v2_outfield} role_unavailable_excluded={role_unavailable}")
+    print("coverage_policy=position-aware V4 does not invent roles for OTHER_OUTFIELD")
     print(f"null_ratings={nulls} duplicates={duplicates} out_of_range={out_of_range}")
     print(f"bad_roles={bad_roles} goalkeeper_rows={goalkeeper_rows}")
     print("mapping_status=" + str(v4["position_mapping_status"].value_counts().to_dict()))
@@ -174,8 +199,9 @@ def main() -> None:
     cutoff = pd.Timestamp(meta["local_first_match_date"])
     local_first = pd.Timestamp(v4["match_date"].min())
     chronology_pass = bool(cutoff.normalize() == local_first.normalize())
+    coverage_pass = bool(rows == expected_eligible and (rows + role_unavailable) == total_v2_outfield)
     contract_pass = bool(
-        rows == expected
+        coverage_pass
         and nulls == 0
         and duplicates == 0
         and out_of_range == 0
@@ -188,6 +214,7 @@ def main() -> None:
     print("professional_reference_rows_by_role=" + str(meta.get("professional_reference_rows_by_role")))
     print(f"reference_policy={meta.get('professional_reference_policy')}")
     print(f"chronology_metadata_gate={'PASS' if chronology_pass else 'FAIL'}")
+    print(f"coverage_scope_gate={'PASS' if coverage_pass else 'FAIL'}")
     print(f"V4_OUTFIELD_CONTRACT={'PASS' if contract_pass else 'FAIL'}")
     print("Promotion status: BLOCKED pending football sanity review, separate goalkeeper model, and on-pitch context decision.")
 
