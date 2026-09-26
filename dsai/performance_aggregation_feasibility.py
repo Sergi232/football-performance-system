@@ -21,7 +21,7 @@ DIMENSION_MAP = Path(__file__).with_name("performance_dimension_map.json")
 DIRECTION_FILE = Path(__file__).with_name("performance_direction_evidence.json")
 ROLE_SPECIFIC_FILE = Path(__file__).with_name("performance_role_specific_features.json")
 OUTPUT_DIR = Path(__file__).with_name("output")
-VERSION = "performance_aggregation_feasibility_0.1.0"
+VERSION = "performance_aggregation_feasibility_0.1.1"
 SIGNED = {"POSITIVE_SUPPORTED", "NEGATIVE_SUPPORTED"}
 GK_POSITION = "Goalkeeper"
 
@@ -46,15 +46,6 @@ def source_position(role: object) -> str | None:
     return text.split(" | ", 1)[0].strip() or None
 
 
-def clean_number(value):
-    if value is None or pd.isna(value):
-        return None
-    value = float(value)
-    if not np.isfinite(value):
-        return None
-    return value
-
-
 def distribution(values: pd.Series, denominator_rows: int) -> dict:
     x = pd.to_numeric(values, errors="coerce").dropna()
     if x.empty:
@@ -72,7 +63,7 @@ def distribution(values: pd.Series, denominator_rows: int) -> dict:
         }
     p25 = float(x.quantile(0.25))
     p75 = float(x.quantile(0.75))
-    unique = int(x.nunique(dropna=True))
+    unique = int(x.nunique())
     iqr = p75 - p25
     return {
         "non_null_rows": int(len(x)),
@@ -94,6 +85,9 @@ def build_audit(db_path: Path) -> dict:
     directions = load_json(DIRECTION_FILE)
     mapping = load_json(DIMENSION_MAP)
     role_specific = load_json(ROLE_SPECIFIC_FILE)
+
+    if not any(x.get("feature_name") == "save_rate" for x in role_specific.get("features", [])):
+        raise RuntimeError("Validated role-specific save_rate registry entry is missing")
 
     direction_by_feature = {
         str(x["feature_name"]): str(x["direction_status"])
@@ -158,9 +152,6 @@ def build_audit(db_path: Path) -> dict:
     wide.columns.name = None
     frame = played.merge(wide, on=["match_id", "player_id"], how="left")
 
-    # Outfield path excludes only rows directly observed as Goalkeeper. Unknown-role
-    # substitute appearances remain eligible for the generic baseline; role is context,
-    # not a requirement for having a performance score.
     outfield = frame[frame["source_position"] != GK_POSITION].copy()
     outfield_rows = int(len(outfield))
 
@@ -217,26 +208,23 @@ def build_audit(db_path: Path) -> dict:
             }
         )
 
-    # Role support is descriptive only. No minimum sample cutoff is invented here.
     role_support: list[dict] = []
-    for position, group in frame[frame["source_position"].notna()].groupby("source_position"):
-        row = {
-            "source_position": str(position),
-            "rows": int(len(group)),
-            "players": int(group["player_id"].nunique()),
-        }
-        support_counts = []
-        for feature in signed_features:
-            if feature in group.columns:
-                support_counts.append(int(group[feature].notna().sum()))
-        row["signed_feature_non_null_counts_min"] = min(support_counts) if support_counts else 0
-        row["signed_feature_non_null_counts_median"] = (
-            float(np.median(support_counts)) if support_counts else 0.0
+    known = frame[frame["source_position"].notna()]
+    for position, group in known.groupby("source_position"):
+        support_counts = [
+            int(group[f].notna().sum()) for f in signed_features if f in group.columns
+        ]
+        role_support.append(
+            {
+                "source_position": str(position),
+                "rows": int(len(group)),
+                "players": int(group["player_id"].nunique()),
+                "signed_feature_non_null_counts_min": min(support_counts) if support_counts else 0,
+                "signed_feature_non_null_counts_median": float(np.median(support_counts)) if support_counts else 0.0,
+                "signed_feature_non_null_counts_max": max(support_counts) if support_counts else 0,
+            }
         )
-        row["signed_feature_non_null_counts_max"] = max(support_counts) if support_counts else 0
-        role_support.append(row)
 
-    # Validated role-specific goalkeeper candidate.
     raw["source_position"] = raw["primary_role"].map(source_position)
     gk = raw[raw["source_position"] == GK_POSITION].copy()
     gk_saves = pd.to_numeric(gk["saves"], errors="coerce")
@@ -277,12 +265,8 @@ def build_audit(db_path: Path) -> dict:
             "direct_goalkeeper_rows": direct_gk_rows,
             "signed_outfield_features": len(signed_features),
             "outfield_dimensions": len(outfield_dimensions),
-            "rank_feasible_signed_features": int(
-                sum(x["rank_normalization_feasible"] for x in feature_diagnostics)
-            ),
-            "robust_z_feasible_signed_features": int(
-                sum(x["robust_z_feasible"] for x in feature_diagnostics)
-            ),
+            "rank_feasible_signed_features": int(sum(x["rank_normalization_feasible"] for x in feature_diagnostics)),
+            "robust_z_feasible_signed_features": int(sum(x["robust_z_feasible"] for x in feature_diagnostics)),
             "degenerate_signed_features": len(degenerate),
             "robust_z_limited_features": len(robust_limited),
             "dimensions_without_any_signed_evidence": len(dimensions_without_any_evidence),
@@ -336,11 +320,11 @@ def render_markdown(result: dict) -> str:
         "|---|---|---|---:|---:|---:|---:|---|---|",
     ])
     for row in result["feature_diagnostics"]:
+        zero_text = "" if row["zero_rate_non_null"] is None else f"{row['zero_rate_non_null']:.3f}"
+        iqr_text = "" if row["iqr"] is None else f"{row['iqr']:.4f}"
         lines.append(
             f"| {row['feature_name']} | {row['primary_dimension']} | {row['direction_status']} | "
-            f"{row['coverage_rate']:.3f} | {row['unique_values']} | "
-            f"{'' if row['zero_rate_non_null'] is None else f'{row['zero_rate_non_null']:.3f}'} | "
-            f"{'' if row['iqr'] is None else f'{row['iqr']:.4f}'} | "
+            f"{row['coverage_rate']:.3f} | {row['unique_values']} | {zero_text} | {iqr_text} | "
             f"{row['rank_normalization_feasible']} | {row['robust_z_feasible']} |"
         )
 
@@ -351,15 +335,16 @@ def render_markdown(result: dict) -> str:
             f"any={row['rows_with_any_signed_evidence']}, all={row['rows_with_all_signed_evidence']}"
         )
 
-    lines.extend(["", "## Goalkeeper"])
     g = result["goalkeeper_diagnostic"]
-    lines.append(
-        f"- save_rate rows: {g['validated_formula_rows']} / goalkeeper rows {g['goalkeeper_rows']}"
-    )
-    lines.append(f"- rank feasible: {g['rank_normalization_feasible']}")
-    lines.append(f"- robust-z feasible: {g['robust_z_feasible']}")
-
-    lines.extend(["", "## Guardrails"])
+    lines.extend([
+        "",
+        "## Goalkeeper",
+        f"- save_rate rows: {g['validated_formula_rows']} / goalkeeper rows {g['goalkeeper_rows']}",
+        f"- rank feasible: {g['rank_normalization_feasible']}",
+        f"- robust-z feasible: {g['robust_z_feasible']}",
+        "",
+        "## Guardrails",
+    ])
     for rule in result["guardrails"]:
         lines.append(f"- {rule}")
     lines.append("")
