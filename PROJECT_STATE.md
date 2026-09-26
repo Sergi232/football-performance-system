@@ -23,7 +23,8 @@ DSAI-01A..11                        CERRADO / RESULTADOS DOCUMENTADOS
 PERF-01..13                         CERRADO / SCORE POLICY VALIDADA
 PERF-14 POSITION-SPECIFIC SCORE     CERRADO — ISSUE #87
 SCORE-INTEGRATION-01                CERRADO / MATERIALIZACIÓN + CONTRACT PASS
-DASHBOARD-02                        ACTIVO — ISSUE #88 / REDISEÑO PROFESIONAL PLAYER VIEW
+DASHBOARD-02 PLAYER VIEW            CERRADO — ISSUE #88 / VALIDADO VISUALMENTE
+DASHBOARD-03 TEAM MODE              ACTIVO — ISSUE #89 / IMPLEMENTACIÓN INICIAL
 FINAL-01                            DESBLOQUEADO
 ```
 
@@ -162,29 +163,13 @@ Nota operativa local:
 $env:FPS_DB_PATH = "D:\Data\Sergi\Desktop\football-performance-system\data\football_performance.duckdb"
 ```
 
-## DASHBOARD-02 — activo
+## DASHBOARD-02 — cerrado
 
-Issue #88.
+Issue #88 cerrado tras validación visual del usuario.
 
-Objetivo: que el producto parezca una plataforma profesional de sports performance y no un prototipo Python/Streamlit.
+Criterio UX aprobado: el producto debe parecer una plataforma profesional de sports performance, no un prototipo Python/Streamlit.
 
-### Criterio UX aprobado
-
-La interfaz para entrenador debe priorizar:
-
-- lectura rápida;
-- jerarquía visual;
-- KPIs de staff;
-- etiquetas humanas;
-- tendencias y alertas;
-- acceso progresivo al detalle;
-- metodología/IDs técnicos ocultos en expanders o vistas de auditoría.
-
-No mostrar en primer plano nombres internos como `AM_W`, `N12000.170`, `score_version` o nombres de columnas.
-
-### Rediseño profesional implementado
-
-Archivos:
+Archivos principales:
 
 ```text
 .streamlit/config.toml
@@ -193,17 +178,7 @@ app/pages/1_Performance_Score.py
 app/pages/2_Jugador.py
 ```
 
-`app/ui_theme.py` añade:
-
-- identidad visual común;
-- sidebar oscura;
-- fondo y tarjetas profesionales;
-- cabecera de jugador;
-- score cards;
-- barras de dimensiones;
-- etiquetas posicionales humanas.
-
-`Jugador` se organiza ahora en:
+La vista `Jugador` contiene:
 
 ```text
 Resum
@@ -215,19 +190,57 @@ Partits
 
 Incluye:
 
-- cabecera de jugador/equipo/rol;
-- apariciones, titularidades, minutos, goles y asistencias;
+- cabecera profesional jugador/equipo/rol;
+- KPIs de participación;
 - Performance Score + confidence + posición humana;
 - dimensiones 0–100 como barras;
 - evolución del score;
-- últimas observaciones;
 - evolución de features;
 - tabla técnica player-match;
 - motor experto con detalle técnico oculto;
 - historial con score/confidence;
 - exportación PDF.
 
-La página `Performance Score` detallada utiliza el mismo lenguaje visual.
+Corrección adicional: los porteros sin score muestran ahora explícitamente que el camino GK está separado; no se les muestra el mensaje de suplente/rol desconocido.
+
+## DASHBOARD-03 — activo
+
+Issue #89 — professional Team Mode.
+
+Implementado:
+
+```text
+app/pages/3_Equip.py
+app/performance_score_access.py -> get_team_score_snapshot()
+```
+
+Team Mode incluye:
+
+```text
+Resum
+Plantilla
+Tendències
+Partits
+```
+
+Funciones actuales:
+
+- KPIs de equipo;
+- cobertura de jugadores con Performance Score;
+- mediana descriptiva del score y de confidence;
+- score actual por jugador sin convertirlo en ranking universal;
+- plantilla con rol, minutos, score, confidence y media reciente;
+- tendencia descriptiva `5 vs 5`;
+- últimos partidos e historial;
+- exportación PDF de equipo.
+
+Definición transparente de tendencia:
+
+```text
+trend_delta_5v5 = media últimos 5 scores elegibles - media 5 anteriores
+```
+
+No existe threshold, etiqueta mejor/peor ni alerta automática asociada.
 
 ## Guardrails vigentes
 
@@ -236,6 +249,7 @@ La página `Performance Score` detallada utiliza el mismo lenguaje visual.
 - no threshold bueno/malo sin validación;
 - no etiqueta automática de calidad;
 - no recomendación táctica derivada directamente del score;
+- no ranking universal entre posiciones;
 - suplentes sin rol táctico observable no se imputan;
 - porteros mantienen camino separado;
 - el LLM no calcula ni altera el score;
@@ -244,7 +258,7 @@ La página `Performance Score` detallada utiliza el mismo lenguaje visual.
 
 ## Siguiente paso exacto
 
-Validar visualmente el rediseño profesional:
+Validar visualmente Team Mode:
 
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
@@ -253,12 +267,21 @@ $env:FPS_DB_PATH = "D:\Data\Sergi\Desktop\football-performance-system\data\footb
 streamlit run app\streamlit_app.py
 ```
 
-Abrir `Jugador` y revisar especialmente `Resum`.
+Abrir `Equip` y comprobar:
 
-Después del check visual, sin reabrir metodología del score:
+1. resumen/KPIs;
+2. cobertura del score;
+3. gráfico de score actual;
+4. plantilla;
+5. tendencia 5 vs 5;
+6. partits;
+7. PDF.
 
-1. construir Team Mode profesional: plantilla + forma + tendencias + alertas;
+Después del check visual:
+
+1. cerrar DASHBOARD-03;
 2. integrar Performance Score en contexto LLM;
 3. integrar score/evolución en PDF de jugador;
-4. construir vistas físicas/GPS;
-5. pulir navegación global para publicación final.
+4. construir vista física/GPS;
+5. definir alertas únicamente con reglas validadas;
+6. pulir navegación global y publicación final.
