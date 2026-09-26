@@ -31,7 +31,8 @@ DSAI-09 SOURCE POSITION BASELINE    CERRADO / EXPERIMENTAL_SIGNAL_IMPROVED / NO 
 DSAI-10 PREMATCH POSITION BASELINE  CERRADO / PREMATCH_EXPERIMENTAL_SIGNAL / NO DEPLOY — ISSUE #50
 DSAI-11 PREMATCH ROBUSTNESS         CERRADO / POSITION CONTEXT ONLY — ISSUE #51
 PERF-01 PERFORMANCE SCORE AUDIT     CERRADO / EXPERT_WEIGHT_VALIDATION_REQUIRED — ISSUE #52
-PERF-02 DIMENSION EVIDENCE AUDIT    ACTIVO — ISSUE #53 / v0.1.1 PENDIENTE DE REEJECUCIÓN
+PERF-02 DIMENSION EVIDENCE AUDIT    CERRADO / MAPPING+DIRECTION REQUIRED — ISSUE #53
+PERF-03 DIMENSION MAPPING AUDIT     ACTIVO — ISSUE #54 / SCRIPT IMPLEMENTADO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
@@ -42,6 +43,8 @@ El objetivo analítico central es **adjudicar un score de rendimiento jugador-pa
 ```text
 PLAYER-MATCH DATA
 → DIMENSIONES DE RENDIMIENTO
+→ VALIDACIÓN DE DIRECCIONES
+→ VALIDACIÓN DE PESOS / AGREGACIÓN
 → SCORE GLOBAL VALIDADO
 → EVOLUCIÓN / CONSISTENCIA
 → CONTEXTO DE ROL
@@ -56,66 +59,73 @@ La persistencia simple de última posición observada (89,44% accuracy) supera a
 
 ## PERF-01 — cerrado
 
-Resultado v0.2:
+Resultado final: `EXPERT_WEIGHT_VALIDATION_REQUIRED`.
+
+No existe un anchor holístico individual independiente en la fuente auditada. El score se construirá como constructo validado; no como copia/predicción de un rating de proveedor.
+
+## PERF-02 — cerrado
+
+Resultado v0.1.1:
 
 ```text
 played_rows=590
 players=28
 matches=38
-features=28
-feature_values=6324/16520
-role_context=418/590
+approved_features=28
 domain_nodes=24
-external_anchor_candidates=0
-rejected_lexical_matches=3
-rejected_anchor_columns=home_score,away_score,bigChanceScored
-conclusion=EXPERT_WEIGHT_VALIDATION_REQUIRED
+mapped_unique_features=23
+unmapped_approved_features=5
+duplicate_mapped_features=1
+unmapped_features=dribble_success_rate,goals_conceded_per90,red_cards_per90,saves_per90,yellow_cards_per90
+duplicate_features=shots_total_per90
+role_context=418/590
+conclusion=DIMENSION_MAPPING_AND_DIRECTION_VALIDATION_REQUIRED
 ```
 
 Decisión:
-- no existe un anchor holístico individual independiente en la fuente auditada;
-- no se puede entrenar un score supervisado defendible usando un rating extern;
-- la ruta pasa a validar **dimensions, direccions i posteriorment pesos**;
-- no crear un score global abans d’aquesta validació.
+- cobertura suficiente para continuar;
+- 5 features aprobadas necesitan mapping explícito;
+- `shots_total_per90` no puede contarse dos veces en un futuro score;
+- portero y disciplina requieren dimensión/tratamiento explícito;
+- ningún signo o peso queda aprobado.
 
-## PERF-02 — activo
+## PERF-03 — activo
 
-Issue #53.
+Issue #54.
 
-Script:
-
-```powershell
-python dsai\performance_dimension_audit.py
+Ficheros:
+```text
+dsai/performance_dimension_map.json
+dsai/performance_dimension_mapping_audit.py
 ```
 
-Objetivo: convertir el catálogo actual en una auditoría completa de las dimensiones de rendimiento antes de asignar signo o peso.
+Objetivo: cerrar el mapping estructural de las 28 FEATURE-01 antes de validar direcciones.
 
-Se audita:
-- cobertura y variabilidad por métrica;
-- cobertura por familia N4000-N7000;
-- redundancias de una misma feature en más de un nodo;
-- features FEATURE-01 no representadas en N4000-N7000;
-- disponibilidad de contexto de rol;
-- métricas de `output`, `efficiency`, `cost`, `volume` y `context` sin convertir esos roles semánticos en signos automáticos;
-- cobertura específica de portero y disciplina, que no puede quedar oculta por el score general.
-
-Primera ejecución: error técnico de serialización en `clean()` porque `pd.isna()` recibió valores array-like (`families`, `node_labels`, `metric_roles`). No afecta a la lógica de la auditoría.
-
-Corrección `performance_dimension_audit_0.1.1`:
-- listas, tuplas, sets y diccionarios se limpian recursivamente;
-- arrays se convierten con `tolist()`;
-- `pd.isna()` solo se aplica a escalares.
+Dimensiones estructurales candidatas:
+- `attacking_threat`
+- `creation_progression`
+- `defensive_contribution`
+- `finishing`
+- `discipline`
+- `goalkeeping` (role-specific)
 
 Reglas:
-- no crear score;
-- no asignar signo positivo/negativo automáticamente;
-- no inventar pesos;
-- no usar correlación o PCA como sinónimo de calidad;
-- no ocultar features aprobadas que todavía no estén mapeadas a una dimensión.
+- cada feature tiene exactamente una `primary_dimension`;
+- `shots_total_per90` queda con una sola dimensión primaria y puede mantenerse como contexto secundario de finalización sin doble conteo;
+- el mapping no asigna dirección positiva/negativa;
+- no crea pesos, score, thresholds, rankings ni recomendaciones;
+- N4000-N7000 siguen siendo evidencia experta separada de la futura fórmula del performance score.
+
+Conclusión esperada si pasa:
+`DIMENSION_MAPPING_COMPLETE_DIRECTION_VALIDATION_REQUIRED`.
+
+## Incidencias de issues
+
+Issue #55 fue un artefacto accidental del conector y quedó cerrado inmediatamente como `not_planned`. No contiene trabajo del proyecto.
 
 ## Líneas todavía bloqueadas
 
-- score global final: hasta validar dimensiones, direcciones y pesos;
+- score global final: hasta validar mapping, direcciones y pesos;
 - `role_player_fit`: sin target independiente defendible;
 - `expert_vs_ml`: sin shared target independiente;
 - calibración N13000: sin ground truth de recomendación.
@@ -125,7 +135,7 @@ Reglas:
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\performance_dimension_audit.py
+python dsai\performance_dimension_mapping_audit.py
 ```
 
 No instalar nada.
