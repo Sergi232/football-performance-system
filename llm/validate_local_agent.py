@@ -34,7 +34,7 @@ def main() -> None:
     print(f"team={team_name}")
     print(f"ollama_available={status['available']}")
     print(f"model={model}")
-    print("thinking=False | num_ctx=" + os.environ.get("FPS_AGENT_NUM_CTX", "8192"))
+    print("thinking=False | num_ctx=" + os.environ.get("FPS_AGENT_NUM_CTX", "4096"))
 
     if not status["available"]:
         print(f"error={status['error']}")
