@@ -72,7 +72,7 @@ else:
     display["match_date"] = pd.to_datetime(display["match_date"], errors="coerce").dt.date
     display = display[["match_date", "player", "attention_group", "attention_code", "message", "source_layer"]]
     display.columns = ["Data", "Jugador", "Grup", "Codi", "Missatge", "Font"]
-    st.dataframe(display, hide_index=True, use_container_width=True)
+    st.dataframe(display, hide_index=True, width="stretch")
 
 with st.expander("Metodologia"):
     st.write(f"Versió: `{ATTENTION_VERSION}`")
