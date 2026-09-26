@@ -32,7 +32,8 @@ DSAI-10 PREMATCH POSITION BASELINE  CERRADO / PREMATCH_EXPERIMENTAL_SIGNAL / NO 
 DSAI-11 PREMATCH ROBUSTNESS         CERRADO / POSITION CONTEXT ONLY — ISSUE #51
 PERF-01 PERFORMANCE SCORE AUDIT     CERRADO / EXPERT_WEIGHT_VALIDATION_REQUIRED — ISSUE #52
 PERF-02 DIMENSION EVIDENCE AUDIT    CERRADO / MAPPING+DIRECTION REQUIRED — ISSUE #53
-PERF-03 DIMENSION MAPPING AUDIT     ACTIVO — ISSUE #54 / SCRIPT IMPLEMENTADO
+PERF-03 DIMENSION MAPPING AUDIT     CERRADO / MAPPING COMPLETE — ISSUE #54
+PERF-04 DIRECTION VALIDATION        ACTIVO — ISSUE #56 / SCRIPT IMPLEMENTADO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
@@ -65,33 +66,41 @@ No existe un anchor holístico individual independiente en la fuente auditada. E
 
 ## PERF-02 — cerrado
 
-Resultado v0.1.1:
+Resultado final: `DIMENSION_MAPPING_AND_DIRECTION_VALIDATION_REQUIRED`.
 
 ```text
-played_rows=590
-players=28
-matches=38
 approved_features=28
-domain_nodes=24
 mapped_unique_features=23
 unmapped_approved_features=5
 duplicate_mapped_features=1
-unmapped_features=dribble_success_rate,goals_conceded_per90,red_cards_per90,saves_per90,yellow_cards_per90
-duplicate_features=shots_total_per90
-role_context=418/590
-conclusion=DIMENSION_MAPPING_AND_DIRECTION_VALIDATION_REQUIRED
+```
+
+Detectó 5 features sin mapping explícito y la duplicación de `shots_total_per90`.
+
+## PERF-03 — cerrado
+
+Resultado:
+
+```text
+approved_features=28
+mapping_entries=28
+mapped_unique_features=28
+dimensions=6
+missing=0
+unknown=0
+duplicate_primary=0
+goalkeeping_scope_ok=True
+shots_primary_once=True
+shots_secondary_finishing_context=True
+dimension_counts=attacking_threat:5,creation_progression:9,defensive_contribution:7,discipline:2,finishing:3,goalkeeping:2
+conclusion=DIMENSION_MAPPING_COMPLETE_DIRECTION_VALIDATION_REQUIRED
 ```
 
 Decisión:
-- cobertura suficiente para continuar;
-- 5 features aprobadas necesitan mapping explícito;
-- `shots_total_per90` no puede contarse dos veces en un futuro score;
-- portero y disciplina requieren dimensión/tratamiento explícito;
-- ningún signo o peso queda aprobado.
-
-## PERF-03 — activo
-
-Issue #54.
+- 28/28 features tienen exactamente una `primary_dimension`;
+- no hay features desconocidas ni duplicación primaria;
+- `goalkeeping` es role-specific;
+- `shots_total_per90` solo puede contarse una vez y conserva finalización como contexto secundario.
 
 Ficheros:
 ```text
@@ -99,25 +108,37 @@ dsai/performance_dimension_map.json
 dsai/performance_dimension_mapping_audit.py
 ```
 
-Objetivo: cerrar el mapping estructural de las 28 FEATURE-01 antes de validar direcciones.
+## PERF-04 — activo
 
-Dimensiones estructurales candidatas:
-- `attacking_threat`
-- `creation_progression`
-- `defensive_contribution`
-- `finishing`
-- `discipline`
-- `goalkeeping` (role-specific)
+Issue #56.
 
-Reglas:
-- cada feature tiene exactamente una `primary_dimension`;
-- `shots_total_per90` queda con una sola dimensión primaria y puede mantenerse como contexto secundario de finalización sin doble conteo;
-- el mapping no asigna dirección positiva/negativa;
-- no crea pesos, score, thresholds, rankings ni recomendaciones;
-- N4000-N7000 siguen siendo evidencia experta separada de la futura fórmula del performance score.
+Objetivo: validar la dirección de cada feature antes de construir prototipos de dimensiones o pesos.
 
-Conclusión esperada si pasa:
-`DIMENSION_MAPPING_COMPLETE_DIRECTION_VALIDATION_REQUIRED`.
+Estados permitidos:
+- `POSITIVE_SUPPORTED`
+- `NEGATIVE_SUPPORTED`
+- `CONTEXT_DEPENDENT`
+- `PENDING_EVIDENCE`
+
+La evidencia se registra en:
+```text
+dsai/performance_direction_evidence.json
+dsai/performance_direction_audit.py
+```
+
+Principios:
+- semántica directa de evento puede justificar una dirección cuando el outcome es inequívoco;
+- literatura académica se usa como evidencia convergente, no como ground truth individual cuando el estudio es team-level;
+- métricas de volumen no se convierten automáticamente en mejor/peor;
+- métricas de portero y oportunidad siguen siendo contextuales/role-specific;
+- ninguna dirección autoriza todavía pesos o score.
+
+Literatura inicial documentada:
+- Kempe et al. 2018 — DOI 10.2174/1875399X01811010003;
+- Wang et al. 2022 — DOI 10.1371/journal.pone.0265540 / PMID 35298562;
+- World Cup match-statistics study — PMID 23487020;
+- Bayrakdaroğlu et al. 2026 — PMID 42216227;
+- Bar-Eli et al. 2006 — PMID 17115523.
 
 ## Incidencias de issues
 
@@ -125,7 +146,7 @@ Issue #55 fue un artefacto accidental del conector y quedó cerrado inmediatamen
 
 ## Líneas todavía bloqueadas
 
-- score global final: hasta validar mapping, direcciones y pesos;
+- score global final: hasta validar direcciones y pesos;
 - `role_player_fit`: sin target independiente defendible;
 - `expert_vs_ml`: sin shared target independiente;
 - calibración N13000: sin ground truth de recomendación.
@@ -135,7 +156,7 @@ Issue #55 fue un artefacto accidental del conector y quedó cerrado inmediatamen
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\performance_dimension_mapping_audit.py
+python dsai\performance_direction_audit.py
 ```
 
 No instalar nada.
