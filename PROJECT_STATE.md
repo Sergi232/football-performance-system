@@ -45,41 +45,19 @@ PERF-12 VALIDATED ZERO IMPACT       ACTIVO — ISSUE #78 / SCRIPT IMPLEMENTADO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
-## Objetivo principal confirmado
-
-El objetivo analítico central es **adjudicar un score de rendimiento jugador-partido**.
-
 ## PERF-11 — cerrado
 
-Resultado ejecutado:
-
-```text
-player_match_rows=835
-played_rows=590
-audited_metrics=4
-validated_candidates=3
-blocked=1
-shots_total -> EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE
-goals -> EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE
-yellow_cards -> NULL_AS_ZERO_NOT_VALIDATED
-red_cards -> EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE
-```
-
-Decisión:
-- `shots_total`, `goals` y `red_cards` pueden reinterpretarse como zero observado cuando raw es NULL, solo porque la evidencia atómica independiente lo valida sin contradicciones;
-- `yellow_cards` queda bloqueada por 5 contradicciones;
-- ningún `fillna(0)` global.
+Validado con evidencia atómica independiente:
+- `shots_total`: raw NULL puede interpretarse como 0 observado;
+- `goals`: raw NULL puede interpretarse como 0 observado;
+- `red_cards`: raw NULL puede interpretarse como 0 observado;
+- `yellow_cards`: NO validado por 5 contradicciones.
 
 ## PERF-12 — activo
 
-Issue #78.
+Script: `dsai/performance_validated_zero_impact.py`.
 
-Script:
-```text
-dsai/performance_validated_zero_impact.py
-```
-
-Objetivo: aplicar solo en memoria la semántica validada y comparar cobertura antes/después, sin modificar DB ni FEATURE-01.
+Objetivo: cuantificar en memoria el impacto en cobertura del signed core y de las cinco dimensiones. No modifica DB, FEATURE-01, pesos, thresholds, rankings ni recomendaciones.
 
 ## Siguiente paso exacto
 
