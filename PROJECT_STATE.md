@@ -56,12 +56,6 @@ PLAYER-MATCH DATA
 
 Rol/posición se usa como contexto de comparación/normalización. No existe todavía una fórmula de score aprobada.
 
-## PERF-03 — cerrado
-
-Resultado: `DIMENSION_MAPPING_COMPLETE_DIRECTION_VALIDATION_REQUIRED`.
-
-28/28 features tienen exactamente una `primary_dimension`, sin features desconocidas ni duplicación primaria. `goalkeeping` es role-specific y `shots_total_per90` solo puede contarse una vez.
-
 ## PERF-04 — cerrado
 
 Resultado ejecutado:
@@ -85,29 +79,23 @@ conclusion=DIRECTION_CLASSIFICATION_COMPLETE_CONTEXTUAL_METRICS_RETAINED
 Decisión:
 - 11 features tienen dirección respaldada (6 positiva, 5 negativa);
 - 17 se mantienen `CONTEXT_DEPENDENT` y no se fuerzan dentro de un score;
-- ninguna feature queda sin evidencia administrativa (`PENDING_EVIDENCE=0`), pero contextual no significa puntuable;
+- ninguna feature queda `PENDING_EVIDENCE`;
 - ningún peso, threshold o score queda aprobado.
-
-Registro:
-```text
-dsai/performance_direction_evidence.json
-dsai/performance_direction_audit.py
-```
 
 ## PERF-05 — activo
 
 Issue #57.
 
-Objetivo: auditar si las features con dirección respaldada forman un núcleo puntuable suficiente por dimensión antes de construir cualquier agregado.
+Objetivo: auditar si las 11 features con dirección respaldada forman un núcleo puntuable suficiente por dimensión antes de construir cualquier agregado.
 
 Se comprobará:
-- cobertura real de las 11 features `POSITIVE_SUPPORTED`/`NEGATIVE_SUPPORTED` en los 590 player-match jugados;
+- cobertura real de las features firmadas en los 590 player-match jugados;
 - qué dimensiones disponen de al menos una feature firmada;
 - qué dimensiones dependen exclusivamente de métricas contextuales;
 - separación explícita de `goalkeeping`;
 - cobertura de filas por dimensión sin crear medias, z-scores, pesos o rankings.
 
-Regla estructural importante:
+Regla estructural:
 - si `goalkeeping` no tiene ninguna feature con dirección defendible, no se forzará dentro del mismo score de jugadores de campo;
 - el resultado decidirá si procede un núcleo outfield separado y qué validación adicional necesita portería.
 
