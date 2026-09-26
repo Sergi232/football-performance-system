@@ -271,19 +271,9 @@ GPS_QUALITY_FLAGS_PRESENT=0
 
 Los flags son de atención/traçabilidad, no diagnósticos de rendimiento.
 
-No se han creado:
-
-```text
-performance good/bad thresholds
-fatigue alerts
-injury-risk alerts
-readiness alerts
-tactical recommendations
-```
-
 ## Home principal profesional
 
-`app/streamlit_app.py` deja de ser la demo DASHBOARD-01 y pasa a ser la home operativa del staff.
+`app/streamlit_app.py` es ahora la home operativa del staff.
 
 Incluye:
 
