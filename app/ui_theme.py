@@ -7,8 +7,13 @@ import streamlit as st
 
 POSITION_LABELS = {
     "CB": "Central",
+    "FB": "Lateral",
     "FB_WB": "Lateral / Carriler",
+    "DM": "Pivot",
+    "CM": "Migcentre / Interior",
     "DM_CM": "Migcentre / Interior",
+    "AM": "Mitjapunta",
+    "W": "Extrem",
     "AM_W": "Mitjapunta / Extrem",
     "ST": "Davanter",
     "GK": "Porter",
@@ -20,136 +25,233 @@ def apply_professional_theme() -> None:
     st.markdown(
         """
         <style>
-        .stApp {
-            background: #f4f7f9;
+        :root {
+            --fps-navy: #0B1F33;
+            --fps-navy-2: #122B43;
+            --fps-accent: #13A37F;
+            --fps-bg: #F5F7FA;
+            --fps-card: #FFFFFF;
+            --fps-border: #E1E8EE;
+            --fps-text: #172B3A;
+            --fps-muted: #6B7C8F;
+            --fps-good: #198754;
+            --fps-bad: #C84630;
+            --fps-warn: #B7791F;
         }
+        html, body, [class*="css"] {
+            font-family: "Segoe UI", Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .stApp { background: var(--fps-bg); color: var(--fps-text); }
+        [data-testid="stHeader"] { background: transparent; }
+        [data-testid="stToolbar"] { opacity: .55; }
         [data-testid="stSidebar"] {
-            background: #0d1b2a;
+            background: linear-gradient(180deg, #081827 0%, #0B1F33 100%);
+            border-right: 1px solid rgba(255,255,255,.05);
         }
-        [data-testid="stSidebar"] * {
-            color: #f7fafc;
+        [data-testid="stSidebarNav"] { display: none; }
+        [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+        [data-testid="stSidebar"] label,
+        [data-testid="stSidebar"] span { color: #EAF1F6; }
+        [data-testid="stSidebar"] a {
+            border-radius: 9px;
+            margin-bottom: 3px;
+            text-decoration: none;
         }
+        [data-testid="stSidebar"] a:hover { background: rgba(255,255,255,.08); }
         .block-container {
-            max-width: 1500px;
-            padding-top: 1.6rem;
-            padding-bottom: 3rem;
+            max-width: 1480px;
+            padding-top: 1.25rem;
+            padding-bottom: 3.5rem;
+            padding-left: 2rem;
+            padding-right: 2rem;
         }
-        h1, h2, h3 {
-            letter-spacing: -0.02em;
+        h1, h2, h3 { color: var(--fps-text); letter-spacing: -0.025em; }
+        h2 { font-size: 1.35rem; }
+        h3 { font-size: 1.08rem; }
+        .coach-brand {
+            padding: .75rem .35rem 1.25rem .35rem;
+            border-bottom: 1px solid rgba(255,255,255,.08);
+            margin-bottom: .8rem;
         }
-        [data-testid="stMetric"] {
-            background: #ffffff;
-            border: 1px solid #dde5eb;
-            border-radius: 14px;
-            padding: 0.85rem 1rem;
-            box-shadow: 0 2px 10px rgba(13, 27, 42, 0.05);
+        .coach-brand-mark {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px; height: 34px;
+            border-radius: 9px;
+            background: #13A37F;
+            color: #fff;
+            font-size: .84rem;
+            font-weight: 900;
+            letter-spacing: -.02em;
+            margin-bottom: .7rem;
         }
-        [data-testid="stMetricLabel"] {
-            color: #5f6f7d;
+        .coach-brand-title { color:#fff; font-size:1rem; font-weight:800; line-height:1.15; }
+        .coach-brand-sub { color:#91A5B5; font-size:.75rem; margin-top:.25rem; }
+        .coach-nav-label {
+            color:#6F879A;
+            font-size:.68rem;
+            font-weight:800;
+            letter-spacing:.09em;
+            text-transform:uppercase;
+            margin:.85rem 0 .35rem .35rem;
         }
-        [data-testid="stMetricValue"] {
-            color: #102a43;
-            font-weight: 750;
+        .coach-page-header {
+            display:flex;
+            align-items:flex-start;
+            justify-content:space-between;
+            gap:1rem;
+            margin: .15rem 0 1.25rem 0;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--fps-border);
         }
-        div[data-baseweb="tab-list"] {
-            gap: 0.4rem;
-            border-bottom: 1px solid #dbe4ea;
-        }
-        button[data-baseweb="tab"] {
-            padding: 0.7rem 1rem;
-            border-radius: 10px 10px 0 0;
-        }
-        .fps-hero {
-            background: linear-gradient(120deg, #102a43 0%, #183b56 62%, #1f5f55 100%);
-            color: #ffffff;
-            border-radius: 18px;
-            padding: 1.4rem 1.6rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 8px 24px rgba(13, 27, 42, 0.15);
-        }
-        .fps-kicker {
-            color: #b7d5ce;
-            font-size: 0.78rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            font-weight: 700;
-            margin-bottom: 0.35rem;
-        }
-        .fps-player-name {
-            font-size: 2rem;
-            line-height: 1.1;
-            font-weight: 800;
-            margin: 0;
-        }
-        .fps-player-meta {
-            margin-top: 0.55rem;
-            color: #d7e3ea;
-            font-size: 0.96rem;
-        }
-        .fps-score-card {
-            background: #ffffff;
-            border: 1px solid #dde5eb;
-            border-radius: 16px;
-            padding: 1rem 1.15rem;
-            min-height: 138px;
-            box-shadow: 0 3px 14px rgba(13, 27, 42, 0.06);
-        }
-        .fps-score-label {
-            color: #6b7c88;
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.07em;
-            font-weight: 700;
-        }
-        .fps-score-value {
-            color: #102a43;
-            font-size: 2.45rem;
+        .coach-kicker, .fps-kicker {
+            color: var(--fps-accent);
+            font-size: .72rem;
             font-weight: 850;
-            line-height: 1.05;
-            margin-top: 0.3rem;
+            text-transform: uppercase;
+            letter-spacing: .11em;
+            margin-bottom: .28rem;
         }
-        .fps-score-sub {
-            color: #617382;
-            margin-top: 0.35rem;
-            font-size: 0.88rem;
+        .coach-title { color:var(--fps-text); font-size:2.05rem; line-height:1.08; font-weight:850; letter-spacing:-.035em; }
+        .coach-subtitle { color:var(--fps-muted); font-size:.94rem; margin-top:.4rem; max-width:850px; }
+        .coach-badge {
+            display:inline-flex;
+            border:1px solid #CDE5DE;
+            background:#EAF7F3;
+            color:#14765F;
+            font-size:.74rem;
+            font-weight:800;
+            padding:.38rem .65rem;
+            border-radius:999px;
+            white-space:nowrap;
         }
-        .fps-section-note {
-            color: #627585;
-            font-size: 0.88rem;
-            margin-top: -0.35rem;
-            margin-bottom: 0.9rem;
+        .coach-section-head { margin: 1.2rem 0 .65rem 0; }
+        .coach-section-title { font-size:1.16rem; font-weight:800; color:var(--fps-text); letter-spacing:-.02em; }
+        .coach-section-sub { font-size:.82rem; color:var(--fps-muted); margin-top:.18rem; }
+        .coach-metric-card, .fps-score-card {
+            background: var(--fps-card);
+            border: 1px solid var(--fps-border);
+            border-radius: 13px;
+            padding: .9rem 1rem;
+            min-height: 118px;
+            box-shadow: 0 2px 8px rgba(11,31,51,.035);
         }
-        .fps-dim-row {
-            margin-bottom: 0.8rem;
+        .coach-metric-label, .fps-score-label {
+            color: var(--fps-muted);
+            font-size: .7rem;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            font-weight: 800;
         }
-        .fps-dim-head {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.9rem;
-            margin-bottom: 0.28rem;
-            color: #263746;
+        .coach-metric-value, .fps-score-value {
+            color: var(--fps-text);
+            font-size: 1.75rem;
+            font-weight: 850;
+            line-height: 1.08;
+            margin-top: .35rem;
         }
-        .fps-dim-track {
-            height: 8px;
-            background: #e8eef2;
-            border-radius: 999px;
-            overflow: hidden;
+        .coach-metric-sub, .fps-score-sub { color: var(--fps-muted); margin-top:.35rem; font-size:.78rem; line-height:1.3; }
+        .coach-delta { margin-top:.25rem; font-size:.77rem; font-weight:800; }
+        .coach-positive { color:var(--fps-good); }
+        .coach-negative { color:var(--fps-bad); }
+        .coach-neutral { color:var(--fps-muted); }
+        .coach-warning { color:var(--fps-warn); }
+        .coach-scoreboard {
+            background: linear-gradient(135deg, #0B1F33 0%, #14344F 100%);
+            color:#fff;
+            border-radius:15px;
+            padding:1.25rem 1.4rem;
+            box-shadow:0 8px 22px rgba(11,31,51,.13);
+            min-height:158px;
         }
-        .fps-dim-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #1f7a6d 0%, #2c9c88 100%);
-            border-radius: 999px;
+        .coach-score-meta { color:#9CB0C0; font-size:.76rem; font-weight:750; text-transform:uppercase; letter-spacing:.06em; }
+        .coach-score-row { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:1rem; margin-top:1.1rem; }
+        .coach-score-team { font-size:1.12rem; font-weight:800; line-height:1.2; }
+        .coach-score-team-right { text-align:right; }
+        .coach-score { color:#fff; background:rgba(255,255,255,.1); padding:.5rem .8rem; border-radius:10px; font-weight:900; font-size:1.45rem; }
+        .coach-score-foot { margin-top:1rem; color:#B6C5D0; font-size:.78rem; }
+        .coach-insight {
+            background:#fff;
+            border:1px solid var(--fps-border);
+            border-left:4px solid #9AA8B4;
+            border-radius:11px;
+            padding:.82rem .95rem;
+            margin-bottom:.58rem;
+            min-height:94px;
         }
-        .fps-muted-card {
-            background: #ffffff;
-            border: 1px solid #dde5eb;
-            border-radius: 14px;
-            padding: 1rem 1.1rem;
+        .coach-insight-positive { border-left-color:var(--fps-good); }
+        .coach-insight-negative { border-left-color:var(--fps-bad); }
+        .coach-insight-warning { border-left-color:var(--fps-warn); }
+        .coach-insight-neutral { border-left-color:#8A9AA8; }
+        .coach-insight-title { color:var(--fps-text); font-size:.82rem; font-weight:850; }
+        .coach-insight-body { color:#2B3F4F; font-size:.9rem; font-weight:650; margin-top:.2rem; line-height:1.35; }
+        .coach-insight-meta { color:var(--fps-muted); font-size:.72rem; margin-top:.32rem; line-height:1.3; }
+        .fps-hero {
+            background: #0B1F33;
+            color:#fff;
+            border-radius:15px;
+            padding:1.15rem 1.3rem;
+            margin-bottom:1rem;
+        }
+        .fps-player-name { font-size:1.8rem; line-height:1.1; font-weight:850; margin:0; }
+        .fps-player-meta { margin-top:.45rem; color:#B7C6D2; font-size:.9rem; }
+        .fps-muted-card { background:#fff; border:1px solid var(--fps-border); border-radius:12px; padding:1rem; }
+        .fps-dim-row { margin-bottom:.75rem; }
+        .fps-dim-head { display:flex; justify-content:space-between; font-size:.84rem; margin-bottom:.25rem; color:#304454; }
+        .fps-dim-track { height:7px; background:#E8EDF1; border-radius:999px; overflow:hidden; }
+        .fps-dim-fill { height:100%; background:var(--fps-accent); border-radius:999px; }
+        [data-testid="stMetric"] {
+            background:#fff;
+            border:1px solid var(--fps-border);
+            border-radius:12px;
+            padding:.75rem .9rem;
+            box-shadow:none;
+        }
+        [data-testid="stMetricLabel"] { color:var(--fps-muted); }
+        [data-testid="stMetricValue"] { color:var(--fps-text); font-weight:800; }
+        [data-testid="stDataFrame"] { border:1px solid var(--fps-border); border-radius:11px; overflow:hidden; }
+        div[data-baseweb="select"] > div { border-radius:9px; border-color:#D8E1E8; background:#fff; }
+        div[data-baseweb="tab-list"] { gap:.2rem; border-bottom:1px solid var(--fps-border); }
+        button[data-baseweb="tab"] { padding:.62rem .85rem; border-radius:8px 8px 0 0; font-size:.86rem; }
+        button[kind="secondary"], button[kind="primary"] { border-radius:9px; }
+        hr { border-color:var(--fps-border); }
+        @media (max-width: 900px) {
+            .block-container { padding-left:1rem; padding-right:1rem; }
+            .coach-page-header { flex-direction:column; }
+            .coach-title { font-size:1.7rem; }
+            .coach-score-row { grid-template-columns:1fr; text-align:left; }
+            .coach-score-team-right { text-align:left; }
         }
         </style>
         """,
         unsafe_allow_html=True,
     )
+
+
+def sidebar_navigation() -> None:
+    st.sidebar.markdown(
+        """
+        <div class="coach-brand">
+          <div class="coach-brand-mark">FPS</div>
+          <div class="coach-brand-title">Football Performance</div>
+          <div class="coach-brand-sub">Staff intelligence system</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.sidebar.markdown("<div class='coach-nav-label'>Operativa</div>", unsafe_allow_html=True)
+    st.sidebar.page_link("streamlit_app.py", label="Centre de comandament", icon="🏠")
+    st.sidebar.page_link("pages/3_Equip.py", label="Equip", icon="🏟️")
+    st.sidebar.page_link("pages/4_Partit.py", label="Partit", icon="⚽")
+    st.sidebar.page_link("pages/2_Jugador.py", label="Jugador", icon="👤")
+    st.sidebar.markdown("<div class='coach-nav-label'>Anàlisi</div>", unsafe_allow_html=True)
+    st.sidebar.page_link("pages/1_Performance_Index.py", label="Performance Index", icon="📈")
+    st.sidebar.page_link("pages/6_Fisic_GPS.py", label="Físic / GPS", icon="📡")
+    st.sidebar.page_link("pages/7_Alertes.py", label="Qualitat i alertes", icon="🚩")
+    st.sidebar.markdown("<div class='coach-nav-label'>Assistent</div>", unsafe_allow_html=True)
+    st.sidebar.page_link("pages/5_Assistent_IA.py", label="Assistent IA", icon="💬")
+    st.sidebar.caption("V5 Match Rating · ús local")
 
 
 def position_label(value: object) -> str:
