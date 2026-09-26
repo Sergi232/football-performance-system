@@ -49,18 +49,11 @@ macro_f1=0.3002
 Decisión: `PREMATCH_EXPERIMENTAL_SIGNAL / NO_DEPLOY`.
 
 ### DSAI-11 — Robustez de la línea de posición
-Resultado clave:
-```text
-ML all-safe accuracy=0.4929
-last observed position accuracy=0.8944
-modal historical position accuracy=0.8915
-head-to-head ML only correct=13
-last-position only correct=150
-```
+Estado: **ATURADO / CONTEXT ONLY**.
 
-Decisión: `POSITION_CLASSIFICATION_LINE_CLOSED / CONTEXT_ONLY`.
+El script existe, pero no se registra ninguna métrica final como validada mientras no se disponga de la salida completa. La línea se detiene por decisión metodológica: la clasificación de posición estaba desplazando el objetivo principal del TFM.
 
-La posición es muy persistente y una heurística pre-match simple supera ampliamente al ML. No se justifica seguir consumiendo tiempo en optimizar esta tarea. La posición se conserva como variable contextual para analizar rendimiento.
+La evidencia DSAI-04..10 se conserva como demostración de target audit, leakage control, reformulación de labels y validación temporal. A partir de aquí la posición solo se usa como contexto del rendimiento.
 
 ## PERF-01 — Performance score audit — PRIORIDAD ACTUAL
 
@@ -143,7 +136,8 @@ Un resultado negativo o `NO_DEPLOY` sigue siendo válido académicamente si est�
 ## Secuencia actual
 
 ```text
-DSAI-02..11               CERRADOS
+DSAI-02..10               CERRADOS
+DSAI-11                   ATURADO / CONTEXT ONLY
         ↓
 PERF-01 score audit       ACTIVO
         ↓
