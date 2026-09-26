@@ -105,11 +105,11 @@ Resultado experimental útil pero sin threshold de despliegue.
 Resultado exploratorio con estabilidad temporal insuficiente para producto.
 
 ### Observed role classification
-Se auditó el target, se separó `Substitute`, se redujo la taxonomía a posiciones de fuente y se ejecutaron modelos leakage-safe.
+Se auditó el target, se separó `Substitute`, se redujo la taxonomía a posiciones de fuente y se ejecutaron modelos leakage-safe hasta DSAI-10.
 
-La línea queda cerrada como objetivo principal porque una regla pre-match simple basada en la última posición observada alcanza 89,44% de accuracy y supera ampliamente al ML. La posición se conserva como contexto.
+DSAI-11 queda detenido por reorientación metodológica antes de usarlo como evidencia final. La clasificación de posición estaba ocupando demasiado peso respecto al objetivo principal del TFM.
 
-Este resultado es útil académicamente: demuestra baseline comparison, leakage control, ablation y criterio explícito para abandonar una línea que no aporta valor incremental.
+La posición se conserva como contexto del rendimiento. El trabajo previo sigue siendo útil académicamente como demostración de target audit, leakage control, reformulación de labels y validación temporal.
 
 ## 5. PERF-01 — auditoría del score
 
@@ -180,7 +180,8 @@ DATA / FEATURES / ANALYTICS ✓
         ↓
 EXPERT BASELINE ✓
         ↓
-DSAI-02..11 ✓
+DSAI-02..10 ✓
+DSAI-11 ATURADO / CONTEXT ONLY
         ↓
 PERF-01 SCORE AUDIT ← ARA
         ↓
