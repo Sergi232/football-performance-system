@@ -106,16 +106,13 @@ def plan_tools_v2(
     combined_raw = f"{_history_text(history)} {question}".strip()
     combined = _norm(combined_raw)
 
-    # Evidence-sufficiency questions must be routed to data quality even when they
-    # mention fatigue/readiness. This check intentionally precedes recommendation blocking.
-    quality_question = any(_norm(term) in q for term in QUALITY_TERMS)
-    if quality_question:
-        plan: list[tuple[str, dict[str, Any]]] = [("get_data_quality", {})]
-        if any(_norm(term) in q for term in TEAM_TERMS):
-            plan.append(("get_team_snapshot", {}))
-        return _dedupe(plan), None
+    # Resolve entities first so mixed intents (for example "explain X and state the
+    # data limitations") can use both the domain tool and data-quality tool.
+    players = _hybrid._find_players(db_path, team_id, combined_raw)
 
-    # Explicit unsupported decisions remain blocked.
+    # Explicit unsupported decisions remain blocked. The patterns are deliberately
+    # specific, so an evidence-sufficiency question such as "do we have enough data
+    # to discuss fatigue?" is not blocked.
     if any(_norm(term) in q for term in RECOMMENDATION_TERMS):
         return [], (
             "No puc donar aquesta recomanació perquè el sistema no té una política validada "
@@ -123,8 +120,14 @@ def plan_tools_v2(
             "Puc descriure l'evidència disponible sense convertir-la en una recomanació no validada."
         )
 
-    players = _hybrid._find_players(db_path, team_id, combined_raw)
     plan: list[tuple[str, dict[str, Any]]] = []
+
+    # Quality language is compositional, not an exclusive early-return intent.
+    # This prevents harmless QA/user phrases such as "según la evidencia disponible"
+    # or "indica las limitaciones" from hijacking a player/match/GPS question.
+    quality_question = any(_norm(term) in q for term in QUALITY_TERMS)
+    if quality_question:
+        plan.append(("get_data_quality", {}))
 
     # Comparisons need both resolved players and one bounded comparison tool.
     if len(players) >= 2 and any(_norm(term) in q for term in COMPARE_TERMS):
