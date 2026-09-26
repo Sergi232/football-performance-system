@@ -38,7 +38,8 @@ PERF-05 SIGNED CORE FEASIBILITY     CERRADO / OUTFIELD CORE AVAILABLE — ISSUE 
 PERF-06 GOALKEEPER EFFICIENCY       CERRADO / SAVE_RATE DERIVABLE — ISSUE #58
 PERF-07 GK SAVE_RATE CONTEXT        CERRADO / FEATURE ADMISSION READY — ISSUE #59
 PERF-08 AGGREGATION FEASIBILITY     CERRADO / BASELINE FEASIBLE WITH 1 DEGENERATE — ISSUE #60
-PERF-09 EXPERIMENTAL SCORE          ACTIVO — ISSUE #61 / SCRIPT IMPLEMENTADO
+PERF-09 EXPERIMENTAL SCORE          CERRADO / BASELINE CREATED, COVERAGE BOTTLENECK — ISSUE #61
+PERF-10 COVERAGE / OBSERVABILITY    ACTIVO — ISSUE #70 / SCRIPT IMPLEMENTADO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
@@ -53,6 +54,7 @@ PLAYER-MATCH DATA
 → NÚCLEO PUNTUABLE
 → NORMALIZACIÓN / AGREGACIÓN
 → SCORE EXPERIMENTAL
+→ COBERTURA / OBSERVABILIDAD
 → SENSIBILIDAD / ABLATIONS
 → ESTABILIDAD TEMPORAL / CONTEXTO
 → SCORE GLOBAL VALIDADO
@@ -62,77 +64,69 @@ PLAYER-MATCH DATA
 
 Rol/posición se usa como contexto de comparación/normalización, no como objetivo principal ni como componente directo del score.
 
-## PERF-08 — cerrado
+## PERF-09 — cerrado
 
-Resultado v0.1.1:
+Resultado ejecutado:
 
 ```text
 played_rows=590
-outfield_rows=552
-known_role_rows=418
+outfield_eligible_rows=552
 direct_gk_rows=38
-signed_features=11
-outfield_dimensions=5
-rank_feasible=10
-robust_z_feasible=10
-degenerate=1
-robust_z_limited=0
-dimensions_without_evidence=0
-degenerate_features=penalties_conceded_per90
-goalkeeper_save_rate_rows=31
-goalkeeper_rank_feasible=True
-conclusion=AGGREGATION_BASELINE_BLOCKED_DEGENERATE_SIGNED_FEATURES
+unknown_gk_evidence_excluded=0
+signed_candidates=11
+used_features=10
+excluded_degenerate=1
+dimensions=5
+complete_outfield_score_rows=3
+goalkeeper_score_rows=31
+excluded_features=penalties_conceded_per90
+outfield_score=min:37.1014 p25:40.2510 median:43.4006 p75:48.7546 max:54.1085
+goalkeeper_score=min:3.2258 p25:24.1935 median:51.6129 p75:77.4194 max:96.7742
+conclusion=EXPERIMENTAL_SCORE_BASELINE_CREATED_SENSITIVITY_REQUIRED
 ```
 
-Decisión metodológica final:
-- el bloqueo proviene únicamente de `penalties_conceded_per90`, que no presenta variación suficiente en esta muestra;
-- la feature **no se elimina ni cambia de dirección**;
-- queda excluida solo del primer baseline experimental porque una variable degenerada no puede aportar información ordinal;
-- debe poder reentrar en futuros datasets cuando exista variación;
-- las otras 10 features signadas son rank-normalizables;
-- las 5 dimensiones outfield conservan evidencia;
-- `save_rate` es normalizable en la ruta separada de portero.
+Decisión:
+- el primer score experimental existe y funciona técnicamente;
+- sigue `EXPERIMENTAL / NO_DEPLOY`;
+- `penalties_conceded_per90` queda excluida solo por degeneración en esta muestra;
+- portería sigue separada mediante `save_rate`;
+- **solo 3/552 filas outfield tienen las cinco dimensiones disponibles**;
+- por esa cobertura, no se pasa todavía a sensibilidad de pesos: primero hay que entender el cuello de botella.
 
-Resultado operativo:
-`EXPERIMENTAL_BASELINE_FEASIBLE_WITH_DEGENERATE_FEATURE_EXCLUDED`.
+No se relaja el requisito de 5 dimensiones de forma arbitraria y missing no se convierte en cero.
 
-## PERF-09 — activo
+## PERF-10 — activo
 
-Issue #61.
+Issue #70.
 
 Script:
 ```text
-dsai/performance_score_experimental.py
+dsai/performance_score_coverage_audit.py
 ```
 
-Objetivo: crear el primer score jugador-partido **EXPERIMENTAL / NO_DEPLOY**.
+Objetivo: explicar la baja cobertura completa del score antes de cambiar política de agregación.
 
-Política baseline nulo:
-1. usar únicamente features con dirección respaldada y variación observable;
-2. aplicar normalización empírica rank/percentile 0–100;
-3. invertir ordinalmente las features `NEGATIVE_SUPPORTED` para que un valor normalizado más alto represente mejor resultado;
-4. agregar con pesos iguales entre features disponibles dentro de cada dimensión;
-5. agregar las cinco dimensiones outfield con peso igual;
-6. emitir score global outfield solo cuando las cinco dimensiones tengan evidencia;
-7. conservar missing como missing;
-8. excluir `penalties_conceded_per90` solo mientras sea degenerada;
-9. mantener portería separada con percentile de `save_rate`;
-10. excluir de la ruta outfield cualquier fila de `Goalkeeper` y cualquier fila con rol desconocido pero `saves > 0`, sin imputar una posición.
+Audita:
+- cobertura por feature signada;
+- cobertura por dimensión;
+- distribución de filas con 0..5 dimensiones disponibles;
+- patrones de dimensiones ausentes;
+- leave-one-dimension-out para identificar cuellos de botella;
+- para per90: raw NULL vs raw zero vs raw >0;
+- para ratios: inputs missing vs denominador zero vs denominador positivo;
+- contexto descriptivo por `source_position`.
 
-Los pesos iguales son exclusivamente un **baseline nulo experimental**. No quedan aprobados para producto.
+Reglas:
+- no crea un score nuevo;
+- no aprueba un mínimo de dimensiones;
+- no imputa missing como cero;
+- una ratio con denominador 0 se trata como indefinida, no como mal rendimiento;
+- rol/posición = diagnóstico contextual;
+- no se tocan pesos ni rankings.
 
-Salidas previstas:
-```text
-dsai/output/performance_score_experimental.json
-dsai/output/performance_score_experimental.md
-dsai/output/performance_score_experimental.csv
-```
-
-PERF-09 debe terminar en una de dos conclusiones:
-- `EXPERIMENTAL_SCORE_BASELINE_CREATED_SENSITIVITY_REQUIRED`;
-- `EXPERIMENTAL_SCORE_BLOCKED_NO_COMPLETE_DIMENSION_ROWS`.
-
-Si se crea el baseline, el siguiente paso será sensibilidad/ablations antes de cualquier decisión de despliegue.
+Conclusiones posibles:
+- `FULL_DIMENSION_COVERAGE_COMPLETE_SENSITIVITY_READY`;
+- `FULL_DIMENSION_COVERAGE_INCOMPLETE_POLICY_REDESIGN_REQUIRED`.
 
 ## Guardrails del score
 
@@ -147,13 +141,13 @@ Si se crea el baseline, el siguiente paso será sensibilidad/ablations antes de 
 
 ## Incidencias de repositorio
 
-Los issues #62, #64, #65, #66, #67, #68 y #69 fueron artefactos accidentales del conector y quedaron cerrados como `not_planned`. El #63 fue una planificación prematura y también quedó cerrado. Ninguno contiene trabajo del proyecto.
+Los issues #62, #64, #65, #66, #67, #68, #69, #71, #72, #73, #74, #75 y #76 fueron artefactos accidentales del conector y quedaron cerrados como `not_planned`. El #63 fue una planificación prematura y también quedó cerrado. Ninguno contiene trabajo del proyecto.
 
 Los ficheros auxiliares redundantes `docs/PERF_05_*` siguen pendientes de limpieza; no son fuente de verdad.
 
 ## Líneas todavía bloqueadas
 
-- score global validado: hasta PERF-09 + sensibilidad/ablations + estabilidad;
+- score global validado: hasta resolver cobertura + sensibilidad/ablations + estabilidad;
 - `role_player_fit`: sin target independiente defendible;
 - `expert_vs_ml`: sin shared target independiente;
 - calibración N13000: sin ground truth de recomendación.
@@ -163,7 +157,7 @@ Los ficheros auxiliares redundantes `docs/PERF_05_*` siguen pendientes de limpie
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\performance_score_experimental.py
+python dsai\performance_score_coverage_audit.py
 ```
 
 No instalar nada.
