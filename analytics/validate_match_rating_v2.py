@@ -2,14 +2,18 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 import duckdb
 import pandas as pd
 
-from analytics.build_match_rating_v2 import V2_VERSION, build_rating_frame
-
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from analytics.build_match_rating_v2 import V2_VERSION, build_rating_frame  # noqa: E402
+
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 
 
