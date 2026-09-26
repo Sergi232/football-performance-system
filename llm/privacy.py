@@ -80,6 +80,9 @@ class AliasBook:
             return [self.anonymize_obj(v) for v in value]
         if isinstance(value, tuple):
             return [self.anonymize_obj(v) for v in value]
+        raw = str(value)
+        if raw in self.real_to_alias:
+            return self.real_to_alias[raw]
         if isinstance(value, str):
             return self.anonymize_text(value)
         return value
