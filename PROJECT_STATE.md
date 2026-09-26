@@ -93,12 +93,6 @@ Decisión:
 - no se modifica raw data ni FEATURE-01 todavía;
 - no se autoriza ningún `fillna(0)` global.
 
-Impacto esperado a auditar:
-- `goals_per90`: puede pasar de missing a 0 observado en partidos sin gol;
-- `goal_per_shot_rate`: puede pasar a 0 cuando hay tiros y ningún gol; si `shots_total=0`, la ratio sigue indefinida;
-- `red_cards_per90`: puede pasar de missing a 0 observado cuando no hay expulsión;
-- `shots_total_per90` también puede adquirir 0 observado, pero sigue siendo `CONTEXT_DEPENDENT` y no entra por sí sola en el signed core.
-
 ## PERF-12 — activo
 
 Issue #78.
@@ -108,15 +102,7 @@ Script:
 dsai/performance_validated_zero_impact.py
 ```
 
-Objetivo: aplicar **solo en memoria** la semántica validada de PERF-11 y medir cuánto cambia la cobertura del signed core y de las 5 dimensiones outfield.
-
-Compara:
-- cobertura FEATURE-01 original;
-- cobertura con `shots_total`, `goals` y `red_cards` reinterpretados como zero observado únicamente cuando raw es NULL;
-- cobertura de `goals_per90`, `goal_per_shot_rate`, `red_cards_per90`;
-- distribución 0..5 dimensions antes/después;
-- full-five coverage antes/después;
-- dimensión cuello de botella antes/después.
+Objetivo: aplicar solo en memoria la semántica validada de PERF-11 y medir cuánto cambia la cobertura del signed core y de las 5 dimensiones outfield.
 
 Reglas:
 - no escribe en DuckDB;
@@ -124,32 +110,6 @@ Reglas:
 - `yellow_cards` permanece sin reinterpretar;
 - denominador `shots_total=0` mantiene `goal_per_shot_rate=NULL`;
 - ningún peso, threshold, ranking o recomendación.
-
-## Guardrails del score
-
-- ningún threshold de bueno/malo;
-- ningún ranking/recomendación de producto;
-- ningún peso aprobado;
-- ningún `fillna(0)` global;
-- solo se admite zero observado con evidencia independiente;
-- ratios con denominador 0 siguen indefinidas;
-- no usar PCA/correlación/varianza como definición de calidad;
-- score outfield y score de portero no se comparan directamente;
-- rol/posición = contexto, no target;
-- el LLM no recalcula el score.
-
-## Incidencias de repositorio
-
-Los issues #62, #64, #65, #66, #67, #68, #69, #71, #72, #73, #74, #75 y #76 fueron artefactos accidentales del conector y quedaron cerrados como `not_planned`. El #63 fue una planificación prematura y también quedó cerrado. Ninguno contiene trabajo del proyecto.
-
-Los ficheros auxiliares redundantes `docs/PERF_05_*` siguen pendientes de limpieza; no son fuente de verdad.
-
-## Líneas todavía bloqueadas
-
-- score global validado: hasta resolver cobertura tras semántica validada + política de score + sensibilidad/ablations + estabilidad;
-- `role_player_fit`: sin target independiente defendible;
-- `expert_vs_ml`: sin shared target independiente;
-- calibración N13000: sin ground truth de recomendación.
 
 ## Siguiente paso exacto
 
