@@ -1,17 +1,17 @@
 """Router v2 for the local Coach Copilot.
 
-Fixes ambiguous quality/GPS questions (for example asking whether current data are
-sufficient to discuss fatigue) so they inspect data quality instead of being blocked
-as if they were unsupported medical/performance recommendations.
+Bilingual deterministic router for Spanish/Catalan open questions. It keeps the
+LLM away from free SQL, routes only to approved read-only tools, resolves player
+follow-ups from short conversation history, and distinguishes questions about data
+sufficiency from unsupported recommendations about fatigue/injury/line-ups.
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
 from llm import coach_agent_hybrid as _hybrid
-
-_ORIGINAL_PLAN = _hybrid._plan_tools
 
 QUALITY_TERMS = (
     "limitacions", "limitaciones", "qualitat", "calidad", "qualitat de dades",
@@ -19,26 +19,80 @@ QUALITY_TERMS = (
     "dades disponibles", "evidencia", "evidència", "cobertura", "missing",
     "tenim prou dades", "tenemos suficientes datos", "tenemos datos suficientes",
     "podem parlar", "podemos hablar", "es pot parlar", "se puede hablar",
+    "informacio disponible", "información disponible", "informacion disponible",
 )
 
 GPS_TERMS = (
     "gps", "fisic", "físic", "fisico", "físico", "distancia", "distància",
     "velocitat", "velocidad", "carrega", "càrrega", "carga", "fatiga",
     "readiness", "disponibilitat física", "disponibilidad fisica",
+    "informacio fisica", "información física", "informacion fisica",
 )
 
 RECOMMENDATION_TERMS = (
     "qui està fatigat", "quien esta fatigado", "quién está fatigado",
     "qui té fatiga", "quien tiene fatiga", "quién tiene fatiga",
+    "hauria de descansar", "deberia descansar", "debería descansar",
     "risc de lesio", "risc de lesió", "riesgo de lesion", "riesgo de lesión",
     "qui hauria de ser titular", "quien deberia ser titular", "quién debería ser titular",
     "alineacio ideal", "alineació ideal", "alineacion ideal", "alineación ideal",
     "onze ideal", "once ideal", "millor onze", "mejor once",
+    "qui hauria de jugar", "quien deberia jugar", "quién debería jugar",
+)
+
+COMPARE_TERMS = (
+    "compara", "comparar", "comparacio", "comparació", "comparacion", "comparación",
+    "diferencies", "diferències", "diferencias", "versus", " vs ",
+)
+
+MATCH_TERMS = (
+    "partit", "partido", "match", "contra", "rival", "ultim", "últim", "ultimo",
+    "último", "darrer", "anterior encuentro", "último encuentro", "ultim encontre",
+)
+
+PLAYER_DETAIL_TERMS = (
+    "per que", "per què", "por que", "por qué", "evoluc", "canvi", "cambio",
+    "accions", "acciones", "estad", "rendiment recent", "rendimiento reciente",
+    "ultims partits", "últimos partidos", "ultimos partidos", "mostra", "muestra",
+    "nota", "rating", "match rating", "performance index", "motor expert",
+    "motor experto",
+)
+
+TEAM_TERMS = (
+    "equip", "equipo", "forma", "millorant", "mejorando", "empitjorant", "empeorando",
+    "canvi recent", "cambio reciente", "tendencia", "tendència", "estat recent",
+    "estado reciente", "qui presenta", "quien presenta", "quién presenta",
+)
+
+FOLLOWUP_TERMS = (
+    "i com", "y como", "y cómo", "i que", "i què", "y que", "y qué", "la seva",
+    "su ", "aquesta", "esta ", "esa ", "ell", "ella", "él", "ella",
 )
 
 
 def _norm(text: object) -> str:
     return _hybrid._norm(text)
+
+
+def _history_text(history: list[dict[str, str]] | None) -> str:
+    parts: list[str] = []
+    for item in (history or [])[-4:]:
+        role = str(item.get("role", "")).strip()
+        content = str(item.get("content", "")).strip()
+        if role in {"user", "assistant"} and content:
+            parts.append(content[:700])
+    return " ".join(parts)
+
+
+def _dedupe(plan: list[tuple[str, dict[str, Any]]]) -> list[tuple[str, dict[str, Any]]]:
+    out: list[tuple[str, dict[str, Any]]] = []
+    seen: set[str] = set()
+    for name, args in plan:
+        key = name + json.dumps(args, ensure_ascii=False, sort_keys=True)
+        if key not in seen:
+            seen.add(key)
+            out.append((name, args))
+    return out[:4]
 
 
 def plan_tools_v2(
@@ -49,6 +103,17 @@ def plan_tools_v2(
     history: list[dict[str, str]] | None,
 ) -> tuple[list[tuple[str, dict[str, Any]]], str | None]:
     q = _norm(question)
+    combined_raw = f"{_history_text(history)} {question}".strip()
+    combined = _norm(combined_raw)
+
+    # Evidence-sufficiency questions must be routed to data quality even when they
+    # mention fatigue/readiness. This check intentionally precedes recommendation blocking.
+    quality_question = any(_norm(term) in q for term in QUALITY_TERMS)
+    if quality_question:
+        plan: list[tuple[str, dict[str, Any]]] = [("get_data_quality", {})]
+        if any(_norm(term) in q for term in TEAM_TERMS):
+            plan.append(("get_team_snapshot", {}))
+        return _dedupe(plan), None
 
     # Explicit unsupported decisions remain blocked.
     if any(_norm(term) in q for term in RECOMMENDATION_TERMS):
@@ -58,21 +123,50 @@ def plan_tools_v2(
             "Puc descriure l'evidència disponible sense convertir-la en una recomanació no validada."
         )
 
-    # Questions about whether evidence is sufficient are quality questions, even if
-    # they mention fatigue/readiness as something the current data may not support.
-    if any(_norm(term) in q for term in QUALITY_TERMS):
-        plan: list[tuple[str, dict[str, Any]]] = [("get_data_quality", {})]
-        if any(_norm(term) in q for term in ("equip", "equipo", "forma", "tendencia", "tendència")):
-            plan.append(("get_team_snapshot", {}))
-        return plan[:3], None
+    players = _hybrid._find_players(db_path, team_id, combined_raw)
+    plan: list[tuple[str, dict[str, Any]]] = []
 
-    # Generic GPS/physical availability question without a named player -> quality.
+    # Comparisons need both resolved players and one bounded comparison tool.
+    if len(players) >= 2 and any(_norm(term) in q for term in COMPARE_TERMS):
+        plan.append(("compare_players", {"players": players[:6]}))
+        return _dedupe(plan), None
+
+    # Physical/GPS questions about a named player use that player's GPS view.
     if any(_norm(term) in q for term in GPS_TERMS):
-        players = _hybrid._find_players(db_path, team_id, question)
-        if not players:
-            return [("get_data_quality", {})], None
+        if players:
+            plan.append(("get_player_gps", {"player": players[0]}))
+        else:
+            plan.append(("get_data_quality", {}))
 
-    return _ORIGINAL_PLAN(question, db_path=db_path, team_id=team_id, history=history)
+    # Match resolution works from the current question plus short history.
+    match_query = _hybrid._resolve_match_query(db_path, team_id, combined_raw)
+    if match_query and any(_norm(term) in q for term in MATCH_TERMS):
+        plan.append(("get_match_detail", {"match": match_query}))
+
+    # Named-player questions get a profile. Evolution/why/action questions also inspect
+    # recent player-match evidence. This also handles pronoun follow-ups via history.
+    if players and not any(name == "compare_players" for name, _ in plan):
+        plan.append(("get_player_profile", {"player": players[0]}))
+        needs_detail = any(_norm(term) in q for term in PLAYER_DETAIL_TERMS)
+        if history and any(_norm(term) in q for term in FOLLOWUP_TERMS):
+            needs_detail = True
+        if needs_detail:
+            plan.append(("get_player_match_stats", {"player": players[0], "last_n": 5}))
+
+    # Team-level open questions without a named player get the team snapshot.
+    if any(_norm(term) in q for term in TEAM_TERMS) and not players:
+        plan.append(("get_team_snapshot", {}))
+
+    # Generic match wording such as "último partido" may resolve after earlier branches.
+    if not any(name == "get_match_detail" for name, _ in plan):
+        if match_query and any(_norm(term) in combined for term in MATCH_TERMS):
+            plan.append(("get_match_detail", {"match": match_query}))
+
+    if not plan:
+        # Open-question fallback remains descriptive and auditable.
+        plan.append(("get_team_snapshot", {}))
+
+    return _dedupe(plan), None
 
 
 def install() -> None:
