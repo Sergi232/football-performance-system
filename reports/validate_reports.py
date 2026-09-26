@@ -35,7 +35,16 @@ def _write_pdf(name: str, payload: dict) -> tuple[Path, int]:
         raise AssertionError(f"{name}: PDF unexpectedly small ({len(pdf)} bytes)")
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     path = OUTPUT_DIR / name
-    path.write_bytes(pdf)
+    try:
+        path.write_bytes(pdf)
+    except PermissionError:
+        # Windows locks a PDF that is open in some viewers. Validation must not fail
+        # merely because an earlier report is being inspected by the user.
+        fallback_dir = OUTPUT_DIR / "_validation"
+        fallback_dir.mkdir(parents=True, exist_ok=True)
+        original = Path(name)
+        path = fallback_dir / f"{original.stem}_{os.getpid()}{original.suffix}"
+        path.write_bytes(pdf)
     return path, len(pdf)
 
 
