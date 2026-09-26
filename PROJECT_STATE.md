@@ -22,11 +22,12 @@ DECISION POLICY / N13000            GATE APROBADO — ISSUE #27 CERRADO
 DSAI-01A..11                        CERRADO / RESULTADOS DOCUMENTADOS
 PERF-01..14                         CERRADO / BASELINE v0.1 DOCUMENTADA
 PERF-15 COVERAGE REPAIR             CERRADO / VALIDADO — ISSUE #90
-PERF-16 MATCH RATING                ACTIVO — ISSUE #91 / PENDIENTE GATE LOCAL
+PERF-16 MATCH RATING                BACKEND PASS — ISSUE #91 / UI+PDF FINAL GATE PENDIENTE
 SCORE-INTEGRATION-01                v0.2 VALIDADA / CONTRACT PASS
 DASHBOARD-02 PLAYER VIEW            CERRADO — ISSUE #88 / VALIDADO VISUALMENTE
-DASHBOARD-03 TEAM MODE              ACTIVO — ISSUE #89
-MATCH MODE                          IMPLEMENTADO / PENDIENTE VALIDACIÓN LOCAL
+DASHBOARD-03 TEAM MODE              ACTIVO — ISSUE #89 / MATCH RATING INTEGRADO
+MATCH MODE                          IMPLEMENTADO / INSIGHTS + PDF / GATE LOCAL PENDIENTE
+LLM MATCH RATING CONTEXT            IMPLEMENTADO / GATE LOCAL PENDIENTE
 FINAL-01                            DESBLOQUEADO
 ```
 
@@ -49,21 +50,19 @@ El dashboard web es el producto principal. PDF/PPT son salidas estáticas comple
 
 ## Distinción de producto aprobada
 
-A partir de PERF-16 se separan dos conceptos:
-
 ```text
 MATCH RATING
 = nota inmediata de un jugador en un partido
-= debe existir desde el partido 1
+= existe desde el partido 1
 = no requiere historial previo
 
 PERFORMANCE INDEX
-= capa histórica/posicional
-= sirve para evolución, forma, consistencia, tendencia y comparación por rol
-= no es la nota del partido
+= capa histórica/posicional complementaria
+= evolución, forma, consistencia, tendencia y comparación por rol
+= NO es la nota del partido
 ```
 
-La interfaz debe mostrar primero el Match Rating cuando se habla de un partido o del último rendimiento.
+La interfaz muestra Match Rating como resultado operativo principal de un partido.
 
 ## PERF-15 — cerrado / validado
 
@@ -74,7 +73,7 @@ performance_score_v0.2-experimental
 source experiment: performance_position_score_experiment_0.3.0
 ```
 
-Resultado local:
+Resultado local validado:
 
 ```text
 observable_role_rows=380
@@ -88,128 +87,218 @@ fallback_creation_progression=128
 fallback_defensive_contribution=205
 ```
 
-Contrato dashboard PASS. PERF-15 corrige el problema de dimensiones vacías sin inventar acciones.
+PERF-15 corrige dimensiones vacías sin inventar acciones.
 
 ## PERF-16 — Match Rating
 
 Issue #91.
 
-Versión candidata:
+Versión:
 
 ```text
 match_rating_v0.1-experimental
 ```
 
-Archivos:
+Materialización:
 
 ```text
 analytics/build_match_rating.py
-app/match_rating_access.py
-app/validate_match_rating.py
-app/pages/2_Jugador.py
-app/pages/4_Partit.py
-reports/data_builder.py
-reports/pdf_engine.py
+player_match_rating
 ```
 
-### Contrato funcional
+Contrato funcional:
 
-Cada `player_match` con `minutes_played > 0` debe producir una fila de Match Rating.
+- una fila por cada `player_match` con `minutes_played > 0`;
+- rating disponible desde el primer partido;
+- no depende del historial para calcular la nota del partido;
+- jugadores de campo con rol observable usan contexto posicional;
+- suplentes sin rol táctico fiable usan `GENERIC_ROLE_UNAVAILABLE`, sin inventar posición;
+- porteros usan camino GK separado;
+- evidencia insuficiente conserva rating neutral explícito + confidence baja/0;
+- ningún LLM calcula ni altera el rating.
 
-El rating debe estar disponible desde el primer partido; la evolución histórica es una capa posterior.
-
-### Jugadores de campo
-
-```text
-PERF-15 dimensions disponibles
--> pesos posicionales si rol observable
--> pesos iguales si la fuente solo dice Substitute
--> rating_100
--> rating_10
-```
-
-Un suplente sin rol táctico fiable NO recibe un rol inventado. Para el informe del partido puede recibir rating con `GENERIC_ROLE_UNAVAILABLE`, explícitamente separado de evidencia táctica.
-
-Si una aparición no dispone de ninguna dimensión utilizable:
+Escala interna:
 
 ```text
-rating_100 = 50 midpoint
-confidence = 0
-status = NEUTRAL_INSUFFICIENT_OUTFIELD_EVIDENCE
-```
-
-Esto es una presentación neutral para garantizar continuidad operativa, no una afirmación de rendimiento. No se inventan acciones.
-
-### Porter
-
-Camino separado:
-
-- si `saves` y `goals_conceded` están observados y hubo tiros a puerta enfrentados, señal = `save_rate`;
-- si no hubo oportunidades o la evidencia está incompleta, midpoint explícito con confidence reducida;
-- nunca se mezcla el porter con las dimensiones de jugadores de campo.
-
-### Escala
-
-Interna:
-
-```text
-match_rating_100: 0-100
+match_rating_100 = 0..100
 ```
 
 Presentación:
 
 ```text
 match_rating_10 = 4.0 + 0.06 * match_rating_100
-```
-
-Por tanto:
-
-```text
-0   -> 4.0
-50  -> 7.0
+0 -> 4.0
+50 -> 7.0
 100 -> 10.0
 ```
 
-La transformación es lineal y solo visual; preserva completamente el orden. No copia ninguna fórmula propietaria.
+La transformación /10 es experimental y solo de presentación; no copia una fórmula propietaria.
 
-### Dashboard
+### Gate local ya validado
 
-`Jugador` muestra ahora como KPI principal:
+```text
+PERF-16 MATCH RATING MATERIALIZATION: COMPLETE
+played_rows=590
+rated_rows=590
+rating_coverage=1.0
+outfield_rows=552
+goalkeeper_rows=38
+generic_role_unavailable_rows=172
+neutral_insufficient_evidence_rows=7
+first_match_capable=True
+history_required_for_match_rating=False
+
+MATCH RATING CONTRACT: PASS
+played_rows=590
+rated_rows=590
+rating_coverage=1.0000
+matches=38
+goalkeeper_rows=38
+generic_role_rows=172
+neutral_insufficient_evidence_rows=7
+first_match_rated_rows=16
+```
+
+Conclusión: el backend cumple el requisito de producto de generar ratings desde el partido 1.
+
+## Dashboard — Player Mode
+
+Vista `Jugador` validada visualmente.
+
+KPIs principales actuales:
 
 ```text
 Match Rating /10
 Confianza
-Perfil del partit
-Performance Index complementari
+Perfil del partido
+Performance Index complementario
 ```
 
-La evolución principal es Match Rating. El Performance Index queda como capa histórica secundaria.
+Incluye además:
 
-Nueva página:
+- dimensiones del último partido;
+- evolución del Match Rating;
+- datos técnicos;
+- motor experto;
+- historial de partidos;
+- PDF.
+
+## Match Mode
+
+Archivo:
 
 ```text
-Partit
+app/pages/4_Partit.py
 ```
 
-Permite seleccionar un partido y consultar:
+Incluye:
 
+- selección de partido;
+- resultado y formación;
 - jugadores utilizados;
-- rating /10;
-- confianza;
+- Match Rating /10;
+- confidence;
 - rol/perfil;
-- minutos/titularidad;
-- dimensiones del partido;
+- minutos y titularidad;
+- dimensiones player-match;
 - detalle por jugador;
+- observaciones postpartido deterministas;
 - PDF del partido.
 
-### Informes
+Observaciones actuales, siempre derivadas de datos observados:
+
+- goleadores;
+- asistentes;
+- máximo de remates observados;
+- máximo de pases completados;
+- máximo de entradas ganadas;
+- máximo de intercepciones;
+- número de ratings genéricos por rol no observable;
+- casos con confidence < 50%.
+
+No son recomendaciones tácticas ni conclusiones de un LLM.
+
+Validador nuevo:
+
+```text
+app/validate_match_mode.py
+```
+
+Debe confirmar que el primer partido tiene ratings, observaciones y PDF generable.
+
+## Team Mode
+
+Issue #89.
+
+`Equip` ahora usa Match Rating como capa operativa principal:
+
+- rating mediana del último partido;
+- jugadores valorados;
+- confidence mediana;
+- último Match Rating por jugador;
+- plantilla con rating actual y media últimos 5;
+- evolución temporal de la mediana de rating por partido;
+- delta descriptivo 5 vs 5;
+- Performance Index en pestaña separada;
+- historial de partidos;
+- PDF.
+
+El Performance Index ya no se presenta como nota del partido.
+
+## Informes PDF
 
 `reports/data_builder.py` y `reports/pdf_engine.py` incorporan Match Rating en:
 
 - informe de jugador;
 - informe de partido.
 
-Esto permite generar un informe presentable desde el primer partido siempre que el pipeline del partido haya sido procesado.
+El objetivo operativo es que tras procesar el partido 1 ya exista un informe postpartido presentable.
+
+## Asistente IA
+
+Arquitectura obligatoria mantenida:
+
+```text
+DATA -> ANALYTICS -> DECISION ENGINE -> LLM -> COACH
+```
+
+Archivos actualizados:
+
+```text
+llm/context_builder.py
+llm/assistant_service.py
+app/pages/5_Assistent_IA.py
+llm/validate_match_rating_context.py
+```
+
+El context builder expone ahora:
+
+### Team
+- Match Rating snapshot;
+- historial de Match Rating;
+- datos de equipo.
+
+### Player
+- último Match Rating;
+- historial de ratings;
+- Performance Index complementario;
+- features;
+- motor experto.
+
+### Match
+- ratings materializados;
+- lineup;
+- observaciones postpartido deterministas.
+
+El asistente puede explicar una nota ya calculada, pero no recalcularla, alterar pesos ni crear una recomendación táctica.
+
+Nueva página:
+
+```text
+Assistent IA
+```
+
+Funciona en modo determinista sin API key. Si existe proveedor LLM configurado, se mantiene downstream del contexto estructurado y los guardrails.
 
 ## Guardrails vigentes
 
@@ -220,30 +309,34 @@ Esto permite generar un informe presentable desde el primer partido siempre que 
 - Match Rating y Performance Index son capas distintas;
 - suplentes sin rol táctico no reciben rol inventado;
 - porteros mantienen camino separado;
-- cualquier midpoint por evidencia insuficiente debe quedar identificado y con confidence reducida;
+- cualquier midpoint por evidencia insuficiente queda identificado y con confidence reducida;
 - el LLM no calcula ni altera ratings;
-- dashboard/PDF consumen resultados materializados.
+- dashboard/PDF consumen resultados materializados;
+- observaciones postpartido son descriptivas y auditables.
 
-## Gate PERF-16 pendiente
+## Siguiente paso exacto
 
-Ejecutar:
+Ejecutar únicamente los nuevos gates:
 
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
 $env:FPS_DB_PATH = "D:\Data\Sergi\Desktop\football-performance-system\data\football_performance.duckdb"
-python analytics\build_match_rating.py --db $env:FPS_DB_PATH
-python app\validate_match_rating.py
+
+python app\validate_match_mode.py
+python llm\validate_match_rating_context.py
 streamlit run app\streamlit_app.py
 ```
 
-El gate debe confirmar:
+Comprobar visualmente:
 
-1. una fila de rating por cada jugador-partido con minutos;
-2. 100% de ratings no nulos;
-3. ratings presentes ya en el primer partido;
-4. porteros incluidos;
-5. número de casos genéricos por rol no observable;
-6. número de ratings neutrales por evidencia insuficiente.
+1. `Partit` -> primer partido -> ratings + Observacions + PDF;
+2. `Equip` -> Resum / Plantilla / Evolució;
+3. `Assistent IA` -> contexto Jugador -> `Per què té aquest Match Rating?`;
+4. `Assistent IA` -> contexto Partit -> `Resumeix què ha passat en aquest partit.`
 
-Después del PASS: cerrar PERF-16 y continuar Team Mode + insights automáticos del partido + integración LLM.
+Si ambos validators dan PASS y las tres vistas cargan correctamente:
+
+1. cerrar PERF-16 #91;
+2. cerrar DASHBOARD-03 #89;
+3. pasar a GPS/físico + alertas validadas + pulido final/publicación.
