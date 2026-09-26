@@ -275,18 +275,7 @@ Los flags son de atención/traçabilidad, no diagnósticos de rendimiento.
 
 `app/streamlit_app.py` es ahora la home operativa del staff.
 
-Incluye:
-
-- selector de equipo;
-- hero TEAM MODE;
-- partidos / plantilla;
-- mediana descriptiva del Match Rating del último partido;
-- centro de atención auditable;
-- estado GPS;
-- último partido + tabla de ratings;
-- evolución de la mediana del Match Rating;
-- acceso rápido a Equip, Jugador, Partit, Performance Index, Físic/GPS, Alertes y Assistent IA;
-- metodología/límites colapsables.
+Incluye selector de equipo, hero TEAM MODE, KPIs de contexto, mediana descriptiva del Match Rating del último partido, último partido con ratings, Centre d'Atenció auditable, estado GPS, evolución de la mediana y accesos rápidos a todas las vistas del producto.
 
 La home no recalcula métricas ni crea recomendaciones.
 
@@ -295,9 +284,9 @@ La home no recalcula métricas ni crea recomendaciones.
 - no copiar fórmulas propietarias Sofascore/FotMob;
 - no convertir missing en 0 salvo semántica validada;
 - no threshold bueno/malo sin validación;
-- no recomendación tàctica derivada directamente de ratings;
+- no recomendación táctica derivada directamente de ratings;
 - Match Rating y Performance Index son capas distintas;
-- suplentes sin rol tàctic no reciben rol inventado;
+- suplentes sin rol táctico no reciben rol inventado;
 - porteros mantienen camino separado;
 - midpoint por evidencia insuficiente queda identificado y con confidence reducida;
 - LLM no calcula ni altera ratings;
@@ -317,18 +306,4 @@ $env:FPS_DB_PATH = "D:\Data\Sergi\Desktop\football-performance-system\data\footb
 streamlit run app\streamlit_app.py
 ```
 
-Comprobar:
-
-1. home principal;
-2. último partido y ratings;
-3. centre d'atenció;
-4. navegació ràpida;
-5. Equip / Jugador / Partit / Físic / Alertes / Assistent IA.
-
-Después del check visual:
-
-1. cerrar DASHBOARD-03 #89 si Team Mode se considera final para MVP;
-2. revisar PDF de jugador/partido/equipo como salidas finales;
-3. pulir labels/navegación responsive;
-4. preparar publicación Streamlit / demo final;
-5. actualizar README con flujo de uso final.
+Después del check visual: cerrar DASHBOARD-03 #89 si Team Mode se considera final para MVP, revisar PDF finales, pulir navegación responsive, preparar publicación Streamlit/demo final y actualizar README con el flujo final.
