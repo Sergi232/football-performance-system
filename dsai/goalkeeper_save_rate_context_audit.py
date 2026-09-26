@@ -3,6 +3,11 @@
 Candidate from PERF-06:
     save_rate = saves / (saves + goals_conceded)
 
+Important provider semantic distinction:
+- `saves` is the goalkeeper-specific event signal used for contamination checks;
+- `goals_conceded` can be populated for outfield players as match/player context and
+  therefore MUST NOT by itself be treated as a goalkeeper event.
+
 This audit does not add the feature to FEATURE-01 and does not create scores,
 weights, thresholds, rankings or recommendations.
 """
@@ -19,7 +24,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 OUTPUT_DIR = Path(__file__).with_name("output")
-VERSION = "goalkeeper_save_rate_context_audit_0.1.0"
+VERSION = "goalkeeper_save_rate_context_audit_0.1.1"
 EXPECTED_GK_POSITION = "Goalkeeper"
 
 
@@ -118,29 +123,42 @@ def build_audit(db_path: Path) -> dict:
     direct_conflicts = status_counts.get("CURRENT_ROLE_NON_GOALKEEPER_CONFLICT", 0)
     mixed_history = status_counts.get("CURRENT_ROLE_UNKNOWN_MIXED_POSITION_HISTORY", 0)
     no_gk_evidence = status_counts.get("CURRENT_ROLE_UNKNOWN_NO_GK_SOURCE_EVIDENCE", 0)
-    validated_rows = (
-        status_counts.get("CURRENT_ROLE_GOALKEEPER", 0)
-        + status_counts.get("CURRENT_ROLE_UNKNOWN_SOURCE_HISTORY_GK_ONLY", 0)
+    direct_gk_rows = status_counts.get("CURRENT_ROLE_GOALKEEPER", 0)
+    validated_rows = direct_gk_rows + status_counts.get(
+        "CURRENT_ROLE_UNKNOWN_SOURCE_HISTORY_GK_ONLY", 0
     )
 
-    # Audit positive provider goalkeeper events even when save_rate itself is not
-    # derivable because one of the paired fields is NULL.
-    positive_gk_event_mask = (saves.fillna(0) > 0) | (conceded.fillna(0) > 0)
-    positive_rows = frame.loc[positive_gk_event_mask].copy()
-    positive_non_gk_current = int(
-        positive_rows["source_position"].notna().mul(
-            positive_rows["source_position"] != EXPECTED_GK_POSITION
+    # Provider semantics: saves are goalkeeper-specific; goals_conceded can be
+    # contextual and appear on outfield player rows. Only positive saves are a
+    # valid contamination test for goalkeeper-event assignment.
+    positive_save_mask = saves.fillna(0) > 0
+    positive_save_rows = frame.loc[positive_save_mask].copy()
+    positive_save_non_gk_current = int(
+        (
+            positive_save_rows["source_position"].notna()
+            & (positive_save_rows["source_position"] != EXPECTED_GK_POSITION)
+        ).sum()
+    )
+
+    positive_conceded_mask = conceded.fillna(0) > 0
+    positive_conceded_rows = frame.loc[positive_conceded_mask].copy()
+    positive_conceded_non_gk_current = int(
+        (
+            positive_conceded_rows["source_position"].notna()
+            & (positive_conceded_rows["source_position"] != EXPECTED_GK_POSITION)
         ).sum()
     )
 
     if candidates.empty:
         conclusion = "SAVE_RATE_CONTEXT_BLOCKED_NO_DERIVABLE_ROWS"
-    elif direct_conflicts > 0 or positive_non_gk_current > 0:
+    elif direct_conflicts > 0 or positive_save_non_gk_current > 0:
         conclusion = "SAVE_RATE_CONTEXT_CONTAMINATION_REQUIRES_FIX"
     elif mixed_history > 0 or no_gk_evidence > 0:
         conclusion = "SAVE_RATE_CONTEXT_LIMITED_UNRESOLVED_ROLE_EVIDENCE"
-    elif validated_rows == len(candidates):
+    elif direct_gk_rows == len(candidates):
         conclusion = "SAVE_RATE_GOALKEEPER_CONTEXT_VALIDATED_FEATURE_ADMISSION_READY"
+    elif validated_rows == len(candidates):
+        conclusion = "SAVE_RATE_GOALKEEPER_CONTEXT_VALIDATED_WITH_HISTORY_LIMITATION"
     else:
         conclusion = "SAVE_RATE_CONTEXT_REVIEW_REQUIRED"
 
@@ -152,19 +170,34 @@ def build_audit(db_path: Path) -> dict:
             "candidate_save_rate_rows": int(len(candidates)),
             "candidate_players": int(candidates["player_id"].nunique()) if len(candidates) else 0,
             "candidate_matches": int(candidates["match_id"].nunique()) if len(candidates) else 0,
+            "direct_goalkeeper_candidate_rows": int(direct_gk_rows),
             "validated_context_rows": int(validated_rows),
             "direct_current_role_conflicts": int(direct_conflicts),
             "unknown_mixed_history_rows": int(mixed_history),
             "unknown_no_gk_evidence_rows": int(no_gk_evidence),
-            "positive_gk_event_rows": int(len(positive_rows)),
-            "positive_gk_event_current_non_gk_rows": positive_non_gk_current,
+            "positive_save_rows": int(len(positive_save_rows)),
+            "positive_save_current_non_gk_rows": positive_save_non_gk_current,
+            "positive_goals_conceded_rows": int(len(positive_conceded_rows)),
+            "positive_goals_conceded_current_non_gk_rows": positive_conceded_non_gk_current,
             "conclusion": conclusion,
         },
         "candidate_current_source_position_counts": dict(sorted(current_counts.items())),
         "context_status_counts": dict(sorted(status_counts.items())),
         "candidate_rows": classifications,
+        "provider_semantics": {
+            "saves": "goalkeeper-specific contamination signal",
+            "goals_conceded": (
+                "context field that may be populated for outfield players; non-GK positive values "
+                "are informational and are not treated as goalkeeper-event contamination"
+            ),
+            "admission_rule": (
+                "save_rate is only admissible as a role-specific feature on rows whose current "
+                "source_position is Goalkeeper; history is audit evidence only"
+            ),
+        },
         "rules": [
             "The only expected source position label for direct goalkeeper validation is the source-backed value 'Goalkeeper'.",
+            "Positive saves on a current non-goalkeeper row are contamination; positive goals_conceded alone are not.",
             "Player position history is used only for provenance audit when the current role is unavailable; it is not written back or used as a performance predictor.",
             "No xGOT/PSxG or shot-quality adjustment is invented.",
             "No missing value is imputed.",
@@ -190,6 +223,9 @@ def render_markdown(result: dict) -> str:
     lines.extend(["", "## Context status counts"])
     for key, value in result["context_status_counts"].items():
         lines.append(f"- `{key}`: {value}")
+    lines.extend(["", "## Provider semantics"])
+    for key, value in result["provider_semantics"].items():
+        lines.append(f"- `{key}`: {value}")
     lines.extend(["", "## Guardrails"])
     for rule in result["rules"]:
         lines.append(f"- {rule}")
@@ -213,14 +249,20 @@ def main() -> None:
         f"players={s['candidate_players']} matches={s['candidate_matches']}"
     )
     print(
+        f"direct_gk_candidates={s['direct_goalkeeper_candidate_rows']} "
         f"validated_context_rows={s['validated_context_rows']} "
         f"direct_conflicts={s['direct_current_role_conflicts']} "
         f"unknown_mixed={s['unknown_mixed_history_rows']} "
         f"unknown_no_gk_evidence={s['unknown_no_gk_evidence_rows']}"
     )
     print(
-        f"positive_gk_event_rows={s['positive_gk_event_rows']} "
-        f"positive_event_current_non_gk={s['positive_gk_event_current_non_gk_rows']}"
+        f"positive_save_rows={s['positive_save_rows']} "
+        f"positive_save_current_non_gk={s['positive_save_current_non_gk_rows']}"
+    )
+    print(
+        f"positive_goals_conceded_rows={s['positive_goals_conceded_rows']} "
+        f"positive_goals_conceded_current_non_gk={s['positive_goals_conceded_current_non_gk_rows']} "
+        "(informational_context_only)"
     )
     print(
         "current_positions="
