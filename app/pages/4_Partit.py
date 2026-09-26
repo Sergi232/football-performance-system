@@ -93,7 +93,7 @@ with right:
     try:
         payload = build_match_report_data(path, team_id, match_id)
         pdf_bytes = render_pdf_bytes(payload)
-        st.download_button("Exportar informe PDF", pdf_bytes, file_name=f"match_{match_id}.pdf", mime="application/pdf", use_container_width=True)
+        st.download_button("Exportar informe PDF", pdf_bytes, file_name=f"match_{match_id}.pdf", mime="application/pdf", width="stretch")
     except Exception as exc:
         st.warning(f"PDF no disponible: {exc}")
 
@@ -124,7 +124,7 @@ with tab_summary:
     display["Min"] = pd.to_numeric(display["minutes_played"], errors="coerce").round(0)
     display = display[["player", "Perfil", "Min", "started", "Rating", "Confiança %"]]
     display.columns = ["Jugador", "Perfil", "Min", "Titular", "Rating", "Confiança %"]
-    st.dataframe(display, hide_index=True, use_container_width=True)
+    st.dataframe(display, hide_index=True, width="stretch")
 
 with tab_insights:
     st.subheader("Observacions postpartit")
@@ -180,7 +180,7 @@ with tab_players:
                 dim_df = pd.DataFrame(dim_rows, columns=["Dimensió", "Score"]).dropna()
                 if not dim_df.empty:
                     dim_df["Score"] = pd.to_numeric(dim_df["Score"], errors="coerce").round(1)
-                    st.dataframe(dim_df, hide_index=True, use_container_width=True)
+                    st.dataframe(dim_df, hide_index=True, width="stretch")
             st.caption(f"{r.match_rating_status} · {r.match_rating_context}")
 
 with tab_dimensions:
@@ -196,7 +196,7 @@ with tab_dimensions:
         for col in cols[1:]:
             table[col] = pd.to_numeric(table[col], errors="coerce").round(1)
         table.columns = ["Jugador", "Amenaça ofensiva", "Creació / progressió", "Contribució defensiva", "Finalització", "Disciplina"]
-        st.dataframe(table, hide_index=True, use_container_width=True)
+        st.dataframe(table, hide_index=True, width="stretch")
 
 with st.expander("Metodologia i límits"):
     st.write(f"Match Rating: `{MATCH_RATING_VERSION}`. La nota existeix des del primer partit i no necessita historial del club.")

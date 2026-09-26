@@ -95,7 +95,7 @@ else:
 st.markdown(f"#### Context actiu · {context_title}")
 cols = st.columns(len(suggestions))
 for idx, suggestion in enumerate(suggestions):
-    if cols[idx].button(suggestion, use_container_width=True, key=f"suggest_{scope_label}_{idx}"):
+    if cols[idx].button(suggestion, width="stretch", key=f"suggest_{scope_label}_{idx}"):
         st.session_state["fps_assistant_question"] = suggestion
 
 question = st.text_input(
@@ -104,7 +104,7 @@ question = st.text_input(
     placeholder="Ex.: Per què té aquest Match Rating?",
 )
 
-if st.button("Preguntar", type="primary", use_container_width=False):
+if st.button("Preguntar", type="primary", width="content"):
     if not question.strip():
         st.warning("Escriu una pregunta.")
     else:

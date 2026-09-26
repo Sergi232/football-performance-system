@@ -97,7 +97,7 @@ else:
         chart = history.dropna(subset=["performance_score"]).copy()
         if not chart.empty:
             chart["match_date"] = pd.to_datetime(chart["match_date"])
-            st.line_chart(chart.set_index("match_date")[["performance_score"]], height=360, use_container_width=True)
+            st.line_chart(chart.set_index("match_date")[["performance_score"]], height=360, width="stretch")
 
 with st.expander("Metodologia i traçabilitat"):
     st.write(f"Versió: `{SCORE_VERSION}`")
@@ -119,4 +119,4 @@ if not details.empty:
     details = details[show]
     details["position_group"] = details["position_group"].map(position_label)
     details.columns = ["Data", "Rol font", "Perfil", "Amenaça", "Creació", "Defensa", "Finalització", "Disciplina", "Índex", "Confiança %", "N fallback"]
-    st.dataframe(details, hide_index=True, use_container_width=True)
+    st.dataframe(details, hide_index=True, width="stretch")

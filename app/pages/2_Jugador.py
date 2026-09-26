@@ -79,7 +79,7 @@ def render_pdf(path: Path, team_id: str, player_id: str, player_name: str) -> No
         st.warning(f"No s'ha pogut generar l'informe: {exc}")
         return
     filename = "_".join(player_name.strip().split()) or "player"
-    st.download_button("Exportar informe PDF", data=pdf_bytes, file_name=f"player_{filename}.pdf", mime="application/pdf", use_container_width=True)
+    st.download_button("Exportar informe PDF", data=pdf_bytes, file_name=f"player_{filename}.pdf", mime="application/pdf", width="stretch")
 
 
 def is_goalkeeper(row: pd.Series) -> bool:
@@ -192,13 +192,13 @@ with tab_overview:
                 st.info("Encara no hi ha historial de ratings.")
             else:
                 chart["match_date"] = pd.to_datetime(chart["match_date"])
-                st.line_chart(chart.set_index("match_date")[["match_rating_10"]], height=330, use_container_width=True)
+                st.line_chart(chart.set_index("match_date")[["match_rating_10"]], height=330, width="stretch")
                 recent = chart.sort_values("match_date").tail(5)[["match_date", "opponent", "match_rating_10", "match_rating_confidence"]].copy()
                 recent["match_date"] = recent["match_date"].dt.date
                 recent["match_rating_10"] = recent["match_rating_10"].round(1)
                 recent["match_rating_confidence"] = recent["match_rating_confidence"].round(0)
                 recent.columns = ["Data", "Rival", "Rating", "Confiança %"]
-                st.dataframe(recent, hide_index=True, use_container_width=True)
+                st.dataframe(recent, hide_index=True, width="stretch")
 
     with st.expander("Metodologia i traçabilitat"):
         st.write(f"Match Rating: `{MATCH_RATING_VERSION}`. Existeix des del primer partit i no necessita historial previ.")
@@ -212,12 +212,12 @@ with tab_trend:
     if not rating_chart.empty:
         rating_chart["match_date"] = pd.to_datetime(rating_chart["match_date"])
         st.caption("Match Rating /10")
-        st.line_chart(rating_chart.set_index("match_date")[["match_rating_10"]], height=300, use_container_width=True)
+        st.line_chart(rating_chart.set_index("match_date")[["match_rating_10"]], height=300, width="stretch")
     score_chart = score_history.dropna(subset=["performance_score"]).copy()
     if not score_chart.empty:
         score_chart["match_date"] = pd.to_datetime(score_chart["match_date"])
         st.caption("Performance Index posicional")
-        st.line_chart(score_chart.set_index("match_date")[["performance_score"]], height=260, use_container_width=True)
+        st.line_chart(score_chart.set_index("match_date")[["performance_score"]], height=260, width="stretch")
 
     features = list_base_features(path, player_id)
     if features:
@@ -228,7 +228,7 @@ with tab_trend:
         feature_chart = feature_history.dropna(subset=["feature_value"]).copy()
         if not feature_chart.empty:
             feature_chart["match_date"] = pd.to_datetime(feature_chart["match_date"])
-            st.line_chart(feature_chart.set_index("match_date")[["feature_value"]], height=300, use_container_width=True)
+            st.line_chart(feature_chart.set_index("match_date")[["feature_value"]], height=300, width="stretch")
 
 with tab_technical:
     st.subheader("Rendiment tècnic")
@@ -238,7 +238,7 @@ with tab_technical:
         technical["match_date"] = pd.to_datetime(technical["match_date"]).dt.date
         technical = technical[["match_date", "opponent", "minutes", "primary_role", "passes_total", "passes_completed", "assists", "shots_total", "goals", "tackles_total", "tackles_won", "interceptions", "turnovers", "dispossessed"]]
         technical.columns = ["Data", "Rival", "Min", "Rol", "Passades", "Passades completades", "Assist.", "Rematades", "Gols", "Entrades", "Entrades guanyades", "Intercepcions", "Pèrdues", "Despossessions"]
-        st.dataframe(technical, hide_index=True, use_container_width=True)
+        st.dataframe(technical, hide_index=True, width="stretch")
 
 with tab_expert:
     st.subheader("Motor expert")
@@ -276,4 +276,4 @@ with tab_matches:
         details["match_rating_10"] = pd.to_numeric(details["match_rating_10"], errors="coerce").round(1)
         details["match_rating_confidence"] = pd.to_numeric(details["match_rating_confidence"], errors="coerce").round(0)
         details.columns = ["Data", "Rival", "L/V", "Titular", "Min", "Rol", "Gols", "Assist.", "Rating", "Confiança %"]
-        st.dataframe(details, hide_index=True, use_container_width=True)
+        st.dataframe(details, hide_index=True, width="stretch")

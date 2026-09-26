@@ -59,7 +59,7 @@ def render_team_pdf(path: Path, team_id: str, team_name: str) -> None:
         data=pdf_bytes,
         file_name=f"team_{filename}.pdf",
         mime="application/pdf",
-        use_container_width=True,
+        width="stretch",
     )
 
 
@@ -157,7 +157,7 @@ with tab_overview:
             if chart.empty:
                 st.info("No hi ha ratings disponibles.")
             else:
-                st.bar_chart(chart.set_index("player")[["latest_match_rating"]], height=420, use_container_width=True)
+                st.bar_chart(chart.set_index("player")[["latest_match_rating"]], height=420, width="stretch")
                 if latest_date is not None and not pd.isna(latest_date):
                     st.caption(f"Última data amb rating: {pd.to_datetime(latest_date).date()}")
 
@@ -171,7 +171,7 @@ with tab_overview:
                 recent_matches["result"] = recent_matches.apply(lambda r: result_text(r["score_for"], r["score_against"]), axis=1)
                 recent_matches = recent_matches[["match_date", "venue", "opponent", "result", "starting_formation"]]
                 recent_matches.columns = ["Data", "L/V", "Rival", "Resultat", "Formació"]
-                st.dataframe(recent_matches, hide_index=True, use_container_width=True)
+                st.dataframe(recent_matches, hide_index=True, width="stretch")
 
 with tab_squad:
     st.subheader("Plantilla")
@@ -194,7 +194,7 @@ with tab_squad:
         "Jugador", "Rols observats", "Aparicions", "Titularitats", "Minuts",
         "Perfil últim partit", "Match Rating", "Confiança %", "Mitjana últims 5", "Delta 5 vs 5",
     ]
-    st.dataframe(roster, hide_index=True, use_container_width=True)
+    st.dataframe(roster, hide_index=True, width="stretch")
 
 with tab_trends:
     st.subheader("Evolució del rendiment")
@@ -204,7 +204,7 @@ with tab_trends:
         timeline = rating_history.copy()
         timeline["match_date"] = pd.to_datetime(timeline["match_date"])
         st.markdown("#### Mediana de Match Rating per partit")
-        st.line_chart(timeline.set_index("match_date")[["median_match_rating"]], height=300, use_container_width=True)
+        st.line_chart(timeline.set_index("match_date")[["median_match_rating"]], height=300, width="stretch")
 
     if rating_snapshot.empty:
         st.info("No hi ha historial de ratings disponible.")
@@ -221,7 +221,7 @@ with tab_trends:
             "Jugador", "Perfil", "Partits amb rating", "Rating actual", "Mitjana últims 5",
             "Mitjana 5 anteriors", "Delta 5 vs 5", "N últims", "N anteriors",
         ]
-        st.dataframe(trend, hide_index=True, use_container_width=True)
+        st.dataframe(trend, hide_index=True, width="stretch")
 
 with tab_index:
     st.subheader("Performance Index")
@@ -235,7 +235,7 @@ with tab_index:
             index_table[col] = pd.to_numeric(index_table[col], errors="coerce").round(1)
         index_table = index_table[["player", "Perfil", "latest_score", "latest_confidence", "avg_last5", "trend_delta_5v5"]]
         index_table.columns = ["Jugador", "Perfil", "Performance Index", "Confiança %", "Mitjana últims 5", "Delta 5 vs 5"]
-        st.dataframe(index_table, hide_index=True, use_container_width=True)
+        st.dataframe(index_table, hide_index=True, width="stretch")
 
 with tab_matches:
     st.subheader("Partits")
@@ -247,7 +247,7 @@ with tab_matches:
         display["result"] = display.apply(lambda r: result_text(r["score_for"], r["score_against"]), axis=1)
         display = display[["match_date", "venue", "opponent", "result", "starting_formation"]]
         display.columns = ["Data", "L/V", "Rival", "Resultat", "Formació"]
-        st.dataframe(display, hide_index=True, use_container_width=True)
+        st.dataframe(display, hide_index=True, width="stretch")
 
 with st.expander("Metodologia i límits"):
     st.write(f"Match Rating: `{MATCH_RATING_VERSION}`. És la nota operativa player-match i funciona des del primer partit.")

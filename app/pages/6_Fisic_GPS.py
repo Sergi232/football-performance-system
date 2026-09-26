@@ -124,7 +124,7 @@ with tab_team:
         show["gps_player_coverage_pct"] = pd.to_numeric(show["gps_player_coverage_pct"], errors="coerce").round(0)
         show = show[["match_date", "opponent", "venue", "played_players", "gps_players", "gps_player_coverage_pct"]]
         show.columns = ["Data", "Rival", "L/V", "Participants", "Amb GPS", "Cobertura %"]
-        st.dataframe(show, hide_index=True, use_container_width=True)
+        st.dataframe(show, hide_index=True, width="stretch")
 
     st.subheader("Última observació física per jugador")
     if snapshot.empty:
@@ -138,7 +138,7 @@ with tab_team:
         show["Decel. màx"] = pd.to_numeric(show["min_acceleration_m_s2"], errors="coerce")
         show = show[["player", "match_date", "Distància km", "Vel. màx km/h", "Accel. màx", "Decel. màx"]]
         show.columns = ["Jugador", "Data", "Distància km", "Vel. màx km/h", "Accel. màx m/s²", "Decel. màx m/s²"]
-        st.dataframe(show.round(2), hide_index=True, use_container_width=True)
+        st.dataframe(show.round(2), hide_index=True, width="stretch")
 
 with tab_player:
     player_labels = {str(r.player_id): str(r.player) for r in squad.itertuples(index=False)}
@@ -168,13 +168,13 @@ with tab_player:
             chart = hist.dropna(subset=["total_distance_m"]).copy()
             if not chart.empty:
                 chart["distance_km"] = chart["total_distance_m"] / 1000.0
-                st.line_chart(chart.set_index("match_date")[["distance_km"]], height=280, use_container_width=True)
+                st.line_chart(chart.set_index("match_date")[["distance_km"]], height=280, width="stretch")
         with right:
             st.subheader("Evolució velocitat màxima")
             chart = hist.dropna(subset=["peak_speed_m_s"]).copy()
             if not chart.empty:
                 chart["peak_speed_kmh"] = chart["peak_speed_m_s"] * 3.6
-                st.line_chart(chart.set_index("match_date")[["peak_speed_kmh"]], height=280, use_container_width=True)
+                st.line_chart(chart.set_index("match_date")[["peak_speed_kmh"]], height=280, width="stretch")
 
         st.subheader("Historial GPS")
         show = history.copy()
@@ -183,7 +183,7 @@ with tab_player:
         show["speed_kmh"] = pd.to_numeric(show["peak_speed_m_s"], errors="coerce") * 3.6
         show = show[["match_date", "opponent", "venue", "distance_km", "speed_kmh", "max_acceleration_m_s2", "min_acceleration_m_s2", "sample_count"]]
         show.columns = ["Data", "Rival", "L/V", "Distància km", "Vel. màx km/h", "Accel. màx", "Decel. màx", "Mostres"]
-        st.dataframe(show.round(2), hide_index=True, use_container_width=True)
+        st.dataframe(show.round(2), hide_index=True, width="stretch")
 
 with tab_match:
     gps_match_ids = coverage.loc[coverage["gps_players"] > 0, "match_id"].astype(str).tolist() if not coverage.empty else []
@@ -201,7 +201,7 @@ with tab_match:
         show["Vel. màx km/h"] = pd.to_numeric(show["peak_speed_m_s"], errors="coerce") * 3.6
         show = show[["player", "Distància km", "Vel. màx km/h", "max_acceleration_m_s2", "min_acceleration_m_s2", "sample_count", "provider"]]
         show.columns = ["Jugador", "Distància km", "Vel. màx km/h", "Accel. màx", "Decel. màx", "Mostres", "Proveïdor"]
-        st.dataframe(show.round(2), hide_index=True, use_container_width=True)
+        st.dataframe(show.round(2), hide_index=True, width="stretch")
 
 with tab_method:
     st.subheader("Contracte físic actual")
