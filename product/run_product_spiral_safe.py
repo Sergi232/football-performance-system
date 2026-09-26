@@ -2,11 +2,11 @@
 
 Automatically selects:
 - real-DB spiral when football_performance.duckdb is available;
-- true iterative DB-free UI/PDF optimizer otherwise.
+- structural DB-free dashboard optimizer otherwise.
 
-The DB-free optimizer uses the real GitHub presentation code, contract-compatible
-synthetic fixtures and an already-installed Chrome/Edge when available. It does not
-download a browser, model or private dataset.
+The DB-free optimizer changes real dashboard layout decisions through
+app/dashboard_config.py, validates candidates in desktop/mobile Chrome when available,
+and never downloads a browser, model or private dataset.
 """
 from __future__ import annotations
 
@@ -64,7 +64,7 @@ if __name__ == "__main__":
         print("Product Spiral launcher: REAL-DB mode")
         spiral.main()
     else:
-        print("Product Spiral launcher: TRUE ITERATIVE DB-FREE OPTIMIZER")
-        from product import run_product_spiral_optimizer as optimizer
+        print("Product Spiral launcher: DASHBOARD STRUCTURAL SPIRAL")
+        from product import run_dashboard_spiral as dashboard_spiral
 
-        optimizer.main()
+        dashboard_spiral.main()
