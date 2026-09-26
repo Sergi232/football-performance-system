@@ -25,62 +25,63 @@ DSAI-03 PLAYER SIMILARITY           CERRADO EXPLORATORIO / NO DEPLOY — ISSUE #
 DSAI-04 ROLE-LABEL AUDIT            CERRADO / REFORMULATE_LABELS — ISSUE #34
 DSAI-05 ROLE TARGET RECONSTRUCTION  CERRADO / VALIDADO — ISSUE #35
 DSAI-06 SUPERVISED ROLE FEASIBILITY CERRADO / LIMITED_EXPERIMENT_ONLY — ISSUE #36
-DSAI-07 ROLE CLASSIFICATION BASELINE CERRADO / EXPERIMENTAL_SIGNAL / NO_DEPLOY — ISSUE #45
+DSAI-07 ROLE CLASSIFICATION BASELINE CERRADO / EXPERIMENTAL_SIGNAL / NO DEPLOY — ISSUE #45
 DSAI-08 ROLE GRANULARITY AUDIT      CERRADO / LIMITED_SOURCE_POSITION_BASELINE — ISSUE #46
-DSAI-09 SOURCE POSITION BASELINE    CERRADO / EXPERIMENTAL_SIGNAL_IMPROVED / NO_DEPLOY — ISSUE #49
-DSAI-10 PREMATCH POSITION BASELINE  ACTIVO — ISSUE #50 / SCRIPT IMPLEMENTADO
+DSAI-09 SOURCE POSITION BASELINE    CERRADO / EXPERIMENTAL_SIGNAL_IMPROVED / NO DEPLOY — ISSUE #49
+DSAI-10 PREMATCH POSITION BASELINE  CERRADO / PREMATCH_EXPERIMENTAL_SIGNAL / NO DEPLOY — ISSUE #50
+DSAI-11 PREMATCH ROBUSTNESS         ACTIVO — ISSUE #51 / SCRIPT IMPLEMENTADO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
-## DSAI-09 — resultado cerrado
+## DSAI-10 — resultado cerrado
 
 ```text
 candidate_rows=418
-evaluated_rows=363
+evaluated_rows=362
 evaluated_positions=6
-skipped_no_other_player_prior_position=55
-logreg_accuracy=0.5537
-logreg_balanced_accuracy=0.3482
-logreg_macro_f1=0.3614
-majority_accuracy=0.0964
-majority_balanced_accuracy=0.0423
+safe_features=140
+skipped_no_prematch_history=12
+skipped_no_other_player_prior_position=44
+logreg_accuracy=0.4834
+logreg_balanced_accuracy=0.3121
+logreg_macro_f1=0.3002
+majority_accuracy=0.0967
+majority_balanced_accuracy=0.0426
 majority_macro_f1=0.0302
-conclusion=LIMITED_SOURCE_POSITION_BASELINE_COMPLETE_NO_DEPLOYMENT_DECISION
+conclusion=PREMATCH_SOURCE_POSITION_BASELINE_COMPLETE_NO_DEPLOYMENT_DECISION
 ```
 
-Decisión: `EXPERIMENTAL_SIGNAL_IMPROVED / NO_DEPLOY`.
+Decisión: `PREMATCH_EXPERIMENTAL_SIGNAL / NO_DEPLOY`.
 
-La granularidad de fuente de 7 posiciones mejora de forma sustancial respecto a los 22 roles detallados de DSAI-07. Bajo validación temporal strict-past e independiente de identidad, LogisticRegression obtiene 55,37% de accuracy y macro-F1 0,3614 frente a 9,64% y 0,0302 del baseline mayoritario.
+DSAI-10 confirma que FEATURE-02 strict-past contiene señal pre-match sobre la `source_position` futura incluso cuando el jugador evaluado queda completamente excluido del entrenamiento. El rendimiento baja respecto a DSAI-09 al retirar la información del partido actual, pero sigue muy por encima del baseline mayoritario.
 
-La conclusión sigue siendo experimental: solo se evalúan 6 posiciones, una posición depende de un único jugador y FEATURE-01 usa estadísticas del mismo partido, por lo que DSAI-09 demuestra asociación post-partido entre comportamiento y posición observada, no capacidad predictiva pre-partido ni player-fit.
+No se interpreta como player-fit ni como recomendación táctica. El baseline mayoritario es demasiado débil para determinar todavía el valor incremental real del ML.
 
-## DSAI-10 — activo
+## DSAI-11 — activo
 
-Issue #50.
+Issue #51.
 
-Script: `dsai/source_position_prematch_baseline.py`.
+Script: `dsai/source_position_prematch_robustness.py`.
 
-Objetivo: probar si el mismo target `source_position` puede predecirse usando exclusivamente información disponible antes del partido.
+Objetivo: comparar DSAI-10 con baselines futbolísticos pre-match fuertes y ejecutar ablations de FEATURE-02.
 
-Predictores permitidos: FEATURE-02 strict-past con operadores:
-- `history_n`;
-- `prev`;
-- `prior_mean`;
-- `prior_std`;
-- `prior_slope`.
+Comparaciones:
+- LogisticRegression con los 140 inputs pre-match seguros;
+- `prior_mean_only`;
+- `prev_only`;
+- mayoría del train;
+- última `source_position` observada del jugador;
+- `source_position` modal histórica del jugador, con desempate por la más reciente.
 
-Se excluyen explícitamente `delta_prev` y `delta_prior_mean` porque incorporan el valor del partido actual y no son pre-match. FEATURE-03 también queda excluido por estar condicionado al rol.
+Validación:
+- ML entrenado solo con fechas estrictamente anteriores;
+- jugador de test excluido completamente del train ML;
+- baselines del jugador calculados solo con titularidades estrictamente anteriores;
+- sin FEATURE-01 actual, sin `delta_*` y sin FEATURE-03;
+- análisis separado de permanencia de posición vs cambio de posición;
+- head-to-head ML vs última posición.
 
-Diseño:
-- target de titular observado en el partido actual;
-- solo features históricas strict-past del jugador;
-- train con fechas estrictamente anteriores al test;
-- jugador de test completamente excluido del train;
-- posición objetivo previamente observada en otro jugador;
-- fila de test con al menos una observación histórica real;
-- imputación y escalado ajustados únicamente dentro de train;
-- LogisticRegression vs baseline de clase mayoritaria;
-- sin threshold de despliegue, player-fit, ranking o recomendación.
+La fase no define threshold de despliegue, player-fit, ranking ni recomendación.
 
 ## Líneas todavía bloqueadas
 
@@ -93,7 +94,7 @@ Diseño:
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\source_position_prematch_baseline.py
+python dsai\source_position_prematch_robustness.py
 ```
 
 No instalar nada.
