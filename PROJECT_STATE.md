@@ -19,132 +19,203 @@ DASHBOARD-01                        PROTOTYPE v0.1 / CONTRACT PASS
 ARCHITECTURE-01                     CERRADO — ISSUE #25
 ANALYTICS-01                        CERRADO / VALIDADO — ISSUE #26
 DECISION POLICY / N13000            GATE APROBADO — ISSUE #27 CERRADO
-DSAI-01A FEASIBILITY AUDIT          CERRADO — ISSUE #28
-DSAI-02 CHANGE DETECTION            CERRADO EXPERIMENTAL / NO DEPLOY — ISSUE #29
-DSAI-03 PLAYER SIMILARITY           CERRADO EXPLORATORIO / NO DEPLOY — ISSUE #32
-DSAI-04 ROLE-LABEL AUDIT            CERRADO / REFORMULATE_LABELS — ISSUE #34
-DSAI-05 ROLE TARGET RECONSTRUCTION  CERRADO / VALIDADO — ISSUE #35
-DSAI-06 SUPERVISED ROLE FEASIBILITY CERRADO / LIMITED_EXPERIMENT_ONLY — ISSUE #36
-DSAI-07 ROLE CLASSIFICATION BASELINE CERRADO / EXPERIMENTAL_SIGNAL / NO DEPLOY — ISSUE #45
-DSAI-08 ROLE GRANULARITY AUDIT      CERRADO / LIMITED_SOURCE_POSITION_BASELINE — ISSUE #46
-DSAI-09 SOURCE POSITION BASELINE    CERRADO / EXPERIMENTAL_SIGNAL_IMPROVED / NO DEPLOY — ISSUE #49
-DSAI-10 PREMATCH POSITION BASELINE  CERRADO / PREMATCH_EXPERIMENTAL_SIGNAL / NO DEPLOY — ISSUE #50
-DSAI-11 PREMATCH ROBUSTNESS         CERRADO / POSITION CONTEXT ONLY — ISSUE #51
-PERF-01 PERFORMANCE SCORE AUDIT     CERRADO / EXPERT_WEIGHT_VALIDATION_REQUIRED — ISSUE #52
-PERF-02 DIMENSION EVIDENCE AUDIT    CERRADO / MAPPING+DIRECTION REQUIRED — ISSUE #53
-PERF-03 DIMENSION MAPPING AUDIT     CERRADO / MAPPING COMPLETE — ISSUE #54
-PERF-04 DIRECTION VALIDATION        CERRADO / CONTEXTUAL METRICS RETAINED — ISSUE #56
-PERF-05 SIGNED CORE FEASIBILITY     CERRADO / OUTFIELD CORE AVAILABLE — ISSUE #57
-PERF-06 GOALKEEPER EFFICIENCY       CERRADO / SAVE_RATE DERIVABLE — ISSUE #58
-PERF-07 GK SAVE_RATE CONTEXT        CERRADO / FEATURE ADMISSION READY — ISSUE #59
-PERF-08 AGGREGATION FEASIBILITY     CERRADO / BASELINE FEASIBLE WITH 1 DEGENERATE — ISSUE #60
-PERF-09 EXPERIMENTAL SCORE          CERRADO / BASELINE CREATED, COVERAGE BOTTLENECK — ISSUE #61
-PERF-10 COVERAGE / OBSERVABILITY    CERRADO / POLICY REDESIGN REQUIRED — ISSUE #70
-PERF-11 NULL VS ZERO SEMANTICS      CERRADO / 3 VALIDATED CANDIDATES — ISSUE #77
-PERF-12 VALIDATED ZERO IMPACT       CERRADO / COVERAGE 5D 3→100
-PERF-13 SCORE POLICY + ROLE-AWARE   ACTIVO — ISSUE #78 / PANDAS 3 COMPAT FIX
-FINAL-01                            BLOQUEADO HASTA DECISIÓN PERF-13
+DSAI-01A..11                        CERRADO / RESULTADOS DOCUMENTADOS
+PERF-01..12                         CERRADO / AUDITORÍAS + NULL/ZERO VALIDADO
+PERF-13 SCORE POLICY + ROLE-AWARE   CERRADO / CANDIDATO 3PLUS + ROLE_AWARE
+PERF-14 POSITION-SPECIFIC SCORE     ACTIVO — ISSUE #87 / SCRIPT IMPLEMENTADO
+FINAL-01                            BLOQUEADO HASTA GATE PERF-14
 ```
 
 ## Objetivo principal confirmado
 
-El objetivo analítico central es **adjudicar un score de rendimiento jugador-partido**.
+El objetivo analítico central es **adjudicar un score de rendimiento jugador-partido** que sea auditable, role-aware y utilizable por el sistema experto, dashboard y asistente IA.
 
-## PERF-11 — resultado
+## PERF-11 — NULL vs zero
+
+Validado:
 
 ```text
-shots_total -> EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE
-goals -> EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE
-yellow_cards -> NULL_AS_ZERO_NOT_VALIDATED (5 contradicciones)
-red_cards -> EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE
+shots_total NULL -> 0 cuando el evento observado no ocurrió
+goals NULL       -> 0 cuando el evento observado no ocurrió
+red_cards NULL   -> 0 cuando el evento observado no ocurrió
+yellow_cards     -> NO reinterpretar como 0 (5 contradicciones)
 ```
 
-## PERF-12 — resultado
-
-Se aplicó solo en memoria la semántica validada de PERF-11.
+## PERF-12 — impacto de la semántica validada
 
 ```text
 outfield_rows=552
 full_five_before=3
 full_five_after=100
-gain=97
 finishing: 37 -> 552
 discipline: 87 -> 552
 attacking_threat: 196 -> 196
 creation_progression: 413 -> 413
 defensive_contribution: 262 -> 262
-dimension_count_after:
-  2 dimensiones = 67
-  3 dimensiones = 199
-  4 dimensiones = 186
-  5 dimensiones = 100
-residual_bottleneck=attacking_threat
+
+2 dimensiones = 67
+3 dimensiones = 199
+4 dimensiones = 186
+5 dimensiones = 100
 ```
 
-Conclusión: la semántica NULL→0 validada mejora mucho la cobertura, pero exigir 5/5 dimensiones sigue descartando demasiados jugador-partido.
+Conclusión: exigir 5/5 descarta demasiados jugador-partido.
 
-## PERF-13 — activo
+## PERF-13 — cerrado
 
 Scripts:
 
-- `dsai/performance_score_policy_experiment.py` — implementación base.
-- `dsai/performance_score_policy_experiment_v2.py` — runner de compatibilidad para pandas 3.x.
+- `dsai/performance_score_policy_experiment.py`
+- `dsai/performance_score_policy_experiment_v2.py` — compatibilidad pandas 3.x.
 
-El primer intento con Python 3.13 / pandas actual falló por `ValueError: Categorical categories cannot be null` al agrupar `source_position` con `dropna=False`.
+Resultado:
 
-La versión v2 conserva la semántica analítica y evita el error usando una clave sentinela solo para agrupación. Los jugadores con `source_position` desconocida NO reciben normalización por posición: mantienen fallback global.
+```text
+GLOBAL
+COMPLETE_5D     100/552 = 18.12%
+AVAILABLE_4PLUS 286/552 = 51.81%
+AVAILABLE_3PLUS 485/552 = 87.86%
+AVAILABLE_2PLUS 552/552 = 100.00%
 
-Compara, sin modificar DB ni FEATURE-01:
+ROLE_AWARE
+COMPLETE_5D     100/552 = 18.12%
+AVAILABLE_4PLUS 286/552 = 51.81%
+AVAILABLE_3PLUS 485/552 = 87.86%
+AVAILABLE_2PLUS 552/552 = 100.00%
+```
 
-1. `COMPLETE_5D`
-2. `AVAILABLE_4PLUS`
-3. `AVAILABLE_3PLUS`
-4. `AVAILABLE_2PLUS`
+Gate metodológico:
 
-Cada política se evalúa con dos variantes:
+**Candidato seleccionado para continuar: `AVAILABLE_3PLUS + ROLE_AWARE`.**
 
-- `GLOBAL`: percentiles sobre toda la población outfield.
-- `ROLE_AWARE`: percentiles dentro de `source_position` cuando la muestra permite estimarlos; fallback global si no.
+Motivos:
 
-La posición se usa como contexto de comparación, no como target ni como peso directo. Esto permite probar un score realmente comparable por posición antes de introducir pesos específicos por rol que todavía no están validados.
+- 87.9% de cobertura;
+- `2PLUS` se considera demasiado permisivo como baseline de producto;
+- `4PLUS/5D` pierden demasiados casos;
+- GLOBAL vs ROLE_AWARE en 3PLUS: Spearman `0.9419`, mean absolute delta `2.29`;
+- la adaptación posicional cambia el score sin destruir el orden general.
 
-El experimento calcula:
+Sensibilidad 3PLUS ROLE_AWARE:
 
-- cobertura;
+```text
+attacking_threat        mean_abs_delta 2.28 | Spearman 0.910
+creation_progression    mean_abs_delta 5.37 | Spearman 0.748
+defensive_contribution  mean_abs_delta 3.43 | Spearman 0.864
+finishing               mean_abs_delta 3.94 | Spearman 0.944
+discipline              mean_abs_delta 3.39 | Spearman 0.982
+```
+
+Conclusión: una media igual de dimensiones no debe congelarse como score final. `creation_progression` domina demasiado el ranking agregado y justifica pasar a ponderación específica por posición.
+
+## PERF-14 — activo
+
+Issue: **#87 — position-specific performance score + confidence**
+
+Archivos:
+
+- `dsai/performance_position_weight_priors.json`
+- `dsai/performance_position_score_experiment.py`
+
+Grupos tácticos experimentales:
+
+```text
+CB
+FB_WB
+DM_CM
+AM_W
+ST
+OTHER_OUTFIELD  # fallback diagnóstico, no candidato de producto
+```
+
+### Arquitectura PERF-14
+
+```text
+primary_role / source_position
+-> position_group
+-> percentiles de features dentro del position_group
+-> dimensiones PERF existentes
+-> mínimo 3 dimensiones + dimensión nuclear
+-> pesos posicionales experimentales
+-> performance_score_position_experimental
+-> score_evidence_confidence
+-> sensitivity gate
+```
+
+La normalización ahora es realmente específica por grupo táctico: un CB se compara contra CB, un ST contra ST, etc. Si una feature no se puede estimar dentro del grupo, se mantiene el fallback global ya validado en PERF-13.
+
+### Priors posicionales
+
+No son pesos finales ni se presentan como verdad científica. Se codifican como niveles ordinales de relevancia `1..5`, transparentes y auditables, y se normalizan en runtime.
+
+Ejemplo conceptual:
+
+- CB: prioridad defensiva;
+- FB/WB: defensa + progresión;
+- DM/CM: creación/progresión + defensa;
+- AM/W: creación + amenaza ofensiva + finalización;
+- ST: finalización + amenaza ofensiva.
+
+Los missing no se imputan. Los pesos disponibles se renormalizan únicamente cuando la fila cumple la política de elegibilidad.
+
+### Confidence
+
+`score_evidence_confidence` NO es una probabilidad de acierto.
+
+Es:
+
+```text
+peso posicional previsto realmente observado / peso posicional total previsto * 100
+```
+
+Permite distinguir un score sustentado por casi toda la evidencia relevante de uno calculado con evidencia parcial.
+
+### Gate PERF-14
+
+El script calcula:
+
+- cobertura total y por posición;
+- auditoría del mapping de `primary_role`;
 - distribución del score;
-- cobertura y sesgo descriptivo por posición;
-- sensibilidad leave-one-dimension-out;
-- correlación de rangos entre políticas;
-- comparación GLOBAL vs ROLE_AWARE;
-- evidencia disponible por jugador-partido.
+- comparación con ROLE_AWARE 3PLUS sin pesos;
+- leave-one-dimension-out por posición;
+- perturbación +/-1 de cada nivel ordinal de peso;
+- confidence de evidencia.
 
-Guardrails:
+No se aprobarán los priors si el ranking es excesivamente sensible.
 
-- solo se reinterpretan como 0 `shots_total`, `goals` y `red_cards` según PERF-11;
-- `yellow_cards` missing no se convierte a 0;
-- `goal_per_shot_rate` sigue undefined si no hay remates;
-- no hay pesos definitivos por posición;
-- no hay threshold bueno/malo;
-- no hay ranking/recomendación de producto;
-- porter separado;
-- LLM no calcula ni altera el score.
+## Guardrails vigentes
+
+- no copiar fórmula propietaria Sofascore/FotMob;
+- no convertir missing en 0 fuera de la semántica PERF-11;
+- no aprobar threshold bueno/malo sin validación;
+- no introducir ranking/recomendación de producto todavía;
+- porteros mantienen camino separado;
+- LLM no calcula ni altera el score;
+- DuckDB y FEATURE-01 no se mutan en estos experimentos.
 
 ## Siguiente paso exacto
 
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\performance_score_policy_experiment_v2.py
+python dsai\performance_position_score_experiment.py
 ```
 
 No instalar nada.
 
-Al terminar deben generarse:
+Outputs esperados:
 
 ```text
-dsai/output/performance_score_policy_experiment.json
-dsai/output/performance_score_policy_experiment.csv
-dsai/output/performance_score_policy_experiment.md
+dsai/output/performance_position_score_experiment.json
+dsai/output/performance_position_score_experiment.csv
+dsai/output/performance_position_score_experiment.md
 ```
 
-La decisión siguiente será escoger la política candidata de `performance_score_v0.1-experimental` según cobertura + estabilidad + comparabilidad por posición. Después, y solo después, se evaluarán pesos específicos por posición/rol.
+Después de esta ejecución se decide en un único gate:
+
+1. si el mapping posicional es correcto;
+2. si la cobertura sigue siendo suficiente;
+3. si los priors son estables;
+4. congelar o ajustar `performance_score_v0.1-experimental`;
+5. pasar inmediatamente a integración con motor experto/dashboard.
