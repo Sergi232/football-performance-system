@@ -29,72 +29,97 @@ DSAI-07 ROLE CLASSIFICATION BASELINE CERRADO / EXPERIMENTAL_SIGNAL / NO DEPLOY �
 DSAI-08 ROLE GRANULARITY AUDIT      CERRADO / LIMITED_SOURCE_POSITION_BASELINE — ISSUE #46
 DSAI-09 SOURCE POSITION BASELINE    CERRADO / EXPERIMENTAL_SIGNAL_IMPROVED / NO DEPLOY — ISSUE #49
 DSAI-10 PREMATCH POSITION BASELINE  CERRADO / PREMATCH_EXPERIMENTAL_SIGNAL / NO DEPLOY — ISSUE #50
-DSAI-11 PREMATCH ROBUSTNESS         ACTIVO — ISSUE #51 / SCRIPT IMPLEMENTADO
+DSAI-11 PREMATCH ROBUSTNESS         CERRADO / POSITION CONTEXT ONLY — ISSUE #51
+PERF-01 PERFORMANCE SCORE AUDIT     ACTIVO — ISSUE #52 / SCRIPT IMPLEMENTADO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
-## DSAI-10 — resultado cerrado
+## Objetivo principal confirmado
+
+El objetivo analítico central es **adjudicar un score de rendimiento jugador-partido**, no predecir posiciones.
+
+Arquitectura objetivo:
+
+```text
+PLAYER-MATCH DATA
+→ DIMENSIONES DE RENDIMIENTO
+→ SCORE GLOBAL VALIDADO
+→ EVOLUCIÓN / CONSISTENCIA
+→ CONTEXTO DE ROL
+→ CONCLUSIONES / RECOMENDACIONES
+```
+
+Rol/posición se usa como contexto de comparación/normalización cuando existe de forma observada y fiable. No vuelve a ser el target principal del DS/ML.
+
+No existe todavía una fórmula de score aprobada. No se inventan pesos, signos, percentiles, escalas ni thresholds.
+
+## DSAI-11 — resultado cerrado
 
 ```text
 candidate_rows=418
-evaluated_rows=362
+evaluated_rows=353
 evaluated_positions=6
-safe_features=140
-skipped_no_prematch_history=12
-skipped_no_other_player_prior_position=44
-logreg_accuracy=0.4834
-logreg_balanced_accuracy=0.3121
-logreg_macro_f1=0.3002
-majority_accuracy=0.0967
-majority_balanced_accuracy=0.0426
-majority_macro_f1=0.0302
-conclusion=PREMATCH_SOURCE_POSITION_BASELINE_COMPLETE_NO_DEPLOYMENT_DECISION
+rows_with_prior_position=341
+model_all_safe_accuracy=0.4929
+model_all_safe_balanced_accuracy=0.3176
+model_all_safe_macro_f1=0.3054
+model_prev_only_accuracy=0.5552
+player_last_position_accuracy=0.8944
+player_last_position_balanced_accuracy=0.6982
+player_last_position_macro_f1=0.6934
+player_modal_position_accuracy=0.8915
+switches=36
+stays=305
+ml_switch_accuracy=0.3611
+head_to_head_model_only=13
+head_to_head_last_only=150
+both_correct=155
+both_wrong=23
 ```
 
-Decisión: `PREMATCH_EXPERIMENTAL_SIGNAL / NO_DEPLOY`.
+Decisión: `POSITION_CLASSIFICATION_LINE_CLOSED / CONTEXT_ONLY`.
 
-DSAI-10 confirma que FEATURE-02 strict-past contiene señal pre-match sobre la `source_position` futura incluso cuando el jugador evaluado queda completamente excluido del entrenamiento. El rendimiento baja respecto a DSAI-09 al retirar la información del partido actual, pero sigue muy por encima del baseline mayoritario.
+La regla simple y estrictamente pre-match de última posición observada (89,44% accuracy) supera ampliamente al ML (49,29%). No se justifica seguir optimizando esta línea. Se conserva la evidencia académica ya generada y la posición pasa a ser contexto para rendimiento.
 
-No se interpreta como player-fit ni como recomendación táctica. El baseline mayoritario es demasiado débil para determinar todavía el valor incremental real del ML.
+## PERF-01 — activo
 
-## DSAI-11 — activo
+Issue #52.
 
-Issue #51.
+Script:
 
-Script: `dsai/source_position_prematch_robustness.py`.
+```powershell
+python dsai\performance_score_audit.py
+```
 
-Objetivo: comparar DSAI-10 con baselines futbolísticos pre-match fuertes y ejecutar ablations de FEATURE-02.
+Objetivo: auditar qué necesitamos para construir un score de rendimiento defendible antes de calcularlo.
 
-Comparaciones:
-- LogisticRegression con los 140 inputs pre-match seguros;
-- `prior_mean_only`;
-- `prev_only`;
-- mayoría del train;
-- última `source_position` observada del jugador;
-- `source_position` modal histórica del jugador, con desempate por la más reciente.
+Se audita:
+- cobertura real de FEATURE-01 en player-match con minutos;
+- cobertura por dimensiones N4000-N7000;
+- disponibilidad de contexto táctico observado;
+- posibles anchors externos de validación en `opta_player_stats.parquet` (`rating`, `score`, `grade`, etc.);
+- variables cuya dirección/peso todavía no está validada.
 
-Validación:
-- ML entrenado solo con fechas estrictamente anteriores;
-- jugador de test excluido completamente del train ML;
-- baselines del jugador calculados solo con titularidades estrictamente anteriores;
-- sin FEATURE-01 actual, sin `delta_*` y sin FEATURE-03;
-- análisis separado de permanencia de posición vs cambio de posición;
-- head-to-head ML vs última posición.
-
-La fase no define threshold de despliegue, player-fit, ranking ni recomendación.
+Reglas:
+- no crear score todavía;
+- no asumir que más volumen = mejor;
+- no usar ratings externos como input del producto; solo podrían servir como anchor de validación;
+- GPS fuera del score base mientras no haya observaciones reales;
+- escala final del score pendiente de validación.
 
 ## Líneas todavía bloqueadas
 
 - `role_player_fit`: sin target independiente defendible;
 - `expert_vs_ml`: sin shared target independiente;
-- calibración N13000: sin ground truth de recomendación.
+- calibración N13000: sin ground truth de recomendación;
+- score global final: bloqueado hasta validar constructo, direcciones y pesos/anchor.
 
 ## Siguiente paso exacto
 
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\source_position_prematch_robustness.py
+python dsai\performance_score_audit.py
 ```
 
 No instalar nada.
