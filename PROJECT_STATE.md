@@ -40,7 +40,8 @@ PERF-07 GK SAVE_RATE CONTEXT        CERRADO / FEATURE ADMISSION READY — ISSUE 
 PERF-08 AGGREGATION FEASIBILITY     CERRADO / BASELINE FEASIBLE WITH 1 DEGENERATE — ISSUE #60
 PERF-09 EXPERIMENTAL SCORE          CERRADO / BASELINE CREATED, COVERAGE BOTTLENECK — ISSUE #61
 PERF-10 COVERAGE / OBSERVABILITY    CERRADO / POLICY REDESIGN REQUIRED — ISSUE #70
-PERF-11 NULL VS ZERO SEMANTICS      ACTIVO — ISSUE #77 / SCRIPT IMPLEMENTADO
+PERF-11 NULL VS ZERO SEMANTICS      CERRADO / 3 VALIDATED CANDIDATES — ISSUE #77
+PERF-12 VALIDATED ZERO IMPACT       ACTIVO — ISSUE #78 / SCRIPT IMPLEMENTADO
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
@@ -57,6 +58,7 @@ PLAYER-MATCH DATA
 → SCORE EXPERIMENTAL
 → COBERTURA / OBSERVABILIDAD
 → SEMÁNTICA NULL VS ZERO
+→ IMPACTO DE SEMÁNTICA VALIDADA
 → POLÍTICA DE SCORE
 → SENSIBILIDAD / ABLATIONS
 → ESTABILIDAD TEMPORAL / CONTEXTO
@@ -67,75 +69,61 @@ PLAYER-MATCH DATA
 
 Rol/posición se usa como contexto de comparación/normalización, no como objetivo principal ni como componente directo del score.
 
-## PERF-10 — cerrado
+## PERF-11 — cerrado
 
-Resultado:
+Resultado ejecutado:
 
 ```text
-outfield_rows=552
-signed_candidates=11
-used_features=10
-degenerate=1
-dimensions=5
-full_five_rows=3
-full_five_coverage=0.005434782608695652
-dimension_count_distribution=0:59,1:168,2:185,3:106,4:31,5:3
-bottleneck_dimensions=finishing
-leave_one_out=attacking_threat:3,creation_progression:3,defensive_contribution:3,finishing:25,discipline:12
-conclusion=FULL_DIMENSION_COVERAGE_INCOMPLETE_POLICY_REDESIGN_REQUIRED
+player_match_rows=835
+played_rows=590
+audited_metrics=4
+validated_candidates=3
+blocked=1
+shots_total: raw_null=559 null_event_zero=559 null_event_positive=0 nonnull_mismatch=0 all_mismatch_after_null0=0 status=EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE
+goals: raw_null=798 null_event_zero=798 null_event_positive=0 nonnull_mismatch=0 all_mismatch_after_null0=0 status=EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE
+yellow_cards: raw_null=749 null_event_zero=744 null_event_positive=5 nonnull_mismatch=0 all_mismatch_after_null0=5 status=NULL_AS_ZERO_NOT_VALIDATED
+red_cards: raw_null=830 null_event_zero=830 null_event_positive=0 nonnull_mismatch=0 all_mismatch_after_null0=0 status=EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE
+validated_null_as_zero_candidates=goals,red_cards,shots_total
+conclusion=EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATES_FOUND
 ```
 
 Decisión:
-- exigir las cinco dimensiones simultáneas no es viable con la semántica actual;
-- `finishing` es el cuello de botella principal, pero no el único;
-- eliminar una sola dimensión tampoco resuelve el problema;
-- no se aprueba ningún mínimo arbitrario de 3/5 o 4/5;
-- no se convierte missing a cero.
+- `shots_total`, `goals` y `red_cards` tienen evidencia atómica completa para interpretar raw `NULL` como **zero observado** en una futura versión de features;
+- `yellow_cards` queda bloqueada: existen 5 filas raw NULL con evento amarillo positivo;
+- no se modifica raw data ni FEATURE-01 todavía;
+- no se autoriza ningún `fillna(0)` global.
 
-## Hallazgo metodológico previo a rediseñar el score
+Impacto esperado a auditar:
+- `goals_per90`: puede pasar de missing a 0 observado en partidos sin gol;
+- `goal_per_shot_rate`: puede pasar a 0 cuando hay tiros y ningún gol; si `shots_total=0`, la ratio sigue indefinida;
+- `red_cards_per90`: puede pasar de missing a 0 observado cuando no hay expulsión;
+- `shots_total_per90` también puede adquirir 0 observado, pero sigue siendo `CONTEXT_DEPENDENT` y no entra por sí sola en el signed core.
 
-DATA-04 preserva los `NULL` del proveedor. Sin embargo, el propio importador DATA-04 valida `shots_total` y `goals` contra DATA-03 atómico usando `NULL` como cero cuando no hay eventos correspondientes.
+## PERF-12 — activo
 
-FEATURE-01 mantiene cualquier raw `NULL` como feature `NULL`.
-
-Por tanto, parte de la baja cobertura puede ser una diferencia entre:
-- **dato realmente ausente**;
-- **conteo observado de cero codificado como NULL por el proveedor**.
-
-No se cambia ninguna semántica hasta validarla con evidencia independiente.
-
-## PERF-11 — activo
-
-Issue #77.
+Issue #78.
 
 Script:
 ```text
-dsai/performance_null_zero_semantics_audit.py
+dsai/performance_validated_zero_impact.py
 ```
 
-Compara raw aggregates con `match_events` para:
-- `shots_total`;
-- `goals`;
-- `yellow_cards`;
-- `red_cards`.
+Objetivo: aplicar **solo en memoria** la semántica validada de PERF-11 y medir cuánto cambia la cobertura del signed core y de las 5 dimensiones outfield.
 
-Para cada métrica audita:
-- raw NULL + event count 0;
-- raw NULL + event count >0;
-- raw non-null vs event count;
-- discrepancias después de interpretar provisionalmente NULL como cero.
+Compara:
+- cobertura FEATURE-01 original;
+- cobertura con `shots_total`, `goals` y `red_cards` reinterpretados como zero observado únicamente cuando raw es NULL;
+- cobertura de `goals_per90`, `goal_per_shot_rate`, `red_cards_per90`;
+- distribución 0..5 dimensiones antes/después;
+- full-five coverage antes/después;
+- dimensión cuello de botella antes/después.
 
-Solo una métrica con evidencia atómica completa y cero contradicciones puede quedar marcada como:
-`EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE`.
-
-Esto **no modifica todavía**:
-- `player_match_raw_stats`;
-- FEATURE-01;
-- score;
-- pesos;
-- thresholds.
-
-Las ratios con denominador 0 siguen siendo indefinidas.
+Reglas:
+- no escribe en DuckDB;
+- no modifica FEATURE-01 ni `features/catalog.json`;
+- `yellow_cards` permanece sin reinterpretar;
+- denominador `shots_total=0` mantiene `goal_per_shot_rate=NULL`;
+- ningún peso, threshold, ranking o recomendación.
 
 ## Guardrails del score
 
@@ -143,7 +131,8 @@ Las ratios con denominador 0 siguen siendo indefinidas.
 - ningún ranking/recomendación de producto;
 - ningún peso aprobado;
 - ningún `fillna(0)` global;
-- solo se admite cero observado con evidencia de fuente/atomic events;
+- solo se admite zero observado con evidencia independiente;
+- ratios con denominador 0 siguen indefinidas;
 - no usar PCA/correlación/varianza como definición de calidad;
 - score outfield y score de portero no se comparan directamente;
 - rol/posición = contexto, no target;
@@ -157,7 +146,7 @@ Los ficheros auxiliares redundantes `docs/PERF_05_*` siguen pendientes de limpie
 
 ## Líneas todavía bloqueadas
 
-- score global validado: hasta resolver semántica NULL/zero + política de cobertura + sensibilidad/ablations + estabilidad;
+- score global validado: hasta resolver cobertura tras semántica validada + política de score + sensibilidad/ablations + estabilidad;
 - `role_player_fit`: sin target independiente defendible;
 - `expert_vs_ml`: sin shared target independiente;
 - calibración N13000: sin ground truth de recomendación.
@@ -167,7 +156,7 @@ Los ficheros auxiliares redundantes `docs/PERF_05_*` siguen pendientes de limpie
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\performance_null_zero_semantics_audit.py
+python dsai\performance_validated_zero_impact.py
 ```
 
 No instalar nada.
