@@ -1,0 +1,54 @@
+{
+  "version": "performance_dimension_map_0.1.0",
+  "status": "structural_mapping_only_no_direction_no_weight_no_score",
+  "principles": [
+    "Every approved FEATURE-01 metric has exactly one primary performance dimension.",
+    "Primary dimension mapping prevents silent double counting in a future global score.",
+    "A feature may remain contextual evidence in the expert tree without being counted twice in the performance score.",
+    "Mapping does not assign positive/negative direction, weight, threshold or score eligibility.",
+    "Goalkeeping is role-specific; role/position remains context rather than the main prediction target."
+  ],
+  "dimensions": {
+    "attacking_threat": {"scope": "outfield_general"},
+    "creation_progression": {"scope": "outfield_general"},
+    "defensive_contribution": {"scope": "outfield_general"},
+    "finishing": {"scope": "outfield_general"},
+    "discipline": {"scope": "all_players"},
+    "goalkeeping": {"scope": "goalkeeper_only"}
+  },
+  "feature_mapping": [
+    {"feature_name":"dribble_success_rate","primary_dimension":"attacking_threat","mapping_basis":"approved_feature_group_plus_existing_attacking_structure"},
+    {"feature_name":"dribbles_total_per90","primary_dimension":"attacking_threat","mapping_basis":"existing_N4000"},
+    {"feature_name":"fouls_received_per90","primary_dimension":"attacking_threat","mapping_basis":"existing_N4000"},
+    {"feature_name":"penalties_won_per90","primary_dimension":"attacking_threat","mapping_basis":"existing_N4000"},
+    {"feature_name":"shots_total_per90","primary_dimension":"attacking_threat","mapping_basis":"existing_N4000_primary_prevents_future_double_counting","secondary_context":["finishing"]},
+
+    {"feature_name":"assists_per90","primary_dimension":"creation_progression","mapping_basis":"existing_N5000"},
+    {"feature_name":"passes_total_per90","primary_dimension":"creation_progression","mapping_basis":"existing_N5000"},
+    {"feature_name":"pass_completion_rate","primary_dimension":"creation_progression","mapping_basis":"existing_N5000"},
+    {"feature_name":"long_balls_total_per90","primary_dimension":"creation_progression","mapping_basis":"existing_N5000"},
+    {"feature_name":"long_ball_completion_rate","primary_dimension":"creation_progression","mapping_basis":"existing_N5000"},
+    {"feature_name":"crosses_total_per90","primary_dimension":"creation_progression","mapping_basis":"existing_N5000"},
+    {"feature_name":"cross_completion_rate","primary_dimension":"creation_progression","mapping_basis":"existing_N5000"},
+    {"feature_name":"turnovers_per90","primary_dimension":"creation_progression","mapping_basis":"existing_N5000_cost_evidence"},
+    {"feature_name":"dispossessed_per90","primary_dimension":"creation_progression","mapping_basis":"existing_N5000_cost_evidence"},
+
+    {"feature_name":"tackles_total_per90","primary_dimension":"defensive_contribution","mapping_basis":"existing_N6000"},
+    {"feature_name":"tackle_success_rate","primary_dimension":"defensive_contribution","mapping_basis":"existing_N6000"},
+    {"feature_name":"interceptions_per90","primary_dimension":"defensive_contribution","mapping_basis":"existing_N6000"},
+    {"feature_name":"blocked_passes_per90","primary_dimension":"defensive_contribution","mapping_basis":"existing_N6000"},
+    {"feature_name":"clearances_per90","primary_dimension":"defensive_contribution","mapping_basis":"existing_N6000"},
+    {"feature_name":"fouls_committed_per90","primary_dimension":"defensive_contribution","mapping_basis":"existing_N6000_cost_evidence"},
+    {"feature_name":"penalties_conceded_per90","primary_dimension":"defensive_contribution","mapping_basis":"existing_N6000_cost_evidence"},
+
+    {"feature_name":"goals_per90","primary_dimension":"finishing","mapping_basis":"existing_N7000"},
+    {"feature_name":"goal_per_shot_rate","primary_dimension":"finishing","mapping_basis":"existing_N7000"},
+    {"feature_name":"blocked_shot_rate","primary_dimension":"finishing","mapping_basis":"existing_N7000_context_evidence"},
+
+    {"feature_name":"yellow_cards_per90","primary_dimension":"discipline","mapping_basis":"approved_feature_group_requires_explicit_dimension"},
+    {"feature_name":"red_cards_per90","primary_dimension":"discipline","mapping_basis":"approved_feature_group_requires_explicit_dimension"},
+
+    {"feature_name":"saves_per90","primary_dimension":"goalkeeping","mapping_basis":"approved_goalkeeping_feature_group_role_specific"},
+    {"feature_name":"goals_conceded_per90","primary_dimension":"goalkeeping","mapping_basis":"approved_goalkeeping_context_feature_group_role_specific"}
+  ]
+}
