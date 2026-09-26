@@ -1,0 +1,89 @@
+{
+  "version": "performance_direction_evidence_0.1.0",
+  "status": "direction_validation_registry_no_weight_no_score",
+  "policy": {
+    "allowed_statuses": [
+      "POSITIVE_SUPPORTED",
+      "NEGATIVE_SUPPORTED",
+      "CONTEXT_DEPENDENT",
+      "PENDING_EVIDENCE"
+    ],
+    "rules": [
+      "Team-level literature is convergent/contextual evidence, not individual ground truth.",
+      "Volume metrics are not signed automatically.",
+      "Efficiency semantics may support a direction only when the event definition itself is directional.",
+      "Role-specific or opportunity-driven metrics remain context-dependent unless stronger evidence exists.",
+      "No direction status implies a weight, threshold, percentile or score contribution."
+    ]
+  },
+  "literature": [
+    {
+      "id": "KEMPE_2018",
+      "title": "How to be Successful in Football: A Systematic Review",
+      "doi": "10.2174/1875399X01811010003",
+      "scope": "team_level_systematic_review",
+      "use": "Supports relevance of efficiency, shots and pass accuracy while emphasizing contextual variables."
+    },
+    {
+      "id": "WANG_2022",
+      "title": "A systematic review about the performance indicators related to ball possession",
+      "doi": "10.1371/journal.pone.0265540",
+      "pmid": "35298562",
+      "scope": "team_level_systematic_review",
+      "use": "Supports strong context dependence of possession-related technical indicators and playing style."
+    },
+    {
+      "id": "WORLD_CUP_2013",
+      "title": "The Use of Match Statistics that Discriminate Between Successful and Unsuccessful Soccer Teams",
+      "pmid": "23487020",
+      "scope": "team_level_match_analysis",
+      "use": "Supports attacking effectiveness and shots as discriminating indicators, without authorizing individual volume signs."
+    },
+    {
+      "id": "BAYRAKDAROGLU_2026",
+      "title": "Match success in football: insights from raw and possession-normalized key performance indicators in the Turkish professional league",
+      "pmid": "42216227",
+      "scope": "team_level_multiseason_analysis",
+      "use": "Supports offensive efficiency and negative association of cards with success while showing context/normalization effects."
+    },
+    {
+      "id": "BARELI_2006",
+      "title": "Consequences of players' dismissal in professional soccer: a crisis-related analysis of group-size effects",
+      "pmid": "17115523",
+      "scope": "team_effect_of_player_dismissal",
+      "use": "Supports negative direction of red-card dismissal."
+    }
+  ],
+  "features": [
+    {"feature_name":"pass_completion_rate","direction_status":"CONTEXT_DEPENDENT","evidence_basis":["KEMPE_2018","WANG_2022"],"reason":"Pass accuracy is relevant to success, but individual completion rate depends on pass difficulty, role and playing style."},
+    {"feature_name":"long_ball_completion_rate","direction_status":"CONTEXT_DEPENDENT","evidence_basis":["WANG_2022"],"reason":"Completion is an efficiency measure but long-ball difficulty and tactical purpose vary by role and style."},
+    {"feature_name":"cross_completion_rate","direction_status":"CONTEXT_DEPENDENT","evidence_basis":["BAYRAKDAROGLU_2026"],"reason":"Cross efficiency can be useful, but literature shows context-sensitive and sometimes inconsistent effects."},
+    {"feature_name":"dribble_success_rate","direction_status":"POSITIVE_SUPPORTED","evidence_basis":["DIRECT_EFFICIENCY_SEMANTICS"],"reason":"At fixed attempts, a larger share of successful dribbles represents more successful 1v1 outcomes; role context is still retained."},
+    {"feature_name":"tackle_success_rate","direction_status":"POSITIVE_SUPPORTED","evidence_basis":["DIRECT_EFFICIENCY_SEMANTICS"],"reason":"At fixed tackle attempts, a larger success share represents more successful defensive outcomes; opportunity and role remain contextual."},
+    {"feature_name":"goal_per_shot_rate","direction_status":"POSITIVE_SUPPORTED","evidence_basis":["DIRECT_OUTCOME_SEMANTICS","KEMPE_2018"],"reason":"Higher conversion means more goals for a given number of shots and aligns with literature emphasizing efficiency."},
+    {"feature_name":"blocked_shot_rate","direction_status":"CONTEXT_DEPENDENT","evidence_basis":["WANG_2022"],"reason":"A blocked-shot share can reflect shot selection, defensive pressure and tactical context; no universal individual sign is approved."},
+
+    {"feature_name":"passes_total_per90","direction_status":"CONTEXT_DEPENDENT","evidence_basis":["KEMPE_2018","WANG_2022"],"reason":"Pass volume reflects involvement and style but is not universally better when higher."},
+    {"feature_name":"assists_per90","direction_status":"POSITIVE_SUPPORTED","evidence_basis":["DIRECT_OUTCOME_SEMANTICS"],"reason":"An assist directly contributes to a goal under the approved event definition."},
+    {"feature_name":"long_balls_total_per90","direction_status":"CONTEXT_DEPENDENT","evidence_basis":["WANG_2022"],"reason":"Long-ball volume is role/style dependent and cannot be globally signed."},
+    {"feature_name":"crosses_total_per90","direction_status":"CONTEXT_DEPENDENT","evidence_basis":["BAYRAKDAROGLU_2026","WANG_2022"],"reason":"Cross volume is opportunity and tactical-style dependent; higher volume is not universally better."},
+    {"feature_name":"dribbles_total_per90","direction_status":"CONTEXT_DEPENDENT","evidence_basis":["WANG_2022"],"reason":"Dribble volume reflects role and attacking style rather than universal performance quality."},
+    {"feature_name":"turnovers_per90","direction_status":"NEGATIVE_SUPPORTED","evidence_basis":["DIRECT_COST_SEMANTICS"],"reason":"A turnover is an approved possession-loss event; more losses represent a direct cost, subject to later contextual weighting."},
+    {"feature_name":"dispossessed_per90","direction_status":"NEGATIVE_SUPPORTED","evidence_basis":["DIRECT_COST_SEMANTICS"],"reason":"Being dispossessed is a direct possession-loss event; more occurrences represent a direct cost, subject to later contextual weighting."},
+    {"feature_name":"shots_total_per90","direction_status":"CONTEXT_DEPENDENT","evidence_basis":["KEMPE_2018","WORLD_CUP_2013"],"reason":"Shot volume is associated with attacking success at team level but individual volume depends on role, opportunity and shot quality."},
+    {"feature_name":"goals_per90","direction_status":"POSITIVE_SUPPORTED","evidence_basis":["DIRECT_OUTCOME_SEMANTICS","KEMPE_2018"],"reason":"A goal directly changes match score and is intrinsically positive attacking output."},
+    {"feature_name":"tackles_total_per90","direction_status":"CONTEXT_DEPENDENT","evidence_basis":["WANG_2022"],"reason":"Tackle volume depends strongly on defensive role, possession state and opportunity."},
+    {"feature_name":"interceptions_per90","direction_status":"CONTEXT_DEPENDENT","evidence_basis":["WANG_2022"],"reason":"Interceptions are useful defensive actions but volume is opportunity/style dependent; no universal per90 sign is approved."},
+    {"feature_name":"blocked_passes_per90","direction_status":"CONTEXT_DEPENDENT","evidence_basis":["ROLE_AND_OPPORTUNITY_CONTEXT"],"reason":"Blocked-pass volume depends on defensive exposure, role and team structure."},
+    {"feature_name":"clearances_per90","direction_status":"CONTEXT_DEPENDENT","evidence_basis":["WANG_2022"],"reason":"Clearance volume may indicate successful defending or sustained defensive pressure; higher is not universally better."},
+    {"feature_name":"fouls_committed_per90","direction_status":"CONTEXT_DEPENDENT","evidence_basis":["BAYRAKDAROGLU_2026"],"reason":"Fouls are costs in some contexts but recent team-level evidence shows mixed associations; tactical fouling prevents a universal sign."},
+    {"feature_name":"fouls_received_per90","direction_status":"CONTEXT_DEPENDENT","evidence_basis":["WORLD_CUP_2013"],"reason":"Being fouled may proxy attacking involvement but depends on role, location and game state."},
+    {"feature_name":"yellow_cards_per90","direction_status":"NEGATIVE_SUPPORTED","evidence_basis":["BAYRAKDAROGLU_2026","DISCIPLINARY_SANCTION_SEMANTICS"],"reason":"Yellow cards are disciplinary sanctions and recent multiseason evidence reports a negative association with match success."},
+    {"feature_name":"red_cards_per90","direction_status":"NEGATIVE_SUPPORTED","evidence_basis":["BARELI_2006","BAYRAKDAROGLU_2026","DISCIPLINARY_SANCTION_SEMANTICS"],"reason":"Dismissal directly reduces team playing resources and is consistently detrimental."},
+    {"feature_name":"penalties_conceded_per90","direction_status":"NEGATIVE_SUPPORTED","evidence_basis":["DIRECT_COST_SEMANTICS"],"reason":"Conceding a penalty directly grants the opponent a high-value scoring opportunity."},
+    {"feature_name":"penalties_won_per90","direction_status":"POSITIVE_SUPPORTED","evidence_basis":["DIRECT_OUTCOME_SEMANTICS"],"reason":"Winning a penalty directly creates a high-value scoring opportunity for the player's team."},
+    {"feature_name":"saves_per90","direction_status":"CONTEXT_DEPENDENT","evidence_basis":["GOALKEEPER_OPPORTUNITY_CONTEXT"],"reason":"Save volume is driven by shots faced and team defensive exposure; higher volume is not universally better goalkeeper performance."},
+    {"feature_name":"goals_conceded_per90","direction_status":"CONTEXT_DEPENDENT","evidence_basis":["GOALKEEPER_TEAM_CONTEXT"],"reason":"Conceded goals are undesirable outcomes but are strongly influenced by shot quality faced and team defence; no unadjusted individual sign is approved."
+    }
+  ]
+}
