@@ -49,26 +49,6 @@ FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 
 El objetivo analítico central es **adjudicar un score de rendimiento jugador-partido**.
 
-```text
-PLAYER-MATCH DATA
-→ DIMENSIONES DE RENDIMIENTO
-→ DIRECCIONES VALIDADAS
-→ NÚCLEO PUNTUABLE
-→ NORMALIZACIÓN / AGREGACIÓN
-→ SCORE EXPERIMENTAL
-→ COBERTURA / OBSERVABILIDAD
-→ SEMÁNTICA NULL VS ZERO
-→ IMPACTO DE SEMÁNTICA VALIDADA
-→ POLÍTICA DE SCORE
-→ SENSIBILIDAD / ABLATIONS
-→ ESTABILIDAD TEMPORAL / CONTEXTO
-→ SCORE GLOBAL VALIDADO
-→ EVOLUCIÓN / CONSISTENCIA
-→ CONCLUSIONES / RECOMENDACIONES
-```
-
-Rol/posición se usa como contexto de comparación/normalización, no como objetivo principal ni como componente directo del score.
-
 ## PERF-11 — cerrado
 
 Resultado ejecutado:
@@ -79,19 +59,16 @@ played_rows=590
 audited_metrics=4
 validated_candidates=3
 blocked=1
-shots_total: raw_null=559 null_event_zero=559 null_event_positive=0 nonnull_mismatch=0 all_mismatch_after_null0=0 status=EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE
-goals: raw_null=798 null_event_zero=798 null_event_positive=0 nonnull_mismatch=0 all_mismatch_after_null0=0 status=EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE
-yellow_cards: raw_null=749 null_event_zero=744 null_event_positive=5 nonnull_mismatch=0 all_mismatch_after_null0=5 status=NULL_AS_ZERO_NOT_VALIDATED
-red_cards: raw_null=830 null_event_zero=830 null_event_positive=0 nonnull_mismatch=0 all_mismatch_after_null0=0 status=EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE
-validated_null_as_zero_candidates=goals,red_cards,shots_total
-conclusion=EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATES_FOUND
+shots_total -> EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE
+goals -> EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE
+yellow_cards -> NULL_AS_ZERO_NOT_VALIDATED
+red_cards -> EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATE
 ```
 
 Decisión:
-- `shots_total`, `goals` y `red_cards` tienen evidencia atómica completa para interpretar raw `NULL` como **zero observado** en una futura versión de features;
-- `yellow_cards` queda bloqueada: existen 5 filas raw NULL con evento amarillo positivo;
-- no se modifica raw data ni FEATURE-01 todavía;
-- no se autoriza ningún `fillna(0)` global.
+- `shots_total`, `goals` y `red_cards` pueden reinterpretarse como zero observado cuando raw es NULL, solo porque la evidencia atómica independiente lo valida sin contradicciones;
+- `yellow_cards` queda bloqueada por 5 contradicciones;
+- ningún `fillna(0)` global.
 
 ## PERF-12 — activo
 
@@ -102,14 +79,7 @@ Script:
 dsai/performance_validated_zero_impact.py
 ```
 
-Objetivo: aplicar solo en memoria la semántica validada de PERF-11 y medir cuánto cambia la cobertura del signed core y de las 5 dimensiones outfield.
-
-Reglas:
-- no escribe en DuckDB;
-- no modifica FEATURE-01 ni `features/catalog.json`;
-- `yellow_cards` permanece sin reinterpretar;
-- denominador `shots_total=0` mantiene `goal_per_shot_rate=NULL`;
-- ningún peso, threshold, ranking o recomendación.
+Objetivo: aplicar solo en memoria la semántica validada y comparar cobertura antes/después, sin modificar DB ni FEATURE-01.
 
 ## Siguiente paso exacto
 
