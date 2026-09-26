@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from app.coach_ui import metric_card, page_header, section_header
 from app.data_access import get_squad_summary, get_team_matches, list_teams
 from app.gps_physical_access import (
     PHYSICAL_SUMMARY_VERSION,
@@ -21,12 +22,13 @@ from app.gps_physical_access import (
     get_team_gps_match_coverage,
     get_team_latest_gps_snapshot,
 )
-from app.ui_theme import apply_professional_theme, score_card
+from app.ui_theme import apply_professional_theme, sidebar_navigation
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 
-st.set_page_config(page_title="Físic / GPS · Football Performance System", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="Físic / GPS · Football Performance System", page_icon="📡", layout="wide")
 apply_professional_theme()
+sidebar_navigation()
 
 
 def db_path() -> Path:
@@ -67,12 +69,15 @@ if teams.empty:
     st.info("No hi ha equips disponibles.")
     st.stop()
 
-st.markdown("<div class='fps-kicker'>PHYSICAL PERFORMANCE</div>", unsafe_allow_html=True)
-st.title("Físic / GPS")
-st.caption("Capa GPS opcional. Mostra agregats descriptius de dades normalitzades; no calcula fatiga, càrrega ni zones de sprint sense validació.")
-
 team_labels = {str(r.team_id): str(r.display_name) for r in teams.itertuples(index=False)}
 team_id = st.selectbox("Equip", options=list(team_labels), format_func=lambda x: team_labels[x])
+
+page_header(
+    "PHYSICAL PERFORMANCE · GPS OPCIONAL",
+    "Físic / GPS",
+    "Capa descriptiva sobre dades GPS normalitzades. No estima fatiga, càrrega ni readiness sense una definició validada.",
+    PHYSICAL_SUMMARY_VERSION,
+)
 
 status = get_gps_summary_status(path)
 if not status["table_available"]:
@@ -80,18 +85,16 @@ if not status["table_available"]:
     st.stop()
 
 if status["rows"] == 0:
-    st.info(
-        "No hi ha observacions GPS importades en aquesta base de dades. És correcte: GPS és opcional. "
-        "Quan s'importi un fitxer real amb GPS-01, aquesta vista mostrarà automàticament els agregats físics disponibles."
-    )
+    st.info("No hi ha observacions GPS importades en aquesta base. És correcte: el GPS és complementari i el producte principal funciona sense aquesta font.")
     c1, c2, c3 = st.columns(3)
-    score_card("Imports GPS", str(status["imports"]), "Fitxers normalitzats disponibles")
+    with c1:
+        metric_card("Imports GPS", str(status["imports"]), "Fitxers normalitzats disponibles")
     with c2:
-        score_card("Partits amb GPS", str(status["matches"]), "Cobertura actual")
+        metric_card("Partits amb GPS", str(status["matches"]), "Cobertura actual")
     with c3:
-        score_card("Jugadors amb GPS", str(status["players"]), "Cobertura actual")
+        metric_card("Jugadors amb GPS", str(status["players"]), "Cobertura actual")
     with st.expander("Què mostrarà aquesta capa quan hi hagi GPS?"):
-        st.write("Distància observada, velocitat màxima observada, acceleració màxima, desacceleració màxima, durada observada i cobertura de canals GPS.")
+        st.write("Distància observada, velocitat màxima, acceleració màxima, desacceleració màxima, durada observada i cobertura de canals.")
         st.write("No s'han definit encara zones HSR, sprints, càrrega, fatiga o readiness.")
     st.stop()
 
@@ -106,16 +109,16 @@ with tab_team:
     gps_matches = coverage.loc[coverage["gps_players"] > 0].copy() if not coverage.empty else pd.DataFrame()
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        score_card("Partits amb GPS", str(len(gps_matches)), "GPS disponible")
+        metric_card("Partits amb GPS", str(len(gps_matches)), "GPS disponible")
     with c2:
-        score_card("Jugadors amb GPS", str(snapshot["player_id"].nunique()) if not snapshot.empty else "0", "Última observació disponible")
+        metric_card("Jugadors amb GPS", str(snapshot["player_id"].nunique()) if not snapshot.empty else "0", "Última observació")
     with c3:
         latest_cov = gps_matches.iloc[0]["gps_player_coverage_pct"] if not gps_matches.empty else None
-        score_card("Cobertura últim partit GPS", "—" if latest_cov is None or pd.isna(latest_cov) else f"{latest_cov:.0f}%", "Jugadors amb GPS / participants")
+        metric_card("Cobertura últim GPS", "—" if latest_cov is None or pd.isna(latest_cov) else f"{latest_cov:.0f}%", "Jugadors amb GPS / participants")
     with c4:
-        score_card("Versió", "v0.1", "Agregats descriptius")
+        metric_card("Versió", "v0.1", "Agregats descriptius")
 
-    st.subheader("Cobertura GPS per partit")
+    section_header("Cobertura GPS per partit")
     if gps_matches.empty:
         st.info("Aquest equip encara no té partits amb GPS.")
     else:
@@ -126,7 +129,7 @@ with tab_team:
         show.columns = ["Data", "Rival", "L/V", "Participants", "Amb GPS", "Cobertura %"]
         st.dataframe(show, hide_index=True, width="stretch")
 
-    st.subheader("Última observació física per jugador")
+    section_header("Última observació física per jugador")
     if snapshot.empty:
         st.info("No hi ha dades GPS d'aquest equip.")
     else:
@@ -150,33 +153,32 @@ with tab_player:
         latest = history.iloc[-1]
         c1, c2, c3, c4 = st.columns(4)
         with c1:
-            score_card("Distància", km(latest["total_distance_m"]), "Suma de distància incremental observada")
+            metric_card("Distància", km(latest["total_distance_m"]), "Suma incremental observada")
         with c2:
-            score_card("Velocitat màxima", kmh(latest["peak_speed_m_s"]), "Màxim observat")
+            metric_card("Velocitat màxima", kmh(latest["peak_speed_m_s"]), "Màxim observat")
         with c3:
-            score_card("Acceleració màxima", accel(latest["max_acceleration_m_s2"]), "Màxim observat")
+            metric_card("Acceleració màxima", accel(latest["max_acceleration_m_s2"]), "Màxim observat")
         with c4:
-            score_card("Desacceleració màxima", accel(latest["min_acceleration_m_s2"]), "Mínim observat")
-
+            metric_card("Desacceleració màxima", accel(latest["min_acceleration_m_s2"]), "Mínim observat")
         st.caption(f"Durada GPS observada: {seconds(latest['observation_duration_s'])} · Proveïdor: {latest.get('provider') or '—'}")
 
         left, right = st.columns(2)
         hist = history.copy()
         hist["match_date"] = pd.to_datetime(hist["match_date"])
         with left:
-            st.subheader("Evolució distància")
+            section_header("Evolució distància")
             chart = hist.dropna(subset=["total_distance_m"]).copy()
             if not chart.empty:
                 chart["distance_km"] = chart["total_distance_m"] / 1000.0
                 st.line_chart(chart.set_index("match_date")[["distance_km"]], height=280, width="stretch")
         with right:
-            st.subheader("Evolució velocitat màxima")
+            section_header("Evolució velocitat màxima")
             chart = hist.dropna(subset=["peak_speed_m_s"]).copy()
             if not chart.empty:
                 chart["peak_speed_kmh"] = chart["peak_speed_m_s"] * 3.6
                 st.line_chart(chart.set_index("match_date")[["peak_speed_kmh"]], height=280, width="stretch")
 
-        st.subheader("Historial GPS")
+        section_header("Historial GPS")
         show = history.copy()
         show["match_date"] = pd.to_datetime(show["match_date"]).dt.date
         show["distance_km"] = pd.to_numeric(show["total_distance_m"], errors="coerce") / 1000.0
@@ -204,9 +206,9 @@ with tab_match:
         st.dataframe(show.round(2), hide_index=True, width="stretch")
 
 with tab_method:
-    st.subheader("Contracte físic actual")
+    section_header("Contracte físic actual")
     st.write(f"Versió: `{PHYSICAL_SUMMARY_VERSION}`")
-    st.write("La distància és la suma de `distance_m`, que GPS-01 defineix com a distància incremental per mostra.")
+    st.write("La distància és la suma de `distance_m`, definida com a distància incremental per mostra.")
     st.write("Velocitat, acceleració i desacceleració són màxims/mínims observats als camps canònics normalitzats.")
     st.write("La cobertura mostra quantes mostres tenen cada canal disponible; no és una nota de qualitat del jugador.")
-    st.warning("Encara NO s'han definit zones de velocitat, HSR, sprints, càrrega, fatiga ni readiness. Aquestes mètriques necessiten definició i validació pròpies.")
+    st.warning("Encara NO s'han definit zones de velocitat, HSR, sprints, càrrega, fatiga ni readiness.")
