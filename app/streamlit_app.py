@@ -135,7 +135,7 @@ with left:
             display["Min"] = pd.to_numeric(display["minutes_played"], errors="coerce").round(0)
             display = display[["player", "Perfil", "Min", "Rating", "Confiança %"]]
             display.columns = ["Jugador", "Perfil", "Min", "Rating", "Confiança %"]
-            st.dataframe(display, hide_index=True, use_container_width=True, height=360)
+            st.dataframe(display, hide_index=True, width="stretch", height=360)
 
 with right:
     st.subheader("Centre d'atenció")
@@ -149,7 +149,7 @@ with right:
             "GPS_QUALITY_FLAGS_PRESENT": "Qualitat GPS",
         })
         summary["Casos"] = pd.to_numeric(summary["rows"], errors="coerce").fillna(0).astype(int)
-        st.dataframe(summary[["Tipus", "Casos"]], hide_index=True, use_container_width=True)
+        st.dataframe(summary[["Tipus", "Casos"]], hide_index=True, width="stretch")
         st.caption("Són flags de traçabilitat/qualitat. No són diagnòstics de rendiment, fatiga ni risc de lesió.")
 
     st.subheader("GPS")
@@ -167,23 +167,23 @@ if rating_history.empty:
 else:
     history = rating_history.copy()
     history["match_date"] = pd.to_datetime(history["match_date"])
-    st.line_chart(history.set_index("match_date")[["median_match_rating"]], height=280, use_container_width=True)
+    st.line_chart(history.set_index("match_date")[["median_match_rating"]], height=280, width="stretch")
     st.caption("Mediana descriptiva del Match Rating dels jugadors utilitzats en cada partit. No és una alerta ni una qualificació global de l'equip.")
 
 st.write("")
 st.subheader("Accés ràpid")
 q1, q2, q3, q4 = st.columns(4)
 with q1:
-    st.page_link("pages/3_Equip.py", label="Equip", icon="🏟️", use_container_width=True)
-    st.page_link("pages/2_Jugador.py", label="Jugadors", icon="👤", use_container_width=True)
+    st.page_link("pages/3_Equip.py", label="Equip", icon="🏟️", width="stretch")
+    st.page_link("pages/2_Jugador.py", label="Jugadors", icon="👤", width="stretch")
 with q2:
-    st.page_link("pages/4_Partit.py", label="Partit", icon="⚽", use_container_width=True)
-    st.page_link("pages/1_Performance_Index.py", label="Performance Index", icon="📈", use_container_width=True)
+    st.page_link("pages/4_Partit.py", label="Partit", icon="⚽", width="stretch")
+    st.page_link("pages/1_Performance_Index.py", label="Performance Index", icon="📈", width="stretch")
 with q3:
-    st.page_link("pages/6_Fisic_GPS.py", label="Físic / GPS", icon="📡", use_container_width=True)
-    st.page_link("pages/7_Alertes.py", label="Alertes", icon="⚑", use_container_width=True)
+    st.page_link("pages/6_Fisic_GPS.py", label="Físic / GPS", icon="📡", width="stretch")
+    st.page_link("pages/7_Alertes.py", label="Alertes", icon="🚩", width="stretch")
 with q4:
-    st.page_link("pages/5_Assistent_IA.py", label="Assistent IA", icon="💬", use_container_width=True)
+    st.page_link("pages/5_Assistent_IA.py", label="Assistent IA", icon="💬", width="stretch")
 
 with st.expander("Metodologia i límits"):
     st.write("La home només consumeix dades i analytics ja materialitzats. No recalcula Match Ratings ni Performance Index.")
