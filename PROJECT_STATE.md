@@ -29,7 +29,8 @@ DASHBOARD-03 TEAM MODE              ACTIVO — ISSUE #89 / MATCH RATING INTEGRAD
 MATCH MODE                          CONTRACT PASS / OPERATIVO DESDE PARTIDO 1
 LLM MATCH RATING CONTEXT            CONTRACT PASS
 DASHBOARD-04 PHYSICAL/GPS           CERRADO / VALIDADO — ISSUE #92
-ALERTS-01 ATTENTION CENTRE          ACTIVO — ISSUE #93
+ALERTS-01 ATTENTION CENTRE          CERRADO / VALIDADO — ISSUE #93
+FINAL DASHBOARD HOME                IMPLEMENTADA / PENDIENTE CHECK VISUAL
 FINAL-01                            DESBLOQUEADO
 ```
 
@@ -64,16 +65,18 @@ PERFORMANCE INDEX
 = NO es la nota del partido
 ```
 
-## PERF-15 — Performance Index
+La interfaz muestra Match Rating como resultado operativo principal de un partido.
 
-Versión vigente:
+## PERF-15 — Performance Index vigente
+
+Versión:
 
 ```text
 performance_score_v0.2-experimental
 source experiment: performance_position_score_experiment_0.3.0
 ```
 
-Validación:
+Resultado validado:
 
 ```text
 observable_role_rows=380
@@ -87,7 +90,11 @@ fallback_creation_progression=128
 fallback_defensive_contribution=205
 ```
 
+PERF-15 corrige dimensiones vacías sin inventar acciones. Los fallbacks quedan auditables.
+
 ## PERF-16 — Match Rating cerrado
+
+Issue #91 cerrado.
 
 Versión:
 
@@ -95,7 +102,7 @@ Versión:
 match_rating_v0.1-experimental
 ```
 
-Gate validado:
+Contrato validado localmente:
 
 ```text
 played_rows=590
@@ -112,37 +119,49 @@ Principios:
 
 - cada `player_match` con minutos recibe rating;
 - funciona desde el primer partido;
-- porteros usan camino separado;
-- suplentes sin rol táctico fiable no reciben posición inventada;
-- evidencia insuficiente queda marcada y con confidence reducida;
-- ningún LLM calcula o altera ratings.
+- rol observable -> contexto posicional;
+- `Substitute` sin rol táctico -> contexto genérico explícito, sin imputar posición;
+- porteros -> camino GK separado;
+- evidencia insuficiente -> midpoint neutral explícito + confidence reducida;
+- ningún LLM calcula ni altera el rating.
 
-## Dashboard actual
+Escala de presentación experimental:
 
-### Jugador
+```text
+rating_10 = 4.0 + 0.06 * rating_100
+0 -> 4.0
+50 -> 7.0
+100 -> 10.0
+```
 
-- Match Rating /10 como resultado principal del último partido;
-- confidence;
-- perfil del partido;
-- Performance Index complementario;
-- dimensiones;
-- evolución temporal;
-- técnico;
-- motor experto;
-- historial;
-- PDF.
+No copia fórmulas propietarias.
 
-### Partit
+## Player Mode
 
-- ratings de todos los participantes;
-- confidence;
-- rol/perfil;
-- minutos y titularidad;
-- dimensiones;
-- observaciones postpartido deterministas;
-- PDF.
+Vista `Jugador` validada visualmente.
 
-Gate:
+KPIs principales:
+
+```text
+Match Rating /10
+Confianza
+Perfil del partido
+Performance Index complementario
+```
+
+Incluye dimensiones del partido, evolución, datos técnicos, motor experto, historial y PDF.
+
+## Match Mode
+
+Archivo principal:
+
+```text
+app/pages/4_Partit.py
+```
+
+Incluye ratings, confidence, rol/perfil, minutos, dimensiones, detalle por jugador, observaciones deterministas y PDF.
+
+Gate validado:
 
 ```text
 MATCH MODE CONTRACT: PASS
@@ -151,25 +170,52 @@ post_match_observation_players=16
 pdf_bytes=5500
 ```
 
-### Equip
+Conclusión: el flujo postpartido es operativo desde el primer partido.
 
-- Match Rating como capa operativa principal;
-- snapshot de plantilla;
-- medias recientes;
-- evolución;
+## Team Mode
+
+Issue #89 activo.
+
+`Equip` usa Match Rating como capa operativa principal:
+
+- rating mediana del último partido;
+- jugadores valorados;
+- confidence mediana;
+- último Match Rating por jugador;
+- plantilla con rating actual y media últimos 5;
+- evolución temporal de la mediana por partido;
 - delta descriptivo 5 vs 5;
-- Performance Index separado;
+- Performance Index en pestaña separada;
 - historial y PDF.
 
-### Assistent IA
+## Asistente IA
 
-Arquitectura mantenida:
+Arquitectura obligatoria mantenida:
 
 ```text
 DATA -> ANALYTICS -> DECISION ENGINE -> LLM -> COACH
 ```
 
-Gate:
+Contextos disponibles:
+
+### Team
+- Match Rating snapshot;
+- historial de Match Rating;
+- datos de equipo.
+
+### Player
+- último Match Rating;
+- historial de ratings;
+- Performance Index;
+- features;
+- motor experto.
+
+### Match
+- ratings materializados;
+- lineup;
+- observaciones postpartido deterministas.
+
+Gate validado:
 
 ```text
 LLM MATCH RATING CONTEXT: PASS
@@ -178,46 +224,20 @@ player_latest_rating=8.285714285714285
 first_match_rating_rows=16
 ```
 
-El asistente explica resultados materializados; no recalcula ratings.
+El asistente explica analytics materializados; no recalcula ratings.
 
-## DASHBOARD-04 — Physical/GPS cerrado
+## GPS / físico
 
-Issue #92 cerrado.
-
-Versión:
-
-```text
-gps_physical_summary_v0.1-descriptive
-```
-
-Capa materializada:
+GPS es opcional. Capa validada:
 
 ```text
 player_match_gps_summary
-```
-
-Agregados descriptivos aprobados:
-
-```text
-total_distance_m
-peak_speed_m_s
-max_acceleration_m_s2
-min_acceleration_m_s2
-observation_duration_s
-sample_count
-coverage % por canal
+summary_version = gps_physical_summary_v0.1-descriptive
 ```
 
 Gate local validado:
 
 ```text
-GPS PHYSICAL SUMMARY MATERIALIZATION: COMPLETE
-summary_rows=0
-latest_rows=0
-matches=0
-players=0
-imports=0
-
 GPS PHYSICAL SUMMARY CONTRACT: PASS
 synthetic_total_distance_m=11.0
 synthetic_peak_speed_m_s=6.0
@@ -227,52 +247,58 @@ real_gps_observations=0
 real_summary_rows=0
 ```
 
-Conclusión: GPS sigue siendo opcional y la capa física funciona correctamente aunque no exista un archivo GPS real importado.
+Estado actual: no hay GPS real importado y esto es un estado válido del producto.
 
-No se han definido HSR, sprint zones, workload, fatigue, readiness ni physical score.
+No se han creado HSR, zonas de sprint, workload, fatiga, readiness ni physical score.
 
-## ALERTS-01 — Attention Centre activo
+## ALERTS-01 — cerrado / validado
 
-Issue #93.
-
-Versión candidata:
+Versión:
 
 ```text
 attention_flags_v0.1-auditable
 ```
 
-Archivos:
+Gate local:
 
 ```text
-analytics/build_attention_flags.py
-app/attention_access.py
-app/pages/7_Alertes.py
-app/validate_attention_flags.py
-docs/ATTENTION_FLAGS_CONTRACT.md
+ATTENTION FLAGS CONTRACT: PASS
+rows=179
+ROLE_CONTEXT_UNAVAILABLE=172
+INSUFFICIENT_RATING_EVIDENCE=7
+GPS_QUALITY_FLAGS_PRESENT=0
 ```
 
-La palabra alerta en esta fase significa elemento que requiere revisión por limitación explícita de datos, contexto o evidencia.
+Los flags son de atención/traçabilidad, no diagnósticos de rendimiento.
 
-Códigos aprobados inicialmente:
+No se han creado:
 
 ```text
-ROLE_CONTEXT_UNAVAILABLE
-INSUFFICIENT_RATING_EVIDENCE
-GPS_QUALITY_FLAGS_PRESENT
+performance good/bad thresholds
+fatigue alerts
+injury-risk alerts
+readiness alerts
+tactical recommendations
 ```
 
-No son alertas de rendimiento.
+## Home principal profesional
 
-No se permite todavía:
+`app/streamlit_app.py` deja de ser la demo DASHBOARD-01 y pasa a ser la home operativa del staff.
 
-```text
-fatigue
-readiness
-injury risk
-bad/good performance alert
-HSR/sprint thresholds
-tactical recommendation
-```
+Incluye:
+
+- selector de equipo;
+- hero TEAM MODE;
+- partidos / plantilla;
+- mediana descriptiva del Match Rating del último partido;
+- centro de atención auditable;
+- estado GPS;
+- último partido + tabla de ratings;
+- evolución de la mediana del Match Rating;
+- acceso rápido a Equip, Jugador, Partit, Performance Index, Físic/GPS, Alertes y Assistent IA;
+- metodología/límites colapsables.
+
+La home no recalcula métricas ni crea recomendaciones.
 
 ## Guardrails vigentes
 
@@ -283,32 +309,36 @@ tactical recommendation
 - Match Rating y Performance Index son capas distintas;
 - suplentes sin rol táctico no reciben rol inventado;
 - porteros mantienen camino separado;
+- midpoint por evidencia insuficiente queda identificado y con confidence reducida;
 - LLM no calcula ni altera ratings;
 - dashboard/PDF consumen resultados materializados;
 - GPS es opcional;
-- no introducir HSR/sprint/load/fatigue/readiness sin validación;
-- las alertas actuales solo reflejan estados auditables ya existentes en las capas fuente.
+- no introducir HSR/sprint/load/fatigue sin validación;
+- Attention Centre solo expone estados auditables existentes.
 
 ## Siguiente paso exacto
 
-Validar ALERTS-01:
+Reiniciar la app y comprobar visualmente la nueva home:
 
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
 $env:FPS_DB_PATH = "D:\Data\Sergi\Desktop\football-performance-system\data\football_performance.duckdb"
-
-python analytics\build_attention_flags.py --db $env:FPS_DB_PATH
-python app\validate_attention_flags.py
 streamlit run app\streamlit_app.py
 ```
 
-Comprobar `Alertes`.
+Comprobar:
 
-Después del PASS:
+1. home principal;
+2. último partido y ratings;
+3. centre d'atenció;
+4. navegació ràpida;
+5. Equip / Jugador / Partit / Físic / Alertes / Assistent IA.
 
-1. cerrar ALERTS-01 #93;
-2. integrar un resumen de attention flags en Team Mode;
-3. pulir navegación global y home;
-4. integrar GPS/attention context en PDF y LLM sin inventar interpretaciones;
-5. preparar publicación final y README final.
+Después del check visual:
+
+1. cerrar DASHBOARD-03 #89 si Team Mode se considera final para MVP;
+2. revisar PDF de jugador/partido/equipo como salidas finales;
+3. pulir labels/navegación responsive;
+4. preparar publicación Streamlit / demo final;
+5. actualizar README con flujo de uso final.
