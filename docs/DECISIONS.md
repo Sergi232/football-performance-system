@@ -73,6 +73,20 @@ El rol o la posición no son el target principal. Se usan para contextualizar, n
 
 No se autoriza todavía ninguna fórmula de score, peso, signo, percentil o escala final. Esos elementos deben justificarse con datos, literatura, validación externa, criterio experto o experimentación reproducible.
 
+### D-009 — Anchor externo: semántica antes que coincidencia lexical
+Estado: `APPROVED`
+
+Un campo profesional solo puede actuar como candidato a anchor externo del score si representa una **valoración individual holística e independiente** del jugador.
+
+No basta con que el nombre contenga `score`, `rating`, `grade`, `index` o `rank`.
+
+Quedan excluidos como anchors:
+- resultados/contexto de partido o equipo (`home_score`, `away_score`);
+- estadísticas componentes del propio rendimiento (`bigChanceScored`, goles, tiros, pases, etc.);
+- variables que después formen parte de los inputs del producto.
+
+Un anchor válido, si existe, se usa únicamente para validación/aprendizaje experimental y nunca como input obligatorio del sistema amateur.
+
 ### DG-AN-01 — Comparaciones analíticas válidas
 Estado: `APPROVED`
 
