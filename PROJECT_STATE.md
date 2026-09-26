@@ -20,104 +20,39 @@ ARCHITECTURE-01                     CERRADO — ISSUE #25
 ANALYTICS-01                        CERRADO / VALIDADO — ISSUE #26
 DECISION POLICY / N13000            GATE APROBADO — ISSUE #27 CERRADO
 DSAI-01A..11                        CERRADO / RESULTADOS DOCUMENTADOS
-PERF-01..12                         CERRADO / AUDITORÍAS + NULL/ZERO VALIDADO
-PERF-13 SCORE POLICY + ROLE-AWARE   CERRADO / CANDIDATO 3PLUS + ROLE_AWARE
-PERF-14 POSITION-SPECIFIC SCORE     ACTIVO — ISSUE #87 / SCRIPT IMPLEMENTADO
-FINAL-01                            BLOQUEADO HASTA GATE PERF-14
+PERF-01..13                         CERRADO / SCORE POLICY VALIDADA
+PERF-14 POSITION-SPECIFIC SCORE     CERRADO COMO BASELINE EXPERIMENTAL — ISSUE #87
+SCORE-INTEGRATION-01                ACTIVO / MATERIALIZACIÓN + DASHBOARD IMPLEMENTADOS
+FINAL-01                            DESBLOQUEADO TRAS VALIDAR SCORE-INTEGRATION-01
 ```
 
 ## Objetivo principal confirmado
 
-El objetivo analítico central es **adjudicar un score de rendimiento jugador-partido** que sea auditable, role-aware y utilizable por el sistema experto, dashboard y asistente IA.
+El objetivo analítico central es **adjudicar un score de rendimiento jugador-partido** que sea auditable, role-aware y utilizable por el sistema analítico, dashboard y asistente IA.
 
-## PERF-11 — NULL vs zero
+## Score congelado como baseline experimental
 
-Validado:
-
-```text
-shots_total NULL -> 0 cuando el evento observado no ocurrió
-goals NULL       -> 0 cuando el evento observado no ocurrió
-red_cards NULL   -> 0 cuando el evento observado no ocurrió
-yellow_cards     -> NO reinterpretar como 0 (5 contradicciones)
-```
-
-## PERF-12 — impacto de la semántica validada
+Versión de producto:
 
 ```text
-outfield_rows=552
-full_five_before=3
-full_five_after=100
-finishing: 37 -> 552
-discipline: 87 -> 552
-attacking_threat: 196 -> 196
-creation_progression: 413 -> 413
-defensive_contribution: 262 -> 262
-
-2 dimensiones = 67
-3 dimensiones = 199
-4 dimensiones = 186
-5 dimensiones = 100
+performance_score_v0.1-experimental
 ```
 
-Conclusión: exigir 5/5 descarta demasiados jugador-partido.
-
-## PERF-13 — cerrado
-
-Scripts:
-
-- `dsai/performance_score_policy_experiment.py`
-- `dsai/performance_score_policy_experiment_v2.py` — compatibilidad pandas 3.x.
-
-Resultado:
+Arquitectura:
 
 ```text
-GLOBAL
-COMPLETE_5D     100/552 = 18.12%
-AVAILABLE_4PLUS 286/552 = 51.81%
-AVAILABLE_3PLUS 485/552 = 87.86%
-AVAILABLE_2PLUS 552/552 = 100.00%
-
-ROLE_AWARE
-COMPLETE_5D     100/552 = 18.12%
-AVAILABLE_4PLUS 286/552 = 51.81%
-AVAILABLE_3PLUS 485/552 = 87.86%
-AVAILABLE_2PLUS 552/552 = 100.00%
+raw data
+-> FEATURE-01
+-> semántica NULL/0 validada PERF-11
+-> percentiles dentro del grupo posicional
+-> dimensiones PERF
+-> AVAILABLE_3PLUS
+-> pesos posicionales experimentales
+-> performance_score 0-100
+-> score_evidence_confidence
 ```
 
-Gate metodológico:
-
-**Candidato seleccionado para continuar: `AVAILABLE_3PLUS + ROLE_AWARE`.**
-
-Motivos:
-
-- 87.9% de cobertura;
-- `2PLUS` se considera demasiado permisivo como baseline de producto;
-- `4PLUS/5D` pierden demasiados casos;
-- GLOBAL vs ROLE_AWARE en 3PLUS: Spearman `0.9419`, mean absolute delta `2.29`;
-- la adaptación posicional cambia el score sin destruir el orden general.
-
-Sensibilidad 3PLUS ROLE_AWARE:
-
-```text
-attacking_threat        mean_abs_delta 2.28 | Spearman 0.910
-creation_progression    mean_abs_delta 5.37 | Spearman 0.748
-defensive_contribution  mean_abs_delta 3.43 | Spearman 0.864
-finishing               mean_abs_delta 3.94 | Spearman 0.944
-discipline              mean_abs_delta 3.39 | Spearman 0.982
-```
-
-Conclusión: una media igual de dimensiones no debe congelarse como score final. `creation_progression` domina demasiado el ranking agregado y justifica pasar a ponderación específica por posición.
-
-## PERF-14 — activo
-
-Issue: **#87 — position-specific performance score + confidence**
-
-Archivos:
-
-- `dsai/performance_position_weight_priors.json`
-- `dsai/performance_position_score_experiment.py`
-
-Grupos tácticos experimentales:
+Grupos posicionales:
 
 ```text
 CB
@@ -125,97 +60,144 @@ FB_WB
 DM_CM
 AM_W
 ST
-OTHER_OUTFIELD  # fallback diagnóstico, no candidato de producto
 ```
 
-### Arquitectura PERF-14
+Porteros mantienen un camino separado.
+
+## PERF-14 — gate cerrado
+
+Resultado final v2:
 
 ```text
-primary_role / source_position
--> position_group
--> percentiles de features dentro del position_group
--> dimensiones PERF existentes
--> mínimo 3 dimensiones + dimensión nuclear
--> pesos posicionales experimentales
--> performance_score_position_experimental
--> score_evidence_confidence
--> sensitivity gate
+outfield_rows                  = 552
+observable_mapped_role_rows    = 380
+eligible_rows_observable_roles = 304
+coverage_rate_observable_roles = 0.8000
+source_role_unavailable_rows   = 172
+total_outfield_coverage_rate   = 0.5507
+spearman_vs_unweighted_3plus   = 0.8964
 ```
 
-La normalización ahora es realmente específica por grupo táctico: un CB se compara contra CB, un ST contra ST, etc. Si una feature no se puede estimar dentro del grupo, se mantiene el fallback global ya validado en PERF-13.
-
-### Priors posicionales
-
-No son pesos finales ni se presentan como verdad científica. Se codifican como niveles ordinales de relevancia `1..5`, transparentes y auditables, y se normalizan en runtime.
-
-Ejemplo conceptual:
-
-- CB: prioridad defensiva;
-- FB/WB: defensa + progresión;
-- DM/CM: creación/progresión + defensa;
-- AM/W: creación + amenaza ofensiva + finalización;
-- ST: finalización + amenaza ofensiva.
-
-Los missing no se imputan. Los pesos disponibles se renormalizan únicamente cuando la fila cumple la política de elegibilidad.
-
-### Confidence
-
-`score_evidence_confidence` NO es una probabilidad de acierto.
-
-Es:
+Cobertura por grupo:
 
 ```text
-peso posicional previsto realmente observado / peso posicional total previsto * 100
+CB      53/86 = 61.63%
+FB_WB   42/68 = 61.76%
+DM_CM   89/95 = 93.68%
+AM_W    58/65 = 89.23%
+ST      62/66 = 93.94%
 ```
 
-Permite distinguir un score sustentado por casi toda la evidencia relevante de uno calculado con evidencia parcial.
+Los 172 `Substitute` no se consideran un fallo del score: DATA-02/DSAI-05 estableció que la fuente no ofrece un rol táctico fiable para esas apariciones. No se imputa posición desde historia, modal role ni otro partido.
 
-### Gate PERF-14
+Mapping corregido:
 
-El script calcula:
+```text
+Defender | Left/Centre              -> CB
+Defender | Centre/Right             -> CB
+Midfielder | Left/Centre            -> DM_CM
+Midfielder | Centre/Right           -> DM_CM
+Defensive Midfielder | Left/Centre  -> DM_CM
+Midfielder | Left/Right             -> AM_W
+Wing Back | Left/Right              -> FB_WB
+Striker                              -> ST
+```
 
-- cobertura total y por posición;
-- auditoría del mapping de `primary_role`;
-- distribución del score;
-- comparación con ROLE_AWARE 3PLUS sin pesos;
-- leave-one-dimension-out por posición;
-- perturbación +/-1 de cada nivel ordinal de peso;
-- confidence de evidencia.
+Sensibilidad de priors: el peor Spearman ante perturbaciones +/-1 de los pesos queda aproximadamente entre 0.986 y 0.989 en los cinco grupos candidatos. Se considera suficientemente estable para un baseline experimental.
 
-No se aprobarán los priors si el ranking es excesivamente sensible.
+### Decisión
+
+`performance_score_v0.1-experimental` queda congelado como **baseline experimental de producto**, no como verdad científica definitiva.
+
+Los priors siguen siendo revisables cuando haya más datos o validación externa. No se abren más auditorías PERF antes de integrar el MVP.
+
+## SCORE-INTEGRATION-01 — activo
+
+Implementado en GitHub:
+
+```text
+analytics/build_performance_score.py
+app/performance_score_access.py
+app/pages/1_Performance_Score.py
+app/validate_performance_score.py
+```
+
+### Materialización
+
+`analytics/build_performance_score.py` reutiliza PERF-14 v2 y escribe en DuckDB:
+
+```text
+player_match_performance_score
+```
+
+La tabla contiene, por jugador-partido:
+
+- posición/rol observado;
+- grupo posicional;
+- cinco dimensiones;
+- `performance_score`;
+- `score_evidence_confidence`;
+- estado de elegibilidad;
+- método y versión;
+- versión del experimento fuente.
+
+El dashboard NO recalcula el score.
+
+### Dashboard
+
+Nueva página Streamlit:
+
+```text
+Performance Score
+```
+
+Muestra:
+
+- score 0-100;
+- confidence de evidencia;
+- grupo posicional;
+- dimensiones disponibles;
+- cinco dimensiones;
+- evolución temporal;
+- historial jugador-partido;
+- explicación explícita cuando no existe rol táctico observable.
 
 ## Guardrails vigentes
 
-- no copiar fórmula propietaria Sofascore/FotMob;
-- no convertir missing en 0 fuera de la semántica PERF-11;
-- no aprobar threshold bueno/malo sin validación;
-- no introducir ranking/recomendación de producto todavía;
+- no copiar fórmulas propietarias Sofascore/FotMob;
+- no convertir missing en 0 fuera de PERF-11;
+- no threshold bueno/malo sin validación;
+- no etiqueta automática de calidad;
+- no recomendación táctica derivada directamente del score;
+- suplentes sin rol táctico observable no se imputan;
 - porteros mantienen camino separado;
-- LLM no calcula ni altera el score;
-- DuckDB y FEATURE-01 no se mutan en estos experimentos.
+- el LLM no calcula ni altera el score;
+- el dashboard consume resultados materializados, no recalcula lógica crítica.
 
 ## Siguiente paso exacto
 
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\performance_position_score_experiment.py
+python analytics\build_performance_score.py
+python app\validate_performance_score.py
+streamlit run app\streamlit_app.py
 ```
 
-No instalar nada.
-
-Outputs esperados:
+Resultado esperado del validador:
 
 ```text
-dsai/output/performance_position_score_experiment.json
-dsai/output/performance_position_score_experiment.csv
-dsai/output/performance_position_score_experiment.md
+PERFORMANCE SCORE DASHBOARD CONTRACT: PASS
+rows=552
+observable_role_rows=380
+eligible_scores=304
+coverage_observable_roles=0.8000
+source_role_unavailable_rows=172
 ```
 
-Después de esta ejecución se decide en un único gate:
+Después de este PASS:
 
-1. si el mapping posicional es correcto;
-2. si la cobertura sigue siendo suficiente;
-3. si los priors son estables;
-4. congelar o ajustar `performance_score_v0.1-experimental`;
-5. pasar inmediatamente a integración con motor experto/dashboard.
+1. cerrar issue #87;
+2. marcar SCORE-INTEGRATION-01 como cerrado;
+3. integrar el score en contexto LLM/informes;
+4. continuar con evolución temporal, alertas y uso del score dentro del producto sin modificar su fórmula base.
