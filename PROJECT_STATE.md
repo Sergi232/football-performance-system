@@ -42,7 +42,7 @@ PERF-09 EXPERIMENTAL SCORE          CERRADO / BASELINE CREATED, COVERAGE BOTTLEN
 PERF-10 COVERAGE / OBSERVABILITY    CERRADO / POLICY REDESIGN REQUIRED — ISSUE #70
 PERF-11 NULL VS ZERO SEMANTICS      CERRADO / 3 VALIDATED CANDIDATES — ISSUE #77
 PERF-12 VALIDATED ZERO IMPACT       CERRADO / COVERAGE 5D 3→100
-PERF-13 SCORE POLICY + ROLE-AWARE   ACTIVO — ISSUE #78 / SCRIPT IMPLEMENTADO
+PERF-13 SCORE POLICY + ROLE-AWARE   ACTIVO — ISSUE #78 / PANDAS 3 COMPAT FIX
 FINAL-01                            BLOQUEADO HASTA DECISIÓN PERF-13
 ```
 
@@ -85,9 +85,14 @@ Conclusión: la semántica NULL→0 validada mejora mucho la cobertura, pero exi
 
 ## PERF-13 — activo
 
-Script:
+Scripts:
 
-`dsai/performance_score_policy_experiment.py`
+- `dsai/performance_score_policy_experiment.py` — implementación base.
+- `dsai/performance_score_policy_experiment_v2.py` — runner de compatibilidad para pandas 3.x.
+
+El primer intento con Python 3.13 / pandas actual falló por `ValueError: Categorical categories cannot be null` al agrupar `source_position` con `dropna=False`.
+
+La versión v2 conserva la semántica analítica y evita el error usando una clave sentinela solo para agrupación. Los jugadores con `source_position` desconocida NO reciben normalización por posición: mantienen fallback global.
 
 Compara, sin modificar DB ni FEATURE-01:
 
@@ -129,7 +134,7 @@ Guardrails:
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\performance_score_policy_experiment.py
+python dsai\performance_score_policy_experiment_v2.py
 ```
 
 No instalar nada.
