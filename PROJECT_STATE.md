@@ -87,13 +87,6 @@ leave_one_out=attacking_threat:3,creation_progression:3,defensive_contribution:3
 conclusion=FULL_DIMENSION_COVERAGE_INCOMPLETE_POLICY_REDESIGN_REQUIRED
 ```
 
-Decisión:
-- exigir las cinco dimensiones simultáneas no es viable con la semántica FEATURE-01 actual;
-- `finishing` es el cuello de botella principal, pero no el único;
-- eliminar una sola dimensión tampoco resuelve el problema;
-- no se aprueba un mínimo arbitrario de 3/5 o 4/5;
-- no se convierte missing a cero.
-
 ## PERF-11 — cerrado
 
 Resultado ejecutado:
@@ -113,11 +106,11 @@ conclusion=EVENT_VALIDATED_NULL_AS_ZERO_CANDIDATES_FOUND
 ```
 
 Decisión:
-- `shots_total`, `goals` y `red_cards` tienen evidencia atómica independiente completa para interpretar raw `NULL` como **zero observado** en una futura versión de features;
-- `yellow_cards` queda bloqueada: 5 filas raw NULL tienen evento amarillo positivo;
-- no se modifica raw data ni FEATURE-01 todavía;
-- no se autoriza `fillna(0)` global;
-- las ratios con denominador 0 siguen indefinidas.
+- `shots_total`, `goals` y `red_cards` pueden reinterpretarse como zero observado cuando raw es NULL;
+- `yellow_cards` no: 5 contradicciones;
+- no se modifica DB ni FEATURE-01;
+- no `fillna(0)` global;
+- ratios con denominador 0 siguen indefinidas.
 
 ## PERF-12 — activo
 
@@ -128,22 +121,7 @@ Script:
 dsai/performance_validated_zero_impact.py
 ```
 
-Objetivo: aplicar **solo en memoria** la semántica validada de PERF-11 y medir el impacto en cobertura antes de modificar FEATURE-01.
-
-Audita:
-- `shots_total_per90`, `goals_per90`, `goal_per_shot_rate`, `red_cards_per90` bajo semántica validada;
-- cobertura del signed core antes/después;
-- cobertura de cada dimensión antes/después;
-- distribución de filas con 0..5 dimensiones antes/después;
-- full-five coverage antes/después;
-- cuello de botella residual.
-
-Reglas:
-- no escribe en DuckDB;
-- no modifica `features/catalog.json` ni FEATURE-01;
-- `yellow_cards` permanece sin reinterpretar;
-- `goal_per_shot_rate` sigue NULL cuando `shots_total=0`;
-- ningún peso, threshold, ranking o recomendación.
+Objetivo: aplicar solo en memoria la semántica validada de PERF-11 y medir el impacto en cobertura antes de modificar FEATURE-01.
 
 ## Guardrails del score
 
@@ -151,25 +129,10 @@ Reglas:
 - ningún ranking/recomendación de producto;
 - ningún peso aprobado;
 - ningún `fillna(0)` global;
-- solo se admite zero observado con evidencia independiente;
-- ratios con denominador 0 siguen indefinidas;
-- no usar PCA/correlación/varianza como definición de calidad;
-- score outfield y score de portero no se comparan directamente;
+- solo zero observado con evidencia independiente;
+- score outfield y portero separados;
 - rol/posición = contexto, no target;
 - el LLM no recalcula el score.
-
-## Incidencias de repositorio
-
-Los issues #62, #64, #65, #66, #67, #68, #69, #71, #72, #73, #74, #75 y #76 fueron artefactos accidentales del conector y quedaron cerrados como `not_planned`. El #63 fue una planificación prematura y también quedó cerrado. Ninguno contiene trabajo del proyecto.
-
-Los ficheros auxiliares redundantes `docs/PERF_05_*` siguen pendientes de limpieza; no son fuente de verdad.
-
-## Líneas todavía bloqueadas
-
-- score global validado: hasta resolver impacto de semántica validada + política de score + sensibilidad/ablations + estabilidad;
-- `role_player_fit`: sin target independiente defendible;
-- `expert_vs_ml`: sin shared target independiente;
-- calibración N13000: sin ground truth de recomendación.
 
 ## Siguiente paso exacto
 
