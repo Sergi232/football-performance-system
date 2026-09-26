@@ -90,6 +90,81 @@ def get_latest_player_score(db_path: Path, team_id: str, player_id: str) -> dict
     return row.to_dict()
 
 
+def get_team_score_snapshot(db_path: Path, team_id: str) -> pd.DataFrame:
+    """Return one descriptive score snapshot row per squad player.
+
+    `trend_delta_5v5` is purely descriptive: mean of the latest five eligible
+    scores minus the mean of eligible scores 6-10. No threshold or performance
+    label is applied.
+    """
+    with connect_read_only(db_path) as con:
+        return con.execute(
+            """
+            WITH roster AS (
+                SELECT DISTINCT pm.player_id, p.display_name AS player
+                FROM player_match pm
+                JOIN players p ON p.player_id = pm.player_id
+                WHERE pm.team_id = ?
+            ),
+            eligible AS (
+                SELECT
+                    s.player_id,
+                    s.match_id,
+                    m.match_date,
+                    s.position_group,
+                    s.performance_score,
+                    s.score_evidence_confidence,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY s.player_id
+                        ORDER BY m.match_date DESC, s.match_id DESC
+                    ) AS rn
+                FROM player_match_performance_score s
+                JOIN matches m ON m.match_id = s.match_id
+                WHERE s.score_version = ?
+                  AND s.team_id = ?
+                  AND s.position_group <> 'OTHER_OUTFIELD'
+                  AND s.performance_score IS NOT NULL
+            ),
+            score_agg AS (
+                SELECT
+                    player_id,
+                    COUNT(*) AS scored_matches,
+                    MAX(CASE WHEN rn = 1 THEN match_date END) AS latest_score_date,
+                    MAX(CASE WHEN rn = 1 THEN position_group END) AS position_group,
+                    MAX(CASE WHEN rn = 1 THEN performance_score END) AS latest_score,
+                    MAX(CASE WHEN rn = 1 THEN score_evidence_confidence END) AS latest_confidence,
+                    AVG(CASE WHEN rn BETWEEN 1 AND 5 THEN performance_score END) AS avg_last5,
+                    AVG(CASE WHEN rn BETWEEN 6 AND 10 THEN performance_score END) AS avg_previous5,
+                    COUNT(*) FILTER (WHERE rn BETWEEN 1 AND 5) AS n_last5,
+                    COUNT(*) FILTER (WHERE rn BETWEEN 6 AND 10) AS n_previous5
+                FROM eligible
+                GROUP BY player_id
+            )
+            SELECT
+                r.player_id,
+                r.player,
+                a.scored_matches,
+                a.latest_score_date,
+                a.position_group,
+                a.latest_score,
+                a.latest_confidence,
+                a.avg_last5,
+                a.avg_previous5,
+                CASE
+                    WHEN a.n_last5 > 0 AND a.n_previous5 > 0
+                    THEN a.avg_last5 - a.avg_previous5
+                    ELSE NULL
+                END AS trend_delta_5v5,
+                COALESCE(a.n_last5, 0) AS n_last5,
+                COALESCE(a.n_previous5, 0) AS n_previous5
+            FROM roster r
+            LEFT JOIN score_agg a ON a.player_id = r.player_id
+            ORDER BY r.player
+            """,
+            [team_id, SCORE_VERSION, team_id],
+        ).df()
+
+
 def get_score_status(db_path: Path) -> dict:
     with connect_read_only(db_path) as con:
         row = con.execute(
