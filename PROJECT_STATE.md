@@ -21,18 +21,32 @@ ANALYTICS-01                        CERRADO / VALIDADO — ISSUE #26
 DECISION POLICY / N13000            GATE APROBADO — ISSUE #27 CERRADO
 DSAI-01A..11                        CERRADO / RESULTADOS DOCUMENTADOS
 PERF-01..13                         CERRADO / SCORE POLICY VALIDADA
-PERF-14 POSITION-SPECIFIC SCORE     CERRADO COMO BASELINE EXPERIMENTAL — ISSUE #87
-SCORE-INTEGRATION-01                ACTIVO / MATERIALIZACIÓN + DASHBOARD IMPLEMENTADOS
-FINAL-01                            DESBLOQUEADO TRAS VALIDAR SCORE-INTEGRATION-01
+PERF-14 POSITION-SPECIFIC SCORE     CERRADO — ISSUE #87
+SCORE-INTEGRATION-01                CERRADO / MATERIALIZACIÓN + CONTRACT PASS
+DASHBOARD-02                        ACTIVO — ISSUE #88 / PLAYER VIEW IMPLEMENTADA
+FINAL-01                            DESBLOQUEADO
 ```
 
 ## Objetivo principal confirmado
 
-El objetivo analítico central es **adjudicar un score de rendimiento jugador-partido** que sea auditable, role-aware y utilizable por el sistema analítico, dashboard y asistente IA.
+Producto web funcional para cuerpo técnico de fútbol amateur/semiprofesional:
 
-## Score congelado como baseline experimental
+```text
+COLLECTOR + GPS opcional
+-> DATABASE
+-> FEATURE ENGINE
+-> ANALYTICS
+-> EXPERT SYSTEM / ML
+-> WEB DASHBOARD
+-> ASSISTANT IA
+-> PDF / informes
+```
 
-Versión de producto:
+El dashboard es el producto principal. PDF/PPT son salidas estáticas complementarias.
+
+## Performance Score congelado
+
+Versión:
 
 ```text
 performance_score_v0.1-experimental
@@ -64,7 +78,46 @@ ST
 
 Porteros mantienen un camino separado.
 
-## PERF-14 — gate cerrado
+## PERF-11 — NULL vs zero
+
+Validado:
+
+```text
+shots_total NULL -> 0 cuando el evento observado no ocurrió
+goals NULL       -> 0 cuando el evento observado no ocurrió
+red_cards NULL   -> 0 cuando el evento observado no ocurrió
+yellow_cards     -> NO reinterpretar como 0
+```
+
+## PERF-13 — política seleccionada
+
+Candidato aprobado para continuar:
+
+```text
+AVAILABLE_3PLUS + ROLE_AWARE
+```
+
+Resultados principales:
+
+```text
+5D      100/552 = 18.12%
+4PLUS   286/552 = 51.81%
+3PLUS   485/552 = 87.86%
+2PLUS   552/552 = 100.00%
+```
+
+GLOBAL vs ROLE_AWARE 3PLUS:
+
+```text
+Spearman = 0.9419
+mean absolute delta = 2.29
+```
+
+La media igual de dimensiones no se congeló porque `creation_progression` dominaba demasiado la sensibilidad agregada.
+
+## PERF-14 — cerrado
+
+Issue #87 cerrado tras validación local.
 
 Resultado final v2:
 
@@ -88,9 +141,9 @@ AM_W    58/65 = 89.23%
 ST      62/66 = 93.94%
 ```
 
-Los 172 `Substitute` no se consideran un fallo del score: DATA-02/DSAI-05 estableció que la fuente no ofrece un rol táctico fiable para esas apariciones. No se imputa posición desde historia, modal role ni otro partido.
+Los 172 `Substitute` no son un fallo del score. DATA-02/DSAI-05 establece que la fuente no ofrece rol táctico fiable para esas apariciones. No se imputa desde historia, rol modal ni otro partido.
 
-Mapping corregido:
+Mapping aprobado:
 
 ```text
 Defender | Left/Centre              -> CB
@@ -103,17 +156,13 @@ Wing Back | Left/Right              -> FB_WB
 Striker                              -> ST
 ```
 
-Sensibilidad de priors: el peor Spearman ante perturbaciones +/-1 de los pesos queda aproximadamente entre 0.986 y 0.989 en los cinco grupos candidatos. Se considera suficientemente estable para un baseline experimental.
+Sensibilidad de priors: peor Spearman ante perturbaciones +/-1 aproximadamente 0.986–0.989 en los cinco grupos candidatos.
 
-### Decisión
+Decisión: `performance_score_v0.1-experimental` queda congelado como baseline experimental de producto. Los priors siguen siendo revisables con más datos o validación externa.
 
-`performance_score_v0.1-experimental` queda congelado como **baseline experimental de producto**, no como verdad científica definitiva.
+## SCORE-INTEGRATION-01 — cerrado
 
-Los priors siguen siendo revisables cuando haya más datos o validación externa. No se abren más auditorías PERF antes de integrar el MVP.
-
-## SCORE-INTEGRATION-01 — activo
-
-Implementado en GitHub:
+Archivos:
 
 ```text
 analytics/build_performance_score.py
@@ -122,45 +171,75 @@ app/pages/1_Performance_Score.py
 app/validate_performance_score.py
 ```
 
-### Materialización
-
-`analytics/build_performance_score.py` reutiliza PERF-14 v2 y escribe en DuckDB:
+Tabla materializada:
 
 ```text
 player_match_performance_score
 ```
 
-La tabla contiene, por jugador-partido:
-
-- posición/rol observado;
-- grupo posicional;
-- cinco dimensiones;
-- `performance_score`;
-- `score_evidence_confidence`;
-- estado de elegibilidad;
-- método y versión;
-- versión del experimento fuente.
-
-El dashboard NO recalcula el score.
-
-### Dashboard
-
-Nueva página Streamlit:
+Validación local confirmada:
 
 ```text
-Performance Score
+PERFORMANCE SCORE MATERIALIZATION: COMPLETE
+rows_written=552
+observable_role_rows=380
+eligible_observable_scores=304
+coverage_observable_roles=0.8000
+
+PERFORMANCE SCORE DASHBOARD CONTRACT: PASS
+rows=552
+observable_role_rows=380
+eligible_scores=304
+coverage_observable_roles=0.8000
+source_role_unavailable_rows=172
 ```
 
-Muestra:
+La página Streamlit `Performance Score` fue verificada visualmente con score, confidence, grupo posicional, 5 dimensiones e historial.
 
-- score 0-100;
+Nota operativa local: Streamlit debe leer la misma DuckDB materializada. En el entorno de Sergi:
+
+```powershell
+$env:FPS_DB_PATH = "D:\Data\Sergi\Desktop\football-performance-system\data\football_performance.duckdb"
+```
+
+## DASHBOARD-02 — activo
+
+Issue #88.
+
+Objetivo: convertir el MVP en una herramienta de cuerpo técnico, priorizando la ficha de jugador.
+
+Implementado:
+
+```text
+app/pages/2_Jugador.py
+```
+
+La vista integrada contiene:
+
+- selector de equipo y jugador;
+- apariciones, titularidades, minutos, goles y asistencias;
+- descarga de PDF;
+- Performance Score;
 - confidence de evidencia;
-- grupo posicional;
-- dimensiones disponibles;
+- etiqueta humana del grupo posicional;
 - cinco dimensiones;
-- evolución temporal;
-- historial jugador-partido;
-- explicación explícita cuando no existe rol táctico observable.
+- evolución temporal del score;
+- estado del motor experto N12000/N13000;
+- evolución de features;
+- historial de partidos.
+
+Etiquetas humanas:
+
+```text
+CB      -> Central
+FB_WB   -> Lateral / Carriler
+DM_CM   -> Migcentre / Interior
+AM_W    -> Mitjapunta / Extrem
+ST      -> Davanter
+GK      -> Porter
+```
+
+La página `Performance Score` se mantiene como vista analítica detallada; `Jugador` debe convertirse en la ficha operativa principal.
 
 ## Guardrails vigentes
 
@@ -172,32 +251,35 @@ Muestra:
 - suplentes sin rol táctico observable no se imputan;
 - porteros mantienen camino separado;
 - el LLM no calcula ni altera el score;
-- el dashboard consume resultados materializados, no recalcula lógica crítica.
+- el dashboard consume resultados materializados, no recalcula lógica crítica;
+- score y expert system se mantienen como capas diferenciadas.
 
 ## Siguiente paso exacto
+
+Validar visualmente DASHBOARD-02:
 
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python analytics\build_performance_score.py
-python app\validate_performance_score.py
+$env:FPS_DB_PATH = "D:\Data\Sergi\Desktop\football-performance-system\data\football_performance.duckdb"
 streamlit run app\streamlit_app.py
 ```
 
-Resultado esperado del validador:
+En el navegador abrir `Jugador` y comprobar:
 
-```text
-PERFORMANCE SCORE DASHBOARD CONTRACT: PASS
-rows=552
-observable_role_rows=380
-eligible_scores=304
-coverage_observable_roles=0.8000
-source_role_unavailable_rows=172
-```
+1. carga de equipo/jugador;
+2. score + confidence + posición humana;
+3. tabla de dimensiones;
+4. evolución del score;
+5. motor experto;
+6. evolución de métricas;
+7. historial;
+8. descarga PDF.
 
-Después de este PASS:
+Después del check visual:
 
-1. cerrar issue #87;
-2. marcar SCORE-INTEGRATION-01 como cerrado;
-3. integrar el score en contexto LLM/informes;
-4. continuar con evolución temporal, alertas y uso del score dentro del producto sin modificar su fórmula base.
+1. cerrar DASHBOARD-02 fase jugador;
+2. integrar score en contexto LLM;
+3. integrar score en PDF de jugador;
+4. construir Team Mode con tendencias/alertas y vistas de plantilla;
+5. pulir navegación/estética para publicación final.
