@@ -5,7 +5,7 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
-ATTENTION_VERSION = "attention_flags_v0.1-auditable"
+ATTENTION_VERSION = "attention_flags_v0.2-auditable"
 
 
 def _connect(db_path: Path) -> duckdb.DuckDBPyConnection:
