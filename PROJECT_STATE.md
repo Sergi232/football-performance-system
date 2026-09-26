@@ -29,7 +29,7 @@ DSAI-07 ROLE CLASSIFICATION BASELINE CERRADO / EXPERIMENTAL_SIGNAL / NO DEPLOY �
 DSAI-08 ROLE GRANULARITY AUDIT      CERRADO / LIMITED_SOURCE_POSITION_BASELINE — ISSUE #46
 DSAI-09 SOURCE POSITION BASELINE    CERRADO / EXPERIMENTAL_SIGNAL_IMPROVED / NO DEPLOY — ISSUE #49
 DSAI-10 PREMATCH POSITION BASELINE  CERRADO / PREMATCH_EXPERIMENTAL_SIGNAL / NO DEPLOY — ISSUE #50
-DSAI-11 PREMATCH ROBUSTNESS         ATURADO / CONTEXT ONLY — ISSUE #51
+DSAI-11 PREMATCH ROBUSTNESS         CERRADO / POSITION CONTEXT ONLY — ISSUE #51
 PERF-01 PERFORMANCE SCORE AUDIT     ACTIVO — ISSUE #52 / v0.2 PENDIENTE DE REEJECUCIÓN
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
@@ -53,11 +53,34 @@ Rol/posición se usa como contexto de comparación/normalización cuando existe 
 
 No existe todavía una fórmula de score aprobada. No se inventan pesos, signos, percentiles, escalas ni thresholds.
 
-## DSAI-11 — línea detenida
+## DSAI-11 — resultado cerrado
 
-Issue #51 cerrada como `not_planned` por reorientación metodológica.
+```text
+candidate_rows=418
+evaluated_rows=353
+evaluated_positions=6
+rows_with_prior_position=341
+model_all_safe_accuracy=0.4929
+model_all_safe_balanced_accuracy=0.3176
+model_all_safe_macro_f1=0.3054
+model_prior_mean_only_accuracy=0.4646
+model_prev_only_accuracy=0.5552
+player_last_position_accuracy=0.8944
+player_last_position_balanced_accuracy=0.6982
+player_last_position_macro_f1=0.6934
+player_modal_position_accuracy=0.8915
+switches=36
+stays=305
+ml_switch_accuracy=0.3611
+head_to_head_model_only=13
+head_to_head_last_only=150
+both_correct=155
+both_wrong=23
+```
 
-El trabajo DSAI-04..10 se conserva como evidencia académica de auditoría de target, leakage control, validación temporal, clasificación supervisada y reformulación de labels. A partir de ahora, posición/rol queda como contexto de rendimiento.
+Decisión: `POSITION_CLASSIFICATION_LINE_CLOSED / CONTEXT_ONLY`.
+
+La persistencia simple de última posición observada (89,44% accuracy) supera ampliamente el ML pre-match (49,29%). No se justifica seguir optimizando la clasificación de posición. El trabajo DSAI-04..11 se conserva como evidencia académica de auditoría de target, leakage control, validación temporal, baselines y reformulación de labels. A partir de ahora, posición/rol queda como contexto de rendimiento.
 
 ## PERF-01 — activo
 
@@ -88,14 +111,14 @@ Objetivo de la reejecución:
 - confirmar cobertura FEATURE-01 y dominios N4000-N7000;
 - registrar falsos positivos rechazados;
 - determinar si existe realmente un anchor holístico de jugador;
-- si no existe, la ruta esperada pasa a `EXPERT_WEIGHT_VALIDATION_REQUIRED`.
+- si no existe, la ruta pasa a `EXPERT_WEIGHT_VALIDATION_REQUIRED`.
 
 Reglas:
 - no crear score todavía;
 - no asumir que más volumen = mejor;
-- no usar ratings externs como input del producte; només com possible anchor de validació;
-- GPS fora del score base mentre no hi hagi observacions reals;
-- escala final del score pendent de validació.
+- no usar ratings externos como input del producto; solo como posible anchor de validación;
+- GPS fuera del score base mientras no haya observaciones reales;
+- escala final del score pendiente de validación.
 
 ## Líneas todavía bloqueadas
 
