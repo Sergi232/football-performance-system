@@ -89,9 +89,19 @@ def render_pdf(path: Path, team_id: str, player_id: str, player_name: str) -> No
     )
 
 
+def is_goalkeeper(row: pd.Series) -> bool:
+    observed = row.get("observed_roles")
+    if observed is None or pd.isna(observed):
+        return False
+    text = str(observed).lower()
+    return any(token in text for token in ["goalkeeper", "goal keeper", "keeper", "porter", "portero"])
+
+
 def latest_role_text(latest_score: dict | None, row: pd.Series) -> str:
     if latest_score is not None:
         return position_label(latest_score.get("position_group"))
+    if is_goalkeeper(row):
+        return "Porter"
     observed = row.get("observed_roles")
     if observed is not None and pd.notna(observed):
         return str(observed)
@@ -113,7 +123,6 @@ if teams.empty:
     st.info("No hi ha equips disponibles.")
     st.stop()
 
-# Compact selectors: navigation context, not page content.
 select_left, select_right, select_action = st.columns([1.0, 1.5, 0.7])
 team_labels = {str(row.team_id): str(row.display_name) for row in teams.itertuples(index=False)}
 with select_left:
@@ -151,7 +160,6 @@ hero(
     meta=meta,
 )
 
-# Fast staff-level overview.
 k1, k2, k3, k4, k5 = st.columns(5)
 k1.metric("Aparicions", safe_int(row["appearances"]))
 k2.metric("Titularitats", safe_int(row["starts"]))
@@ -166,10 +174,16 @@ tab_overview, tab_trend, tab_technical, tab_expert, tab_matches = st.tabs(
 
 with tab_overview:
     if latest_score is None:
-        st.info(
-            "No hi ha Performance Score posicional elegible per a l'últim historial disponible. "
-            "Quan la font registra una aparició com a suplent sense rol tàctic, el sistema no imputa una posició."
-        )
+        if is_goalkeeper(row):
+            st.info(
+                "El Performance Score de porter encara no està activat en aquesta baseline. "
+                "El camí GK es valida per separat i no es força un score amb la metodologia dels jugadors de camp."
+            )
+        else:
+            st.info(
+                "No hi ha Performance Score posicional elegible per a l'historial disponible. "
+                "Quan la font no informa d'un rol tàctic observable, el sistema no imputa una posició."
+            )
     else:
         c1, c2, c3 = st.columns([1, 1, 1])
         with c1:
@@ -229,6 +243,8 @@ with tab_overview:
             f"Versió: `{SCORE_VERSION}`. El score és experimental, específic per grup posicional i descriptiu. "
             "No és una etiqueta bo/dolent ni una recomanació tàctica."
         )
+        if is_goalkeeper(row):
+            st.write("Porter: camí GK separat; el score de jugador de camp no s'aplica.")
         observed_roles = row.get("observed_roles")
         st.write(
             "Rols observats a la font: "
