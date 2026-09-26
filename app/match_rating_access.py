@@ -84,6 +84,82 @@ def get_latest_team_match_ratings(db_path: Path, team_id: str) -> pd.DataFrame:
     return get_match_ratings(db_path, team_id, row[0])
 
 
+def get_team_player_rating_snapshot(db_path: Path, team_id: str) -> pd.DataFrame:
+    """One operational Match Rating snapshot row per player.
+
+    Delta 5v5 is descriptive only: mean of latest five ratings minus mean of ratings
+    6-10. No threshold or quality label is applied.
+    """
+    with _connect(db_path) as con:
+        return con.execute(
+            """
+            WITH ranked AS (
+                SELECT
+                    r.player_id,
+                    p.display_name AS player,
+                    r.match_date,
+                    r.position_group,
+                    r.match_rating_10,
+                    r.match_rating_confidence,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY r.player_id
+                        ORDER BY r.match_date DESC, r.match_id DESC
+                    ) AS rn
+                FROM player_match_rating r
+                JOIN players p ON p.player_id=r.player_id
+                WHERE r.match_rating_version=? AND r.team_id=?
+            )
+            SELECT
+                player_id,
+                player,
+                COUNT(*) AS rated_matches,
+                MAX(CASE WHEN rn=1 THEN match_date END) AS latest_rating_date,
+                MAX(CASE WHEN rn=1 THEN position_group END) AS latest_position_group,
+                MAX(CASE WHEN rn=1 THEN match_rating_10 END) AS latest_match_rating,
+                MAX(CASE WHEN rn=1 THEN match_rating_confidence END) AS latest_confidence,
+                AVG(CASE WHEN rn BETWEEN 1 AND 5 THEN match_rating_10 END) AS avg_last5,
+                AVG(CASE WHEN rn BETWEEN 6 AND 10 THEN match_rating_10 END) AS avg_previous5,
+                COUNT(*) FILTER (WHERE rn BETWEEN 1 AND 5) AS n_last5,
+                COUNT(*) FILTER (WHERE rn BETWEEN 6 AND 10) AS n_previous5,
+                CASE
+                    WHEN COUNT(*) FILTER (WHERE rn BETWEEN 1 AND 5) > 0
+                     AND COUNT(*) FILTER (WHERE rn BETWEEN 6 AND 10) > 0
+                    THEN AVG(CASE WHEN rn BETWEEN 1 AND 5 THEN match_rating_10 END)
+                       - AVG(CASE WHEN rn BETWEEN 6 AND 10 THEN match_rating_10 END)
+                    ELSE NULL
+                END AS trend_delta_5v5
+            FROM ranked
+            GROUP BY player_id, player
+            ORDER BY player
+            """,
+            [MATCH_RATING_VERSION, team_id],
+        ).df()
+
+
+def get_team_match_rating_history(db_path: Path, team_id: str) -> pd.DataFrame:
+    """Descriptive match-level medians for Team Mode."""
+    with _connect(db_path) as con:
+        return con.execute(
+            """
+            SELECT
+                r.match_id,
+                r.match_date,
+                opp.display_name AS opponent,
+                CASE WHEN tm.is_home THEN 'H' ELSE 'A' END AS venue,
+                MEDIAN(r.match_rating_10) AS median_match_rating,
+                MEDIAN(r.match_rating_confidence) AS median_confidence,
+                COUNT(*) AS players_rated
+            FROM player_match_rating r
+            JOIN team_match tm ON tm.match_id=r.match_id AND tm.team_id=r.team_id
+            LEFT JOIN teams opp ON opp.team_id=tm.opponent_team_id
+            WHERE r.match_rating_version=? AND r.team_id=?
+            GROUP BY r.match_id, r.match_date, opponent, venue
+            ORDER BY r.match_date, r.match_id
+            """,
+            [MATCH_RATING_VERSION, team_id],
+        ).df()
+
+
 def get_match_rating_status(db_path: Path) -> dict:
     with _connect(db_path) as con:
         row = con.execute(
