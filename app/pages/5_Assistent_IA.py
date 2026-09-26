@@ -14,7 +14,7 @@ if str(ROOT) not in sys.path:
 from app.coach_ui import page_header
 from app.data_access import list_teams
 from app.ui_theme import apply_professional_theme, sidebar_navigation
-from llm.coach_agent import DEFAULT_MODEL, ollama_status, run_coach_agent_turn
+from llm.coach_agent_fast import DEFAULT_MODEL, ollama_status, run_coach_agent_turn
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 
