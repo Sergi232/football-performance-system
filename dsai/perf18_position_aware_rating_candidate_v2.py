@@ -7,6 +7,9 @@ The v1 experiment correctly refused to train when its chosen fixture date column
 produced zero valid timestamps. This wrapper audits candidate fixture columns and
 selects the parse strategy with real temporal coverage, preserving the leakage-safe
 chronological split.
+
+It also re-exports the audited v1 model symbols so downstream PERF-18 experiments
+can use the corrected temporal loader without duplicating rating logic.
 """
 from __future__ import annotations
 
@@ -16,6 +19,16 @@ from pathlib import Path
 import duckdb
 
 import perf18_position_aware_rating_candidate as base
+
+
+# Re-export audited model symbols for downstream experiments.
+DIMENSIONS = base.DIMENSIONS
+ROLE_ORDER = base.ROLE_ORDER
+apply_dimension = base.apply_dimension
+build_frame = base.build_frame
+fit_dimension_reference = base.fit_dimension_reference
+metric = base.metric
+split_dates = base.split_dates
 
 
 def _q(name: str) -> str:
@@ -53,7 +66,6 @@ def _expressions(col: str) -> list[tuple[str, str]]:
         ("iso_t", f"TRY_STRPTIME({s}, '%Y-%m-%dT%H:%M:%S')"),
         ("dmy", f"CAST(TRY_STRPTIME({s}, '%d/%m/%Y') AS TIMESTAMP)"),
         ("ymd_compact", f"CAST(TRY_STRPTIME({s}, '%Y%m%d') AS TIMESTAMP)"),
-        # Numeric epoch guards prevent nonsensical conversions from being selected.
         (
             "epoch_seconds",
             f"CASE WHEN {n} BETWEEN 315532800 AND 4102444800 "
@@ -104,7 +116,6 @@ def robust_fixture_date_expr(con: duckdb.DuckDBPyConnection, fixtures: Path) -> 
                     "distinct_dates": distinct_dates,
                 }
             )
-            # Require enough distinct dates for a meaningful temporal split.
             if distinct_dates >= 20:
                 score = (distinct_dates, non_null)
                 if best is None or score > (best[0], best[1]):
@@ -126,8 +137,6 @@ def robust_fixture_date_expr(con: duckdb.DuckDBPyConnection, fixtures: Path) -> 
         "PERF-18 TEMPORAL DATE SOURCE: "
         f"column={col} non_null={non_null} distinct_dates={distinct_dates}"
     )
-    # base.build_frame aliases fixtures as f, so qualify the chosen expression.
-    # Replace only quoted bare column references, leaving functions intact.
     qualified = expr.replace(_q(col), f'f.{_q(col)}')
     return qualified
 
