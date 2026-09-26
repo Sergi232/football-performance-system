@@ -36,7 +36,8 @@ PERF-03 DIMENSION MAPPING AUDIT     CERRADO / MAPPING COMPLETE — ISSUE #54
 PERF-04 DIRECTION VALIDATION        CERRADO / CONTEXTUAL METRICS RETAINED — ISSUE #56
 PERF-05 SIGNED CORE FEASIBILITY     CERRADO / OUTFIELD CORE AVAILABLE — ISSUE #57
 PERF-06 GOALKEEPER EFFICIENCY       CERRADO / SAVE_RATE DERIVABLE — ISSUE #58
-PERF-07 GK SAVE_RATE CONTEXT         ACTIVO / RERUN v0.1.1 — ISSUE #59
+PERF-07 GK SAVE_RATE CONTEXT         CERRADO / FEATURE ADMISSION READY — ISSUE #59
+PERF-08 AGGREGATION FEASIBILITY      ACTIVO — ISSUE #60
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
@@ -47,73 +48,87 @@ El objetivo analítico central es **adjudicar un score de rendimiento jugador-pa
 ```text
 PLAYER-MATCH DATA
 → DIMENSIONES DE RENDIMIENTO
-→ VALIDACIÓN DE DIRECCIONES
-→ AUDITORÍA DEL NÚCLEO PUNTUABLE
-→ VALIDACIÓN ESPECÍFICA DE PORTERO
-→ VALIDACIÓN DE PESOS / AGREGACIÓN
+→ DIRECCIONES VALIDADAS
+→ NÚCLEO PUNTUABLE
+→ NORMALIZACIÓN / AGREGACIÓN
+→ SCORE EXPERIMENTAL
+→ SENSIBILIDAD / ESTABILIDAD
 → SCORE GLOBAL VALIDADO
 → EVOLUCIÓN / CONSISTENCIA
 → CONTEXTO DE ROL
 → CONCLUSIONES / RECOMENDACIONES
 ```
 
-Rol/posición se usa como contexto de comparación/normalización. No existe todavía una fórmula de score aprobada.
+Rol/posición se usa como contexto de comparación/normalización, no como objetivo principal.
 
-## PERF-06 — cerrado
+## PERF-07 — cerrado
 
-Resultado:
+Resultado v0.1.1:
+
 ```text
-candidate_rows=397
-rows_with_both_inputs=31
-positive_denominator=31
-save_rate_rows=31
-anomalies=0
-save_rate=min:0.2500 median:0.6250 max:0.8333
-conclusion=GOALKEEPER_SAVE_RATE_DERIVABLE_CONTEXT_VALIDATION_REQUIRED
-```
-
-`save_rate = saves / (saves + goals_conceded)` es matemáticamente derivable, pero solo puede admitirse como feature específica de portero después de validar semántica y rol.
-
-## PERF-07 — activo / rerun requerido
-
-Issue #59.
-
-Resultado v0.1.0:
-```text
+played_rows=590
 candidate_rows=31
 players=1
 matches=31
+direct_gk_candidates=31
 validated_context_rows=31
 direct_conflicts=0
 unknown_mixed=0
 unknown_no_gk_evidence=0
+positive_save_rows=34
+positive_save_current_non_gk=0
 current_positions=Goalkeeper:31
-positive_gk_event_rows=397
-positive_event_current_non_gk=299
-conclusion=SAVE_RATE_CONTEXT_CONTAMINATION_REQUIRES_FIX
+conclusion=SAVE_RATE_GOALKEEPER_CONTEXT_VALIDATED_FEATURE_ADMISSION_READY
 ```
 
-Revisión metodológica:
-- las 31 filas derivables son directamente `Goalkeeper` y no tienen conflicto de rol;
-- el criterio v0.1.0 marcó falsamente contaminación al tratar `goals_conceded > 0` en jugadores de campo como un evento específico de portero;
-- `goals_conceded` puede aparecer como contexto de jugador/equipo y no bloquea por sí solo la feature;
-- la contaminación real se comprobará con `saves > 0` asignado a un rol actual no-portero.
+Decisión:
+- las 31 filas derivables de `save_rate` son directamente `Goalkeeper`;
+- no existe contaminación por `saves > 0` en roles no-portero;
+- `goals_conceded` en jugadores de campo se conserva como contexto informativo y no bloquea;
+- `save_rate = saves / (saves + goals_conceded)` queda admitida como feature **role-specific de portero** para la línea de performance score;
+- no se inventa xGOT/PSxG ni ajuste por calidad del tiro.
 
-Corrección implementada en:
-```text
-dsai/goalkeeper_save_rate_context_audit.py
-version=goalkeeper_save_rate_context_audit_0.1.1
-```
+`save_rate` se registra fuera de FEATURE-01 por ahora para no romper el contrato actual del feature engine. Su integración formal se hará junto al score engine cuando la política de normalización quede cerrada.
 
-Criterio de admisión:
-- `save_rate` solo será admisible en filas cuya `source_position` actual sea `Goalkeeper`;
-- historial de posición = auditoría de procedencia únicamente, nunca imputación o predictor;
-- no se inventa xGOT/PSxG;
-- no se crea todavía ningún score, peso o threshold.
+## PERF-08 — activo
+
+Issue #60.
+
+Objetivo: comprobar si el núcleo signado puede normalizarse y agregarse de forma transparente antes de crear el primer score experimental.
+
+Entrada:
+- 11 FEATURE-01 con dirección respaldada;
+- `save_rate` role-specific para portero;
+- mapping primario de dimensiones;
+- rol/posición únicamente como contexto.
+
+Auditará:
+- cobertura, dispersión, valores únicos y zero-inflation de cada feature signada;
+- viabilidad de normalización global robusta/rank-based sin imponer todavía una fórmula;
+- cobertura de cada dimensión con evidencia disponible;
+- soporte de contexto por `source_position` sin exigir posición como target;
+- separación estructural outfield / goalkeeper.
+
+No crea todavía:
+- score;
+- pesos aprobados;
+- thresholds;
+- rankings;
+- recomendaciones.
+
+## Política de agregación que se evaluará
+
+La ruta preferente para el primer experimento, si PERF-08 pasa, será un **baseline nulo y auditable**:
+1. transformar cada feature respetando su signo;
+2. normalizar con método robusto/rank-based validado por la distribución;
+3. agregar primero feature → dimensión;
+4. agregar después dimensión → global para evitar que una dimensión domine solo por tener más variables;
+5. tratar pesos iguales únicamente como baseline experimental, nunca como peso final aprobado;
+6. ejecutar sensibilidad/ablations antes de cualquier uso de producto.
 
 ## Líneas todavía bloqueadas
 
-- score global final: hasta cerrar PERF-07 y validar agregación/pesos;
+- score global final: hasta PERF-08 + baseline experimental + sensibilidad;
 - `role_player_fit`: sin target independiente defendible;
 - `expert_vs_ml`: sin shared target independiente;
 - calibración N13000: sin ground truth de recomendación.
@@ -123,7 +138,7 @@ Criterio de admisión:
 ```powershell
 cd C:\Users\sergi\Desktop\football-performance-system
 git pull
-python dsai\goalkeeper_save_rate_context_audit.py
+python dsai\performance_aggregation_feasibility.py
 ```
 
 No instalar nada.
