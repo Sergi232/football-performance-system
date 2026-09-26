@@ -2,9 +2,11 @@
 
 Automatically selects:
 - real-DB spiral when football_performance.duckdb is available;
-- DB-free synthetic-contract spiral otherwise.
+- true iterative DB-free UI/PDF optimizer otherwise.
 
-The launcher also keeps CSV case logging schema-stable.
+The DB-free optimizer uses the real GitHub presentation code, contract-compatible
+synthetic fixtures and an already-installed Chrome/Edge when available. It does not
+download a browser, model or private dataset.
 """
 from __future__ import annotations
 
@@ -62,8 +64,7 @@ if __name__ == "__main__":
         print("Product Spiral launcher: REAL-DB mode")
         spiral.main()
     else:
-        print("Product Spiral launcher: DB-FREE synthetic-contract mode")
-        from product import run_product_spiral_nodb as nodb
+        print("Product Spiral launcher: TRUE ITERATIVE DB-FREE OPTIMIZER")
+        from product import run_product_spiral_optimizer as optimizer
 
-        nodb.spiral._append_csv = _append_csv_safe
-        nodb.main()
+        optimizer.main()
