@@ -1,6 +1,6 @@
 # Registro de decisiones estructurales
 
-Fecha: 25/09/2026
+Fecha: 26/09/2026
 
 Este archivo contiene únicamente decisiones que pueden cambiar arquitectura, metodología, producto, privacidad o publicación. No se usa para detalles técnicos rutinarios.
 
@@ -52,6 +52,26 @@ Los PDF son exportaciones/entregables estáticos. No sustituyen la aplicación w
 Estado: `APPROVED`
 
 `PROJECT_STATE.md`, arquitectura, workflow y decisiones documentadas prevalecen sobre conversaciones antiguas.
+
+### D-008 — Rendimiento como objetivo analítico principal
+Estado: `APPROVED`
+
+El objetivo central de la capa analítica/DS es construir un **score de rendimiento jugador-partido** defendible, auditable y útil para el entrenador.
+
+El flujo objetivo pasa a ser:
+
+```text
+PLAYER-MATCH DATA
+→ DIMENSIONES DE RENDIMIENTO
+→ SCORE GLOBAL VALIDADO
+→ EVOLUCIÓN / CONSISTENCIA
+→ CONTEXTO DE ROL
+→ CONCLUSIONES / RECOMENDACIONES
+```
+
+El rol o la posición no son el target principal. Se usan para contextualizar, normalizar o comparar rendimiento cuando existe una etiqueta observada fiable.
+
+No se autoriza todavía ninguna fórmula de score, peso, signo, percentil o escala final. Esos elementos deben justificarse con datos, literatura, validación externa, criterio experto o experimentación reproducible.
 
 ### DG-AN-01 — Comparaciones analíticas válidas
 Estado: `APPROVED`
