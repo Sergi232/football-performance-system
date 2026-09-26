@@ -51,9 +51,7 @@ Decisión: `PREMATCH_EXPERIMENTAL_SIGNAL / NO_DEPLOY`.
 ### DSAI-11 — Robustez de la línea de posición
 Estado: **ATURADO / CONTEXT ONLY**.
 
-El script existe, pero no se registra ninguna métrica final como validada mientras no se disponga de la salida completa. La línea se detiene por decisión metodológica: la clasificación de posición estaba desplazando el objetivo principal del TFM.
-
-La evidencia DSAI-04..10 se conserva como demostración de target audit, leakage control, reformulación de labels y validación temporal. A partir de aquí la posición solo se usa como contexto del rendimiento.
+La línea se detiene por decisión metodológica: la clasificación de posición estaba desplazando el objetivo principal del TFM. La evidencia DSAI-04..10 se conserva como demostración de target audit, leakage control, reformulación de labels y validación temporal. A partir de aquí la posición solo se usa como contexto del rendimiento.
 
 ## PERF-01 — Performance score audit — PRIORIDAD ACTUAL
 
@@ -75,27 +73,56 @@ La evidencia DSAI-04..10 se conserva como demostración de target audit, leakage
 python dsai\performance_score_audit.py
 ```
 
-**Guardrails:**
-- no producir score en la auditoría;
-- no asumir que más volumen implica mejor rendimiento;
-- no introducir pesos iguales por defecto;
-- no usar el propio sistema experto como ground truth independiente;
-- un rating externo, si existe, solo puede ser anchor de validación y nunca input obligatorio del producto amateur.
+### Primera ejecución y corrección semántica
 
-## Fases siguientes condicionadas a PERF-01
+La primera ejecución produjo:
+
+```text
+played_rows=590
+players=28
+matches=38
+features=28
+feature_values=6324/16520
+role_context=418/590
+domain_nodes=24
+anchor_columns=home_score,away_score,bigChanceScored
+conclusion=SUPERVISED_ANCHOR_CANDIDATE
+```
+
+La conclusión de anchor queda **invalidada**: el detector v0.1 trataba coincidencias lexicales amb `score` com si fossin possibles ratings individuals.
+
+- `home_score` i `away_score` són resultat/context del partit;
+- `bigChanceScored` és una estadística component de rendiment;
+- cap d’aquests tres camps és un anchor holístic independent de rendiment individual.
+
+`performance_score_audit_0.2.0` separa ara coincidència lexical i validesa semàntica. Un `score/index/rank` genèric només pot ser candidat si està explícitament qualificat com a constructe de `player` o `performance`; les coincidències de context i accions components es rebutgen i es documenten.
+
+La reexecució decidirà entre:
+- `SUPERVISED_ANCHOR_CANDIDATE`;
+- `EXPERT_WEIGHT_VALIDATION_REQUIRED`;
+- `INSUFFICIENT_COVERAGE`.
+
+**Guardrails:**
+- no produir score en l’auditoria;
+- no assumir que més volum implica millor rendiment;
+- no introduir pesos iguals per defecte;
+- no usar el propi sistema expert com ground truth independent;
+- un rating extern, si existeix, només pot ser anchor de validació i mai input obligatori del producte amateur.
+
+## Fases següents condicionades a PERF-01
 
 ### Ruta A — existe anchor externo defendible
-Auditar semántica, cobertura e independencia. Si pasa, estudiar un modelo supervisado que aproxime rendimiento usando únicamente features recollibles. El anchor no se incorpora al producto.
+Auditar semántica, cobertura e independencia. Si passa, estudiar un model supervisat que aproximi rendiment usant només features recollibles. L’anchor no s’incorpora al producte.
 
 ### Ruta B — no existe anchor externo defendible
-Validar el constructo mediante:
+Validar el constructe mitjançant:
 - literatura;
-- criterio experto/entrenador independiente;
-- análisis de estabilidad y sensibilidad;
+- criteri expert/entrenador independent;
+- anàlisi d’estabilitat i sensibilitat;
 - ablations;
-- validación convergente/externa disponible.
+- validació convergent/externa disponible.
 
-No se usarán pesos inventados para acelerar la construcción.
+No s’utilitzaran pesos inventats per accelerar la construcció.
 
 ### Dimensiones antes que score global
 El score global no se construye directamente. Primero deben quedar defendibles dimensiones separadas de rendimiento basadas en las familias ya existentes (amenaza, creación/progresión, defensa, finalización y, en el futuro, componente físico).
@@ -139,7 +166,7 @@ Un resultado negativo o `NO_DEPLOY` sigue siendo válido académicamente si est�
 DSAI-02..10               CERRADOS
 DSAI-11                   ATURADO / CONTEXT ONLY
         ↓
-PERF-01 score audit       ACTIVO
+PERF-01 score audit       ACTIVO — v0.2 pendiente de reejecución
         ↓
 validación de dimensiones
         ↓
