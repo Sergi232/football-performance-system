@@ -1,4 +1,4 @@
-"""DASHBOARD-02 — professional integrated player performance view."""
+"""Professional integrated player performance view."""
 from __future__ import annotations
 
 import os
@@ -20,18 +20,17 @@ from app.data_access import (
     list_base_features,
     list_teams,
 )
+from app.match_rating_access import (
+    MATCH_RATING_VERSION,
+    get_latest_player_match_rating,
+    get_player_match_ratings,
+)
 from app.performance_score_access import (
     SCORE_VERSION,
     get_latest_player_score,
     get_player_score_history,
 )
-from app.ui_theme import (
-    apply_professional_theme,
-    dimension_bar,
-    hero,
-    position_label,
-    score_card,
-)
+from app.ui_theme import apply_professional_theme, dimension_bar, hero, position_label, score_card
 from reports.data_builder import build_player_report_data
 from reports.pdf_engine import render_pdf_bytes
 
@@ -80,13 +79,7 @@ def render_pdf(path: Path, team_id: str, player_id: str, player_name: str) -> No
         st.warning(f"No s'ha pogut generar l'informe: {exc}")
         return
     filename = "_".join(player_name.strip().split()) or "player"
-    st.download_button(
-        "Exportar informe PDF",
-        data=pdf_bytes,
-        file_name=f"player_{filename}.pdf",
-        mime="application/pdf",
-        use_container_width=True,
-    )
+    st.download_button("Exportar informe PDF", data=pdf_bytes, file_name=f"player_{filename}.pdf", mime="application/pdf", use_container_width=True)
 
 
 def is_goalkeeper(row: pd.Series) -> bool:
@@ -97,26 +90,19 @@ def is_goalkeeper(row: pd.Series) -> bool:
     return any(token in text for token in ["goalkeeper", "goal keeper", "keeper", "porter", "portero"])
 
 
-def latest_role_text(latest_score: dict | None, row: pd.Series) -> str:
+def role_text(latest_rating: dict | None, latest_score: dict | None, row: pd.Series) -> str:
+    if latest_rating is not None:
+        group = latest_rating.get("position_group")
+        if group == "GK":
+            return "Porter"
+        if group and group != "OTHER_OUTFIELD":
+            return position_label(group)
     if latest_score is not None:
         return position_label(latest_score.get("position_group"))
     if is_goalkeeper(row):
         return "Porter"
     observed = row.get("observed_roles")
-    if observed is not None and pd.notna(observed):
-        return str(observed)
-    return "Rol no disponible"
-
-
-def evidence_label(value: object) -> str:
-    mapping = {
-        "DIRECT_SIGNED": "Evidència directa",
-        "CONTRIBUTION_FALLBACK": "Contribució observada de suport",
-        "MISSING": "Sense evidència",
-    }
-    if value is None or pd.isna(value):
-        return "—"
-    return mapping.get(str(value), str(value))
+    return str(observed) if observed is not None and pd.notna(observed) else "Rol no disponible"
 
 
 path = db_path()
@@ -124,32 +110,29 @@ if not path.exists():
     st.error(f"No s'ha trobat la base de dades: {path}")
     st.stop()
 
-try:
-    teams = list_teams(path)
-except Exception as exc:
-    st.error(f"No s'ha pogut llegir la base de dades: {exc}")
-    st.stop()
-
+teams = list_teams(path)
 if teams.empty:
     st.info("No hi ha equips disponibles.")
     st.stop()
 
 select_left, select_right, select_action = st.columns([1.0, 1.5, 0.7])
-team_labels = {str(row.team_id): str(row.display_name) for row in teams.itertuples(index=False)}
+team_labels = {str(r.team_id): str(r.display_name) for r in teams.itertuples(index=False)}
 with select_left:
     team_id = st.selectbox("Equip", options=list(team_labels), format_func=lambda x: team_labels[x])
 
 squad = get_squad_summary(path, team_id)
-if squad.empty:
-    st.info("No hi ha jugadors disponibles per aquest equip.")
-    st.stop()
-
-player_labels = {str(row.player_id): str(row.player) for row in squad.itertuples(index=False)}
+player_labels = {str(r.player_id): str(r.player) for r in squad.itertuples(index=False)}
 with select_right:
     player_id = st.selectbox("Jugador", options=list(player_labels), format_func=lambda x: player_labels[x])
-
 player_name = player_labels[player_id]
 row = squad.loc[squad["player_id"] == player_id].iloc[0]
+
+try:
+    rating_history = get_player_match_ratings(path, team_id, player_id)
+    latest_rating = get_latest_player_match_rating(path, team_id, player_id)
+except Exception:
+    rating_history = pd.DataFrame()
+    latest_rating = None
 
 try:
     score_history = get_player_score_history(path, team_id, player_id)
@@ -164,7 +147,7 @@ with select_action:
     render_pdf(path, team_id, player_id, player_name)
 
 meta = f"{safe_int(row['minutes'])} min · {safe_int(row['appearances'])} aparicions"
-hero(player_name=player_name, team_name=team_labels[team_id], role=latest_role_text(latest_score, row), meta=meta)
+hero(player_name=player_name, team_name=team_labels[team_id], role=role_text(latest_rating, latest_score, row), meta=meta)
 
 k1, k2, k3, k4, k5 = st.columns(5)
 k1.metric("Aparicions", safe_int(row["appearances"]))
@@ -177,63 +160,65 @@ st.write("")
 tab_overview, tab_trend, tab_technical, tab_expert, tab_matches = st.tabs(["Resum", "Evolució", "Tècnic", "Motor expert", "Partits"])
 
 with tab_overview:
-    if latest_score is None:
-        if is_goalkeeper(row):
-            st.info("El Performance Score de porter encara no està activat en aquesta baseline. El camí GK es valida per separat i no es força un score amb la metodologia dels jugadors de camp.")
-        else:
-            st.info("No hi ha Performance Score posicional elegible per a l'historial disponible. Quan la font no informa d'un rol tàctic observable, el sistema no imputa una posició.")
+    if latest_rating is None:
+        st.warning("El Match Rating encara no està materialitzat. Executa analytics/build_match_rating.py.")
     else:
-        c1, c2, c3 = st.columns([1, 1, 1])
+        c1, c2, c3, c4 = st.columns(4)
         with c1:
-            score_card("Performance Score", f"{safe_float(latest_score['performance_score'])}/100", "Comparació relativa dins del grup posicional")
+            score_card("Match Rating", f"{safe_float(latest_rating['match_rating_10'])}/10", "Nota del partit més recent")
         with c2:
-            score_card("Confiança d'evidència", f"{safe_float(latest_score['score_evidence_confidence'])}%", "Cobertura de l'evidència prevista per al rol")
+            score_card("Confiança", f"{safe_float(latest_rating['match_rating_confidence'])}%", "Cobertura d'evidència del partit")
         with c3:
-            score_card("Perfil posicional", position_label(latest_score.get("position_group")), f"{safe_int(latest_score.get('dimension_coverage_count'))} dimensions disponibles")
+            group = latest_rating.get("position_group")
+            profile = "Porter" if group == "GK" else position_label(group)
+            score_card("Perfil del partit", profile, f"{safe_int(latest_rating.get('match_rating_dimensions_used'))} dimensions utilitzades")
+        with c4:
+            hist_value = "—" if latest_score is None else safe_float(latest_score.get("performance_score"))
+            score_card("Performance Index", hist_value, "Índex posicional complementari")
 
         st.write("")
         left, right = st.columns([1.0, 1.35])
         with left:
-            st.subheader("Dimensions de rendiment")
-            st.markdown("<div class='fps-section-note'>Lectura de l'últim score elegible. Escala relativa 0–100.</div>", unsafe_allow_html=True)
-            for key, label in DIMENSIONS:
-                dimension_bar(label, latest_score.get(key))
-                source = latest_score.get(f"{key}_evidence")
-                if source is not None and not pd.isna(source):
-                    st.caption(evidence_label(source))
-
+            st.subheader("Dimensions del partit")
+            if latest_rating.get("rating_path") == "GOALKEEPER":
+                st.info("Porter: el Match Rating utilitza el camí específic de porter; les cinc dimensions de camp no s'apliquen.")
+            else:
+                for key, label in DIMENSIONS:
+                    dimension_bar(label, latest_rating.get(key))
         with right:
-            st.subheader("Evolució del score")
-            chart = score_history.dropna(subset=["performance_score"]).copy()
+            st.subheader("Evolució del Match Rating")
+            chart = rating_history.dropna(subset=["match_rating_10"]).copy()
             if chart.empty:
-                st.info("Encara no hi ha prou historial per mostrar evolució.")
+                st.info("Encara no hi ha historial de ratings.")
             else:
                 chart["match_date"] = pd.to_datetime(chart["match_date"])
-                st.line_chart(chart.set_index("match_date")[["performance_score"]], height=330, use_container_width=True)
-                recent = chart.sort_values("match_date").tail(5)[["match_date", "position_group", "performance_score", "score_evidence_confidence"]].copy()
+                st.line_chart(chart.set_index("match_date")[["match_rating_10"]], height=330, use_container_width=True)
+                recent = chart.sort_values("match_date").tail(5)[["match_date", "opponent", "match_rating_10", "match_rating_confidence"]].copy()
                 recent["match_date"] = recent["match_date"].dt.date
-                recent["position_group"] = recent["position_group"].map(position_label)
-                recent["performance_score"] = recent["performance_score"].round(1)
-                recent["score_evidence_confidence"] = recent["score_evidence_confidence"].round(0)
-                recent.columns = ["Data", "Posició", "Score", "Confiança %"]
+                recent["match_rating_10"] = recent["match_rating_10"].round(1)
+                recent["match_rating_confidence"] = recent["match_rating_confidence"].round(0)
+                recent.columns = ["Data", "Rival", "Rating", "Confiança %"]
                 st.dataframe(recent, hide_index=True, use_container_width=True)
 
     with st.expander("Metodologia i traçabilitat"):
-        st.write(f"Versió: `{SCORE_VERSION}`. El score és experimental, específic per grup posicional i descriptiu. No és una etiqueta bo/dolent ni una recomanació tàctica.")
-        if latest_score is not None:
-            fallback_n = latest_score.get("fallback_dimension_count")
-            st.write(f"Dimensions cobertes amb contribució observada de suport: {safe_int(fallback_n)}")
-        if is_goalkeeper(row):
-            st.write("Porter: camí GK separat; el score de jugador de camp no s'aplica.")
-        observed_roles = row.get("observed_roles")
-        st.write("Rols observats a la font: " + (str(observed_roles) if observed_roles is not None and pd.notna(observed_roles) else "no disponibles"))
+        st.write(f"Match Rating: `{MATCH_RATING_VERSION}`. Existeix des del primer partit i no necessita historial previ.")
+        st.write(f"Performance Index: `{SCORE_VERSION}`. És una capa posicional/històrica complementària, no la nota del partit.")
+        if latest_rating is not None:
+            st.write(f"Context del rating: `{latest_rating.get('match_rating_context')}` · Estat: `{latest_rating.get('match_rating_status')}`")
 
 with tab_trend:
     st.subheader("Evolució temporal")
+    rating_chart = rating_history.dropna(subset=["match_rating_10"]).copy()
+    if not rating_chart.empty:
+        rating_chart["match_date"] = pd.to_datetime(rating_chart["match_date"])
+        st.caption("Match Rating /10")
+        st.line_chart(rating_chart.set_index("match_date")[["match_rating_10"]], height=300, use_container_width=True)
     score_chart = score_history.dropna(subset=["performance_score"]).copy()
     if not score_chart.empty:
         score_chart["match_date"] = pd.to_datetime(score_chart["match_date"])
-        st.line_chart(score_chart.set_index("match_date")[["performance_score"]], height=300, use_container_width=True)
+        st.caption("Performance Index posicional")
+        st.line_chart(score_chart.set_index("match_date")[["performance_score"]], height=260, use_container_width=True)
+
     features = list_base_features(path, player_id)
     if features:
         preferred = ["pass_completion_rate", "shots_total_per90", "goals_per90", "assists_per90", "tackle_success_rate", "interceptions_per90"]
@@ -280,15 +265,15 @@ with tab_matches:
     if not history.empty:
         details = history.copy()
         details["match_date"] = pd.to_datetime(details["match_date"]).dt.date
-        if not score_history.empty:
-            score_merge = score_history[["match_id", "performance_score", "score_evidence_confidence"]].copy()
-            details = details.merge(score_merge, on="match_id", how="left")
-        display_cols = ["match_date", "opponent", "venue", "started", "minutes", "primary_role", "goals", "assists", "performance_score", "score_evidence_confidence"]
+        if not rating_history.empty:
+            rating_merge = rating_history[["match_id", "match_rating_10", "match_rating_confidence"]].copy()
+            details = details.merge(rating_merge, on="match_id", how="left")
+        display_cols = ["match_date", "opponent", "venue", "started", "minutes", "primary_role", "goals", "assists", "match_rating_10", "match_rating_confidence"]
         for col in display_cols:
             if col not in details.columns:
                 details[col] = pd.NA
         details = details[display_cols]
-        details["performance_score"] = pd.to_numeric(details["performance_score"], errors="coerce").round(1)
-        details["score_evidence_confidence"] = pd.to_numeric(details["score_evidence_confidence"], errors="coerce").round(0)
-        details.columns = ["Data", "Rival", "L/V", "Titular", "Min", "Rol", "Gols", "Assist.", "Score", "Confiança %"]
+        details["match_rating_10"] = pd.to_numeric(details["match_rating_10"], errors="coerce").round(1)
+        details["match_rating_confidence"] = pd.to_numeric(details["match_rating_confidence"], errors="coerce").round(0)
+        details.columns = ["Data", "Rival", "L/V", "Titular", "Min", "Rol", "Gols", "Assist.", "Rating", "Confiança %"]
         st.dataframe(details, hide_index=True, use_container_width=True)
