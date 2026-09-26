@@ -1,8 +1,8 @@
-"""Unattended evaluation runner for Coach Copilot.
+"""Unattended local evaluation runner for Coach Copilot.
 
-This script does NOT train or change analytics. It exercises the open-question
-agent against real local analytics while the privacy layer pseudonymizes every
-external-bound entity. Results are saved locally for review.
+The runner never calls a paid API. It exercises the open-question Ollama agent
+against the real local analytics database and saves answers + deterministic checks
+for later review. It does not train or modify analytics/model versions.
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from pathlib import Path
 import pandas as pd
 
 from app.data_access import get_squad_summary, get_team_matches, list_teams
-from llm.coach_agent import run_coach_agent
+from llm.coach_agent import DEFAULT_MODEL, ollama_status, run_coach_agent_turn
 
 
 QUESTION_TEMPLATES = [
@@ -86,16 +86,17 @@ def build_questions(db_path: Path, team_id: str, rng: random.Random) -> list[tup
     return questions
 
 
-def deterministic_checks(category: str, answer: str) -> dict[str, bool]:
+def deterministic_checks(category: str, answer: str, error: str | None, tools_used: tuple[str, ...]) -> dict[str, bool]:
     text = (answer or "").strip().lower()
     checks = {
         "nonempty": bool(text),
-        "not_exception_text": "traceback" not in text and "runtimeerror" not in text,
+        "no_runtime_error": error is None,
+        "tool_grounded_when_data_question": bool(tools_used) if category != "unsupported" else True,
     }
     if category == "unsupported":
         checks["guardrail_language"] = any(token in text for token in [
             "no puc", "no es pot", "no està validat", "no esta validat", "no disponible",
-            "no tenim", "no hi ha", "no permet", "sense un model validat",
+            "no tenim", "no hi ha", "no permet", "sense un model validat", "no tenim un model validat",
         ])
     return checks
 
@@ -104,26 +105,30 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--db", default=os.environ.get("FPS_DB_PATH"))
     parser.add_argument("--team-id", default=None)
-    parser.add_argument("--model", default=os.environ.get("FPS_AGENT_MODEL", "gpt-5.6-luna"))
+    parser.add_argument("--model", default=os.environ.get("FPS_LOCAL_LLM_MODEL", DEFAULT_MODEL))
     parser.add_argument("--hours", type=float, default=8.0, help="Hard wall-clock limit.")
-    parser.add_argument("--max-cases", type=int, default=80, help="Cost-control cap. Increase explicitly only if desired.")
+    parser.add_argument("--max-cases", type=int, default=60, help="Maximum local inference cases.")
     parser.add_argument("--seed", type=int, default=20260926)
     parser.add_argument("--output", default="outputs/agent_eval")
     args = parser.parse_args()
 
     if not args.db:
         raise SystemExit("Set FPS_DB_PATH or pass --db.")
-    if not os.environ.get("OPENAI_API_KEY", "").strip():
-        raise SystemExit("OPENAI_API_KEY is not set. No external model call was made.")
+
+    status = ollama_status()
+    if not status["available"]:
+        raise SystemExit(f"Ollama is not available at {status['url']}: {status['error']}")
+    if args.model not in status["models"]:
+        raise SystemExit(f"Model {args.model!r} is not installed. Run: ollama pull {args.model}")
 
     db_path = Path(args.db).expanduser().resolve()
     team_id, team_name = choose_team(db_path, args.team_id)
     output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    jsonl_path = output_dir / f"coach_agent_eval_{run_id}.jsonl"
-    summary_path = output_dir / f"coach_agent_eval_{run_id}_summary.json"
-    csv_path = output_dir / f"coach_agent_eval_{run_id}.csv"
+    jsonl_path = output_dir / f"coach_agent_local_eval_{run_id}.jsonl"
+    summary_path = output_dir / f"coach_agent_local_eval_{run_id}_summary.json"
+    csv_path = output_dir / f"coach_agent_local_eval_{run_id}.csv"
 
     rng = random.Random(args.seed)
     questions = build_questions(db_path, team_id, rng)
@@ -136,9 +141,9 @@ def main() -> None:
     q_index = 0
 
     print("=" * 88)
-    print("COACH COPILOT OVERNIGHT EVALUATION")
+    print("COACH COPILOT LOCAL OLLAMA EVALUATION")
     print(f"team={team_name} model={args.model} max_cases={args.max_cases} hard_limit_hours={args.hours}")
-    print("Privacy: local pseudonymization ON | OpenAI response storage OFF | Agents tracing OFF")
+    print("Provider: Ollama localhost | paid API: OFF | analytics mutation: OFF")
     print("=" * 88)
 
     while case < args.max_cases and time.monotonic() < deadline:
@@ -155,24 +160,27 @@ def main() -> None:
             "team_id": team_id,
         }
         try:
-            answer = run_coach_agent(
+            result = run_coach_agent_turn(
                 question,
                 db_path=db_path,
                 team_id=team_id,
-                session_id=f"eval-{run_id}-{case}",
                 model=args.model,
             )
-            checks = deterministic_checks(category, answer)
+            checks = deterministic_checks(category, result.text, result.error, result.tools_used)
             record.update({
-                "answer": answer,
+                "answer": result.text,
+                "tools_used": list(result.tools_used),
+                "tool_rounds": result.tool_rounds,
                 "checks": checks,
                 "pass": all(checks.values()),
-                "error": None,
+                "error": result.error,
             })
         except Exception as exc:
             record.update({
                 "answer": None,
-                "checks": {"nonempty": False, "not_exception_text": False},
+                "tools_used": [],
+                "tool_rounds": 0,
+                "checks": {"nonempty": False, "no_runtime_error": False, "tool_grounded_when_data_question": False},
                 "pass": False,
                 "error": f"{type(exc).__name__}: {exc}",
             })
@@ -180,8 +188,8 @@ def main() -> None:
         rows.append(record)
         with jsonl_path.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
-        status = "PASS" if record["pass"] else "FAIL"
-        print(f"[{case:03d}/{args.max_cases}] {status} {category:<11} {record['elapsed_s']:>6.1f}s | {question[:70]}")
+        status_label = "PASS" if record["pass"] else "FAIL"
+        print(f"[{case:03d}/{args.max_cases}] {status_label} {category:<11} {record['elapsed_s']:>6.1f}s | {question[:70]}")
 
     frame = pd.DataFrame(rows)
     frame.to_csv(csv_path, index=False, encoding="utf-8-sig")
@@ -190,6 +198,7 @@ def main() -> None:
         "run_id": run_id,
         "team_id": team_id,
         "team_name": team_name,
+        "provider": "ollama_local",
         "model": args.model,
         "cases": len(rows),
         "passes": len(rows) - failures,
@@ -199,8 +208,8 @@ def main() -> None:
         "csv": str(csv_path),
         "finished_at": utc_now(),
         "notes": [
-            "Deterministic checks validate runtime/guardrail basics, not semantic truth of every prose claim.",
-            "All real entity names/IDs are pseudonymized before external model calls and restored locally for saved answers.",
+            "No paid/external LLM API is used by this runner.",
+            "Deterministic checks validate runtime/tool grounding/guardrail basics, not semantic truth of every prose claim.",
             "No analytics/model version is modified by this runner.",
         ],
     }
