@@ -9,7 +9,8 @@ from pathlib import Path
 
 import duckdb
 
-ATTENTION_VERSION = "attention_flags_v0.1-auditable"
+MATCH_RATING_VERSION = "match_rating_v0.2-candidate"
+ATTENTION_VERSION = "attention_flags_v0.2-auditable"
 
 
 def parse_args() -> argparse.Namespace:
@@ -42,7 +43,6 @@ def main() -> None:
             """
         )
 
-        # Explicit limitation already carried by the Match Rating layer.
         con.execute(
             """
             INSERT INTO attention_flags
@@ -57,12 +57,12 @@ def main() -> None:
                 'La font no informa del rol tàctic fiable d’aquesta aparició; no s’ha imputat cap posició.',
                 ?
             FROM player_match_rating
-            WHERE match_rating_context='GENERIC_ROLE_UNAVAILABLE'
+            WHERE match_rating_version=?
+              AND match_rating_context='GENERIC_ROLE_UNAVAILABLE'
             """,
-            [ATTENTION_VERSION],
+            [ATTENTION_VERSION, MATCH_RATING_VERSION],
         )
 
-        # Explicit insufficient-evidence status from the rating engine.
         con.execute(
             """
             INSERT INTO attention_flags
@@ -77,12 +77,12 @@ def main() -> None:
                 'El Match Rating s’ha mantingut neutral perquè l’evidència disponible és insuficient.',
                 ?
             FROM player_match_rating
-            WHERE match_rating_status LIKE 'NEUTRAL_%'
+            WHERE match_rating_version=?
+              AND match_rating_status LIKE '%NEUTRAL_%'
             """,
-            [ATTENTION_VERSION],
+            [ATTENTION_VERSION, MATCH_RATING_VERSION],
         )
 
-        # GPS QC flags are provider/input quality observations, not performance judgements.
         gps_tables = {
             row[0]
             for row in con.execute(
@@ -125,6 +125,7 @@ def main() -> None:
 
     print("ATTENTION FLAGS MATERIALIZATION: COMPLETE")
     print(f"attention_version={ATTENTION_VERSION}")
+    print(f"match_rating_version={MATCH_RATING_VERSION}")
     print(f"rows={total}")
     for code, n in counts:
         print(f"{code}={n}")
