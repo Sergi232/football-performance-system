@@ -18,7 +18,14 @@ ollama_status = _core.ollama_status
 CoachAgentResult = _core.CoachAgentResult
 
 
+def _install_router_v2() -> None:
+    # Importing this module patches the hybrid planner with multilingual quality/GPS
+    # routing fixes while keeping the analytical tools and synthesis layer unchanged.
+    from llm import coach_agent_router_v2  # noqa: F401
+
+
 def run_coach_agent_turn(*args: Any, **kwargs: Any) -> CoachAgentResult:
+    _install_router_v2()
     from llm.coach_agent_hybrid import run_coach_agent_turn as _run_hybrid
 
     kwargs.setdefault("model", DEFAULT_MODEL)
@@ -26,6 +33,7 @@ def run_coach_agent_turn(*args: Any, **kwargs: Any) -> CoachAgentResult:
 
 
 def run_coach_agent(*args: Any, **kwargs: Any) -> str:
+    _install_router_v2()
     from llm.coach_agent_hybrid import run_coach_agent as _run_hybrid
 
     kwargs.setdefault("model", DEFAULT_MODEL)
