@@ -19,13 +19,21 @@ from app.data_access import (
     list_base_features,
     list_teams,
 )
+from app.match_insights import get_match_observations
 from app.match_rating_access import (
     MATCH_RATING_VERSION,
     get_match_ratings,
     get_player_match_ratings,
+    get_team_match_rating_history,
+    get_team_player_rating_snapshot,
+)
+from app.performance_score_access import (
+    SCORE_VERSION,
+    get_latest_player_score,
+    get_player_score_history,
 )
 
-REPORT_SCHEMA_VERSION = "0.2.0"
+REPORT_SCHEMA_VERSION = "0.3.0"
 
 
 def _clean(value: Any) -> Any:
@@ -77,16 +85,26 @@ def _guardrails() -> dict[str, bool]:
 
 def build_team_report_data(db_path: Path, team_id: str) -> dict[str, Any]:
     db_path = Path(db_path)
+    try:
+        rating_snapshot = get_team_player_rating_snapshot(db_path, team_id)
+        rating_history = get_team_match_rating_history(db_path, team_id)
+    except Exception:
+        rating_snapshot = pd.DataFrame()
+        rating_history = pd.DataFrame()
+
     return {
         "report_type": "team",
         "schema_version": REPORT_SCHEMA_VERSION,
         "engine_version": FINAL_ENGINE_VERSION,
         "feature_version": BASE_FEATURE_VERSION,
         "match_rating_version": MATCH_RATING_VERSION,
+        "performance_index_version": SCORE_VERSION,
         "team": _team_identity(db_path, team_id),
         "overview": {k: _clean(v) for k, v in get_team_overview(db_path, team_id).items()},
         "matches": _records(get_team_matches(db_path, team_id)),
         "squad": _records(get_squad_summary(db_path, team_id)),
+        "rating_snapshot": _records(rating_snapshot),
+        "rating_history": _records(rating_history),
         "guardrails": _guardrails(),
     }
 
@@ -102,6 +120,13 @@ def build_player_report_data(db_path: Path, team_id: str, player_id: str) -> dic
     history = get_player_match_history(db_path, team_id, player_id)
     ratings = get_player_match_ratings(db_path, team_id, player_id)
     gate = get_latest_player_gate(db_path, team_id, player_id)
+
+    try:
+        latest_index = get_latest_player_score(db_path, team_id, player_id)
+        index_history = get_player_score_history(db_path, team_id, player_id)
+    except Exception:
+        latest_index = None
+        index_history = pd.DataFrame()
 
     available = set(list_base_features(db_path, player_id))
     preferred = [
@@ -122,11 +147,14 @@ def build_player_report_data(db_path: Path, team_id: str, player_id: str) -> dic
         "engine_version": FINAL_ENGINE_VERSION,
         "feature_version": BASE_FEATURE_VERSION,
         "match_rating_version": MATCH_RATING_VERSION,
+        "performance_index_version": SCORE_VERSION,
         "team": _team_identity(db_path, team_id),
         "player_id": player_id,
         "summary": summary,
         "match_history": _records(history, 15),
         "match_ratings": _records(ratings.sort_values("match_date", ascending=False), 15),
+        "performance_index": None if latest_index is None else {k: _clean(v) for k, v in latest_index.items()},
+        "performance_index_history": _records(index_history.sort_values("match_date", ascending=False), 15),
         "latest_role_fit_gate": None if gate is None else {k: _clean(v) for k, v in gate.items()},
         "feature_history": feature_history,
         "guardrails": _guardrails(),
@@ -142,12 +170,8 @@ def build_match_report_data(db_path: Path, team_id: str, match_id: str) -> dict[
 
     lineup = get_match_lineup(db_path, team_id, match_id)
     ratings = get_match_ratings(db_path, team_id, match_id)
+    observations = get_match_observations(db_path, team_id, match_id)
     if not ratings.empty:
-        rating_cols = [
-            "player_id", "match_rating_10", "match_rating_confidence",
-            "match_rating_status", "match_rating_context", "position_group",
-        ]
-        # lineup currently has player names rather than player_id, so merge on player name
         rating_names = ratings[[
             "player", "match_rating_10", "match_rating_confidence",
             "match_rating_status", "match_rating_context", "position_group",
@@ -160,9 +184,11 @@ def build_match_report_data(db_path: Path, team_id: str, match_id: str) -> dict[
         "engine_version": FINAL_ENGINE_VERSION,
         "feature_version": BASE_FEATURE_VERSION,
         "match_rating_version": MATCH_RATING_VERSION,
+        "performance_index_version": SCORE_VERSION,
         "team": _team_identity(db_path, team_id),
         "match": _records(selected, 1)[0],
         "lineup": _records(lineup),
         "ratings": _records(ratings),
+        "observations": observations,
         "guardrails": _guardrails(),
     }
