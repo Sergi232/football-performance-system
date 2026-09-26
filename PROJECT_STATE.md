@@ -21,11 +21,11 @@ ANALYTICS-01                        CERRADO / VALIDADO — ISSUE #26
 DECISION POLICY / N13000            GATE APROBADO — ISSUE #27 CERRADO
 DSAI-01A..11                        CERRADO / RESULTADOS DOCUMENTADOS
 PERF-01..14                         CERRADO / BASELINE v0.1 DOCUMENTADA
-PERF-15 COVERAGE REPAIR             ACTIVO — ISSUE #90 / v0.2 IMPLEMENTADA PENDIENTE GATE LOCAL
-SCORE-INTEGRATION-01                v0.1 CERRADO; v0.2 PENDIENTE VALIDACIÓN LOCAL
+PERF-15 COVERAGE REPAIR             CERRADO / VALIDADO — ISSUE #90
+SCORE-INTEGRATION-01                v0.2 VALIDADA / CONTRACT PASS
 DASHBOARD-02 PLAYER VIEW            CERRADO — ISSUE #88 / VALIDADO VISUALMENTE
-DASHBOARD-03 TEAM MODE              PAUSADO — ISSUE #89 HASTA CERRAR PERF-15
-FINAL-01                            DESBLOQUEADO TRAS PERF-15
+DASHBOARD-03 TEAM MODE              ACTIVO — ISSUE #89 / REANUDADO TRAS PERF-15
+FINAL-01                            DESBLOQUEADO
 ```
 
 ## Objetivo principal
@@ -47,7 +47,7 @@ El dashboard web es el producto principal. PDF/PPT son salidas estáticas comple
 
 ## Variables y datos vigentes
 
-Las variables raw aprobadas/importadas siguen separadas de features y score. Entre las usadas por la corrección PERF-15 ya existen en `player_match_raw_stats`:
+Las variables raw aprobadas/importadas siguen separadas de features y score. Entre las usadas por PERF-15 ya existen en `player_match_raw_stats`:
 
 ```text
 passes_total / passes_completed
@@ -77,7 +77,7 @@ red_cards NULL   -> 0 cuando el evento observado no ocurrió
 yellow_cards     -> NO reinterpretar como 0
 ```
 
-PERF-15 añade únicamente una identidad matemática segura para pares éxito/intento:
+PERF-15 añade únicamente una identidad segura para pares éxito/intento:
 
 ```text
 si attempts observado = 0 y success es NULL -> success = 0
@@ -106,23 +106,13 @@ source_role_unavailable_rows   = 172
 spearman_vs_unweighted_3plus   = 0.8964
 ```
 
-Cobertura por grupo:
-
-```text
-CB      53/86 = 61.63%
-FB_WB   42/68 = 61.76%
-DM_CM   89/95 = 93.68%
-AM_W    58/65 = 89.23%
-ST      62/66 = 93.94%
-```
-
 Los 172 `Substitute` siguen sin imputarse: la fuente no ofrece rol táctico fiable para esas apariciones.
 
 ## Problema detectado en v0.1
 
 La baseline `performance_score_v0.1-experimental` construía dimensiones únicamente con features cuya dirección estaba explícitamente validada.
 
-Eso podía provocar:
+Esto podía producir:
 
 ```text
 no hay feature signada
@@ -130,15 +120,13 @@ no hay feature signada
 => score no elegible
 ```
 
-incluso cuando existían acciones futbolísticas positivas observadas. Casos de jugadores con muchas apariciones/titularidades podían quedar sin score o con dimensiones vacías.
+incluso cuando existían acciones futbolísticas positivas observadas. Por tanto v0.1 queda supersedida como baseline de producto.
 
-Decisión: **v0.1 no se considera suficiente como baseline final de producto.** Se conserva como historial experimental, pero queda supersedida por la candidata v0.2 si supera el gate local.
-
-## PERF-15 — coverage repair
+## PERF-15 — cerrado / validado
 
 Issue #90.
 
-Versión candidata:
+Versión validada:
 
 ```text
 performance_score_v0.2-experimental
@@ -160,7 +148,7 @@ Las dimensiones signadas de PERF-14 siguen siendo la evidencia principal.
 
 Solo si una dimensión está vacía, PERF-15 puede utilizar `CONTRIBUTION_FALLBACK` basado en acciones exitosas/positivas ya observadas.
 
-Fallbacks actuales:
+Fallbacks:
 
 ```text
 attacking_threat
@@ -180,7 +168,7 @@ defensive_contribution
 - clearances_per90
 ```
 
-No se usan intentos contextuales como si "más siempre fuera mejor". El fallback representa contribución observada y queda etiquetado explícitamente.
+No se usan intentos contextuales como si “más siempre fuera mejor”. El fallback representa contribución observada y queda etiquetado explícitamente.
 
 ### Normalización
 
@@ -204,7 +192,7 @@ No se imputa rol de suplentes.
 
 ### Provenance
 
-Cada dimensión materializada puede quedar marcada como:
+Cada dimensión materializada queda marcada como:
 
 ```text
 DIRECT_SIGNED
@@ -212,7 +200,7 @@ CONTRIBUTION_FALLBACK
 MISSING
 ```
 
-La tabla `player_match_performance_score` añade:
+La tabla `player_match_performance_score` incluye:
 
 ```text
 fallback_dimension_count
@@ -223,26 +211,55 @@ finishing_evidence
 discipline_evidence
 ```
 
-## Gate PERF-15
+### Resultado local validado
 
-La validación local debe cumplir:
+```text
+observable_role_rows=380
+eligible_before=304
+eligible_after=379
+recovered=75
+coverage_observable_roles=0.9974
+source_role_unavailable_rows=172
+high_participation_without_score=0
+fallback_attacking_threat=0
+fallback_creation_progression=128
+fallback_defensive_contribution=205
+fallback_finishing=0
+fallback_discipline=0
+```
 
-1. cobertura de rol observable >= 0.80;
-2. eligible rows no puede bajar de 304;
-3. reportar filas recuperadas;
-4. reportar número de scores que usan fallback;
-5. mantener 172 filas con rol de fuente no observable;
-6. ningún jugador de campo con >=10 titularidades puede quedar con 0 scores elegibles.
+Materialización:
 
-El punto 6 es un gate de calidad de cobertura, no un threshold de rendimiento.
+```text
+rows_written=552
+eligible_observable_scores=379
+recovered_eligible_rows=75
+coverage_observable_roles=0.9974
+eligible_scores_using_fallback=179
+high_participation_without_score=0
+```
+
+Contrato dashboard:
+
+```text
+PERFORMANCE SCORE DASHBOARD CONTRACT: PASS
+score_version=performance_score_v0.2-experimental
+observable_role_rows=380
+eligible_scores=379
+coverage_observable_roles=0.9974
+fallback_score_rows=179
+high_participation_outfield_players_without_score=0
+```
+
+Decisión: PERF-15 se cierra. `performance_score_v0.2-experimental` pasa a ser la baseline experimental vigente del producto.
 
 ## Dashboard
 
 DASHBOARD-02 está cerrado y validado visualmente. La vista de jugador tiene aspecto profesional y separa score, motor experto y datos técnicos.
 
-Corrección ya aplicada: porteros muestran que el camino GK está separado; no se les atribuye erróneamente el motivo de suplente sin rol.
+Los porteros muestran que el camino GK está separado; no se les atribuye erróneamente el motivo de suplente sin rol.
 
-DASHBOARD-03 Team Mode queda temporalmente pausado hasta validar PERF-15. No tiene sentido seguir construyendo UX sobre una cobertura de score defectuosa.
+DASHBOARD-03 Team Mode se reanuda tras cerrar PERF-15.
 
 ## Guardrails vigentes
 
@@ -261,28 +278,7 @@ DASHBOARD-03 Team Mode queda temporalmente pausado hasta validar PERF-15. No tie
 
 ## Siguiente paso exacto
 
-```powershell
-cd C:\Users\sergi\Desktop\football-performance-system
-git pull
-
-$env:FPS_DB_PATH = "D:\Data\Sergi\Desktop\football-performance-system\data\football_performance.duckdb"
-
-python dsai\performance_position_score_experiment_v3.py --db $env:FPS_DB_PATH
-python analytics\build_performance_score.py --db $env:FPS_DB_PATH
-python app\validate_performance_score.py
-```
-
-Revisar especialmente:
-
-```text
-eligible_before
-eligible_after
-recovered
-coverage_observable_roles
-high_participation_without_score
-fallback_attacking_threat
-fallback_creation_progression
-fallback_defensive_contribution
-```
-
-Si el validador da `PASS`, cerrar PERF-15, congelar `performance_score_v0.2-experimental` y reanudar inmediatamente DASHBOARD-03.
+1. Reiniciar Streamlit con la misma DuckDB materializada.
+2. Comprobar un caso de jugador de campo con historial amplio que antes quedaba incompleto (por ejemplo Carles Aleñá): score, dimensions y confidence.
+3. Si la vista es coherente, continuar DASHBOARD-03 Team Mode.
+4. Después: integrar score v0.2 en LLM, PDF y vistas GPS/físicas.
