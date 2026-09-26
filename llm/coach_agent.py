@@ -1,15 +1,19 @@
-"""Tool-using coaching agent over validated Football Performance System analytics.
+"""Local tool-using Coach Copilot over validated Football Performance System analytics.
 
 Architecture:
-DATA -> ANALYTICS -> DECISION ENGINE -> LOCAL PRIVACY -> AGENT -> COACH
+DATA -> ANALYTICS -> DECISION ENGINE -> LOCAL TOOLS -> OLLAMA LLM -> COACH
 
-The model never receives the DuckDB file. It receives only pseudonymized outputs
-from read-only tools. Critical ratings/features remain calculated outside the LLM.
+No football metric is calculated by the LLM. The model only decides which read-only
+analytics tools to call and explains their materialized outputs. By default every
+LLM request goes to Ollama on localhost, so team/player data never leaves the PC.
 """
 from __future__ import annotations
 
 import json
 import os
+import unicodedata
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -23,7 +27,6 @@ from app.data_access import (
     get_squad_summary,
     get_team_matches,
     get_team_overview,
-    list_teams,
 )
 from app.gps_physical_access import get_gps_summary_status, get_player_gps_history
 from app.match_insights import get_match_observations
@@ -35,41 +38,45 @@ from app.match_rating_access import (
     get_team_player_rating_snapshot,
 )
 from app.performance_score_access import get_latest_player_score
-from llm.privacy import AliasBook, assert_no_known_entities
-
-try:
-    from agents import Agent, ModelSettings, RunContextWrapper, Runner, SQLiteSession, set_tracing_disabled
-    from agents.decorators import tool
-except ImportError as exc:  # pragma: no cover
-    raise RuntimeError("Install the agent runtime with: pip install -r requirements.txt") from exc
 
 
-DEFAULT_MODEL = os.environ.get("FPS_AGENT_MODEL", "gpt-5.6-luna")
+DEFAULT_MODEL = os.environ.get("FPS_LOCAL_LLM_MODEL", "qwen3.5:4b")
+DEFAULT_OLLAMA_URL = os.environ.get("FPS_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
+MAX_TOOL_ROUNDS = int(os.environ.get("FPS_AGENT_MAX_TOOL_ROUNDS", "8"))
 
-AGENT_INSTRUCTIONS = """You are Coach Copilot, the explanation and exploration layer of a football performance system.
+SYSTEM_PROMPT = """You are Coach Copilot, a local AI assistant for a football coaching staff.
 
-You answer open-ended coaching questions by selecting and combining the available read-only tools.
-The tool loop may use several calls before answering.
+You receive NO football data in this prompt. For every factual question about the
+team, a player, a match, form, roles, GPS, ratings, trends or data quality, you MUST
+call one or more tools before answering. You may chain several tools when needed.
 
 NON-NEGOTIABLE RULES
 1. Use only values returned by tools. Never invent observations, metrics, thresholds, weights or model outputs.
 2. Match Rating, Performance Index, features and expert-system outputs are already calculated outside the LLM. Never recalculate them.
-3. You may sort or compare an explicitly materialized descriptive field returned by a tool, e.g. trend_delta_5v5, but call it a descriptive comparison and report sample size when available.
-4. Do not turn descriptive changes into causal claims.
-5. Do not issue tactical recommendations, ideal line-ups, injury-risk, fatigue or readiness conclusions unless a validated decision-engine output explicitly authorizes them. Current recommendation policy is not validated.
-6. If evidence is missing, say exactly what is unavailable.
-7. Preserve role/context. Avoid comparing unlike roles as if they were equivalent unless the user explicitly asks for a descriptive comparison and you state the limitation.
-8. Entity identifiers are pseudonyms. Use them exactly as returned by tools; the application restores real names locally after your response.
-9. Be concise, coach-oriented and answer in the language of the user.
-10. When useful, end with a short 'Evidència consultada' summary naming the tool outputs used, not hidden reasoning.
+3. You may compare/sort fields already returned by tools, such as latest_match_rating, avg_last5 or trend_delta_5v5. Describe these as descriptive comparisons and mention sample size when available.
+4. Never convert correlation or recent change into a causal explanation unless the data explicitly supports it.
+5. Do not recommend an ideal XI, who should start, tactical changes, injury risk, fatigue or readiness unless a validated decision-engine output explicitly authorizes that conclusion. The current recommendation policy is NOT validated.
+6. When evidence is missing, state exactly what is unavailable. Do not fill gaps.
+7. Preserve role/context. Do not present different positions as directly equivalent without stating the limitation.
+8. The goalkeeper branch is methodologically different from outfield. Do not interpret missing outfield dimensions for a goalkeeper as missing evidence.
+9. Answer in the language used by the user. Be concise and useful to a coach.
+10. Do not expose hidden reasoning. You may finish with a short 'Evidència consultada' line naming the tools used.
 """
 
 
-@dataclass
+@dataclass(frozen=True)
 class CoachAgentRuntime:
     db_path: Path
     team_id: str
-    aliases: AliasBook
+
+
+@dataclass(frozen=True)
+class CoachAgentResult:
+    text: str
+    model: str
+    tool_rounds: int
+    tools_used: tuple[str, ...]
+    error: str | None = None
 
 
 def _clean(value: Any) -> Any:
@@ -77,6 +84,11 @@ def _clean(value: Any) -> Any:
         return None
     if isinstance(value, pd.Timestamp):
         return value.isoformat()
+    if hasattr(value, "isoformat") and not isinstance(value, str):
+        try:
+            return value.isoformat()
+        except Exception:
+            pass
     try:
         if pd.isna(value):
             return None
@@ -96,157 +108,431 @@ def _records(frame: pd.DataFrame, limit: int | None = None) -> list[dict[str, An
     return [{str(k): _clean(v) for k, v in row.items()} for row in frame.to_dict(orient="records")]
 
 
-def _external_json(ctx: RunContextWrapper[CoachAgentRuntime], payload: Any) -> str:
-    anonymized = ctx.context.aliases.anonymize_obj(payload)
-    text = json.dumps(anonymized, ensure_ascii=False, separators=(",", ":"), default=str)
-    leaks = assert_no_known_entities(text, ctx.context.aliases)
-    if leaks:
-        raise RuntimeError(f"Privacy gate blocked tool output: {len(leaks)} known entity leak(s).")
-    return text
+def _json(payload: Any) -> str:
+    return json.dumps(payload, ensure_ascii=False, separators=(",", ":"), default=str)
 
 
-def build_alias_book(db_path: Path, team_id: str) -> AliasBook:
-    aliases = AliasBook()
-    teams = list_teams(db_path)
-    for row in teams.itertuples(index=False):
-        aliases.add("TEAM", row.display_name, entity_id=row.team_id)
-
-    squad = get_squad_summary(db_path, team_id)
-    for row in squad.itertuples(index=False):
-        aliases.add("PLAYER", row.player, entity_id=row.player_id)
-
-    matches = get_team_matches(db_path, team_id)
-    for row in matches.itertuples(index=False):
-        aliases.add("MATCH", row.match_id, entity_id=row.match_id)
-        if row.opponent:
-            aliases.add("OPPONENT", row.opponent)
-    return aliases
+def _norm(value: object) -> str:
+    text = unicodedata.normalize("NFKD", str(value or ""))
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    return " ".join(text.casefold().strip().split())
 
 
-@tool
-def get_team_snapshot(ctx: RunContextWrapper[CoachAgentRuntime]) -> str:
-    """Get team overview, recent match-rating history and per-player recent descriptive trends."""
-    runtime = ctx.context
+def _resolve_player(runtime: CoachAgentRuntime, query: str) -> tuple[str | None, str | None]:
+    squad = get_squad_summary(runtime.db_path, runtime.team_id)
+    if squad.empty:
+        return None, None
+    raw = str(query or "").strip()
+    exact_id = squad.loc[squad["player_id"].astype(str) == raw]
+    if len(exact_id) == 1:
+        row = exact_id.iloc[0]
+        return str(row["player_id"]), str(row["player"])
+    target = _norm(raw)
+    exact_name = squad.loc[squad["player"].map(_norm) == target]
+    if len(exact_name) == 1:
+        row = exact_name.iloc[0]
+        return str(row["player_id"]), str(row["player"])
+    partial = squad.loc[squad["player"].map(lambda x: target in _norm(x) or _norm(x) in target)] if target else squad.iloc[0:0]
+    if len(partial) == 1:
+        row = partial.iloc[0]
+        return str(row["player_id"]), str(row["player"])
+    return None, None
+
+
+def _resolve_match(runtime: CoachAgentRuntime, query: str) -> tuple[str | None, dict[str, Any] | None]:
+    matches = get_team_matches(runtime.db_path, runtime.team_id).copy()
+    if matches.empty:
+        return None, None
+    raw = str(query or "").strip()
+    exact_id = matches.loc[matches["match_id"].astype(str) == raw]
+    if len(exact_id) == 1:
+        row = exact_id.iloc[0]
+        return str(row["match_id"]), _records(exact_id, 1)[0]
+    target = _norm(raw)
+    candidates = matches.loc[matches["opponent"].map(lambda x: target in _norm(x) or _norm(x) in target)] if target else matches.iloc[0:0]
+    if len(candidates) >= 1:
+        row = candidates.iloc[0]
+        return str(row["match_id"]), _records(candidates, 1)[0]
+    return None, None
+
+
+def tool_get_team_snapshot(runtime: CoachAgentRuntime, args: dict[str, Any]) -> dict[str, Any]:
     overview = get_team_overview(runtime.db_path, runtime.team_id)
     history = get_team_match_rating_history(runtime.db_path, runtime.team_id).tail(12)
     trends = get_team_player_rating_snapshot(runtime.db_path, runtime.team_id).copy()
     if not trends.empty:
         for col in ["latest_match_rating", "avg_last5", "avg_previous5", "trend_delta_5v5", "latest_confidence"]:
-            trends[col] = pd.to_numeric(trends[col], errors="coerce")
+            if col in trends.columns:
+                trends[col] = pd.to_numeric(trends[col], errors="coerce")
         trends = trends.sort_values("trend_delta_5v5", ascending=False, na_position="last")
-    payload = {
-        "overview": overview,
+    return {
+        "overview": {k: _clean(v) for k, v in overview.items()},
         "match_rating_version": MATCH_RATING_VERSION,
         "recent_team_rating_history": _records(history),
         "player_recent_form": _records(trends),
-        "interpretation": "trend_delta_5v5 is descriptive: mean latest 5 minus mean previous 5; use n_last5/n_previous5.",
+        "definition": "trend_delta_5v5 = mean latest five Match Ratings minus mean previous five; descriptive only; inspect n_last5 and n_previous5.",
     }
-    return _external_json(ctx, payload)
 
 
-@tool
-def get_player_profile(ctx: RunContextWrapper[CoachAgentRuntime], player_alias: str) -> str:
-    """Get one player's participation, roles, ratings, Performance Index and latest expert gate. Use PLAYER_* aliases."""
-    runtime = ctx.context
-    player_id = runtime.aliases.resolve_player(player_alias)
+def tool_get_player_profile(runtime: CoachAgentRuntime, args: dict[str, Any]) -> dict[str, Any]:
+    query = str(args.get("player", ""))
+    player_id, player_name = _resolve_player(runtime, query)
     if player_id is None:
-        return json.dumps({"error": "Unknown player alias. Use aliases returned by get_team_snapshot."})
-
+        return {"error": f"No s'ha pogut identificar un únic jugador amb: {query!r}. Usa get_team_snapshot per veure els noms disponibles."}
     squad = get_squad_summary(runtime.db_path, runtime.team_id)
-    selected = squad.loc[squad["player_id"].astype(str) == str(player_id)]
+    selected = squad.loc[squad["player_id"].astype(str) == player_id]
     ratings = get_player_match_ratings(runtime.db_path, runtime.team_id, player_id)
     gate = get_latest_player_gate(runtime.db_path, runtime.team_id, player_id)
     index = get_latest_player_score(runtime.db_path, runtime.team_id, player_id)
-    payload = {
+    return {
+        "player": player_name,
         "summary": None if selected.empty else _records(selected, 1)[0],
-        "ratings": _records(ratings.tail(12)),
-        "latest_performance_index": index,
-        "latest_expert_gate": gate,
+        "recent_match_ratings": _records(ratings.tail(12)),
+        "latest_performance_index": None if index is None else {k: _clean(v) for k, v in index.items()},
+        "latest_expert_gate": None if gate is None else {k: _clean(v) for k, v in gate.items()},
     }
-    return _external_json(ctx, payload)
 
 
-@tool
-def get_player_match_stats(ctx: RunContextWrapper[CoachAgentRuntime], player_alias: str, last_n: int = 10) -> str:
-    """Get raw observed player-match statistics for recent matches. This does not calculate new metrics."""
-    runtime = ctx.context
-    player_id = runtime.aliases.resolve_player(player_alias)
+def tool_get_player_match_stats(runtime: CoachAgentRuntime, args: dict[str, Any]) -> dict[str, Any]:
+    query = str(args.get("player", ""))
+    player_id, player_name = _resolve_player(runtime, query)
     if player_id is None:
-        return json.dumps({"error": "Unknown player alias."})
-    last_n = max(1, min(int(last_n), 30))
+        return {"error": f"Jugador no identificat: {query!r}"}
+    last_n = max(1, min(int(args.get("last_n", 10)), 30))
     frame = get_player_match_history(runtime.db_path, runtime.team_id, player_id).head(last_n)
-    return _external_json(ctx, {"rows": _records(frame), "limit": last_n})
+    return {"player": player_name, "rows": _records(frame), "limit": last_n, "note": "raw observed player-match stats; no new performance score calculated"}
 
 
-@tool
-def list_recent_matches(ctx: RunContextWrapper[CoachAgentRuntime], last_n: int = 10) -> str:
-    """List recent matches so the agent can select a MATCH_* alias for deeper inspection."""
-    runtime = ctx.context
-    last_n = max(1, min(int(last_n), 20))
+def tool_list_recent_matches(runtime: CoachAgentRuntime, args: dict[str, Any]) -> dict[str, Any]:
+    last_n = max(1, min(int(args.get("last_n", 10)), 20))
     frame = get_team_matches(runtime.db_path, runtime.team_id).head(last_n)
-    return _external_json(ctx, {"matches": _records(frame)})
+    return {"matches": _records(frame)}
 
 
-@tool
-def get_match_detail(ctx: RunContextWrapper[CoachAgentRuntime], match_alias: str) -> str:
-    """Get one match's ratings and deterministic post-match observations. Use MATCH_* aliases."""
-    runtime = ctx.context
-    match_id = runtime.aliases.resolve_match(match_alias)
+def tool_get_match_detail(runtime: CoachAgentRuntime, args: dict[str, Any]) -> dict[str, Any]:
+    query = str(args.get("match", ""))
+    match_id, match_row = _resolve_match(runtime, query)
     if match_id is None:
-        return json.dumps({"error": "Unknown match alias. Use list_recent_matches first."})
-    matches = get_team_matches(runtime.db_path, runtime.team_id)
-    selected = matches.loc[matches["match_id"].astype(str) == str(match_id)]
+        return {"error": f"Partit no identificat: {query!r}. Usa list_recent_matches si cal."}
     ratings = get_match_ratings(runtime.db_path, runtime.team_id, match_id)
     observations = get_match_observations(runtime.db_path, runtime.team_id, match_id)
-    payload = {
-        "match": None if selected.empty else _records(selected, 1)[0],
+    return {
+        "match": match_row,
         "ratings": _records(ratings),
         "observations": observations,
+        "note": "observations are deterministic; ratings are already materialized analytics",
     }
-    return _external_json(ctx, payload)
 
 
-@tool
-def get_data_quality(ctx: RunContextWrapper[CoachAgentRuntime]) -> str:
-    """Get auditable data/context/evidence limitations and GPS availability for this team."""
-    runtime = ctx.context
-    summary = get_attention_summary(runtime.db_path, runtime.team_id)
-    flags = get_team_attention_flags(runtime.db_path, runtime.team_id)
-    gps = get_gps_summary_status(runtime.db_path)
-    return _external_json(ctx, {"attention_summary": _records(summary), "recent_flags": _records(flags.head(30)), "gps_status": gps})
+def tool_get_data_quality(runtime: CoachAgentRuntime, args: dict[str, Any]) -> dict[str, Any]:
+    try:
+        summary = get_attention_summary(runtime.db_path, runtime.team_id)
+        flags = get_team_attention_flags(runtime.db_path, runtime.team_id)
+    except Exception as exc:
+        summary = pd.DataFrame()
+        flags = pd.DataFrame()
+        attention_error = f"{type(exc).__name__}: {exc}"
+    else:
+        attention_error = None
+    try:
+        gps = get_gps_summary_status(runtime.db_path)
+    except Exception as exc:
+        gps = {"error": f"{type(exc).__name__}: {exc}"}
+    return {
+        "attention_summary": _records(summary),
+        "recent_flags": _records(flags.head(30)),
+        "attention_error": attention_error,
+        "gps_status": gps,
+        "policy": "data-quality/context flags only; no fatigue, injury-risk or good/bad performance threshold is validated",
+    }
 
 
-@tool
-def get_player_gps(ctx: RunContextWrapper[CoachAgentRuntime], player_alias: str) -> str:
-    """Get available normalized GPS history for one player. No fatigue/readiness inference is allowed."""
-    runtime = ctx.context
-    player_id = runtime.aliases.resolve_player(player_alias)
+def tool_get_player_gps(runtime: CoachAgentRuntime, args: dict[str, Any]) -> dict[str, Any]:
+    query = str(args.get("player", ""))
+    player_id, player_name = _resolve_player(runtime, query)
     if player_id is None:
-        return json.dumps({"error": "Unknown player alias."})
+        return {"error": f"Jugador no identificat: {query!r}"}
     try:
         frame = get_player_gps_history(runtime.db_path, runtime.team_id, player_id)
     except Exception as exc:
-        return json.dumps({"error": f"GPS unavailable: {type(exc).__name__}"})
-    return _external_json(ctx, {"gps_history": _records(frame.tail(12)), "interpretation": "descriptive normalized GPS only; no fatigue/readiness model"})
+        return {"player": player_name, "error": f"GPS unavailable: {type(exc).__name__}: {exc}"}
+    return {
+        "player": player_name,
+        "gps_history": _records(frame.tail(12)),
+        "interpretation": "descriptive normalized GPS only; no validated fatigue/readiness/injury-risk model",
+    }
 
 
-def create_agent(model: str | None = None) -> Agent[CoachAgentRuntime]:
-    # Tracing can contain tool I/O; keep it off by default for this privacy-sensitive workflow.
-    set_tracing_disabled(True)
-    return Agent[CoachAgentRuntime](
-        name="Coach Copilot",
-        instructions=AGENT_INSTRUCTIONS,
-        model=model or DEFAULT_MODEL,
-        model_settings=ModelSettings(store=False, truncation="auto"),
-        tools=[
-            get_team_snapshot,
-            get_player_profile,
-            get_player_match_stats,
-            list_recent_matches,
-            get_match_detail,
-            get_data_quality,
-            get_player_gps,
-        ],
+def tool_compare_players(runtime: CoachAgentRuntime, args: dict[str, Any]) -> dict[str, Any]:
+    requested = args.get("players") or []
+    if isinstance(requested, str):
+        requested = [requested]
+    requested = [str(x) for x in requested][:6]
+    snapshot = get_team_player_rating_snapshot(runtime.db_path, runtime.team_id)
+    rows: list[dict[str, Any]] = []
+    unresolved: list[str] = []
+    for query in requested:
+        player_id, player_name = _resolve_player(runtime, query)
+        if player_id is None:
+            unresolved.append(query)
+            continue
+        selected = snapshot.loc[snapshot["player_id"].astype(str) == player_id]
+        if selected.empty:
+            rows.append({"player": player_name, "error": "No Match Rating snapshot available"})
+        else:
+            rows.append(_records(selected, 1)[0])
+    return {
+        "players": rows,
+        "unresolved": unresolved,
+        "comparison_policy": "descriptive only; avg_last5/trend_delta_5v5 are materialized fields; preserve position and sample-size limitations",
+    }
+
+
+TOOL_FUNCTIONS = {
+    "get_team_snapshot": tool_get_team_snapshot,
+    "get_player_profile": tool_get_player_profile,
+    "get_player_match_stats": tool_get_player_match_stats,
+    "list_recent_matches": tool_list_recent_matches,
+    "get_match_detail": tool_get_match_detail,
+    "get_data_quality": tool_get_data_quality,
+    "get_player_gps": tool_get_player_gps,
+    "compare_players": tool_compare_players,
+}
+
+TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_team_snapshot",
+            "description": "Team overview, recent team Match Rating history and per-player recent descriptive form/trend fields.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_player_profile",
+            "description": "One player's participation, recent Match Ratings, current Performance Index and expert gate.",
+            "parameters": {
+                "type": "object",
+                "properties": {"player": {"type": "string", "description": "Player name or unique fragment."}},
+                "required": ["player"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_player_match_stats",
+            "description": "Recent raw observed player-match stats. Use when the question asks what changed in underlying actions.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "player": {"type": "string"},
+                    "last_n": {"type": "integer", "minimum": 1, "maximum": 30},
+                },
+                "required": ["player"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_recent_matches",
+            "description": "Recent matches and opponents. Use to resolve references such as 'last match' or an opponent.",
+            "parameters": {
+                "type": "object",
+                "properties": {"last_n": {"type": "integer", "minimum": 1, "maximum": 20}},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_match_detail",
+            "description": "One match's materialized player ratings and deterministic post-match observations.",
+            "parameters": {
+                "type": "object",
+                "properties": {"match": {"type": "string", "description": "Match ID, opponent name or unique opponent fragment."}},
+                "required": ["match"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_data_quality",
+            "description": "Auditable context/data-evidence limitations and GPS availability.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_player_gps",
+            "description": "Normalized descriptive GPS history for a player. Never infer fatigue/readiness/injury risk.",
+            "parameters": {
+                "type": "object",
+                "properties": {"player": {"type": "string"}},
+                "required": ["player"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "compare_players",
+            "description": "Descriptively compare up to six players using already materialized Match Rating snapshot/form fields.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "players": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 6}
+                },
+                "required": ["players"],
+            },
+        },
+    },
+]
+
+
+def _request_json(url: str, *, payload: dict[str, Any] | None = None, timeout: int = 180) -> dict[str, Any]:
+    data = None if payload is None else json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    request = urllib.request.Request(
+        url,
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method="POST" if payload is not None else "GET",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"No es pot connectar amb Ollama a {url}: {exc}") from exc
+
+
+def ollama_status(base_url: str | None = None) -> dict[str, Any]:
+    base = (base_url or DEFAULT_OLLAMA_URL).rstrip("/")
+    try:
+        payload = _request_json(f"{base}/api/tags", timeout=5)
+    except Exception as exc:
+        return {"available": False, "url": base, "models": [], "error": str(exc)}
+    models = []
+    for item in payload.get("models", []) or []:
+        name = item.get("name") or item.get("model")
+        if name:
+            models.append(str(name))
+    return {"available": True, "url": base, "models": models, "error": None}
+
+
+def _chat(messages: list[dict[str, Any]], *, model: str, base_url: str) -> dict[str, Any]:
+    payload = {
+        "model": model,
+        "messages": messages,
+        "tools": TOOLS,
+        "stream": False,
+        "options": {"temperature": 0.1},
+    }
+    return _request_json(f"{base_url.rstrip('/')}/api/chat", payload=payload, timeout=300)
+
+
+def _normalize_tool_args(arguments: Any) -> dict[str, Any]:
+    if arguments is None:
+        return {}
+    if isinstance(arguments, dict):
+        return arguments
+    if isinstance(arguments, str):
+        try:
+            value = json.loads(arguments)
+            return value if isinstance(value, dict) else {}
+        except json.JSONDecodeError:
+            return {}
+    return {}
+
+
+def run_coach_agent_turn(
+    question: str,
+    *,
+    db_path: Path,
+    team_id: str,
+    history: list[dict[str, str]] | None = None,
+    model: str | None = None,
+    base_url: str | None = None,
+    max_tool_rounds: int | None = None,
+) -> CoachAgentResult:
+    """Run one open-ended local agent turn with an auditable multi-tool loop."""
+    selected_model = model or DEFAULT_MODEL
+    selected_url = (base_url or DEFAULT_OLLAMA_URL).rstrip("/")
+    runtime = CoachAgentRuntime(Path(db_path).expanduser().resolve(), str(team_id))
+
+    status = ollama_status(selected_url)
+    if not status["available"]:
+        return CoachAgentResult(
+            text="Ollama no està disponible localment. Inicia Ollama i torna-ho a provar.",
+            model=selected_model,
+            tool_rounds=0,
+            tools_used=(),
+            error=status["error"],
+        )
+    installed = status.get("models") or []
+    if selected_model not in installed and not any(name.split(":")[0] == selected_model for name in installed):
+        return CoachAgentResult(
+            text=f"El model local `{selected_model}` no està instal·lat. Executa: ollama pull {selected_model}",
+            model=selected_model,
+            tool_rounds=0,
+            tools_used=(),
+            error="MODEL_NOT_INSTALLED",
+        )
+
+    messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM_PROMPT}]
+    for item in (history or [])[-12:]:
+        role = str(item.get("role", "")).strip()
+        content = str(item.get("content", "")).strip()
+        if role in {"user", "assistant"} and content:
+            messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": question.strip()})
+
+    tools_used: list[str] = []
+    limit = max(1, min(int(max_tool_rounds or MAX_TOOL_ROUNDS), 12))
+
+    for round_index in range(limit + 1):
+        response = _chat(messages, model=selected_model, base_url=selected_url)
+        message = response.get("message") or {}
+        tool_calls = message.get("tool_calls") or []
+        content = str(message.get("content") or "").strip()
+
+        if not tool_calls:
+            if not content:
+                content = "No he pogut generar una resposta amb l'evidència disponible."
+            return CoachAgentResult(
+                text=content,
+                model=selected_model,
+                tool_rounds=round_index,
+                tools_used=tuple(tools_used),
+            )
+
+        messages.append(message)
+        for call in tool_calls:
+            function = call.get("function") or {}
+            name = str(function.get("name") or "")
+            args = _normalize_tool_args(function.get("arguments"))
+            tools_used.append(name or "UNKNOWN_TOOL")
+            fn = TOOL_FUNCTIONS.get(name)
+            if fn is None:
+                result = {"error": f"Unknown tool: {name}"}
+            else:
+                try:
+                    result = fn(runtime, args)
+                except Exception as exc:
+                    result = {"error": f"{type(exc).__name__}: {exc}"}
+            messages.append({"role": "tool", "tool_name": name, "content": _json(result)})
+
+    return CoachAgentResult(
+        text="He arribat al límit de consultes internes abans de poder donar una resposta fiable.",
+        model=selected_model,
+        tool_rounds=limit,
+        tools_used=tuple(tools_used),
+        error="MAX_TOOL_ROUNDS",
     )
 
 
@@ -255,40 +541,37 @@ def run_coach_agent(
     *,
     db_path: Path,
     team_id: str,
-    session_id: str = "coach-default",
-    session_db: Path | None = None,
+    history: list[dict[str, str]] | None = None,
     model: str | None = None,
 ) -> str:
-    """Run one conversational turn and restore real entity names locally afterwards."""
-    aliases = build_alias_book(db_path, team_id)
-    runtime = CoachAgentRuntime(Path(db_path), str(team_id), aliases)
-    anonymized_question = aliases.anonymize_text(question)
-    leaks = assert_no_known_entities(anonymized_question, aliases)
-    if leaks:
-        raise RuntimeError("Privacy gate blocked the user question before external model call.")
-
-    if session_db is None:
-        session_db = Path(db_path).parent / "coach_agent_sessions.sqlite"
-    session = SQLiteSession(session_id, db_path=session_db)
-    result = Runner.run_sync(
-        create_agent(model),
-        anonymized_question,
-        context=runtime,
-        session=session,
-    )
-    return aliases.deanonymize_text(str(result.final_output))
+    """Compatibility wrapper returning only final text."""
+    return run_coach_agent_turn(
+        question,
+        db_path=db_path,
+        team_id=team_id,
+        history=history,
+        model=model,
+    ).text
 
 
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Ask an open question to the anonymized coaching agent.")
+    parser = argparse.ArgumentParser(description="Ask an open question to the local Ollama Coach Copilot.")
     parser.add_argument("question")
     parser.add_argument("--db", default=os.environ.get("FPS_DB_PATH"))
     parser.add_argument("--team-id", required=True)
-    parser.add_argument("--session-id", default="coach-cli")
-    parser.add_argument("--model", default=None)
+    parser.add_argument("--model", default=DEFAULT_MODEL)
     args = parser.parse_args()
     if not args.db:
         raise SystemExit("Set FPS_DB_PATH or pass --db.")
-    print(run_coach_agent(args.question, db_path=Path(args.db), team_id=args.team_id, session_id=args.session_id, model=args.model))
+    result = run_coach_agent_turn(
+        args.question,
+        db_path=Path(args.db),
+        team_id=args.team_id,
+        model=args.model,
+    )
+    print(result.text)
+    print(f"\nmodel={result.model} tool_rounds={result.tool_rounds} tools={','.join(result.tools_used) or 'none'}")
+    if result.error:
+        print(f"error={result.error}")
