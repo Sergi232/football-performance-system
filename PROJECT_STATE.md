@@ -114,7 +114,7 @@ Compara:
 - cobertura FEATURE-01 original;
 - cobertura con `shots_total`, `goals` y `red_cards` reinterpretados como zero observado únicamente cuando raw es NULL;
 - cobertura de `goals_per90`, `goal_per_shot_rate`, `red_cards_per90`;
-- distribución 0..5 dimensiones antes/después;
+- distribución 0..5 dimensions antes/después;
 - full-five coverage antes/después;
 - dimensión cuello de botella antes/después.
 
