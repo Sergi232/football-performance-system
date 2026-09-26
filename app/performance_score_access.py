@@ -1,4 +1,4 @@
-"""Read-only access to the frozen experimental performance score."""
+"""Read-only access to the experimental performance score."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -6,7 +6,7 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
-SCORE_VERSION = "performance_score_v0.1-experimental"
+SCORE_VERSION = "performance_score_v0.2-experimental"
 
 
 def connect_read_only(db_path: Path) -> duckdb.DuckDBPyConnection:
@@ -38,9 +38,7 @@ def list_team_players(db_path: Path, team_id: str) -> pd.DataFrame:
                 p.player_id,
                 p.display_name AS player,
                 COUNT(*) FILTER (WHERE s.performance_score IS NOT NULL) AS scored_matches,
-                MAX(s.position_group) FILTER (
-                    WHERE s.performance_score IS NOT NULL
-                ) AS latest_position_group
+                MAX(s.position_group) FILTER (WHERE s.performance_score IS NOT NULL) AS latest_position_group
             FROM player_match_performance_score s
             JOIN players p ON p.player_id = s.player_id
             WHERE s.score_version = ? AND s.team_id = ?
@@ -69,6 +67,12 @@ def get_player_score_history(db_path: Path, team_id: str, player_id: str) -> pd.
                 s.discipline,
                 s.performance_score,
                 s.score_evidence_confidence,
+                s.fallback_dimension_count,
+                s.attacking_threat_evidence,
+                s.creation_progression_evidence,
+                s.defensive_contribution_evidence,
+                s.finishing_evidence,
+                s.discipline_evidence,
                 s.score_status
             FROM player_match_performance_score s
             JOIN matches m ON m.match_id = s.match_id
@@ -86,16 +90,14 @@ def get_latest_player_score(db_path: Path, team_id: str, player_id: str) -> dict
     eligible = history[history["performance_score"].notna()].copy()
     if eligible.empty:
         return None
-    row = eligible.iloc[-1]
-    return row.to_dict()
+    return eligible.iloc[-1].to_dict()
 
 
 def get_team_score_snapshot(db_path: Path, team_id: str) -> pd.DataFrame:
     """Return one descriptive score snapshot row per squad player.
 
-    `trend_delta_5v5` is purely descriptive: mean of the latest five eligible
-    scores minus the mean of eligible scores 6-10. No threshold or performance
-    label is applied.
+    trend_delta_5v5 is descriptive only: latest five eligible scores minus the
+    preceding five eligible scores. No threshold or performance label is applied.
     """
     with connect_read_only(db_path) as con:
         return con.execute(
@@ -114,6 +116,7 @@ def get_team_score_snapshot(db_path: Path, team_id: str) -> pd.DataFrame:
                     s.position_group,
                     s.performance_score,
                     s.score_evidence_confidence,
+                    s.fallback_dimension_count,
                     ROW_NUMBER() OVER (
                         PARTITION BY s.player_id
                         ORDER BY m.match_date DESC, s.match_id DESC
@@ -133,6 +136,7 @@ def get_team_score_snapshot(db_path: Path, team_id: str) -> pd.DataFrame:
                     MAX(CASE WHEN rn = 1 THEN position_group END) AS position_group,
                     MAX(CASE WHEN rn = 1 THEN performance_score END) AS latest_score,
                     MAX(CASE WHEN rn = 1 THEN score_evidence_confidence END) AS latest_confidence,
+                    MAX(CASE WHEN rn = 1 THEN fallback_dimension_count END) AS latest_fallback_dimensions,
                     AVG(CASE WHEN rn BETWEEN 1 AND 5 THEN performance_score END) AS avg_last5,
                     AVG(CASE WHEN rn BETWEEN 6 AND 10 THEN performance_score END) AS avg_previous5,
                     COUNT(*) FILTER (WHERE rn BETWEEN 1 AND 5) AS n_last5,
@@ -148,6 +152,7 @@ def get_team_score_snapshot(db_path: Path, team_id: str) -> pd.DataFrame:
                 a.position_group,
                 a.latest_score,
                 a.latest_confidence,
+                a.latest_fallback_dimensions,
                 a.avg_last5,
                 a.avg_previous5,
                 CASE
@@ -177,12 +182,16 @@ def get_score_status(db_path: Path) -> dict:
                 ) AS eligible_rows,
                 COUNT(*) FILTER (
                     WHERE position_mapping_status = 'role_unavailable_source_semantics'
-                ) AS role_unavailable_rows
+                ) AS role_unavailable_rows,
+                COUNT(*) FILTER (
+                    WHERE performance_score IS NOT NULL AND COALESCE(fallback_dimension_count, 0) > 0
+                ) AS fallback_score_rows
             FROM player_match_performance_score
             WHERE score_version = ?
             """,
             [SCORE_VERSION],
         ).fetchone()
+    keys = ["rows", "observable_rows", "eligible_rows", "role_unavailable_rows", "fallback_score_rows"]
     if row is None:
-        return {"rows": 0, "observable_rows": 0, "eligible_rows": 0, "role_unavailable_rows": 0}
-    return dict(zip(["rows", "observable_rows", "eligible_rows", "role_unavailable_rows"], row))
+        return dict.fromkeys(keys, 0)
+    return dict(zip(keys, row))
