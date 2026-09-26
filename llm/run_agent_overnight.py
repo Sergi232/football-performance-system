@@ -17,7 +17,7 @@ from pathlib import Path
 import pandas as pd
 
 from app.data_access import get_squad_summary, get_team_matches, list_teams
-from llm.coach_agent import DEFAULT_MODEL, ollama_status, run_coach_agent_turn
+from llm.coach_agent_fast import DEFAULT_MODEL, ollama_status, run_coach_agent_turn
 
 
 QUESTION_TEMPLATES = [
@@ -143,7 +143,7 @@ def main() -> None:
     print("=" * 88)
     print("COACH COPILOT LOCAL OLLAMA EVALUATION")
     print(f"team={team_name} model={args.model} max_cases={args.max_cases} hard_limit_hours={args.hours}")
-    print("Provider: Ollama localhost | paid API: OFF | analytics mutation: OFF")
+    print("Provider: Ollama localhost | paid API: OFF | thinking: OFF | analytics mutation: OFF")
     print("=" * 88)
 
     while case < args.max_cases and time.monotonic() < deadline:
@@ -209,6 +209,7 @@ def main() -> None:
         "finished_at": utc_now(),
         "notes": [
             "No paid/external LLM API is used by this runner.",
+            "Ollama thinking is disabled to keep local agent latency practical.",
             "Deterministic checks validate runtime/tool grounding/guardrail basics, not semantic truth of every prose claim.",
             "No analytics/model version is modified by this runner.",
         ],
