@@ -12,15 +12,17 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from app.coach_ui import page_header
 from app.data_access import get_squad_summary, get_team_matches, list_teams
-from app.ui_theme import apply_professional_theme
+from app.ui_theme import apply_professional_theme, sidebar_navigation
 from llm.context_builder import build_match_context, build_player_context, build_team_context
 from llm.openai_provider import answer_question, provider_available
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 
-st.set_page_config(page_title="Assistent IA · Football Performance System", page_icon="⚽", layout="wide")
+st.set_page_config(page_title="Assistent IA · Football Performance System", page_icon="💬", layout="wide")
 apply_professional_theme()
+sidebar_navigation()
 
 
 def db_path() -> Path:
@@ -43,9 +45,12 @@ if teams.empty:
     st.info("No hi ha equips disponibles.")
     st.stop()
 
-st.markdown("<div class='fps-kicker'>COACH ASSISTANT</div>", unsafe_allow_html=True)
-st.title("Assistent IA")
-st.caption("Explica resultats ja calculats pel sistema. No calcula ratings, no inventa mètriques i no emet recomanacions tàctiques no validades.")
+page_header(
+    "COACH ASSISTANT",
+    "Assistent IA",
+    "Explora i explica analytics ja calculats. L'assistent no crea ratings, mètriques crítiques ni recomanacions tàctiques no validades.",
+    "Downstream analytics",
+)
 
 left, right = st.columns([1, 1])
 team_labels = {str(r.team_id): str(r.display_name) for r in teams.itertuples(index=False)}
