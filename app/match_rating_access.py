@@ -6,7 +6,7 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
-MATCH_RATING_VERSION = "match_rating_v0.2-candidate"
+MATCH_RATING_VERSION = "match_rating_v0.5-candidate"
 
 
 def _connect(db_path: Path) -> duckdb.DuckDBPyConnection:
@@ -167,8 +167,8 @@ def get_match_rating_status(db_path: Path) -> dict:
             SELECT
                 COUNT(*) AS rows,
                 COUNT(*) FILTER (WHERE match_rating_10 IS NOT NULL) AS rated_rows,
-                COUNT(*) FILTER (WHERE rating_path='GOALKEEPER') AS goalkeeper_rows,
-                COUNT(*) FILTER (WHERE match_rating_context='GENERIC_ROLE_UNAVAILABLE') AS generic_role_rows,
+                COUNT(*) FILTER (WHERE position_group='GK') AS goalkeeper_rows,
+                COUNT(*) FILTER (WHERE match_rating_context='ROLE_UNAVAILABLE_V2_FALLBACK') AS generic_role_rows,
                 COUNT(*) FILTER (WHERE match_rating_status LIKE '%NEUTRAL_%') AS neutral_rows,
                 COUNT(DISTINCT match_id) AS matches
             FROM player_match_rating
