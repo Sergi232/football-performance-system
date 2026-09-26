@@ -36,7 +36,7 @@ PERF-03 DIMENSION MAPPING AUDIT     CERRADO / MAPPING COMPLETE — ISSUE #54
 PERF-04 DIRECTION VALIDATION        CERRADO / CONTEXTUAL METRICS RETAINED — ISSUE #56
 PERF-05 SIGNED CORE FEASIBILITY     CERRADO / OUTFIELD CORE AVAILABLE — ISSUE #57
 PERF-06 GOALKEEPER EFFICIENCY       CERRADO / SAVE_RATE DERIVABLE — ISSUE #58
-PERF-07 GK SAVE_RATE CONTEXT         ACTIVO — ISSUE #59 / SCRIPT IMPLEMENTADO
+PERF-07 GK SAVE_RATE CONTEXT         ACTIVO / RERUN v0.1.1 — ISSUE #59
 FINAL-01                            BLOQUEADO HASTA REDISEÑO DE PRODUCTO
 ```
 
@@ -61,11 +61,9 @@ Rol/posición se usa como contexto de comparación/normalización. No existe tod
 
 ## PERF-06 — cerrado
 
-Resultado ejecutado:
+Resultado:
 ```text
 candidate_rows=397
-players=26
-matches=36
 rows_with_both_inputs=31
 positive_denominator=31
 save_rate_rows=31
@@ -74,46 +72,48 @@ save_rate=min:0.2500 median:0.6250 max:0.8333
 conclusion=GOALKEEPER_SAVE_RATE_DERIVABLE_CONTEXT_VALIDATION_REQUIRED
 ```
 
-Decisión:
-- `save_rate = saves / (saves + goals_conceded)` es matemáticamente derivable;
-- 31 player-match tienen denominador válido;
-- no hay valores fuera de 0..1;
-- todavía no entra en FEATURE-01 hasta validar que esas filas son realmente de portero.
+`save_rate = saves / (saves + goals_conceded)` es matemáticamente derivable, pero solo puede admitirse como feature específica de portero después de validar semántica y rol.
 
-## PERF-07 — activo
+## PERF-07 — activo / rerun requerido
 
 Issue #59.
 
-Script:
+Resultado v0.1.0:
 ```text
-dsai/goalkeeper_save_rate_context_audit.py
+candidate_rows=31
+players=1
+matches=31
+validated_context_rows=31
+direct_conflicts=0
+unknown_mixed=0
+unknown_no_gk_evidence=0
+current_positions=Goalkeeper:31
+positive_gk_event_rows=397
+positive_event_current_non_gk=299
+conclusion=SAVE_RATE_CONTEXT_CONTAMINATION_REQUIRES_FIX
 ```
 
-Objetivo: validar contexto y procedencia de las 31 filas derivables antes de admitir `save_rate` como feature role-specific.
+Revisión metodológica:
+- las 31 filas derivables son directamente `Goalkeeper` y no tienen conflicto de rol;
+- el criterio v0.1.0 marcó falsamente contaminación al tratar `goals_conceded > 0` en jugadores de campo como un evento específico de portero;
+- `goals_conceded` puede aparecer como contexto de jugador/equipo y no bloquea por sí solo la feature;
+- la contaminación real se comprobará con `saves > 0` asignado a un rol actual no-portero.
 
-Audita:
-- `primary_role` / `source_position` actual;
-- contradicciones explícitas de rol no-portero;
-- filas con rol actual desconocido y evidencia source-backed de portero del mismo jugador en otros partidos;
-- posibles eventos positivos de portero asignados a roles actuales no-portero.
+Corrección implementada en:
+```text
+dsai/goalkeeper_save_rate_context_audit.py
+version=goalkeeper_save_rate_context_audit_0.1.1
+```
 
-Reglas:
-- el historial de rol se usa solo para auditoría semántica, nunca como predictor o imputación de rendimiento;
+Criterio de admisión:
+- `save_rate` solo será admisible en filas cuya `source_position` actual sea `Goalkeeper`;
+- historial de posición = auditoría de procedencia únicamente, nunca imputación o predictor;
 - no se inventa xGOT/PSxG;
-- no se crea score, peso, threshold, ranking o recomendación;
-- no se modifica FEATURE-01 en PERF-07.
-
-Si el contexto queda validado, el siguiente paso será admitir `save_rate` como feature de portero con dirección positiva contextualizada y pasar a validación de agregación/pesos.
-
-## Incidencias de repositorio
-
-Issue #55 fue un artefacto accidental del conector y quedó cerrado inmediatamente como `not_planned`.
-
-Durante la preparación de PERF-05 se generaron varios ficheros auxiliares redundantes bajo `docs/PERF_05_*`; no son fuente de verdad y se limpiarán sin afectar resultados.
+- no se crea todavía ningún score, peso o threshold.
 
 ## Líneas todavía bloqueadas
 
-- score global final: hasta validar portero y agregación/pesos;
+- score global final: hasta cerrar PERF-07 y validar agregación/pesos;
 - `role_player_fit`: sin target independiente defendible;
 - `expert_vs_ml`: sin shared target independiente;
 - calibración N13000: sin ground truth de recomendación.
