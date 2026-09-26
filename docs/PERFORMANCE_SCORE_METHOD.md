@@ -13,6 +13,7 @@ RAW / NORMALIZED DATA
 → FEATURE-01
 → PERFORMANCE DIMENSIONS
 → DIRECTION VALIDATION
+→ SIGNED CORE FEASIBILITY
 → WEIGHT / AGGREGATION VALIDATION
 → PERFORMANCE SCORE
 → TEMPORAL EVOLUTION / CONSISTENCY
@@ -24,7 +25,18 @@ RAW / NORMALIZED DATA
 
 PERF-01 concluyó `EXPERT_WEIGHT_VALIDATION_REQUIRED`: no existe un rating individual holístico independiente en la fuente profesional auditada que pueda actuar como target supervisado limpio.
 
-Por tanto, el score debe validarse como constructo, no copiar o predecir un rating de proveedor.
+PERF-03 cerró el mapping estructural de 28/28 FEATURE-01 en seis dimensiones primarias sin duplicación primaria.
+
+PERF-04 cerró la clasificación de direcciones:
+
+```text
+POSITIVE_SUPPORTED = 6
+NEGATIVE_SUPPORTED = 5
+CONTEXT_DEPENDENT = 17
+PENDING_EVIDENCE = 0
+```
+
+Esto significa que 11 features tienen una dirección defendible y 17 deben conservarse como contexto en lugar de forzarse dentro de un score.
 
 ## Principios obligatorios
 
@@ -37,46 +49,44 @@ Por tanto, el score debe validarse como constructo, no copiar o predecir un rati
 - una estadística componente no puede validarse a sí misma como target externo;
 - higher/lower no implica better/worse sin validación;
 - PCA, correlación o varianza no definen calidad de rendimiento por sí solas;
-- ningún peso entra en producto sin análisis de sensibilidad y justificación explícita.
+- ningún peso entra en producto sin análisis de sensibilidad y justificación explícita;
+- `CONTEXT_DEPENDENT` no equivale a cero valor: significa que la métrica no puede recibir un signo universal sin contexto adicional.
 
-## Dimensiones candidatas existentes
+## Dimensiones estructurales actuales
 
-El sistema experto ya contiene evidencia en:
-- N4000 — amenaza ofensiva;
-- N5000 — creación/progresión;
-- N6000 — contribución defensiva;
-- N7000 — finalización.
+- `attacking_threat`;
+- `creation_progression`;
+- `defensive_contribution`;
+- `finishing`;
+- `discipline`;
+- `goalkeeping` (role-specific).
 
-PERF-02 audita si estas familias cubren realmente todas las features aprobadas y detecta métricas no mapeadas, duplicadas o especialmente condicionadas por rol.
+Cada FEATURE-01 tiene exactamente una dimensión primaria. `shots_total_per90` conserva finalización como contexto secundario pero no puede contarse dos veces en un agregado.
 
-## Problemas que PERF-02 debe resolver antes del score
+## PERF-05 — Signed core feasibility
 
-1. **Cobertura** — una dimensión no puede depender de datos que rara vez existen.
-2. **Dirección** — una métrica puede ser output, eficiencia, coste, volumen o contexto, pero esa semántica no fija automáticamente el signo.
-3. **Redundancia** — una misma feature no puede contarse dos veces silenciosamente.
-4. **Rol** — clearances, tackles, crosses o saves dependen fuertemente del rol y del contexto.
-5. **Portero** — un score universal no puede ignorar las métricas específicas de portero.
-6. **Disciplina** — tarjetas/faltas/penaltis requieren tratamiento explícito, no quedar fuera por omisión.
-7. **1v1** — volumen y eficiencia deben distinguirse.
+Antes de crear dimensiones puntuables se audita el núcleo de features con dirección respaldada.
 
-## Ruta prevista después de PERF-02
+Se comprobará:
+- cobertura real de las 11 features firmadas;
+- cobertura por dimensión;
+- dimensiones sin ninguna feature firmada;
+- diferencias estructurales entre jugadores de campo y porteros;
+- filas con evidencia suficiente por dimensión, sin agregación.
 
-### PERF-03 — Direction validation
-Cada métrica candidata se clasifica como:
-- dirección respaldada;
-- contexto-dependiente;
-- no apta para score global;
-- pendiente de evidencia.
+No se crearán medias, z-scores, pesos, percentiles, rankings ni score.
 
-La evidencia puede venir de literatura, criterio experto documentado y experimentación reproducible. No se asignará un signo por intuición del LLM.
+Si una dimensión depende solo de métricas `CONTEXT_DEPENDENT`, no se forzará una dirección para completar artificialmente el score.
 
-### PERF-04 — Dimension prototypes
-Solo con métricas cuya dirección esté defendida. Se construyen dimensiones separadas antes del score global.
+## Ruta posterior prevista
 
-### PERF-05 — Weight and sensitivity study
-Se comparan esquemas de agregación defendibles y se cuantifica cuánto cambian rankings/decisiones al variar pesos. Un esquema simple solo puede mantenerse si es robusto y está explícitamente justificado.
+### PERF-06 — Dimension prototypes
+Solo después de PERF-05. Se podrán comparar prototipos de agregación explícitos como experimentos, nunca como fórmula aprobada por defecto.
 
-### PERF-06 — Performance score experimental
+### PERF-07 — Weight and sensitivity study
+Comparar esquemas de agregación defendibles y cuantificar cuánto cambian resultados al variar pesos. Un esquema simple solo puede mantenerse si es robusto y está explícitamente justificado.
+
+### PERF-08 — Performance score experimental
 Primera versión del score, todavía sujeta a validación temporal, estabilidad, ablations y contexto de rol.
 
 ## Resultado esperado
