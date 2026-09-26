@@ -295,9 +295,9 @@ La home no recalcula métricas ni crea recomendaciones.
 - no copiar fórmulas propietarias Sofascore/FotMob;
 - no convertir missing en 0 salvo semántica validada;
 - no threshold bueno/malo sin validación;
-- no recomendación táctica derivada directamente de ratings;
+- no recomendación tàctica derivada directamente de ratings;
 - Match Rating y Performance Index son capas distintas;
-- suplentes sin rol táctico no reciben rol inventado;
+- suplentes sin rol tàctic no reciben rol inventado;
 - porteros mantienen camino separado;
 - midpoint por evidencia insuficiente queda identificado y con confidence reducida;
 - LLM no calcula ni altera ratings;
