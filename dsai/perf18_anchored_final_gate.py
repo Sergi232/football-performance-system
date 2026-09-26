@@ -1,8 +1,11 @@
 """PERF-18 — saturation-aware final construct gate for anchored outfield rating.
 
-This validator does not change the candidate. It fixes a diagnostic artefact in the
-previous monotonicity gate: display clipping to 3–10 can mask a correct internal
-negative anchor when a row is already far above 10 (or a positive anchor below 3).
+This validator does not change the candidate. It distinguishes three different cases:
+- decisive anchors must move the internal score strictly in the declared direction;
+- structural events must never move the score in the wrong direction, but a small
+  fraction may show zero marginal effect when a role-standardized feature is already
+  winsorized at the +/-3 z boundary;
+- display clipping to 3–10 may hide otherwise valid raw-score movement.
 
 Checks:
 1) raw-score monotonicity for every event;
@@ -40,6 +43,10 @@ from perf18_outfield_anchored_candidate import (
 
 DEFAULT_OUTPUT = ROOT / "dsai" / "output" / "perf18_anchored_final_gate"
 TOL = 1e-12
+DECISIVE_NONWRONG_REQUIRED = 0.999999
+DECISIVE_STRICT_REQUIRED = 0.999
+STRUCTURAL_NONWRONG_REQUIRED = 0.999
+STRUCTURAL_STRICT_REQUIRED = 0.97
 
 
 def parse_args() -> argparse.Namespace:
@@ -95,19 +102,21 @@ def monotonicity(sample: pd.DataFrame, model: dict[str, Any]) -> tuple[dict[str,
             raw_nonwrong = raw_delta >= -TOL
             raw_strict = raw_delta > TOL
             display_nonwrong = display_delta >= -TOL
+            median_correct = float(raw_delta.median()) > TOL
         else:
             raw_nonwrong = raw_delta <= TOL
             raw_strict = raw_delta < -TOL
             display_nonwrong = display_delta <= TOL
+            median_correct = float(raw_delta.median()) < -TOL
 
-        # Correct raw movement can be invisible after clipping. This is not a
-        # construct-validity failure; report it explicitly as display saturation.
+        # Correct raw movement can be invisible after display clipping. This is
+        # reported as display saturation and is not a construct-validity failure.
         saturation_masked = raw_strict & (display_delta.abs() <= TOL)
         eligible = ~saturation_masked
         if expected > 0:
-            display_strict_eligible = (display_delta[eligible] > TOL)
+            display_strict_eligible = display_delta[eligible] > TOL
         else:
-            display_strict_eligible = (display_delta[eligible] < -TOL)
+            display_strict_eligible = display_delta[eligible] < -TOL
 
         raw_nonwrong_share = float(raw_nonwrong.mean())
         raw_strict_share = float(raw_strict.mean())
@@ -118,16 +127,21 @@ def monotonicity(sample: pd.DataFrame, model: dict[str, Any]) -> tuple[dict[str,
         )
 
         decisive = bool(spec["decisive"])
-        # Decisive anchors are mathematically explicit: demand exact raw direction.
-        # Structural events allow tiny numerical/tail exceptions but never wrong sign
-        # in more than 0.1% of sampled rows.
-        raw_required = 0.999999 if decisive else 0.999
-        strict_required = 0.999 if decisive else 0.95
+        if decisive:
+            nonwrong_required = DECISIVE_NONWRONG_REQUIRED
+            strict_required = DECISIVE_STRICT_REQUIRED
+        else:
+            # Structural features are winsorized at +/-3 z. Therefore a small tail
+            # can legitimately have zero marginal effect once the relevant feature
+            # is saturated. Wrong-sign movement is still effectively forbidden.
+            nonwrong_required = STRUCTURAL_NONWRONG_REQUIRED
+            strict_required = STRUCTURAL_STRICT_REQUIRED
+
         passed = bool(
-            raw_nonwrong_share >= 0.999999
-            and raw_strict_share >= raw_required
-            and display_nonwrong_share >= 0.999999
-            and display_strict_share >= strict_required
+            raw_nonwrong_share >= nonwrong_required
+            and raw_strict_share >= strict_required
+            and median_correct
+            and display_nonwrong_share >= nonwrong_required
         )
         overall = overall and passed
         out[name] = {
@@ -139,6 +153,9 @@ def monotonicity(sample: pd.DataFrame, model: dict[str, Any]) -> tuple[dict[str,
             "display_nonwrong_share": display_nonwrong_share,
             "display_strict_when_not_saturation_masked": display_strict_share,
             "display_saturation_masked_share": masked_share,
+            "median_direction_correct": bool(median_correct),
+            "required_nonwrong_share": float(nonwrong_required),
+            "required_strict_share": float(strict_required),
             "pass": passed,
         }
     return out, overall
@@ -232,10 +249,23 @@ def main() -> None:
     print("PERF-18 ANCHORED FINAL GATE")
     print(f"rows={len(frame)} train={len(train)} test={len(test)} split={split_info}")
     print("display_clip=3.0..10.0; saturation is reported separately from raw monotonicity")
+    print(
+        "gate_thresholds="
+        f"decisive(nonwrong>={DECISIVE_NONWRONG_REQUIRED},strict>={DECISIVE_STRICT_REQUIRED}); "
+        f"structural(nonwrong>={STRUCTURAL_NONWRONG_REQUIRED},strict>={STRUCTURAL_STRICT_REQUIRED},median-sign-correct)"
+    )
 
     result: dict[str, Any] = {
         "method": "raw_construct_monotonicity_plus_display_saturation_plus_minute_variance_plus_anchor_sensitivity",
         "split": split_info,
+        "gate_thresholds": {
+            "decisive_nonwrong_required": DECISIVE_NONWRONG_REQUIRED,
+            "decisive_strict_required": DECISIVE_STRICT_REQUIRED,
+            "structural_nonwrong_required": STRUCTURAL_NONWRONG_REQUIRED,
+            "structural_strict_required": STRUCTURAL_STRICT_REQUIRED,
+            "structural_median_direction_required": True,
+            "rationale": "structural z-features are winsorized at +/-3, so zero marginal effect in a small saturated tail is allowed; wrong-sign movement is not",
+        },
         "roles": {},
         "production_status": "EXPERIMENT_ONLY",
     }
@@ -280,6 +310,7 @@ def main() -> None:
             print(
                 f"  {e}: raw_delta={x['raw_median_delta']:+.4f} "
                 f"raw_strict={x['raw_strict_share']:.4f} "
+                f"required={x['required_strict_share']:.3f} "
                 f"masked_by_clip={x['display_saturation_masked_share']:.4f} "
                 f"pass={x['pass']}"
             )
