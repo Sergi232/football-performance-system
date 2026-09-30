@@ -44,7 +44,7 @@ try {
     Write-Host "Windows sleep: bloquejat temporalment mentre dura el procés"
 
     Write-Host "`n=== PREFLIGHT PYTHON ==="
-    python -c "import py_compile; py_compile.compile(r'llm\run_agent_self_improve.py', doraise=True); py_compile.compile(r'llm\run_agent_self_improve_entry.py', doraise=True); py_compile.compile(r'llm\summarize_self_improve.py', doraise=True); print('SYNTAX PASS')"
+    python -c "import py_compile; py_compile.compile(r'llm\run_agent_self_improve.py', doraise=True); py_compile.compile(r'llm\run_agent_self_improve_entry.py', doraise=True); py_compile.compile(r'llm\summarize_self_improve.py', doraise=True); import app.data_access; import llm.run_agent_self_improve_entry; print('SYNTAX+IMPORT PASS')"
     if ($LASTEXITCODE -ne 0) { throw "Python preflight failed." }
 
     Write-Host "`n=== OLLAMA ==="
@@ -63,13 +63,13 @@ try {
     }
 
     Write-Host "`n=== INICIANT PROCÉS AUTÒNOM ==="
-    python -u .\llm\run_agent_self_improve_entry.py --hours $Hours --model $Model
+    python -u -m llm.run_agent_self_improve_entry --hours $Hours --model $Model
     if ($LASTEXITCODE -ne 0) {
         throw "Self-improvement runner ha acabat amb codi $LASTEXITCODE."
     }
 
     Write-Host "`n=== RESUM AUDITAT ROUTER vs SYNTHESIS ==="
-    python -u .\llm\summarize_self_improve.py
+    python -u -m llm.summarize_self_improve
     if ($LASTEXITCODE -ne 0) {
         throw "Audited summary ha acabat amb codi $LASTEXITCODE."
     }
