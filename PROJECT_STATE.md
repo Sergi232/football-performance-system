@@ -1,8 +1,8 @@
 # PROJECT_STATE
 
-Última actualización: 26/09/2026
+Última actualización: 30/09/2026
 
-Memoria técnica operativa del proyecto. Si contradice un chat antiguo, prevalece este archivo.
+Memoria técnica operativa del proyecto. Si contradice un chat antiguo, prevalece este archivo. El código actual de `main` y los commits posteriores a esta fecha deben comprobarse antes de asumir que este estado sigue siendo el último.
 
 ## Estado actual
 
@@ -35,24 +35,58 @@ LLM MATCH RATING CONTEXT            CONTRACT PASS / V5
 DASHBOARD-04 PHYSICAL/GPS           CERRADO / VALIDADO — ISSUE #92
 ALERTS-01 ATTENTION CENTRE          CERRADO / VALIDADO — v0.3
 UI COMPATIBILITY                    PASS 26/09/2026
-FINAL-01                            DESBLOQUEADO
+DOCUMENTATION-SYNC-01               CERRADO 30/09/2026
+FINAL-01                            ACTIVO / PRODUCTO FINAL
 PUBLIC DEPLOYMENT                   NO HACER — decisión explícita actual
 ```
+
+## Fuente de verdad
+
+Orden de precedencia operativo:
+
+```text
+código actual de main + commits recientes
+→ PROJECT_STATE.md
+→ docs/DECISIONS.md
+→ docs/ARCHITECTURE.md
+→ documentación específica del módulo
+→ README.md / docs/WORKFLOW.md
+→ conversaciones antiguas
+```
+
+El 30/09/2026 se corrigió documentation drift en:
+
+- `README.md`;
+- `docs/WORKFLOW.md`;
+- `docs/DECISIONS.md`.
+
+Quedan formalmente resueltos:
+
+- `DG-UX-01`: insight-first, audit-detail second;
+- `DG-LLM-01`: local-first mediante Ollama con provider opcional desacoplado;
+- `DG-REP-01`: informes profesionales específicos Team / Player / Match;
+- `D-010`: Match Rating V5 congelado como baseline activo;
+- `D-011`: separación explícita Match Rating vs Performance Index.
+
+`DG-PUB-01` continúa pendiente de derechos/licencia del dataset.
 
 ## Arquitectura de producto
 
 ```text
-COLLECTOR + GPS opcional
-→ DATABASE
+COLLECTOR / IMPORT + GPS opcional
+→ RAW / NORMALIZED DATA
 → FEATURE ENGINE
 → ANALYTICS
 → EXPERT SYSTEM / ML
+→ PRODUCT SERVICE / ACCESS LAYER
 → WEB DASHBOARD
-→ ASSISTANT IA
-→ PDF / informes
+   ↓              ↓
+ASSISTANT IA      PDF
 ```
 
-La web es el producto principal. PDF/PPT son salidas estáticas complementarias.
+La web es el producto principal. Los PDF son salidas estáticas complementarias.
+
+Regla: una capa superior no puede inventar cálculos, métricas, scores, clasificaciones o recomendaciones que no existan en una capa inferior validada.
 
 Arquitectura LLM local actual:
 
@@ -189,6 +223,8 @@ WIN  median=6.332
 
 Caso que motivó la revisión: derrota 0-3 del 20/12/2025 queda en media 6.143 y mediana 5.996; el antiguo comportamiento ~7.4 queda corregido sin imponer un castigo global por resultado.
 
+Match Rating V5 queda congelado como baseline vigente. No modificar fórmula, pesos o arquitectura sin nueva evidencia, experimentación explícita y validación.
+
 ## Gates validados tras activación V5
 
 ```text
@@ -234,24 +270,30 @@ PDFs generados correctamente
 ## Producto actual
 
 ### Home / Command Center
-`app/streamlit_app.py` ha sido rediseñada como Coach Command Center: último partido, brief operativo, forma, tendencias, cambios 5-vs-5, ratings destacados, calidad de datos y accesos principales. Check visual local pendiente después del rediseño.
+
+`app/streamlit_app.py` está rediseñada como Coach Command Center: último partido, brief operativo, forma, tendencias, cambios 5-vs-5, ratings destacados, calidad de datos y accesos principales. Gate visual local pendiente tras el rediseño.
 
 ### Jugador
-Match Rating V5, confidence, perfil, Performance Index, dimensiones, evolución, técnico, motor experto, partidos y PDF. Rediseño visual profesional aplicado; check visual local pendiente.
+
+Match Rating V5, confidence, perfil, Performance Index, dimensiones, evolución, técnico, motor experto, partidos y PDF. Rediseño visual profesional aplicado; gate visual local pendiente.
 
 ### Equipo
-Match Rating V5 operativo, forma, matriz de plantilla, tendencias, participación, Performance Index complementario, historial y PDF. Rediseño visual profesional aplicado; check visual local pendiente.
+
+Match Rating V5 operativo, forma, matriz de plantilla, tendencias, participación, Performance Index complementario, historial y PDF. Rediseño visual profesional aplicado; gate visual local pendiente.
 
 ### Partido
-Ratings V5, confidence, roles, minutos, distribución, dimensiones, observaciones deterministas y PDF desde partido 1. Rediseño visual profesional aplicado; check visual local pendiente.
+
+Ratings V5, confidence, roles, minutos, distribución, dimensiones, observaciones deterministas y PDF desde partido 1. Rediseño visual profesional aplicado; gate visual local pendiente.
 
 ### Físico / GPS
+
 Capa descriptiva opcional sobre GPS canónico. Sin HSR/sprint/load/fatigue/readiness no validados. La base local aún no contiene observaciones GPS reales; falta ejemplo local claramente etiquetado si se quiere demostrar km/velocidad en UI.
 
 ### Alertas
+
 Solo estados auditables de contexto/calidad. Sin diagnóstico de rendimiento, lesión o fatiga.
 
-### Asistente IA — LLM-02 Local Coach Copilot
+## Asistente IA — LLM-02 Local Coach Copilot
 
 Implementado:
 
@@ -265,8 +307,8 @@ Implementado:
 - guardrails: no recalcular ratings, no inventar métricas, no lesión/fatiga/readiness, no XI/recomendación táctica sin policy validada;
 - `app/pages/5_Assistent_IA.py`: chat abierto local con trazabilidad de tools;
 - validadores y runners locales de QA;
-- evaluación actual ejecutada con `qwen3:1.7b` para priorizar latencia; modelos mayores quedan sujetos a benchmark A/B;
-- Auto-QA previo: 216 casos, 210 PASS; 97,22% global, pero principalmente router/tool QA y no evidencia de síntesis final production-ready;
+- evaluación actual ejecutada con `qwen3:1.7b` para priorizar latencia;
+- Auto-QA previo: 216 casos, 210 PASS; 97,22% global, principalmente router/tool QA;
 - runner adaptativo seguro preparado para español/catalán, failure replay y perfiles de síntesis;
 - OpenAI no es necesario para este flujo local.
 
@@ -301,27 +343,14 @@ Pendiente para cerrar REPORTS-02:
 
 ## PRODUCT-SPIRAL-01 — mejora automática segura de producto
 
-Objetivo: utilizar un segundo PC para mejorar y estresar la capa final de producto (web + PDF) sin mezclar esta experimentación con analytics críticos.
+Objetivo: mejorar y estresar la capa final de producto web + PDF sin mezclar esta experimentación con analytics críticos.
 
-Archivos:
+Archivos principales:
 
-- `product/run_product_spiral.py` — motor principal;
-- `product/run_product_spiral_safe.py` — launcher endurecido para logging estable;
-- `product/README.md` — operación y límites.
-
-Funcionamiento:
-
-```text
-AUDIT UI/PDF
-→ SAFE PRESENTATION RECIPE
-→ COMPILE + UI + DASHBOARD + MATCH + REPORT CONTRACTS
-→ PRODUCT QUALITY SCORE
-→ ACCEPT LOCAL COMMIT / ROLLBACK
-→ REAL TEAM/PLAYER/MATCH PDF PROBES
-→ FAILURE REPLAY
-→ PERIODIC REGRESSION GATES
-→ FINAL SUMMARY
-```
+- `product/run_product_spiral.py`;
+- `product/run_product_spiral_safe.py`;
+- `product/run_product_spiral_optimizer.py`;
+- `product/README.md`.
 
 Allowlist de mutación:
 
@@ -331,9 +360,11 @@ app/coach_ui.py
 reports/pdf_engine.py
 ```
 
-Protegido explícitamente: `analytics/`, `data/`, `features/`, `decision_tree/`, `models/`, `llm/`, `gps/`. El runner no modifica la DB, Match Rating, Performance Index, thresholds ni decisiones expertas. Los cambios aceptados se guardan únicamente en una rama local `product-spiral-*`; nunca se hace push o merge automático. Los resultados locales quedan en `outputs/product_spiral/` y están ignorados por Git.
+Protegido explícitamente: `analytics/`, `data/`, `features/`, `decision_tree/`, `models/`, `llm/`, `gps/`.
 
-La fase automática mejora criterios objetivos (consistencia de superficies/estados, responsive, focus/accessibility, seguridad de paginación PDF, contract integrity y cobertura de escenarios). El gate visual humano sigue siendo obligatorio antes de integrar cambios, porque un score estructural no sustituye el juicio visual/UX.
+El runner no modifica DB, Match Rating, Performance Index, thresholds ni decisiones expertas. Los cambios aceptados se guardan únicamente en una rama local `product-spiral-*`; nunca se hace push o merge automático.
+
+Puede operar con DB real o en modo DB-free con payloads sintéticos contract-compatible. El gate visual humano sigue siendo obligatorio.
 
 ## Collector
 
@@ -342,7 +373,8 @@ Variables funcionales cerradas. Pendiente de producto:
 1. simplificar/mejorar UX;
 2. traducción completa al castellano;
 3. diseño mobile-first/responsive;
-4. mantener la misma semántica de variables, sin ampliar el scope sin justificación.
+4. reducir fricción de captura;
+5. mantener la misma semántica de variables y compatibilidad con el esquema existente.
 
 ## UI compatibility
 
@@ -352,7 +384,7 @@ Gate disponible:
 app/validate_ui_compatibility.py
 ```
 
-Última ejecución 26/09/2026:
+Última ejecución documentada 26/09/2026:
 
 ```text
 STREAMLIT UI COMPATIBILITY: PASS
@@ -376,21 +408,25 @@ Falta revisión visual tras el rediseño profesional del dashboard.
 - GPS opcional;
 - no HSR/sprint/load/fatigue/readiness sin definición validada;
 - PDF y dashboard consumen analytics materializados, no recalculan resultados críticos;
-- Product Spiral solo puede mutar su allowlist de presentación y nunca hace push automático;
+- Product Spiral solo puede mutar su allowlist de presentación y nunca hace push/merge automático;
 - no desplegar ni publicar públicamente mientras se mantenga la instrucción actual del usuario.
 
 ## Siguiente paso exacto
 
-PERF-18 queda cerrado. La prioridad inmediata es convertir dashboard + PDFs + Coach Copilot en un producto final robusto y profesional.
+`DOCUMENTATION-SYNC-01` queda cerrado el 30/09/2026.
+
+La prioridad inmediata pasa a ser **cerrar LLM-02 / Coach Copilot QA**.
 
 Orden inmediato:
 
-1. PC principal: dejar finalizar el QA adaptativo del Coach Copilot y revisar su resumen separando router/tools de síntesis;
-2. segundo PC: clonar/actualizar repo, usar una copia local de la DuckDB y ejecutar `python product\run_product_spiral_safe.py --hours 10 --max-cases 100000`;
-3. revisar la rama local `product-spiral-*` y `outputs/product_spiral/<run_id>/final_summary.json` antes de integrar cambios;
-4. hacer gate visual humano Home / Team / Player / Match y tres PDFs representativos;
-5. cerrar REPORTS-02 si no hay clipping/overlap/legibilidad;
-6. mejorar Collector: castellano + móvil + simplificación UX;
-7. añadir un ejemplo GPS local claramente etiquetado para demostrar km/velocidad, sin mezclarlo con datos reales;
-8. continuar mejora del Performance Index histórico y perfiles;
-9. preparar documentación final del TFM, sin despliegue público.
+1. localizar y revisar el estado actual de los runners/resultados de QA adaptativo del Coach Copilot;
+2. separar métricas de ROUTER/TOOLS y SYNTHESIS;
+3. identificar los fallos reales restantes y corregir solo los que sobrevivan al QA;
+4. ejecutar benchmark controlado `qwen3:1.7b` vs `qwen3:4b` si el entorno local lo permite;
+5. después revisar Product Spiral y hacer gate visual Home / Team / Player / Match;
+6. revisar tres PDFs representativos y cerrar REPORTS-02 si pasan clipping/overlap/legibilidad;
+7. mejorar Collector: castellano + móvil + simplificación UX;
+8. añadir ejemplo GPS local claramente etiquetado;
+9. continuar mejora del Performance Index histórico;
+10. ejecutar QA/regresión global;
+11. preparar documentación final, demo y paquete de presentación/publicación del TFM, sin despliegue público mientras siga bloqueado.
