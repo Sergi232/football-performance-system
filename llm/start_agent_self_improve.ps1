@@ -19,8 +19,6 @@ $env:FPS_LOCAL_LLM_MODEL = $Model
 $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $log = Join-Path $env:USERPROFILE "Desktop\TFM_AGENT_SELF_IMPROVE_$stamp.txt"
 
-# Prevent system sleep only while this launcher is alive. The normal Windows power
-# policy is restored in finally; no persistent power-plan setting is changed.
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
@@ -43,7 +41,7 @@ try {
     Write-Host "Windows sleep: bloquejat temporalment mentre dura el procés"
 
     Write-Host "`n=== PREFLIGHT PYTHON ==="
-    python -c "import py_compile; py_compile.compile(r'llm\run_agent_self_improve.py', doraise=True); py_compile.compile(r'llm\run_agent_self_improve_entry.py', doraise=True); print('SYNTAX PASS')"
+    python -c "import py_compile; py_compile.compile(r'llm\run_agent_self_improve.py', doraise=True); py_compile.compile(r'llm\run_agent_self_improve_entry.py', doraise=True); py_compile.compile(r'llm\summarize_self_improve.py', doraise=True); print('SYNTAX PASS')"
     if ($LASTEXITCODE -ne 0) { throw "Python preflight failed." }
 
     Write-Host "`n=== OLLAMA ==="
@@ -67,8 +65,15 @@ try {
         throw "Self-improvement runner ha acabat amb codi $LASTEXITCODE."
     }
 
+    Write-Host "`n=== RESUM AUDITAT ROUTER vs SYNTHESIS ==="
+    python -u .\llm\summarize_self_improve.py
+    if ($LASTEXITCODE -ne 0) {
+        throw "Audited summary ha acabat amb codi $LASTEXITCODE."
+    }
+
     Write-Host "`n=== PROCÉS COMPLETAT ==="
     Write-Host "Resultats: $Repo\outputs\agent_eval\self_improve"
+    Write-Host "Resum principal: $Repo\outputs\agent_eval\self_improve\audited_summary_latest.json"
 }
 finally {
     [void][FpsKeepAwake]::SetThreadExecutionState($ES_CONTINUOUS)
