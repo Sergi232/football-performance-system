@@ -13,13 +13,18 @@ from typing import Any
 
 from llm import coach_agent_hybrid as _hybrid
 
+# Only explicit data-quality/sufficiency language belongs here. Generic phrases such
+# as "según los datos disponibles", "amb les dades disponibles" or "evidencia
+# disponible" are deliberately excluded because they are grounding qualifiers, not
+# requests for a second data-quality tool. Over-routing those phrases inflated the
+# synthesis prompt and caused avoidable CPU timeouts in ordinary team/player queries.
 QUALITY_TERMS = (
     "limitacions", "limitaciones", "qualitat", "calidad", "qualitat de dades",
-    "calidad de datos", "dades falten", "datos faltan", "datos disponibles",
-    "dades disponibles", "evidencia", "evidència", "cobertura", "missing",
+    "calidad de datos", "dades falten", "datos faltan", "quines dades falten",
+    "que datos faltan", "qué datos faltan", "cobertura", "missing",
     "tenim prou dades", "tenemos suficientes datos", "tenemos datos suficientes",
     "podem parlar", "podemos hablar", "es pot parlar", "se puede hablar",
-    "informacio disponible", "información disponible", "informacion disponible",
+    "manca de dades", "falta de datos", "dades insuficients", "datos insuficientes",
 )
 
 GPS_TERMS = (
@@ -141,9 +146,8 @@ def plan_tools_v2(
 
     plan: list[tuple[str, dict[str, Any]]] = []
 
-    # Quality language is compositional, not an exclusive early-return intent.
-    # This prevents harmless QA/user phrases such as "según la evidencia disponible"
-    # or "indica las limitaciones" from hijacking a player/match/GPS question.
+    # Data-quality is compositional only when the user explicitly asks about quality,
+    # missingness, coverage or sufficiency. Generic grounding qualifiers do not add it.
     quality_question = any(_norm(term) in q for term in QUALITY_TERMS)
     if quality_question:
         plan.append(("get_data_quality", {}))
