@@ -1,26 +1,29 @@
 # Registro de decisiones estructurales
 
-Fecha: 26/09/2026
+Fecha: 30/09/2026
 
 Este archivo contiene únicamente decisiones que pueden cambiar arquitectura, metodología, producto, privacidad o publicación. No se usa para detalles técnicos rutinarios.
 
 Estados:
+
 - `APPROVED`
 - `PENDING SERGI`
 - `DEFERRED`
 - `REJECTED`
 
-## Decisiones ya aprobadas
+## Decisiones aprobadas
 
 ### D-001 — TEAM MODE como producto principal
 Estado: `APPROVED`
 
-TEAM MODE es el modo principal. PLAYER MODE es complementario. RIVAL MODE queda como extensión futura y el sistema principal no depende de datos del rival.
+TEAM MODE es el modo principal. PLAYER MODE es complementario. MATCH MODE forma parte del producto operativo. RIVAL MODE queda como extensión futura y el sistema principal no depende de datos del rival.
 
 ### D-002 — GPS opcional
 Estado: `APPROVED`
 
 El producto funciona sin GPS. GPS añade contexto físico cuando existe.
+
+No se exponen HSR, sprint, workload, fatigue, readiness o riesgo de lesión sin definición y validación explícitas.
 
 ### D-003 — LLM fuera del cálculo crítico
 Estado: `APPROVED`
@@ -28,64 +31,118 @@ Estado: `APPROVED`
 Arquitectura obligatoria:
 
 ```text
-DATA → ANALYTICS → DECISION ENGINE → LLM → COACH
+DATA → ANALYTICS → DECISION ENGINE → TOOLS READ-ONLY → LLM → COACH
 ```
 
-El LLM no crea métricas críticas ni sustituye decisiones del motor.
+El LLM no crea métricas críticas, no recalcula ratings ni sustituye decisiones del motor.
 
 ### D-004 — Sistema experto auditable antes de ML
 Estado: `APPROVED`
 
-El baseline principal es un sistema jerárquico N1000–N13000. ML se añade después y debe compararse con el baseline cuando tenga sentido.
+El baseline principal es un sistema jerárquico N1000-N13000. ML es complementario y se incorpora solo cuando existe una hipótesis, target y validación defendibles.
 
 ### D-005 — No recomendación N13000 sin policy validada
 Estado: `APPROVED`
 
-Hasta validar evidencia, mínimos de muestra, reglas y significancia práctica, N13000 no emite recomendación táctica final.
+N13000 no puede emitir una recomendación táctica final si los criterios, mínimos de muestra, reglas y confidence no están validados.
+
+La ausencia de recomendación es una salida válida y auditable.
 
 ### D-006 — Web como producto principal
 Estado: `APPROVED`
 
-Los PDF son exportaciones/entregables estáticos. No sustituyen la aplicación web.
+La aplicación Streamlit es el producto principal. Los PDF son entregables estáticos complementarios.
 
 ### D-007 — GitHub como fuente de verdad
 Estado: `APPROVED`
 
-`PROJECT_STATE.md`, arquitectura, workflow y decisiones documentadas prevalecen sobre conversaciones antiguas.
+El repositorio es la memoria técnica definitiva.
+
+Orden de precedencia:
+
+```text
+código actual de main + commits recientes
+→ PROJECT_STATE.md
+→ docs/DECISIONS.md
+→ docs/ARCHITECTURE.md
+→ documentación específica del módulo
+→ README.md / docs/WORKFLOW.md
+→ conversaciones antiguas
+```
+
+Si código y documentación divergen, debe investigarse la discrepancia y actualizar la documentación cuando corresponda.
 
 ### D-008 — Rendimiento como objetivo analítico principal
 Estado: `APPROVED`
 
-El objetivo central de la capa analítica/DS es construir un **score de rendimiento jugador-partido** defendible, auditable y útil para el entrenador.
+El objetivo central es medir rendimiento de jugador de forma defendible, auditable y útil para el entrenador.
 
-El flujo objetivo pasa a ser:
+Flujo:
 
 ```text
 PLAYER-MATCH DATA
 → DIMENSIONES DE RENDIMIENTO
-→ SCORE GLOBAL VALIDADO
+→ MATCH RATING
 → EVOLUCIÓN / CONSISTENCIA
 → CONTEXTO DE ROL
-→ CONCLUSIONES / RECOMENDACIONES
+→ CONCLUSIONES ESTRUCTURADAS
 ```
 
-El rol o la posición no son el target principal. Se usan para contextualizar, normalizar o comparar rendimiento cuando existe una etiqueta observada fiable.
+El rol o posición no son el target principal. Se utilizan para contextualizar, normalizar y comparar cuando existe una etiqueta observada fiable.
 
-No se autoriza todavía ninguna fórmula de score, peso, signo, percentil o escala final. Esos elementos deben justificarse con datos, literatura, validación externa, criterio experto o experimentación reproducible.
+El Match Rating vigente se rige por D-010.
 
 ### D-009 — Anchor externo: semántica antes que coincidencia lexical
 Estado: `APPROVED`
 
-Un campo profesional solo puede actuar como candidato a anchor externo del score si representa una **valoración individual holística e independiente** del jugador.
+Un campo profesional solo puede actuar como candidato a anchor externo si representa una valoración individual holística e independiente del jugador.
 
 No basta con que el nombre contenga `score`, `rating`, `grade`, `index` o `rank`.
 
 Quedan excluidos como anchors:
-- resultados/contexto de partido o equipo (`home_score`, `away_score`);
-- estadísticas componentes del propio rendimiento (`bigChanceScored`, goles, tiros, pases, etc.);
-- variables que después formen parte de los inputs del producto.
 
-Un anchor válido, si existe, se usa únicamente para validación/aprendizaje experimental y nunca como input obligatorio del sistema amateur.
+- resultados/contexto de partido o equipo;
+- estadísticas componentes del propio rendimiento;
+- variables utilizadas después como inputs del producto.
+
+Un anchor externo se usa para validación/aprendizaje experimental y nunca como input obligatorio del sistema amateur.
+
+### D-010 — Match Rating V5 como baseline activo
+Estado: `APPROVED`
+
+Versión activa:
+
+```text
+match_rating_v0.5-candidate
+```
+
+Principios aprobados:
+
+- rating posicional para jugadores de campo;
+- roles CB / FB / DM / CM / AM / W / ST;
+- modelo separado para porteros;
+- portero: 90% shot-stopping / 10% distribución;
+- fallback explícito si no existe rol fiable;
+- nunca inventar una posición;
+- no convertir missing en zero sin semántica validada;
+- no aplicar castigo global automático por resultado del equipo.
+
+El Match Rating V5 queda congelado como baseline vigente. No se modifica fórmula, pesos o arquitectura sin evidencia nueva, experimentación explícita y validación.
+
+### D-011 — Match Rating y Performance Index son capas distintas
+Estado: `APPROVED`
+
+```text
+MATCH RATING
+= nota inmediata jugador-partido
+= disponible desde partido 1
+
+PERFORMANCE INDEX
+= capa histórica/posicional
+= evolución + forma + consistencia + contexto de rol
+```
+
+No deben presentarse ni interpretarse como la misma métrica.
 
 ### DG-AN-01 — Comparaciones analíticas válidas
 Estado: `APPROVED`
@@ -93,77 +150,94 @@ Estado: `APPROVED`
 Decisión: **C — ambas, separadas y explícitamente etiquetadas**.
 
 Analytics conserva dos evidencias distintas:
+
 - `SELF_ROLE_PRIOR`: jugador vs su propio historial estrictamente anterior en el mismo rol observado;
 - `PEER_ROLE_PRIOR`: jugador vs otros jugadores del mismo equipo con el mismo rol observado, usando solo información estrictamente anterior.
 
-No se mezclan silenciosamente en un único score. La comparación peer excluye al jugador actual y cada peer aporta su media strict-past en ese rol antes de construir la distribución de referencia.
+No se mezclan silenciosamente en un único score.
 
 ### DG-N13-01 — Política final de recomendación
 Estado: `APPROVED`
 
-Decisión: **C — recomendación + confianza + justificación + alternativa/limitaciones** como contrato objetivo de N13000.
+Contrato objetivo:
 
-Cuando la policy esté validada, una salida final podrá incluir:
-- recomendación;
-- confianza o calibración;
-- evidencia que la soporta;
-- justificación auditable;
-- limitaciones;
-- alternativa cuando proceda.
+**recomendación + confianza + justificación + alternativa/limitaciones**.
 
-Esta aprobación no fija todavía umbrales, pesos ni reglas de confianza. Esos componentes deben validarse con estadística, experimentos DS/ML y literatura cuando corresponda. Hasta entonces N13000 mantiene `RECOMMENDATION_NOT_ISSUED_*`.
-
-## Gates pendientes
+La aprobación del contrato no autoriza thresholds, pesos o reglas de confidence no validados. Hasta disponer de policy suficiente, N13000 conserva salidas `RECOMMENDATION_NOT_ISSUED_*` cuando corresponda.
 
 ### DG-UX-01 — Jerarquía de producto
-Estado: `PENDING SERGI`
+Estado: `APPROVED`
 
-**Por qué importa:** define el rediseño de TEAM / PLAYER / MATCH.
+Decisión: **B — insights/alertas como vista principal y datos como segundo nivel**.
 
-Opciones:
-- A. exploración de tablas/datos como vista principal;
-- B. insights/alertas como vista principal y datos como segundo nivel;
-- C. híbrido con igual peso.
+Principio operativo:
 
-Recomendación arquitectónica: **B**.
+```text
+insight-first, audit-detail second
+```
+
+Home, Team, Player y Match deben responder primero qué necesita entender el entrenador. Tablas, provenance, dimensiones y detalle quedan como segundo nivel de exploración/auditoría.
 
 ### DG-LLM-01 — Arquitectura final del asistente
-Estado: `PENDING SERGI`
+Estado: `APPROVED`
 
-**Por qué importa:** privacidad, instalación, coste, rendimiento y despliegue.
+Decisión: **C — local-first + provider opcional desacoplado**.
 
-Opciones:
-- A. cloud only;
-- B. local only;
-- C. local-first + cloud opcional + fallback determinista;
-- D. determinista sin LLM generativo.
+Implementación actual:
 
-Recomendación arquitectónica: **C**, si el hardware objetivo lo permite. El provider debe ser intercambiable y no afectar a Analytics/Decision Engine.
+```text
+DuckDB local
+→ analytics / expert outputs materializados
+→ Python tools read-only
+→ Ollama localhost
+→ Coach Copilot
+```
+
+OpenAI no es necesario para el producto actual. Cualquier provider cloud futuro debe seguir siendo intercambiable y no puede alterar Analytics/Decision Engine.
 
 ### DG-REP-01 — Estructura final de informes
-Estado: `PENDING SERGI`
+Estado: `APPROVED`
 
-**Por qué importa:** el PDF actual es prueba técnica, no entregable final.
+Decisión: **B — informes profesionales específicos para entrenador, alimentados por los mismos insights estructurados**.
 
-Opciones:
-- A. export directo del dashboard;
-- B. informe profesional específico para entrenador, alimentado por los mismos insights;
-- C. ambos.
+Entregables actuales:
 
-Recomendación arquitectónica: **C**, con B como entregable principal y A como export rápido opcional.
+- Team Report;
+- Player Report;
+- Match Report.
+
+Los PDF son una representación estática profesional y no una segunda lógica de negocio. Un export directo del dashboard no es requisito del TFM actual.
+
+## Gate pendiente
 
 ### DG-PUB-01 — Dataset público
 Estado: `PENDING SERGI / DEPENDE DE DERECHOS`
 
 Opciones:
-- A. dataset profesional anonimizado si existe permiso explícito;
+
+- A. dataset profesional anonimizado si existe permiso explícito de redistribución;
 - B. dataset sintético reproducible;
 - C. dataset abierto con licencia compatible.
 
-Regla: no publicar la DB profesional anonimizando únicamente nombres si la licencia no permite redistribución.
+Regla: anonimizar técnicamente nombres e identificadores no concede derechos de redistribución.
+
+Mientras no exista permiso explícito, no se publica la base profesional.
+
+## Decisiones operativas derivadas
+
+Estas reglas no requieren un nuevo gate mientras no cambie su significado estructural:
+
+- Collector conserva la semántica actual; sus cambios inmediatos son UX, castellano y responsive;
+- Product Spiral solo puede mutar archivos de presentación autorizados y nunca hace push/merge automático;
+- el gate visual humano es obligatorio para dashboard y PDF;
+- las capas superiores no pueden inventar métricas o recomendaciones no existentes en capas inferiores;
+- no reabrir DATA / FEATURES / EXPERT / MATCH RATING sin incidencia concreta o evidencia nueva;
+- despliegue público continúa bloqueado mientras no se decida expresamente lo contrario.
 
 ## Regla de uso
 
-No se deben preguntar todos estos gates a la vez si no son necesarios para la fase activa.
+El Architect solo presenta a Sergi un Decision Gate cuando realmente bloquea el siguiente trabajo.
 
-El Architect solo presenta a Sergi el gate que bloquea el siguiente trabajo. La decisión se registra aquí y se actualiza `PROJECT_STATE.md`.
+No se piden decisiones sobre detalles técnicos ordinarios o reversibles.
+
+Toda nueva decisión estructural aprobada debe registrarse aquí y, si cambia el estado operativo, reflejarse también en `PROJECT_STATE.md`.
