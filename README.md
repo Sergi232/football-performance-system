@@ -1,144 +1,151 @@
 # Football Performance System
 
-Sistema de análisis de rendimiento futbolístico orientado a equipos amateur y semiprofesionales sin departamento de análisis propio. Convierte datos sencillos de vídeo y GPS opcional en información estructurada para el cuerpo técnico.
+Sistema de análisis de rendimiento futbolístico orientado a equipos amateur y semiprofesionales sin departamento de análisis propio. Convierte datos realistas de vídeo y GPS opcional en información estructurada, auditable y útil para el cuerpo técnico.
 
-El repositorio forma parte de un Trabajo Final de Máster en **Data Science e Inteligencia Artificial**. El objetivo es doble: construir un producto funcional y reproducible, y demostrar una contribución metodológica sólida en datos, feature engineering, analytics, sistema experto, ML, validación y explicabilidad.
+El repositorio forma parte de un Trabajo Final de Máster en **Data Science e Inteligencia Artificial**. El entregable principal es doble: un producto funcional y reproducible, y una metodología defendible en datos, feature engineering, analytics, sistema experto, validación, ML/DS experimental y explicabilidad.
+
+La aplicación web y este repositorio son el producto principal que se presentará. Los PDF son entregables estáticos complementarios.
 
 ## Estado actual
 
-El prototipo funcional ya contiene:
+El núcleo analítico principal ya está construido y validado. La fase activa es **FINAL PRODUCT**.
 
-- Data Collector HTML para captura manual de acciones;
-- base de datos DuckDB con unidad principal `jugador-partido`;
+Estado resumido:
+
+- Data Layer DuckDB con unidad principal `player_match`;
+- Data Collector HTML funcional, pendiente de simplificación UX, castellano completo y mobile-first;
+- normalización GPS multi-proveedor validada estructuralmente;
 - Feature Engine determinista y temporal leakage-safe;
-- historial condicionado a rol observado;
-- Analytics Engine con evidencia `SELF_ROLE_PRIOR` y `PEER_ROLE_PRIOR` validada;
-- motor experto auditable N1000-N13000;
-- dashboard Streamlit con modos Equipo, Jugador, Partidos y Asistente;
-- asistente determinista y proveedor OpenAI opcional con guardrails;
-- informes PDF de Equipo, Jugador y Partido mediante un motor común;
-- normalización GPS multi-proveedor preparada;
-- tooling de anonimización para construir una demo pública local;
-- núcleo DS/IA activo con feasibility audit cerrado y primer experimento de change detection preparado.
+- Analytics Engine validado;
+- sistema experto auditable N1000-N13000, `expert_0.7.0`;
+- núcleo DS/IA experimental documentado y cerrado en su baseline actual;
+- Match Rating V5 activo y validado;
+- Performance Index histórico/posicional todavía experimental;
+- Attention Centre auditable;
+- dashboard Streamlit con Home / Team / Player / Match / Physical-GPS / Assistant;
+- Coach Copilot local mediante Ollama y tools Python read-only;
+- informes PDF Team / Player / Match mediante un motor común;
+- Product Spiral para QA y mejora segura de presentación;
+- tooling de anonimización/publicación.
 
-El estado técnico exacto y el siguiente paso están en [`PROJECT_STATE.md`](PROJECT_STATE.md).
+El estado operativo exacto, versiones vigentes, gates y siguiente paso están en [`PROJECT_STATE.md`](PROJECT_STATE.md).
 
 Documentación clave:
+
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — arquitectura y contratos;
-- [`docs/WORKFLOW.md`](docs/WORKFLOW.md) — fases, agentes y gates;
+- [`docs/WORKFLOW.md`](docs/WORKFLOW.md) — flujo de trabajo actual;
 - [`docs/DECISIONS.md`](docs/DECISIONS.md) — decisiones estructurales;
-- [`docs/DATA_SCIENCE_AI_STRATEGY.md`](docs/DATA_SCIENCE_AI_STRATEGY.md) — estrategia académica Data Science + IA;
-- [`docs/DSAI_EXPERIMENT_PLAN.md`](docs/DSAI_EXPERIMENT_PLAN.md) — plan experimental congelado;
-- [`dsai/README.md`](dsai/README.md) — experimentación DS/ML.
+- [`docs/DATA_SCIENCE_AI_STRATEGY.md`](docs/DATA_SCIENCE_AI_STRATEGY.md) — estrategia académica DS/IA;
+- [`dsai/README.md`](dsai/README.md) — experimentación DS/ML;
+- [`product/README.md`](product/README.md) — Product Spiral;
+- [`publication/README.md`](publication/README.md) — publicación y datos demo.
 
 ## Arquitectura
 
 ```text
-VÍDEO / DATA COLLECTOR + GPS OPCIONAL
-        ↓
-BASE DE DATOS
-        ↓
+COLLECTOR / IMPORT + GPS OPCIONAL
+            ↓
+RAW / NORMALIZED DATA
+            ↓
 FEATURE ENGINE
-        ↓
-ANALYTICS ENGINE
-        ↓
-SISTEMA EXPERTO
-        ↓
-DS / ML EXPERIMENTAL CORE
-        ↓
-PRODUCT SERVICE LAYER
-        ↓
-DASHBOARD WEB / INFORMES / ASSISTENT IA
+            ↓
+ANALYTICS
+            ↓
+EXPERT SYSTEM / ML
+            ↓
+PRODUCT SERVICE / ACCESS LAYER
+            ↓
+WEB DASHBOARD
+      ↓             ↓
+AI ASSISTANT       PDF
 ```
 
-La aplicación web es el producto principal. Los PDF son entregables estáticos. El LLM es una capa de interacción y explicación, no el núcleo de cálculo.
+Regla arquitectónica principal: **una capa superior no puede inventar cálculos, métricas, scores, clasificaciones o recomendaciones que no existan en una capa inferior validada**.
 
-## Prioridad Data Science + IA
+## Rendimiento
 
-La cadena metodológica prioritaria del TFM es:
+### Match Rating
+
+Versión activa:
 
 ```text
-DATA
-→ FEATURE ENGINE
-→ ANALYTICS / STATISTICS
-→ EXPERT SYSTEM
-→ ML / EXPERIMENTS
-→ VALIDATION / EXPLAINABILITY
-→ PRODUCT
-→ LLM
+match_rating_v0.5-candidate
 ```
 
-El proyecto no se considera completo solo porque exista una interfaz funcional. Antes del cierre debe existir una fase experimental seria de DS/IA con hipótesis, baselines, validación leakage-safe, métricas, análisis de error y una decisión razonada de despliegue o no despliegue.
+Es una valoración inmediata `jugador-partido`, disponible desde el primer partido y sin necesidad de historial.
 
-### Feasibility audit cerrado
+Características principales:
 
-DSAI-01A se ejecutó sobre el caso de desarrollo:
+- modelo posicional para jugadores de campo: CB / FB / DM / CM / AM / W / ST;
+- referencias profesionales pre-temporada para normalización/validación;
+- anchors decisivos explícitos y auditables;
+- modelo separado para porteros;
+- portero: 90% shot-stopping / 10% distribución;
+- fallback explícito cuando no existe rol fiable;
+- nunca se inventa una posición;
+- sin castigo global automático por resultado del equipo.
+
+La versión V5 está congelada como baseline vigente. No se modifican fórmula, pesos o arquitectura sin evidencia nueva, experimentación explícita y validación.
+
+### Performance Index
+
+No es el Match Rating.
 
 ```text
-38 partidos
-36 jugadores
-835 player-match
-590 filas con rol observado
-23 etiquetas de rol crudas
-87 secuencias jugador-rol
-67 secuencias repetidas
-28 FEATURE-01
-6324 valores no nulos / 23380 filas de features
-0 observaciones GPS
+MATCH RATING
+= rendimiento jugador-partido inmediato
+
+PERFORMANCE INDEX
+= capa histórica/posicional
+= evolución + forma + consistencia + contexto de rol
 ```
 
-Resultado:
+El Performance Index continúa siendo una capa experimental susceptible de mejora posterior.
 
-```text
-change detection / evolution        GO_EXPERIMENT
-player similarity / profiles        GO_EXPLORATORY
-observed role classification        CANDIDATE_SUPERVISED
-role/player fit                     REFORMULATE_TARGET
-Expert vs ML                        BLOCKED_SHARED_TARGET
-N13000 calibration                  BLOCKED_GROUND_TRUTH
-```
-
-Orden experimental congelado:
-
-```text
-DSAI-02 change detection
-→ DSAI-03 player similarity/profiles
-→ DSAI-04 role-label audit
-→ revisión de líneas bloqueadas
-```
-
-No se fuerzan modelos si no existe target o ground truth defendible.
-
-## Principios metodológicos
-
-- Priorizar variables que puedan recogerse de forma realista en un partido de 90 minutos.
-- Separar siempre datos brutos, features, analytics, motor de decisión y explicación final.
-- Evitar data leakage: las features temporales usan solo información estrictamente anterior.
-- No basar conclusiones importantes exclusivamente en un LLM.
-- No inventar métricas, scores, rankings, pesos o umbrales sin validación.
-- Mantener el GPS como fuente complementaria y opcional.
-- No depender de datos del rival para el modo principal.
-- Mantener cada decisión del sistema experto como `entrada → condición → resultado → confianza → justificación`.
-- No crear targets ML circulares a partir del propio sistema experto y utilizarlos como validación independiente.
-
-## Modos
+## Modos del producto
 
 ### Team Mode
-Modo principal. Resume equipo, plantilla, partidos, evolución, evidencias de rol y resultados del motor.
+
+Modo principal. Resume estado del equipo, plantilla, forma, evolución, distribución del rendimiento, participación, tendencias, jugadores destacados y calidad/contexto de datos.
 
 ### Player Mode
-Perfil individual con historial, features temporales, rol observado y evidencia N12000/N13000.
 
-### Match View
-Contexto del partido y estadísticas player-match observadas.
+Perfil individual con Match Ratings, Performance Index, dimensiones, evolución, historial, rol observado, componente técnico, motor experto, físico opcional y PDF individual.
+
+### Match Mode
+
+Operativo desde el primer partido. Incluye ratings, confidence, minutos, roles, dimensiones, distribución, observaciones postpartido y PDF.
+
+### Physical / GPS
+
+Capa descriptiva y opcional. El producto funciona sin GPS.
+
+No se exponen HSR, sprint, workload, fatigue, readiness o riesgo de lesión sin definición y validación explícitas.
 
 ### Assistant
-Interfaz de lenguaje natural sobre resultados estructurados. Puede utilizar un proveedor generativo opcional, pero no calcula métricas críticas ni puede saltarse los guardrails del motor.
+
+Coach Copilot local sobre resultados estructurados.
+
+Arquitectura actual:
+
+```text
+DuckDB local
+→ analytics / expert system materializados
+→ tools Python read-only
+→ Ollama localhost
+→ Coach Copilot
+→ entrenador
+```
+
+El LLM no recibe acceso directo a DuckDB y no recalcula Match Rating, features críticas ni decisiones expertas. Puede interpretar preguntas abiertas, consultar tools, explicar evidencia, resumir y comparar descriptivamente.
+
+OpenAI no es necesario para el flujo actual; puede permanecer desacoplado como provider opcional, sin dependencia del núcleo analítico.
 
 ### Rival Mode
-Extensión futura. El sistema principal no depende de disponer de datos del rival.
 
-## Motor experto
+Extensión futura. El sistema principal no depende de datos del rival.
+
+## Sistema experto
 
 Jerarquía actual:
 
@@ -152,41 +159,79 @@ N6000   contribución defensiva
 N7000   finalización
 N8000   contexto del equipo
 N9000   componente físico opcional
-N10000  rol y encaje táctico
+N10000  rol y encaje
 N11000  consistencia / tendencia
 N12000  player-fit evidence
 N13000  recommendation gate
 ```
 
-El motor final validado es `expert_0.7.0`. El contrato objetivo de N13000 está aprobado: recomendación + confianza/calibración + evidencia + justificación + limitaciones + alternativa cuando proceda. Sin embargo, **no emite todavía recomendaciones tácticas** porque los criterios, umbrales y calibración no están validados. Esta ausencia es deliberada y auditable.
+Cada resultado conserva:
 
-## DSAI-02 — change detection
-
-Primer experimento activo. Usa referencias same-role strict-past de FEATURE-03 y estudia la sensibilidad de un estadístico de desviación estandarizada mediante inyecciones sintéticas controladas.
-
-Ejecución:
-
-```powershell
-python dsai\change_detection_experiment.py
+```text
+input → condition → result → confidence → justification
 ```
 
-No selecciona un threshold operativo y no crea una alerta de producto, ranking ni recomendación.
+No se convierte Match Rating directamente en una recomendación táctica y N13000 no puede emitir una recomendación no validada.
+
+## Principios metodológicos
+
+- Priorizar variables recogibles de forma realista durante un partido amateur.
+- Separar raw data, features, analytics, decision engine y explicación final.
+- Evitar data leakage; las features temporales usan información estrictamente anterior cuando corresponde.
+- No basar conclusiones importantes exclusivamente en un LLM.
+- No inventar métricas, scores, rankings, pesos o thresholds sin validación.
+- No crear targets ML circulares a partir del propio sistema experto y presentarlos como validación independiente.
+- No forzar ML si no existe target o ground truth defendible.
+- Mantener GPS como fuente complementaria y opcional.
+- No depender de datos del rival para el modo principal.
+
+## Product UX
+
+Principio de diseño:
+
+```text
+insight-first, audit-detail second
+```
+
+La interfaz debe responder primero qué necesita entender el entrenador y permitir después profundizar en métricas, tablas, dimensiones, provenance y calidad de datos.
+
+El dashboard profesional ya está implementado; queda gate visual local y refinamiento final.
 
 ## Informes PDF
 
-El motor actual (`reports/pdf_engine.py`) genera:
+El motor `reports/pdf_engine.py` genera:
 
-- informe de equipo;
-- informe de jugador;
-- informe de partido.
+- Team Report;
+- Player Report;
+- Match Report.
 
-REPORTS-01 es un prototipo técnico. Los informes finales se rediseñarán después del núcleo DS/IA y de Product UX para convertirse en entregables profesionales alimentados por los mismos insights estructurados.
+Los informes consumen analytics ya calculados y no implementan una segunda lógica de negocio.
+
+`REPORTS-02` está en fase final: contracts técnicos pasan y queda inspección visual de clipping, overlap, legibilidad, jerarquía y paginación.
+
+## Product Spiral
+
+La capa de mejora automática del producto está documentada en [`product/README.md`](product/README.md).
+
+Ejecución recomendada:
+
+```powershell
+python product\run_product_spiral_safe.py --hours 10 --max-cases 100000
+```
+
+Las mutaciones automáticas están limitadas a:
+
+```text
+app/ui_theme.py
+app/coach_ui.py
+reports/pdf_engine.py
+```
+
+Analytics, datos, features, motor experto, LLM, GPS y scores están protegidos. El runner nunca hace push o merge automático y el gate visual humano sigue siendo obligatorio.
 
 ## Instalación local
 
-Requiere Python 3.13 o compatible con las dependencias declaradas.
-
-Primera instalación:
+Requiere Python compatible con las dependencias declaradas en `requirements.txt`.
 
 ```powershell
 git clone <URL_DEL_REPOSITORIO>
@@ -194,17 +239,13 @@ cd football-performance-system
 python -m pip install -r requirements.txt
 ```
 
-La instalación de dependencias se hace una vez. En ejecuciones posteriores no es necesario repetirla salvo que cambie `requirements.txt`.
-
 ## Ejecutar la aplicación
-
-Con una base de datos local compatible:
 
 ```powershell
 streamlit run app\streamlit_app.py
 ```
 
-Por defecto la aplicación busca:
+Por defecto busca:
 
 ```text
 data/football_performance.duckdb
@@ -219,77 +260,66 @@ streamlit run app\streamlit_app.py
 
 ## Validaciones principales
 
+Según el módulo afectado:
+
 ```powershell
 python app\validate_dashboard.py
+python app\validate_ui_compatibility.py
+python app\validate_attention_flags.py
 python llm\validate_assistant.py
 python llm\validate_stage2.py
 python reports\validate_reports.py
 python analytics\validate_stage1.py
-python dsai\feasibility_audit.py
-python dsai\change_detection_experiment.py
-```
-
-Las validaciones del sistema experto y del Feature Engine se mantienen en sus respectivos módulos.
-
-## Demo anonimizada para publicación
-
-Los datos profesionales usados durante desarrollo no se publican directamente.
-
-Para construir y validar una copia local anonimizada:
-
-```powershell
 python publication\validate_public_demo.py
 ```
 
-La demo sustituye nombres e identificadores por aliases `TEAM_001`, `OPP_001`, `PLAYER_001` y `MATCH_001`, conserva la estructura necesaria para probar la aplicación y comprueba que no quedan nombres/identificadores originales en las tablas públicas.
+Los validadores específicos de Match Rating, Feature Engine, sistema experto y DS/IA se mantienen en sus módulos correspondientes.
 
-**Importante:** anonimizar técnicamente los datos no concede derechos de redistribución. La base generada queda ignorada por Git y solo podrá publicarse si la licencia de la fuente lo permite. En caso contrario, el repositorio público utilizará un dataset sintético o con licencia compatible. Véase [`publication/README.md`](publication/README.md).
+## Publicación y datos
 
-## Datos de desarrollo
+Durante desarrollo se han utilizado datos profesionales PannaData/Opta para validación. Esa fuente no define las variables del producto amateur y no se redistribuye automáticamente.
 
-Durante desarrollo se han utilizado datos PannaData/Opta para validar una temporada completa con información real. Esa fuente sirve para desarrollo y validación; **no define las variables del producto amateur**.
-
-El sistema deliberadamente limita las variables finales a información que pueda recogerse mediante el Collector y, cuando exista, GPS.
+Anonimizar nombres no concede derechos de publicación. Si la licencia no permite redistribución, el repositorio público deberá utilizar un dataset sintético reproducible o un dataset abierto con licencia compatible.
 
 ## Estructura del repositorio
 
 ```text
 football-performance-system/
-├── analytics/        # evidencia estructurada self/peer
-├── dsai/             # feasibility, experimentos DS/ML y validación
+├── analytics/        # evidencia y analytics estructurados
+├── app/              # aplicación Streamlit y access layer
 ├── collector/        # Data Collector HTML
-├── data/             # esquema, importadores y contratos de datos
-├── gps/              # normalización GPS multi-proveedor
+├── data/             # esquema, importadores y contratos
+├── decision_tree/    # sistema experto N1000-N13000
+├── docs/             # arquitectura, decisiones y metodología
+├── dsai/             # experimentación DS/ML
 ├── features/         # Feature Engine
-├── decision_tree/    # motor experto N1000-N13000
-├── llm/              # contexto, guardrails y proveedor LLM opcional
-├── app/              # aplicación Streamlit
-├── reports/          # motor PDF común
-├── publication/      # anonimización y demo pública local
+├── gps/              # normalización y capa física opcional
+├── llm/              # Coach Copilot, tools y guardrails
+├── product/          # Product Spiral / QA de presentación
+├── publication/      # anonimización y demo pública
+├── reports/          # motor PDF
 ├── tests/            # tests y regresión
-├── docs/
 ├── README.md
 └── PROJECT_STATE.md
 ```
 
-## Seguridad del LLM
+## Prioridad actual
 
-Arquitectura obligatoria:
+El núcleo analítico no se reconstruye salvo incidencia concreta o evidencia nueva.
 
-```text
-DATA → ANALYTICS → DECISION ENGINE → STRUCTURED CONTEXT → LLM → COACH
-```
+Orden de cierre actual:
 
-El LLM puede explicar, resumir y permitir explorar resultados. No puede crear métricas críticas, sobrescribir el motor experto, inventar evidencia ausente ni emitir una recomendación táctica que N13000 no haya autorizado.
+1. mantener GitHub y documentación alineados con el código real;
+2. finalizar QA del Coach Copilot separando ROUTER/TOOLS de SYNTHESIS;
+3. revisar Product Spiral y dashboard;
+4. gate visual Home / Team / Player / Match;
+5. revisar y cerrar los tres PDFs profesionales;
+6. mejorar Collector: castellano + mobile-first + simplificación UX;
+7. incorporar una demo GPS claramente etiquetada;
+8. continuar mejora del Performance Index histórico;
+9. QA/regresión global;
+10. preparar documentación, demo y repositorio final del TFM.
 
-La arquitectura final local/cloud/híbrida sigue pendiente de `DG-LLM-01`.
+Criterio de cierre:
 
-## Próximos bloques
-
-1. ejecutar y validar DSAI-02 change detection;
-2. DSAI-03 player similarity / profiles;
-3. auditar labels antes de cualquier clasificación supervisada;
-4. revisar si aparece un shared target válido para Expert vs ML;
-5. rediseñar Product UX;
-6. convertir Reports/Assistant en capas finales sobre outputs validados;
-7. cerrar publicación, GitHub y memoria TFM.
+**producto funcional + metodología defendible + arquitectura auditable + demostración reproducible + GitHub presentable.**
