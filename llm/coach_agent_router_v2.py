@@ -40,6 +40,14 @@ RECOMMENDATION_TERMS = (
     "qui hauria de jugar", "quien deberia jugar", "quién debería jugar",
 )
 
+SPANISH_RECOMMENDATION_HINTS = (
+    "quien esta fatigado", "quién está fatigado", "quien tiene fatiga", "quién tiene fatiga",
+    "deberia descansar", "debería descansar", "riesgo de lesion", "riesgo de lesión",
+    "quien deberia ser titular", "quién debería ser titular", "alineacion ideal",
+    "alineación ideal", "once ideal", "mejor once", "quien deberia jugar",
+    "quién debería jugar",
+)
+
 COMPARE_TERMS = (
     "compara", "comparar", "comparacio", "comparació", "comparacion", "comparación",
     "diferencies", "diferències", "diferencias", "versus", " vs ",
@@ -95,6 +103,21 @@ def _dedupe(plan: list[tuple[str, dict[str, Any]]]) -> list[tuple[str, dict[str,
     return out[:4]
 
 
+def _recommendation_guardrail(question: str) -> str:
+    q = _norm(question)
+    if any(_norm(term) in q for term in SPANISH_RECOMMENDATION_HINTS):
+        return (
+            "No puedo dar esa recomendación porque el sistema no tiene una política validada "
+            "para convertir estos datos en una decisión de alineación, fatiga o riesgo de lesión. "
+            "Puedo describir la evidencia disponible sin convertirla en una recomendación no validada."
+        )
+    return (
+        "No puc donar aquesta recomanació perquè el sistema no té una política validada "
+        "per convertir aquestes dades en una decisió d'alineació, fatiga o risc de lesió. "
+        "Puc descriure l'evidència disponible sense convertir-la en una recomanació no validada."
+    )
+
+
 def plan_tools_v2(
     question: str,
     *,
@@ -114,11 +137,7 @@ def plan_tools_v2(
     # specific, so an evidence-sufficiency question such as "do we have enough data
     # to discuss fatigue?" is not blocked.
     if any(_norm(term) in q for term in RECOMMENDATION_TERMS):
-        return [], (
-            "No puc donar aquesta recomanació perquè el sistema no té una política validada "
-            "per convertir aquestes dades en una decisió d'alineació, fatiga o risc de lesió. "
-            "Puc descriure l'evidència disponible sense convertir-la en una recomanació no validada."
-        )
+        return [], _recommendation_guardrail(question)
 
     plan: list[tuple[str, dict[str, Any]]] = []
 
