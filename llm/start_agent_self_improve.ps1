@@ -27,9 +27,12 @@ public static class FpsKeepAwake {
     public static extern uint SetThreadExecutionState(uint esFlags);
 }
 "@
-$ES_CONTINUOUS = [uint32]0x80000000
-$ES_SYSTEM_REQUIRED = [uint32]0x00000001
-[void][FpsKeepAwake]::SetThreadExecutionState($ES_CONTINUOUS -bor $ES_SYSTEM_REQUIRED)
+# Windows PowerShell 5.1 parses 0x80000000 as signed Int32 (-2147483648).
+# Build the unsigned flags explicitly so SetThreadExecutionState works reliably.
+$ES_CONTINUOUS = [Convert]::ToUInt32("80000000", 16)
+$ES_SYSTEM_REQUIRED = [uint32]1
+$ES_KEEP_AWAKE = [uint32]($ES_CONTINUOUS -bor $ES_SYSTEM_REQUIRED)
+[void][FpsKeepAwake]::SetThreadExecutionState($ES_KEEP_AWAKE)
 
 Start-Transcript -Path $log -Force
 try {
