@@ -19,6 +19,20 @@ $env:FPS_LOCAL_LLM_MODEL = $Model
 $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $log = Join-Path $env:USERPROFILE "Desktop\TFM_AGENT_SELF_IMPROVE_$stamp.txt"
 
+# Prevent system sleep only while this launcher is alive. The normal Windows power
+# policy is restored in finally; no persistent power-plan setting is changed.
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public static class FpsKeepAwake {
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern uint SetThreadExecutionState(uint esFlags);
+}
+"@
+$ES_CONTINUOUS = [uint32]0x80000000
+$ES_SYSTEM_REQUIRED = [uint32]0x00000001
+[void][FpsKeepAwake]::SetThreadExecutionState($ES_CONTINUOUS -bor $ES_SYSTEM_REQUIRED)
+
 Start-Transcript -Path $log -Force
 try {
     Write-Host "=== COACH COPILOT SELF-IMPROVE ==="
@@ -26,6 +40,7 @@ try {
     Write-Host "DB: $env:FPS_DB_PATH"
     Write-Host "Model: $Model"
     Write-Host "Durada objectiu: $Hours hores"
+    Write-Host "Windows sleep: bloquejat temporalment mentre dura el procés"
 
     Write-Host "`n=== PREFLIGHT PYTHON ==="
     python -c "import py_compile; py_compile.compile(r'llm\run_agent_self_improve.py', doraise=True); py_compile.compile(r'llm\run_agent_self_improve_entry.py', doraise=True); print('SYNTAX PASS')"
@@ -56,6 +71,8 @@ try {
     Write-Host "Resultats: $Repo\outputs\agent_eval\self_improve"
 }
 finally {
-    Write-Host "`nLog: $log"
+    [void][FpsKeepAwake]::SetThreadExecutionState($ES_CONTINUOUS)
+    Write-Host "`nWindows sleep: política normal restaurada"
+    Write-Host "Log: $log"
     Stop-Transcript
 }
