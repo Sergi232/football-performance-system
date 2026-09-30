@@ -2,7 +2,7 @@
 
 Última actualización: 30/09/2026
 
-Memoria técnica operativa del proyecto. Si contradice un chat antiguo, prevalece este archivo. El código actual de `main` y los commits posteriores a esta fecha deben comprobarse antes de asumir que este estado sigue siendo el último.
+Memoria técnica operativa del proyecto. Si contradice un chat antiguo, prevalece este archivo. Antes de trabajar, comprobar siempre el código actual de `main` y commits posteriores a esta actualización.
 
 ## Estado actual
 
@@ -13,7 +13,10 @@ GPS-01                              CERRADO / VALIDADO ESTRUCTURALMENTE
 FEATURE-01/02/03                    CERRADO / VALIDADO
 EXPERT-01..07 N1000-N13000          BASELINE CERRADO / VALIDADO
 LLM-01                              PROTOTYPE v0.1 / CONTRATOS PASS
-LLM-02 LOCAL COACH COPILOT          IMPLEMENTADO / QA ADAPTATIVO LOCAL EN CURSO
+LLM-02 LOCAL COACH COPILOT          IMPLEMENTADO / QA FINAL ACTIVO
+LLM-QA-SPLIT-01                     IMPLEMENTADO — ROUTER/TOOLS vs SYNTHESIS SEPARADOS
+LLM-QA-GROUNDING-01                 IMPLEMENTADO / EJECUCIÓN LOCAL PENDIENTE
+LLM-GUARDRAIL-I18N-01               FIX APLICADO / VALIDACIÓN LOCAL PENDIENTE
 REPORTS-01                          PROTOTYPE v0.1 / CONTRATO PASS
 REPORTS-02 PROFESSIONAL PDF         ACTIVO — ISSUE #94 / GATE VISUAL PENDIENTE
 DASHBOARD-01                        CONTRACT PASS
@@ -42,7 +45,7 @@ PUBLIC DEPLOYMENT                   NO HACER — decisión explícita actual
 
 ## Fuente de verdad
 
-Orden de precedencia operativo:
+Orden de precedencia:
 
 ```text
 código actual de main + commits recientes
@@ -60,7 +63,7 @@ El 30/09/2026 se corrigió documentation drift en:
 - `docs/WORKFLOW.md`;
 - `docs/DECISIONS.md`.
 
-Quedan formalmente resueltos:
+Decisiones formalmente alineadas:
 
 - `DG-UX-01`: insight-first, audit-detail second;
 - `DG-LLM-01`: local-first mediante Ollama con provider opcional desacoplado;
@@ -88,18 +91,19 @@ La web es el producto principal. Los PDF son salidas estáticas complementarias.
 
 Regla: una capa superior no puede inventar cálculos, métricas, scores, clasificaciones o recomendaciones que no existan en una capa inferior validada.
 
-Arquitectura LLM local actual:
+Arquitectura LLM local:
 
 ```text
 DuckDB local
 → analytics / expert system materializados
 → tools Python read-only
+→ router v2 determinista
 → Ollama localhost
 → Coach Copilot
 → entrenador
 ```
 
-El modelo local no recibe acceso directo a DuckDB y no calcula ratings, features críticas ni decisiones expertas. OpenAI queda desacoplado como provider opcional antiguo; no es necesario para el producto local.
+El modelo local no recibe acceso directo a DuckDB y no calcula ratings, features críticas ni decisiones expertas. OpenAI no es necesario para el producto local.
 
 ## Rendimiento
 
@@ -128,8 +132,6 @@ report_schema_version=0.3.0
 
 ## PERF-18 — Match Rating V5
 
-Objetivo: sustituir el rating manual/heurístico visible por un sistema multidimensional, posicional, auditable y validado con datos profesionales, manteniendo variables compatibles con el Collector amateur.
-
 Arquitectura final:
 
 ```text
@@ -157,25 +159,21 @@ TODO
 
 - Opta Player Rating: solo inspiración metodológica pública; fórmula propietaria no reproducida.
 - Opta Points: benchmark transparente externo; fórmula pública reconstruida para validación, no tratada como ground truth.
-- El Collector reproduce el benchmark Opta Points con fidelidad muy alta sobre PannaData: Pearson ~0.9984, Spearman ~0.9980, MAE ~0.0134.
+- Reproducción del benchmark Opta Points sobre PannaData: Pearson ~0.9984, Spearman ~0.9980, MAE ~0.0134.
 
 ### Outfield
 
-- rating posicional por CB / FB / DM / CM / AM / W / ST;
-- normalización y referencia profesional estrictamente anterior al primer partido local;
-- anchors públicos principales: gol +1.00, asistencia +0.60, penalti recibido +0.40, amarilla -0.20, roja -0.50;
-- hipótesis FPS explícita: penalti concedido -0.40;
+- rating por CB / FB / DM / CM / AM / W / ST;
+- referencia profesional estrictamente anterior al primer partido local;
+- anchors principales: gol +1.00, asistencia +0.60, penalti recibido +0.40, amarilla -0.20, roja -0.50;
+- hipótesis FPS: penalti concedido -0.40;
 - ajuste contextual secundario: -0.10 por gol encajado mientras el jugador consta en campo;
-- construct gate final: PASS;
+- construct gate: PASS;
 - V4.1 on-pitch contract: PASS.
 
-El contexto on-pitch se conserva como ajuste pequeño y auditable, no como causalidad individual. La precisión temporal es desigual: 156 filas exactas y 434 con fallback de minuto/duración, de las cuales 171 provienen de conflictos resueltos.
+Precisión temporal on-pitch: 156 filas exactas y 434 con fallback de minuto/duración, 171 derivadas de conflictos resueltos.
 
 ### Goalkeeper
-
-Modelo totalmente separado de los jugadores de campo.
-
-Gate final:
 
 ```text
 selected_weights = 90% shot-stopping / 10% distribution
@@ -186,7 +184,7 @@ local_weight_sensitivity_gate = PASS
 GK_FINAL_GATE = PASS
 ```
 
-La selección de pesos se hizo en VALID sobre una rejilla predefinida 50/50..90/10; TEST quedó intacto. No se dejó que PCA decidiera el mérito final.
+Selección de pesos en VALID; TEST quedó intacto.
 
 ### V5 unificada
 
@@ -202,7 +200,7 @@ out_of_range=0
 FINAL_CANDIDATE_CONTRACT=PASS
 ```
 
-Distribución V5:
+Distribución:
 
 ```text
 mean=6.388
@@ -221,15 +219,14 @@ LOSS median=6.136
 WIN  median=6.332
 ```
 
-Caso que motivó la revisión: derrota 0-3 del 20/12/2025 queda en media 6.143 y mediana 5.996; el antiguo comportamiento ~7.4 queda corregido sin imponer un castigo global por resultado.
+Derrota 0-3 del 20/12/2025: media 6.143, mediana 5.996. El antiguo comportamiento ~7.4 queda corregido sin castigo global por resultado.
 
 Match Rating V5 queda congelado como baseline vigente. No modificar fórmula, pesos o arquitectura sin nueva evidencia, experimentación explícita y validación.
 
-## Gates validados tras activación V5
+## Gates validados tras V5
 
 ```text
 MATCH RATING CONTRACT: PASS
-match_rating_version=match_rating_v0.5-candidate
 590/590 apariciones valoradas
 38 partidos
 38 porteros
@@ -238,7 +235,6 @@ match_rating_version=match_rating_v0.5-candidate
 16 ratings en el primer partido
 
 ATTENTION FLAGS CONTRACT: PASS
-attention_version=attention_flags_v0.3-auditable
 ROLE_CONTEXT_UNAVAILABLE=172
 INSUFFICIENT_RATING_EVIDENCE=0
 GPS_QUALITY_FLAGS_PRESENT=0
@@ -259,7 +255,7 @@ N13000 recommendation gate safety=PASS
 LLM MATCH RATING CONTEXT: PASS
 team_snapshot_players=28
 first_match_rating_rows=16
-LLM explica analytics materializados y no recalcula el rating
+LLM explica analytics materializados y no recalcula rating
 
 REPORTS-01 PDF CONTRACT: PASS
 team/player/match payloads válidos
@@ -271,54 +267,138 @@ PDFs generados correctamente
 
 ### Home / Command Center
 
-`app/streamlit_app.py` está rediseñada como Coach Command Center: último partido, brief operativo, forma, tendencias, cambios 5-vs-5, ratings destacados, calidad de datos y accesos principales. Gate visual local pendiente tras el rediseño.
+Coach Command Center con último partido, brief operativo, forma, tendencias, cambios 5-vs-5, ratings destacados, calidad de datos y accesos principales. Gate visual local pendiente.
 
 ### Jugador
 
-Match Rating V5, confidence, perfil, Performance Index, dimensiones, evolución, técnico, motor experto, partidos y PDF. Rediseño visual profesional aplicado; gate visual local pendiente.
+Match Rating V5, confidence, perfil, Performance Index, dimensiones, evolución, técnico, motor experto, partidos y PDF. Gate visual local pendiente.
 
 ### Equipo
 
-Match Rating V5 operativo, forma, matriz de plantilla, tendencias, participación, Performance Index complementario, historial y PDF. Rediseño visual profesional aplicado; gate visual local pendiente.
+Match Rating V5, forma, matriz de plantilla, tendencias, participación, Performance Index complementario, historial y PDF. Gate visual local pendiente.
 
 ### Partido
 
-Ratings V5, confidence, roles, minutos, distribución, dimensiones, observaciones deterministas y PDF desde partido 1. Rediseño visual profesional aplicado; gate visual local pendiente.
+Ratings V5, confidence, roles, minutos, distribución, dimensiones, observaciones deterministas y PDF desde partido 1. Gate visual local pendiente.
 
 ### Físico / GPS
 
-Capa descriptiva opcional sobre GPS canónico. Sin HSR/sprint/load/fatigue/readiness no validados. La base local aún no contiene observaciones GPS reales; falta ejemplo local claramente etiquetado si se quiere demostrar km/velocidad en UI.
+Capa descriptiva opcional sobre GPS canónico. Sin HSR/sprint/load/fatigue/readiness no validados. La base local no contiene observaciones GPS reales; falta ejemplo local claramente etiquetado para demo.
 
 ### Alertas
 
-Solo estados auditables de contexto/calidad. Sin diagnóstico de rendimiento, lesión o fatiga.
+Solo estados auditables de contexto/calidad. Sin diagnóstico de lesión, fatiga o readiness.
 
-## Asistente IA — LLM-02 Local Coach Copilot
+## LLM-02 — Local Coach Copilot
 
 Implementado:
 
-- `llm/coach_agent.py`: bucle agentic local sobre API de Ollama (`127.0.0.1:11434`);
-- provider local configurable mediante `FPS_LOCAL_LLM_MODEL`;
-- preguntas abiertas, no catálogo cerrado;
-- selección dinámica de tools y múltiples tool rounds;
-- tools read-only para equipo, jugador, stats player-match, partidos, comparación descriptiva, calidad y GPS;
-- resolución robusta de nombres/fragmentos de jugador y rival;
-- memoria conversacional gestionada por la página Streamlit;
-- guardrails: no recalcular ratings, no inventar métricas, no lesión/fatiga/readiness, no XI/recomendación táctica sin policy validada;
-- `app/pages/5_Assistent_IA.py`: chat abierto local con trazabilidad de tools;
-- validadores y runners locales de QA;
-- evaluación actual ejecutada con `qwen3:1.7b` para priorizar latencia;
-- Auto-QA previo: 216 casos, 210 PASS; 97,22% global, principalmente router/tool QA;
-- runner adaptativo seguro preparado para español/catalán, failure replay y perfiles de síntesis;
-- OpenAI no es necesario para este flujo local.
+- `llm/coach_agent.py`: tools read-only sobre analytics materializados;
+- `llm/coach_agent_hybrid.py`: router local + compact evidence + Ollama synthesis;
+- `llm/coach_agent_fast.py`: entry point de baja latencia usado por el producto;
+- `llm/coach_agent_router_v2.py`: routing bilingüe ES/CA;
+- preguntas abiertas y multi-tool;
+- resolución de jugador/rival y follow-ups;
+- memoria conversacional en Streamlit;
+- guardrails de rating, métricas, lesión/fatiga/readiness y recomendaciones tácticas;
+- `qwen3:1.7b` usado en QA anterior por latencia;
+- Auto-QA previo: 216 casos / 210 PASS = 97,22%, principalmente router/tool QA.
 
-Pendiente para cerrar LLM-02:
+### QA: hallazgo metodológico 30/09/2026
 
-1. finalizar QA adaptativo local;
-2. separar métricas de ROUTER/TOOLS y SYNTHESIS;
-3. corregir fallos de routing que sobrevivan;
-4. optimizar evidencia/prompt/timeout de síntesis;
-5. benchmark controlado `qwen3:1.7b` vs `qwen3:4b` antes de promover un modelo mayor.
+El runner adaptativo ya registraba por caso:
+
+```text
+router_pass
+synthesis_attempted
+synthesis_pass
+classification
+```
+
+pero su `overall_pass_rate` mezclaba `ROUTER_PASS` y `FULL_PASS`. Por tanto, el 97% global previo no debe interpretarse como 97% de calidad final de respuesta.
+
+Además, el criterio histórico `synthesis_pass` solo valida ejecución/contrato:
+
+- sin error;
+- respuesta no vacía;
+- tools esperadas presentes;
+- ausencia del fallback conocido.
+
+No valida por sí mismo corrección semántica completa.
+
+### LLM-QA-SPLIT-01
+
+Nuevo:
+
+`llm/summarize_adaptive_qa.py`
+
+Separa:
+
+- Router/Tools pass rate;
+- Synthesis execution success;
+- synthesis coverage;
+- end-to-end sobre casos sintetizados;
+- resultados por categoría;
+- resultados por perfil de síntesis.
+
+Incluye advertencia explícita de que synthesis execution != semantic quality.
+
+### LLM-GUARDRAIL-I18N-01
+
+Bug detectado: `router_v2` reconocía preguntas prohibidas en español pero devolvía el mensaje de guardrail en catalán.
+
+Fix aplicado en `llm/coach_agent_router_v2.py`:
+
+- guardrail castellano para pregunta castellana;
+- guardrail catalán para pregunta catalana.
+
+`llm/validate_local_agent.py` también se ha alineado con el runtime real:
+
+```text
+coach_agent_fast
+→ instala router_v2
+→ hybrid runtime
+```
+
+y ahora prueba guardrail ES + CA.
+
+Validación local pendiente porque GitHub no dispone de la DuckDB/Ollama del PC.
+
+### LLM-QA-GROUNDING-01
+
+Nuevo:
+
+`llm/run_synthesis_grounding_qa.py`
+
+Benchmark sin LLM juez externo. Captura la compact evidence real y evalúa de forma determinista:
+
+- routing/tools;
+- runtime/fallback;
+- grounding de claims numéricos contra pregunta/evidencia;
+- patrones de recomendaciones prohibidas;
+- idioma cuando es detectable;
+- límite de seis frases;
+- guardrails ES/CA.
+
+No afirma evaluar completamente:
+
+- utilidad para entrenador;
+- matiz;
+- corrección semántica total;
+- causalidad más allá de checks explícitos.
+
+La revisión humana sigue siendo necesaria.
+
+### Pendiente para cerrar LLM-02
+
+1. ejecutar localmente `validate_local_agent.py`;
+2. ejecutar `run_synthesis_grounding_qa.py` sobre `qwen3:1.7b`;
+3. si `qwen3:4b` está instalado o se decide instalar, ejecutar el mismo set compartido sobre ambos modelos;
+4. revisar fallos por componente, no solo pass rate global;
+5. corregir solo fallos reproducibles;
+6. repetir benchmark;
+7. hacer una pequeña revisión humana de respuestas representativas;
+8. cerrar LLM-02 únicamente si router/tools + grounding/safety + síntesis revisada son suficientes.
 
 ## REPORTS-02 — professional PDFs
 
@@ -327,32 +407,32 @@ Issue #94.
 Estado técnico:
 
 - `reports/data_builder.py` schema 0.3.0;
-- payload de equipo incorpora snapshot/historial de Match Rating V5;
-- payload de jugador incorpora Performance Index actual e historial;
-- payload de partido incorpora observaciones deterministas postpartido;
-- `reports/pdf_engine.py` mantiene identidad visual, KPIs, tablas y jerarquía de secciones;
+- payload equipo: snapshot/historial Match Rating V5;
+- payload jugador: Performance Index actual e historial;
+- payload partido: observaciones deterministas;
+- `reports/pdf_engine.py`: identidad visual, KPIs, tablas y jerarquía;
 - Match Rating destacado en jugador/partido;
-- ningún cálculo crítico se mueve a la capa PDF;
+- sin cálculos críticos en PDF;
 - `python reports\validate_reports.py` = PASS.
 
-Pendiente para cerrar REPORTS-02:
+Pendiente:
 
-1. inspección visual de los tres PDFs generados;
-2. comprobar clipping/overlap/legibilidad;
-3. corregir diseño solo si la revisión visual detecta problemas.
+1. inspección visual de tres PDFs;
+2. clipping/overlap/legibilidad;
+3. corregir solo si el gate visual detecta problemas.
 
-## PRODUCT-SPIRAL-01 — mejora automática segura de producto
+## PRODUCT-SPIRAL-01
 
-Objetivo: mejorar y estresar la capa final de producto web + PDF sin mezclar esta experimentación con analytics críticos.
+Mejora y stress de web + PDF sin tocar analytics críticos.
 
-Archivos principales:
+Archivos:
 
 - `product/run_product_spiral.py`;
 - `product/run_product_spiral_safe.py`;
 - `product/run_product_spiral_optimizer.py`;
 - `product/README.md`.
 
-Allowlist de mutación:
+Allowlist:
 
 ```text
 app/ui_theme.py
@@ -360,25 +440,21 @@ app/coach_ui.py
 reports/pdf_engine.py
 ```
 
-Protegido explícitamente: `analytics/`, `data/`, `features/`, `decision_tree/`, `models/`, `llm/`, `gps/`.
+Protegido: `analytics/`, `data/`, `features/`, `decision_tree/`, `models/`, `llm/`, `gps/`.
 
-El runner no modifica DB, Match Rating, Performance Index, thresholds ni decisiones expertas. Los cambios aceptados se guardan únicamente en una rama local `product-spiral-*`; nunca se hace push o merge automático.
-
-Puede operar con DB real o en modo DB-free con payloads sintéticos contract-compatible. El gate visual humano sigue siendo obligatorio.
+No modifica DB, Match Rating, Performance Index, thresholds ni decisiones expertas. No hace push/merge automático. Puede operar con DB real o DB-free. Gate visual humano obligatorio.
 
 ## Collector
 
-Variables funcionales cerradas. Pendiente de producto:
+Variables funcionales cerradas. Pendiente:
 
-1. simplificar/mejorar UX;
-2. traducción completa al castellano;
-3. diseño mobile-first/responsive;
+1. simplificar UX;
+2. castellano completo;
+3. mobile-first/responsive;
 4. reducir fricción de captura;
-5. mantener la misma semántica de variables y compatibilidad con el esquema existente.
+5. mantener semántica y compatibilidad con esquema actual.
 
 ## UI compatibility
-
-Gate disponible:
 
 ```text
 app/validate_ui_compatibility.py
@@ -392,41 +468,59 @@ deprecated_use_container_width=0
 known_invalid_navigation_icons=0
 ```
 
-Falta revisión visual tras el rediseño profesional del dashboard.
+Falta revisión visual tras el rediseño profesional.
 
-## Guardrails
+## Guardrails globales
 
 - no copiar fórmulas propietarias;
 - no convertir missing en zero sin semántica validada;
 - no thresholds bueno/malo sin validación;
-- no recomendación táctica derivada directamente del rating;
-- suplentes sin rol táctico no reciben rol inventado;
+- no recomendación táctica derivada directamente del Match Rating;
+- no inventar roles;
 - porteros usan camino separado;
 - LLM downstream del motor;
-- LLM local no tiene acceso directo a DuckDB: opera mediante tools read-only;
-- preguntas abiertas permitidas; las conclusiones siguen limitadas por outputs validados;
+- LLM local no tiene acceso directo a DuckDB;
 - GPS opcional;
 - no HSR/sprint/load/fatigue/readiness sin definición validada;
-- PDF y dashboard consumen analytics materializados, no recalculan resultados críticos;
-- Product Spiral solo puede mutar su allowlist de presentación y nunca hace push/merge automático;
-- no desplegar ni publicar públicamente mientras se mantenga la instrucción actual del usuario.
+- PDF/dashboard consumen analytics materializados;
+- Product Spiral no toca lógica crítica;
+- no desplegar/publicar públicamente mientras siga bloqueado.
 
 ## Siguiente paso exacto
 
-`DOCUMENTATION-SYNC-01` queda cerrado el 30/09/2026.
+La prioridad sigue siendo **cerrar LLM-02 / Coach Copilot QA**.
 
-La prioridad inmediata pasa a ser **cerrar LLM-02 / Coach Copilot QA**.
+En el PC que contiene DuckDB + Ollama:
 
-Orden inmediato:
+```powershell
+git pull
+$env:FPS_DB_PATH = "RUTA_A_TU_football_performance.duckdb"
+python llm\validate_local_agent.py
+python llm\run_synthesis_grounding_qa.py --models qwen3:1.7b --cases 28
+```
 
-1. localizar y revisar el estado actual de los runners/resultados de QA adaptativo del Coach Copilot;
-2. separar métricas de ROUTER/TOOLS y SYNTHESIS;
-3. identificar los fallos reales restantes y corregir solo los que sobrevivan al QA;
-4. ejecutar benchmark controlado `qwen3:1.7b` vs `qwen3:4b` si el entorno local lo permite;
-5. después revisar Product Spiral y hacer gate visual Home / Team / Player / Match;
-6. revisar tres PDFs representativos y cerrar REPORTS-02 si pasan clipping/overlap/legibilidad;
-7. mejorar Collector: castellano + móvil + simplificación UX;
-8. añadir ejemplo GPS local claramente etiquetado;
-9. continuar mejora del Performance Index histórico;
-10. ejecutar QA/regresión global;
-11. preparar documentación final, demo y paquete de presentación/publicación del TFM, sin despliegue público mientras siga bloqueado.
+Si `qwen3:4b` está instalado y se quiere hacer comparación controlada:
+
+```powershell
+python llm\run_synthesis_grounding_qa.py --models qwen3:1.7b,qwen3:4b --cases 28
+```
+
+Para separar correctamente las métricas de una ejecución adaptativa previa o nueva:
+
+```powershell
+python llm\summarize_adaptive_qa.py
+```
+
+Después:
+
+1. analizar los JSON/CSV resultantes por componente;
+2. corregir fallos reproducibles del Copilot;
+3. repetir QA;
+4. cerrar LLM-02;
+5. revisar Product Spiral;
+6. gate visual Home / Team / Player / Match;
+7. gate visual de tres PDFs y cierre REPORTS-02;
+8. Collector UX/ES/móvil;
+9. demo GPS;
+10. Performance Index histórico;
+11. QA global y documentación final TFM.
