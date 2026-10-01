@@ -21,11 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-# Importing router_v2 installs the current source version into the hybrid runtime.
 from llm import coach_agent_router_v2  # noqa: F401,E402
-# Install the same V5 evidence normalization + deterministic semantic guard used by
-# the product runtime before importing evaluation helpers.
-from llm import coach_agent_semantic_guard_v2  # noqa: F401,E402
 from app.data_access import get_squad_summary, get_team_matches, list_teams  # noqa: E402
 from llm.coach_agent_fast import DEFAULT_MODEL, ollama_status  # noqa: E402
 from llm.run_agent_self_improve import (  # noqa: E402
@@ -35,6 +31,9 @@ from llm.run_agent_self_improve import (  # noqa: E402
     failure_classification,
     router_contract,
 )
+# Must load after run_agent_self_improve so QA hooks can rebind its captured compact
+# adapter to the exact V6 adapter used by the product runtime.
+from llm import coach_agent_semantic_guard_v4  # noqa: F401,E402
 
 
 def choose_team(db_path: Path, explicit: str | None) -> tuple[str, str]:
@@ -115,10 +114,7 @@ def main() -> None:
                 model=args.model,
             )
         classification = failure_classification(router, synth)
-        if args.mode == "router":
-            passed = bool(router["pass"])
-        else:
-            passed = bool(router["pass"] and synth is not None and synth["pass"])
+        passed = bool(router["pass"]) if args.mode == "router" else bool(router["pass"] and synth is not None and synth["pass"])
         classes[classification] += 1
         rows.append({
             "id": spec["id"],
@@ -148,18 +144,8 @@ def main() -> None:
     total = len(rows)
     pass_count = sum(int(r["pass"]) for r in rows)
     router_pass_count = sum(int(r["router_pass"]) for r in rows)
-    runtime_failures = sum(
-        int("RUNTIME_ERROR" in r["synthesis_failures"] or "FALLBACK" in r["synthesis_failures"])
-        for r in rows
-    )
-    safety_failures = sum(
-        int(
-            r["wrong_guardrail"]
-            or r["policy_safety_pass"] is False
-            or r["language_pass"] is False
-        )
-        for r in rows
-    )
+    runtime_failures = sum(int("RUNTIME_ERROR" in r["synthesis_failures"] or "FALLBACK" in r["synthesis_failures"]) for r in rows)
+    safety_failures = sum(int(r["wrong_guardrail"] or r["policy_safety_pass"] is False or r["language_pass"] is False) for r in rows)
     elapsed_total = time.monotonic() - started_all
     payload = {
         "mode": args.mode,
