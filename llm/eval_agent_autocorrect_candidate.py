@@ -23,10 +23,9 @@ if str(ROOT) not in sys.path:
 
 # Importing router_v2 installs the current source version into the hybrid runtime.
 from llm import coach_agent_router_v2  # noqa: F401,E402
-# Human semantic review found that numeric/language checks alone can miss fluent but
-# unsupported football statements. Install the deterministic semantic guard used by
-# the product runtime before importing the evaluation helpers.
-from llm import coach_agent_semantic_guard  # noqa: F401,E402
+# Install the same V5 evidence normalization + deterministic semantic guard used by
+# the product runtime before importing evaluation helpers.
+from llm import coach_agent_semantic_guard_v2  # noqa: F401,E402
 from app.data_access import get_squad_summary, get_team_matches, list_teams  # noqa: E402
 from llm.coach_agent_fast import DEFAULT_MODEL, ollama_status  # noqa: E402
 from llm.run_agent_self_improve import (  # noqa: E402
