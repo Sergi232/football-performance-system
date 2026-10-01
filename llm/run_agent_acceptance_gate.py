@@ -3,8 +3,8 @@
 Runs one deterministic router Golden Set plus four full Golden Sets (base + three
 challenge seeds) in fresh Python processes. It does not mutate source code.
 
-Automated PASS means the implementation is ready for a short human semantic review;
-it does not claim complete coaching correctness.
+Automated PASS means the implementation is ready for human semantic review; it does
+not claim complete coaching correctness.
 """
 from __future__ import annotations
 
@@ -137,14 +137,30 @@ def main() -> None:
     }
     automated_gate_pass = all(checks.values())
 
-    # Human review file: all failures plus a bounded sample of successful answers.
-    review_rows = [r for r in rows if not r.get("pass")]
-    seen: set[tuple[str, str]] = set()
-    for r in rows:
-        key = (str(r.get("category")), str(r.get("language")))
-        if r.get("pass") and key not in seen:
-            review_rows.append(r)
-            seen.add(key)
+    # Human review is deliberately broader than the automated semantic checks:
+    # review every functional case from the base Golden Set (34 cases), plus any
+    # challenge-set failures not already present. This prevents a category-level
+    # sample from hiding distinct intents such as rating explanation/components.
+    review_rows: list[dict[str, Any]] = []
+    seen_review: set[tuple[int, str]] = set()
+    if full_runs:
+        for row in full_runs[0].get("rows", []):
+            item = dict(row)
+            item["seed"] = DEFAULT_SEEDS[0]
+            review_rows.append(item)
+            seen_review.add((DEFAULT_SEEDS[0], str(item.get("id"))))
+    for seed, payload in zip(DEFAULT_SEEDS[1:], full_runs[1:]):
+        for row in payload.get("rows", []):
+            if row.get("pass"):
+                continue
+            key = (seed, str(row.get("id")))
+            if key in seen_review:
+                continue
+            item = dict(row)
+            item["seed"] = seed
+            review_rows.append(item)
+            seen_review.add(key)
+
     review_path = out_dir / "human_review.csv"
     fields = [
         "seed", "id", "category", "language", "question", "pass", "classification",
@@ -184,8 +200,9 @@ def main() -> None:
         "automated_gate_pass": automated_gate_pass,
         "human_review_required": True,
         "ready_for_human_review": automated_gate_pass,
+        "human_review_cases": len(review_rows),
         "human_review_file": str(review_path),
-        "note": "Automated PASS is necessary but not sufficient for LLM-02 closure; representative answers still require human semantic review.",
+        "note": "Automated PASS is necessary but not sufficient for LLM-02 closure; all 34 base functional answers require human semantic review, plus any challenge failures.",
     }
     summary_path = out_dir / "acceptance_gate_summary.json"
     summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -198,7 +215,7 @@ def main() -> None:
     for name, ok in checks.items():
         print(f"{'PASS' if ok else 'FAIL'} {name}")
     print(f"summary={summary_path}")
-    print(f"human_review={review_path}")
+    print(f"human_review={review_path} ({len(review_rows)} rows)")
     print("=" * 96)
 
 
