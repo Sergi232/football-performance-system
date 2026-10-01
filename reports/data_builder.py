@@ -38,12 +38,11 @@ from app.presentation import (
     build_player_aliases,
     build_player_name_aliases,
     demo_mode,
-    display_opponent,
     display_team_name,
     replace_known_names,
 )
 
-REPORT_SCHEMA_VERSION = "0.4.0"
+REPORT_SCHEMA_VERSION = "0.4.1"
 
 
 def _clean(value: Any) -> Any:
@@ -139,6 +138,18 @@ def _mask_nested(value: Any, ctx: dict[str, Any]) -> Any:
     return _clean(value)
 
 
+def _finalize_payload(payload: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+    """Fail-safe presentation sanitization for every demo report payload.
+
+    Structured frame anonymisation remains the primary mechanism. This final pass
+    catches identities inside aggregates, nested observations, free-text fields or
+    future report additions before anything reaches the PDF renderer.
+    """
+    if not demo_mode():
+        return payload
+    return _mask_nested(payload, ctx)
+
+
 def build_team_report_data(db_path: Path, team_id: str) -> dict[str, Any]:
     db_path = Path(db_path)
     ctx = _context(db_path, team_id)
@@ -146,12 +157,12 @@ def build_team_report_data(db_path: Path, team_id: str) -> dict[str, Any]:
     matches = _anon(ctx["matches"], ctx)
     try:
         rating_snapshot = _anon(get_team_player_rating_snapshot(db_path, team_id), ctx)
-        rating_history = get_team_match_rating_history(db_path, team_id)
+        rating_history = _anon(get_team_match_rating_history(db_path, team_id), ctx)
     except Exception:
         rating_snapshot = pd.DataFrame()
         rating_history = pd.DataFrame()
 
-    return {
+    payload = {
         "report_type": "team",
         "schema_version": REPORT_SCHEMA_VERSION,
         "language": "es",
@@ -168,6 +179,7 @@ def build_team_report_data(db_path: Path, team_id: str) -> dict[str, Any]:
         "rating_history": _records(rating_history),
         "guardrails": _guardrails(),
     }
+    return _finalize_payload(payload, ctx)
 
 
 def build_player_report_data(db_path: Path, team_id: str, player_id: str) -> dict[str, Any]:
@@ -205,7 +217,7 @@ def build_player_report_data(db_path: Path, team_id: str, player_id: str) -> dic
             frame = _anon(frame, ctx)
         feature_history[feature_name] = _records(frame, 5)
 
-    return {
+    payload = {
         "report_type": "player",
         "schema_version": REPORT_SCHEMA_VERSION,
         "language": "es",
@@ -225,6 +237,7 @@ def build_player_report_data(db_path: Path, team_id: str, player_id: str) -> dic
         "feature_history": feature_history,
         "guardrails": _guardrails(),
     }
+    return _finalize_payload(payload, ctx)
 
 
 def build_match_report_data(db_path: Path, team_id: str, match_id: str) -> dict[str, Any]:
@@ -248,7 +261,7 @@ def build_match_report_data(db_path: Path, team_id: str, match_id: str) -> dict[
         if "player" in lineup.columns and "player" in rating_names.columns:
             lineup = lineup.merge(rating_names, on="player", how="left")
 
-    return {
+    payload = {
         "report_type": "match",
         "schema_version": REPORT_SCHEMA_VERSION,
         "language": "es",
@@ -264,3 +277,4 @@ def build_match_report_data(db_path: Path, team_id: str, match_id: str) -> dict[
         "observations": observations,
         "guardrails": _guardrails(),
     }
+    return _finalize_payload(payload, ctx)
