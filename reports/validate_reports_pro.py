@@ -16,7 +16,7 @@ os.environ.setdefault("FPS_DEMO_MODE", "1")
 from app.data_access import get_squad_summary, get_team_matches, list_teams  # noqa: E402
 from app.presentation import demo_mode  # noqa: E402
 from reports.data_builder import build_match_report_data, build_player_report_data, build_team_report_data  # noqa: E402
-from reports.pdf_engine_pro import render_pdf_bytes  # noqa: E402
+from reports.pdf_engine_final import render_pdf_bytes  # noqa: E402
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 OUTPUT_DIR = ROOT / "reports" / "output" / "professional_demo"
@@ -103,6 +103,9 @@ def main() -> None:
         if payload.get("schema_version") != "0.5.0":
             raise AssertionError(f"Unexpected schema: {payload.get('schema_version')}")
 
+    if match_payload.get("match_summary") is None:
+        raise AssertionError("Materialized match summary is required by the final professional renderer")
+
     raw_players = squad["player"].astype(str).tolist() if "player" in squad.columns else []
     raw_opponents = matches["opponent"].astype(str).tolist() if "opponent" in matches.columns else []
     _assert_absent(payloads, [raw_team, *raw_players, *raw_opponents])
@@ -120,6 +123,7 @@ def main() -> None:
     print(f"opponent={match_payload['match']['opponent']}")
     print("spanish=PASS")
     print("anonymization=PASS")
+    print("materialized_match_summary=PASS")
     print("critical_recalculation_guard=PASS")
     for path, size in outputs:
         print(f"PDF: {path} ({size} bytes)")
