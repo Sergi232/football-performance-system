@@ -63,12 +63,13 @@ MATCH_TERMS = (
     "último", "darrer", "anterior encuentro", "último encuentro", "ultim encontre",
 )
 
+# These terms justify drilling from the profile into raw recent player-match evidence.
+# Generic "recent performance" and component labels do not: the profile tool already
+# contains the recent rating history, Performance Index and expert gate.
 PLAYER_DETAIL_TERMS = (
     "per que", "per què", "por que", "por qué", "evoluc", "canvi", "cambio",
-    "accions", "acciones", "estad", "rendiment recent", "rendimiento reciente",
-    "ultims partits", "últimos partidos", "ultimos partidos", "mostra", "muestra",
-    "nota", "rating", "match rating", "performance index", "motor expert",
-    "motor experto",
+    "accions", "acciones", "estad", "ultims partits", "últimos partidos",
+    "ultimos partidos", "mostra", "muestra", "nota",
 )
 
 TEAM_TERMS = (
@@ -134,44 +135,46 @@ def plan_tools_v2(
     combined_raw = f"{_history_text(history)} {question}".strip()
     combined = _norm(combined_raw)
 
-    # Resolve entities first so mixed intents (for example "explain X and state the
-    # data limitations") can use both the domain tool and data-quality tool.
     players = _hybrid._find_players(db_path, team_id, combined_raw)
 
-    # Explicit unsupported decisions remain blocked. The patterns are deliberately
-    # specific, so an evidence-sufficiency question such as "do we have enough data
-    # to discuss fatigue?" is not blocked.
+    # Unsupported decisions are blocked before any data tool is called.
     if any(_norm(term) in q for term in RECOMMENDATION_TERMS):
         return [], _recommendation_guardrail(question)
 
     plan: list[tuple[str, dict[str, Any]]] = []
 
-    # Data-quality is compositional only when the user explicitly asks about quality,
-    # missingness, coverage or sufficiency. Generic grounding qualifiers do not add it.
     quality_question = any(_norm(term) in q for term in QUALITY_TERMS)
     if quality_question:
         plan.append(("get_data_quality", {}))
 
-    # Comparisons need both resolved players and one bounded comparison tool.
+    # Comparisons are complete with the bounded comparison view. Returning here avoids
+    # leaking generic team/player tools into an otherwise valid comparison contract.
     if len(players) >= 2 and any(_norm(term) in q for term in COMPARE_TERMS):
         plan.append(("compare_players", {"players": players[:6]}))
         return _dedupe(plan), None
 
-    # Physical/GPS questions about a named player use that player's GPS view.
+    # Physical/GPS questions about a named player use the GPS view only unless the
+    # question separately asks for another explicit domain.
     if any(_norm(term) in q for term in GPS_TERMS):
         if players:
             plan.append(("get_player_gps", {"player": players[0]}))
         else:
             plan.append(("get_data_quality", {}))
 
-    # Match resolution works from the current question plus short history.
     match_query = _hybrid._resolve_match_query(db_path, team_id, combined_raw)
-    if match_query and any(_norm(term) in q for term in MATCH_TERMS):
+    match_question = bool(match_query and any(_norm(term) in q for term in MATCH_TERMS))
+    if match_question:
         plan.append(("get_match_detail", {"match": match_query}))
+        # If the current question does not explicitly name a full squad player, the
+        # match view is sufficient. This prevents opponent-name/token collisions from
+        # adding a spurious player profile to match summaries.
+        explicit_player = any(_norm(player) in q for player in players)
+        if not explicit_player:
+            return _dedupe(plan), None
 
-    # Named-player questions get a profile. Evolution/why/action questions also inspect
-    # recent player-match evidence. This also handles pronoun follow-ups via history.
-    if players and not any(name == "compare_players" for name, _ in plan):
+    # Named-player questions get the profile. Evolution/why/action questions also
+    # inspect recent player-match evidence. GPS and comparison requests are exclusive.
+    if players and not any(name in {"compare_players", "get_player_gps"} for name, _ in plan):
         plan.append(("get_player_profile", {"player": players[0]}))
         needs_detail = any(_norm(term) in q for term in PLAYER_DETAIL_TERMS)
         if history and any(_norm(term) in q for term in FOLLOWUP_TERMS):
@@ -179,17 +182,15 @@ def plan_tools_v2(
         if needs_detail:
             plan.append(("get_player_match_stats", {"player": players[0], "last_n": 5}))
 
-    # Team-level open questions without a named player get the team snapshot.
     if any(_norm(term) in q for term in TEAM_TERMS) and not players:
         plan.append(("get_team_snapshot", {}))
 
-    # Generic match wording such as "último partido" may resolve after earlier branches.
+    # Generic match wording in a follow-up can resolve from short history.
     if not any(name == "get_match_detail" for name, _ in plan):
         if match_query and any(_norm(term) in combined for term in MATCH_TERMS):
             plan.append(("get_match_detail", {"match": match_query}))
 
     if not plan:
-        # Open-question fallback remains descriptive and auditable.
         plan.append(("get_team_snapshot", {}))
 
     return _dedupe(plan), None
