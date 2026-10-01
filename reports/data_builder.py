@@ -41,8 +41,15 @@ from app.presentation import (
     display_team_name,
     replace_known_names,
 )
+from reports.report_data_access import get_team_match_technical_history
+from reports.report_metrics import (
+    REPORT_METRIC_VERSION,
+    build_match_technical_profile,
+    build_player_technical_profile,
+    build_team_technical_profile,
+)
 
-REPORT_SCHEMA_VERSION = "0.5.0"
+REPORT_SCHEMA_VERSION = "0.6.0"
 
 
 def _clean(value: Any) -> Any:
@@ -72,6 +79,16 @@ def _records(frame: pd.DataFrame, limit: int | None = None) -> list[dict[str, An
     if limit is not None:
         frame = frame.head(limit)
     return [{str(key): _clean(value) for key, value in row.items()} for row in frame.to_dict(orient="records")]
+
+
+def _clean_nested(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(k): _clean_nested(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_clean_nested(v) for v in value]
+    if isinstance(value, tuple):
+        return [_clean_nested(v) for v in value]
+    return _clean(value)
 
 
 def _guardrails() -> dict[str, bool]:
@@ -150,6 +167,9 @@ def build_team_report_data(db_path: Path, team_id: str) -> dict[str, Any]:
     ctx = _context(db_path, team_id)
     squad = _anon(ctx["squad"], ctx)
     matches = _anon(ctx["matches"], ctx)
+    technical_history_raw = get_team_match_technical_history(db_path, team_id)
+    technical_history = _anon(technical_history_raw, ctx)
+    technical_profile = build_team_technical_profile(technical_history_raw)
     try:
         rating_snapshot = _anon(get_team_player_rating_snapshot(db_path, team_id), ctx)
         rating_history = _anon(get_team_match_rating_history(db_path, team_id), ctx)
@@ -164,6 +184,7 @@ def build_team_report_data(db_path: Path, team_id: str) -> dict[str, Any]:
         "demo_mode": demo_mode(),
         "engine_version": FINAL_ENGINE_VERSION,
         "feature_version": BASE_FEATURE_VERSION,
+        "report_metric_version": REPORT_METRIC_VERSION,
         "match_rating_version": MATCH_RATING_VERSION,
         "performance_index_version": SCORE_VERSION,
         "team": _team_identity(team_id, ctx),
@@ -172,6 +193,8 @@ def build_team_report_data(db_path: Path, team_id: str) -> dict[str, Any]:
         "squad": _records(squad),
         "rating_snapshot": _records(rating_snapshot),
         "rating_history": _records(rating_history),
+        "technical_history": _records(technical_history),
+        "technical_profile": _clean_nested(technical_profile),
         "guardrails": _guardrails(),
     }
     return _finalize_payload(payload, ctx)
@@ -186,9 +209,11 @@ def build_player_report_data(db_path: Path, team_id: str, player_id: str) -> dic
         raise ValueError(f"Unknown player_id for team: {player_id}")
 
     summary = _records(_anon(selected, ctx), 1)[0]
-    history = _anon(get_player_match_history(db_path, team_id, player_id), ctx)
+    history_raw = get_player_match_history(db_path, team_id, player_id)
+    history = _anon(history_raw, ctx)
     ratings = _anon(get_player_match_ratings(db_path, team_id, player_id), ctx)
     gate = get_latest_player_gate(db_path, team_id, player_id)
+    technical_profile = build_player_technical_profile(history_raw)
 
     try:
         team_snapshot = _anon(get_team_player_rating_snapshot(db_path, team_id), ctx)
@@ -217,7 +242,7 @@ def build_player_report_data(db_path: Path, team_id: str, player_id: str) -> dic
         frame = frame.loc[frame["feature_value"].notna()].sort_values("match_date", ascending=False)
         if "opponent" in frame.columns:
             frame = _anon(frame, ctx)
-        feature_history[feature_name] = _records(frame, 5)
+        feature_history[feature_name] = _records(frame, 10)
 
     payload = {
         "report_type": "player",
@@ -226,6 +251,7 @@ def build_player_report_data(db_path: Path, team_id: str, player_id: str) -> dic
         "demo_mode": demo_mode(),
         "engine_version": FINAL_ENGINE_VERSION,
         "feature_version": BASE_FEATURE_VERSION,
+        "report_metric_version": REPORT_METRIC_VERSION,
         "match_rating_version": MATCH_RATING_VERSION,
         "performance_index_version": SCORE_VERSION,
         "team": _team_identity(team_id, ctx),
@@ -238,6 +264,7 @@ def build_player_report_data(db_path: Path, team_id: str, player_id: str) -> dic
         "performance_index_history": _records(index_history.sort_values("match_date", ascending=False), 15),
         "latest_role_fit_gate": None if gate is None else {k: _clean(v) for k, v in gate.items()},
         "feature_history": feature_history,
+        "technical_profile": _clean_nested(technical_profile),
         "guardrails": _guardrails(),
     }
     return _finalize_payload(payload, ctx)
@@ -255,6 +282,8 @@ def build_match_report_data(db_path: Path, team_id: str, match_id: str) -> dict[
     lineup = _anon(get_match_lineup(db_path, team_id, match_id), ctx)
     ratings = _anon(get_match_ratings(db_path, team_id, match_id), ctx)
     observations = _mask_nested(get_match_observations(db_path, team_id, match_id), ctx)
+    technical_history_raw = get_team_match_technical_history(db_path, team_id)
+    technical_profile = build_match_technical_profile(technical_history_raw, match_id)
     try:
         team_history = _anon(get_team_match_rating_history(db_path, team_id), ctx)
         selected_summary = team_history.loc[team_history["match_id"].astype(str) == str(match_id)]
@@ -278,6 +307,7 @@ def build_match_report_data(db_path: Path, team_id: str, match_id: str) -> dict[
         "demo_mode": demo_mode(),
         "engine_version": FINAL_ENGINE_VERSION,
         "feature_version": BASE_FEATURE_VERSION,
+        "report_metric_version": REPORT_METRIC_VERSION,
         "match_rating_version": MATCH_RATING_VERSION,
         "performance_index_version": SCORE_VERSION,
         "team": _team_identity(team_id, ctx),
@@ -286,6 +316,7 @@ def build_match_report_data(db_path: Path, team_id: str, match_id: str) -> dict[
         "lineup": _records(lineup),
         "ratings": _records(ratings),
         "observations": observations,
+        "technical_profile": _clean_nested(technical_profile),
         "guardrails": _guardrails(),
     }
     return _finalize_payload(payload, ctx)
