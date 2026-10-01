@@ -19,10 +19,10 @@ CoachAgentResult = _core.CoachAgentResult
 
 
 def _install_runtime_guards() -> None:
-    # Router v2 patches the hybrid planner. The V5 semantic guard normalizes current
-    # analytics field names and constrains final wording to structured evidence.
+    # Router v2 patches the hybrid planner. The semantic guard stack normalizes
+    # current V5 analytics fields and constrains final wording to structured evidence.
     from llm import coach_agent_router_v2  # noqa: F401
-    from llm import coach_agent_semantic_guard_v2  # noqa: F401
+    from llm import coach_agent_semantic_guard_v3  # noqa: F401
 
 
 def run_coach_agent_turn(*args: Any, **kwargs: Any) -> CoachAgentResult:
