@@ -29,7 +29,7 @@ def robust_question_language(question: str) -> str:
         "com ha evolucionat", "explica'm", "separa per a", "motor expert",
         "quines diferencies", "diferencies", "respectant", "qui presenta",
         "qui hauria", "jugadors", "informacio", "quina", "quines", "canvi recent",
-        "mostra", "mitjana", "posicio", "rol/posicio",
+        "mostra", "mitjana", "posicio", "rol/posicio", "descriptivament",
     )
     es_markers = (
         "resume el", "equipo", "partido", "datos", "rendimiento", "por que", "esta nota",
@@ -37,7 +37,7 @@ def robust_question_language(question: str) -> str:
         "como ha evolucionado", "explicame", "separa para", "motor experto",
         "que diferencias", "diferencias", "respetando", "quien presenta",
         "quien deberia", "jugadores", "informacion", "muestra", "media",
-        "posicion", "rol/posicion",
+        "posicion", "rol/posicion", "descriptivamente",
     )
     ca = sum(1 for marker in ca_markers if marker in q)
     es = sum(1 for marker in es_markers if marker in q)
