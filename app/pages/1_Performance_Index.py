@@ -14,14 +14,15 @@ if str(ROOT) not in sys.path:
 
 from app.coach_ui import dimension_chart, insight_card, metric_card, page_header, player_trend_chart, safe_number, section_header
 from app.performance_score_access import SCORE_VERSION, get_latest_player_score, get_player_score_history, list_score_teams, list_team_players
+from app.presentation import build_player_aliases, display_player_name, display_team_name
 from app.ui_theme import apply_professional_theme, position_label, sidebar_navigation
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 DIMENSIONS = [
-    ("attacking_threat", "Amenaça ofensiva"),
-    ("creation_progression", "Creació / progressió"),
-    ("defensive_contribution", "Contribució defensiva"),
-    ("finishing", "Finalització"),
+    ("attacking_threat", "Amenaza ofensiva"),
+    ("creation_progression", "Creación / progresión"),
+    ("defensive_contribution", "Contribución defensiva"),
+    ("finishing", "Finalización"),
     ("discipline", "Disciplina"),
 ]
 
@@ -36,12 +37,12 @@ def db_path() -> Path:
 
 def evidence_label(value: object) -> str:
     labels = {
-        "DIRECT_SIGNED": "Evidència directa",
-        "CONTRIBUTION_FALLBACK": "Contribució observada de suport",
-        "MISSING": "Sense evidència",
+        "DIRECT_SIGNED": "Evidencia directa",
+        "CONTRIBUTION_FALLBACK": "Contribución observada de apoyo",
+        "MISSING": "Sin evidencia",
     }
     if value is None or pd.isna(value):
-        return "Sense evidència"
+        return "Sin evidencia"
     return labels.get(str(value), str(value))
 
 
@@ -49,39 +50,47 @@ path = db_path()
 try:
     teams = list_score_teams(path)
 except Exception as exc:
-    st.error("La capa de Performance Index no està disponible.")
+    st.error("La capa de Performance Index no está disponible.")
     st.caption(str(exc))
     st.stop()
 
 if teams.empty:
-    st.info("No hi ha índexs materialitzats.")
+    st.info("No hay índices materializados.")
     st.stop()
 
 sel_team, sel_player = st.columns([1, 1.6])
-team_labels = {str(r.team_id): str(r.display_name) for r in teams.itertuples(index=False)}
+raw_team_labels = {str(r.team_id): str(r.display_name) for r in teams.itertuples(index=False)}
+team_ids = list(raw_team_labels)
+display_team_labels = {tid: display_team_name(raw_team_labels[tid], team_ids.index(tid) + 1) for tid in team_ids}
 with sel_team:
-    team_id = st.selectbox("Equip", list(team_labels), format_func=lambda x: team_labels[x])
+    team_id = st.selectbox("Equipo", team_ids, format_func=lambda x: display_team_labels[x])
 players = list_team_players(path, team_id)
 if players.empty:
-    st.info("No hi ha jugadors disponibles.")
+    st.info("No hay jugadores disponibles.")
     st.stop()
-player_labels = {str(r.player_id): f"{r.player} · {int(r.scored_matches)} observacions" for r in players.itertuples(index=False)}
+player_aliases = build_player_aliases(players)
+raw_player_labels = {str(r.player_id): str(r.player) for r in players.itertuples(index=False)}
+scored_matches = {str(r.player_id): int(r.scored_matches) for r in players.itertuples(index=False)}
 with sel_player:
-    player_id = st.selectbox("Jugador", list(player_labels), format_func=lambda x: player_labels[x])
+    player_id = st.selectbox(
+        "Jugador",
+        list(raw_player_labels),
+        format_func=lambda x: f"{display_player_name(x, raw_player_labels[x], player_aliases)} · {scored_matches[x]} observaciones",
+    )
 
 history = get_player_score_history(path, team_id, player_id)
 latest = get_latest_player_score(path, team_id, player_id)
-player_name = player_labels[player_id].split(" · ")[0]
+player_name = display_player_name(player_id, raw_player_labels[player_id], player_aliases)
 
 page_header(
-    "ANALYTICS · PERFIL HISTÒRIC",
+    "ANALYTICS · PERFIL HISTÓRICO",
     f"Performance Index · {player_name}",
-    "Capa posicional per observar perfil i evolució. No és la nota d'un partit i no substitueix el Match Rating.",
+    "Capa posicional para observar perfil y evolución. No es la nota de un partido y no sustituye el Match Rating.",
     SCORE_VERSION,
 )
 
 if latest is None:
-    st.warning("Aquest jugador no té cap Performance Index posicional elegible en aquesta baseline.")
+    st.warning("Este jugador no tiene ningún Performance Index posicional elegible en esta baseline.")
     st.stop()
 
 scores = history.dropna(subset=["performance_score"]).copy()
@@ -95,51 +104,51 @@ k1, k2, k3, k4 = st.columns(4)
 with k1:
     metric_card("Performance Index", safe_number(latest.get("performance_score"), 1, "/100"), "Valor posicional actual")
 with k2:
-    metric_card("Mitjana últims 5", safe_number(last5, 1, "/100"), "Evolució recent")
+    metric_card("Media últimos 5", safe_number(last5, 1, "/100"), "Evolución reciente")
 with k3:
     delta_text = "—" if delta is None or pd.isna(delta) else f"{float(delta):+.1f}"
     tone = "positive" if delta is not None and pd.notna(delta) and delta > 0 else "negative" if delta is not None and pd.notna(delta) and delta < 0 else "neutral"
-    metric_card("Canvi 5 vs 5", delta_text, "Últims 5 menys 5 anteriors", tone=tone)
+    metric_card("Cambio 5 vs 5", delta_text, "Últimos 5 menos 5 anteriores", tone=tone)
 with k4:
-    metric_card("Confiança", safe_number(latest.get("score_evidence_confidence"), 0, "%"), "Cobertura d'evidència prevista")
+    metric_card("Confianza", safe_number(latest.get("score_evidence_confidence"), 0, "%"), "Cobertura de evidencia prevista")
 
 left, right = st.columns([1, 1.25], gap="large")
 with left:
-    section_header("Perfil de dimensions", "Només es mostren dimensions amb evidència disponible")
+    section_header("Perfil de dimensiones", "Solo se muestran dimensiones con evidencia disponible")
     values = {label: latest.get(key) for key, label in DIMENSIONS}
-    st.plotly_chart(dimension_chart(values), width="stretch", config={"displayModeBar": False})
+    st.plotly_chart(dimension_chart(values), width="stretch", config={"displayModeBar": False}, key=f"pi_dimensions_{player_id}")
 
     missing = [label for key, label in DIMENSIONS if latest.get(key) is None or pd.isna(latest.get(key))]
     available = [label for key, label in DIMENSIONS if latest.get(key) is not None and pd.notna(latest.get(key))]
     insight_card(
         "Cobertura dimensional",
-        f"{len(available)}/{len(DIMENSIONS)} dimensions amb valor",
-        "Disponibles: " + (", ".join(available) if available else "cap"),
+        f"{len(available)}/{len(DIMENSIONS)} dimensiones con valor",
+        "Disponibles: " + (", ".join(available) if available else "ninguna"),
         "neutral",
     )
     if missing:
-        insight_card("Sense evidència suficient", ", ".join(missing), "No es converteixen valors absents en zero.", "warning")
+        insight_card("Sin evidencia suficiente", ", ".join(missing), "Los valores ausentes no se convierten en cero.", "warning")
 
 with right:
-    section_header("Evolució de l'índex", "Escala 0–100 · perfil històric/posicional")
+    section_header("Evolución del índice", "Escala 0–100 · perfil histórico/posicional")
     if scores.empty:
-        st.info("No hi ha historial disponible.")
+        st.info("No hay historial disponible.")
     else:
-        st.plotly_chart(player_trend_chart(scores, "performance_score", (0, 100), hover_col=None), width="stretch", config={"displayModeBar": False})
+        st.plotly_chart(player_trend_chart(scores, "performance_score", (0, 100), hover_col=None), width="stretch", config={"displayModeBar": False}, key=f"pi_trend_{player_id}")
 
-section_header("Evidència de l'última observació", "Origen de cada dimensió")
+section_header("Evidencia de la última observación", "Origen de cada dimensión")
 evidence_rows = []
 for key, label in DIMENSIONS:
     evidence_rows.append({
-        "Dimensió": label,
+        "Dimensión": label,
         "Valor": latest.get(key),
-        "Evidència": evidence_label(latest.get(f"{key}_evidence")),
+        "Evidencia": evidence_label(latest.get(f"{key}_evidence")),
     })
 evidence = pd.DataFrame(evidence_rows)
 evidence["Valor"] = pd.to_numeric(evidence["Valor"], errors="coerce").round(1)
 st.dataframe(evidence, hide_index=True, width="stretch")
 
-with st.expander("Historial i traçabilitat"):
+with st.expander("Historial y trazabilidad"):
     details = history.copy()
     if not details.empty:
         details["match_date"] = pd.to_datetime(details["match_date"]).dt.date
@@ -149,6 +158,6 @@ with st.expander("Historial i traçabilitat"):
                 details[col] = pd.NA
         details = details[show]
         details["position_group"] = details["position_group"].map(position_label)
-        details.columns = ["Data", "Rol font", "Perfil", "Índex", "Confiança %", "Dimensions", "N fallback"]
+        details.columns = ["Fecha", "Rol fuente", "Perfil", "Índice", "Confianza %", "Dimensiones", "N fallback"]
         st.dataframe(details, hide_index=True, width="stretch", height=440)
-    st.caption("Aquest índex és experimental i secundari. Els valors missing es mantenen com a missing.")
+    st.caption("Este índice es experimental y secundario. Los valores missing se mantienen como missing.")
