@@ -18,14 +18,15 @@ ollama_status = _core.ollama_status
 CoachAgentResult = _core.CoachAgentResult
 
 
-def _install_router_v2() -> None:
-    # Importing this module patches the hybrid planner with multilingual quality/GPS
-    # routing fixes while keeping the analytical tools and synthesis layer unchanged.
+def _install_runtime_guards() -> None:
+    # Router v2 patches the hybrid planner. The semantic guard patches final synthesis
+    # so fluent but unsupported wording cannot override structured evidence.
     from llm import coach_agent_router_v2  # noqa: F401
+    from llm import coach_agent_semantic_guard  # noqa: F401
 
 
 def run_coach_agent_turn(*args: Any, **kwargs: Any) -> CoachAgentResult:
-    _install_router_v2()
+    _install_runtime_guards()
     from llm.coach_agent_hybrid import run_coach_agent_turn as _run_hybrid
 
     kwargs.setdefault("model", DEFAULT_MODEL)
@@ -33,7 +34,7 @@ def run_coach_agent_turn(*args: Any, **kwargs: Any) -> CoachAgentResult:
 
 
 def run_coach_agent(*args: Any, **kwargs: Any) -> str:
-    _install_router_v2()
+    _install_runtime_guards()
     from llm.coach_agent_hybrid import run_coach_agent as _run_hybrid
 
     kwargs.setdefault("model", DEFAULT_MODEL)
