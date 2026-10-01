@@ -1,17 +1,20 @@
 """Final professional PDF entry point.
 
-TEAM and PLAYER reuse the professional report layouts from pdf_engine_pro. MATCH uses
-the same visual language but reads the materialized match summary supplied by the
-analytics layer instead of recomputing aggregate rating/confidence in the report.
+TEAM and PLAYER reuse the professional report layouts from pdf_engine_pro with a
+small final presentation pass. MATCH uses the same visual language but reads the
+materialized match summary supplied by the analytics layer instead of recomputing
+aggregate rating/confidence in the report.
 """
 from __future__ import annotations
 
 from io import BytesIO
 from typing import Any
 
+import reports.pdf_engine_pro as pro
+from reportlab.graphics.shapes import Circle, Drawing, Line, String
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
-from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer
+from reportlab.platypus import KeepTogether, PageBreak, Paragraph, SimpleDocTemplate, Spacer
 
 from reports.pdf_engine_pro import (
     AMBER,
@@ -37,6 +40,84 @@ from reports.pdf_engine_pro import (
     _team_story,
     _kpi_row,
 )
+
+
+def _scatter_chart_final(points: list[tuple[str, float, float]], width: float, height: float) -> Drawing:
+    """Team scatter with fewer labels to improve readability in the PDF."""
+    d = Drawing(width, height)
+    left, right, bottom, top = 34, 14, 23, 10
+    pw, ph = width - left - right, height - bottom - top
+    y_abs = max([abs(p[2]) for p in points] + [0.5]) * 1.15
+    x_min, x_max = 3.0, 10.0
+    for i in range(4):
+        y = bottom + ph * i / 3
+        d.add(Line(left, y, left + pw, y, strokeColor=pro.GRID, strokeWidth=0.7))
+    zero_y = bottom + ph * (y_abs) / (2 * y_abs)
+    z = Line(left, zero_y, left + pw, zero_y, strokeColor=pro.MUTED, strokeWidth=0.8)
+    z.strokeDashArray = [3, 3]
+    d.add(z)
+
+    # Only the four strongest recent changes are labelled. All points remain visible.
+    label_names = {p[0] for p in sorted(points, key=lambda x: abs(x[2]), reverse=True)[:4]}
+    for name, x_val, y_val in points:
+        x = left + pw * (x_val - x_min) / (x_max - x_min)
+        y = bottom + ph * (y_val + y_abs) / (2 * y_abs)
+        d.add(Circle(x, y, 3.2, fillColor=TEAL, strokeColor=pro.WHITE, strokeWidth=0.8))
+        if name in label_names:
+            d.add(String(x + 4, y + 2, name, fontName="Helvetica", fontSize=5.2, fillColor=pro.TEXT))
+    d.add(String(left + pw / 2, 2, "Media Match Rating - últimos 5", textAnchor="middle", fontName="Helvetica", fontSize=6.2, fillColor=pro.MUTED))
+    d.add(String(2, height / 2, "Cambio 5 vs 5", fontName="Helvetica", fontSize=6.2, fillColor=pro.MUTED))
+    return d
+
+
+def _team_story_final(payload: dict[str, Any], styles, width: float) -> list[Any]:
+    original_scatter = pro._scatter_chart
+    pro._scatter_chart = _scatter_chart_final
+    try:
+        return _team_story(payload, styles, width)
+    finally:
+        pro._scatter_chart = original_scatter
+
+
+def _player_story_final(payload: dict[str, Any], styles, width: float) -> list[Any]:
+    """Compact the player report without changing its analytical content.
+
+    - keep the dimensions heading and chart together;
+    - cap the dimensions chart height;
+    - remove the forced break before recent production;
+    - show eight recent matches in the table to keep the report near two pages.
+    """
+    compact_payload = dict(payload)
+    compact_payload["match_history"] = list(payload.get("match_history") or [])[:8]
+
+    original_bar = pro._bar_chart
+
+    def compact_bar(items, chart_width, chart_height, x_min, x_max):
+        return original_bar(items, chart_width, min(chart_height, 34 * mm), x_min, x_max)
+
+    pro._bar_chart = compact_bar
+    try:
+        story = _player_story(compact_payload, styles, width)
+    finally:
+        pro._bar_chart = original_bar
+
+    # The original layout deliberately started recent production on a new page.
+    # Let ReportLab paginate naturally instead so the second page is used efficiently.
+    story = [item for item in story if not isinstance(item, PageBreak)]
+
+    # Prevent an orphaned "Dimensiones" heading at the bottom of a page.
+    for i, item in enumerate(story):
+        if isinstance(item, Paragraph) and item.getPlainText() == "Dimensiones del último partido":
+            chart_index = None
+            for j in range(i + 1, min(i + 8, len(story))):
+                if isinstance(story[j], Drawing):
+                    chart_index = j
+                    break
+            if chart_index is not None:
+                grouped = KeepTogether(story[i : chart_index + 1])
+                story = story[:i] + [grouped] + story[chart_index + 1 :]
+            break
+    return story
 
 
 def _match_story_final(payload: dict[str, Any], styles, width: float) -> list[Any]:
@@ -152,9 +233,9 @@ def render_pdf_bytes(payload: dict[str, Any]) -> bytes:
     styles = _styles()
     width = A4[0] - 32 * mm
     if report_type == "team":
-        story = _team_story(payload, styles, width)
+        story = _team_story_final(payload, styles, width)
     elif report_type == "player":
-        story = _player_story(payload, styles, width)
+        story = _player_story_final(payload, styles, width)
     else:
         story = _match_story_final(payload, styles, width)
     doc.build(story, onFirstPage=_footer, onLaterPages=_footer)
