@@ -110,6 +110,16 @@ st.markdown(
         border-color:#AFC5D2;
         background:#F8FAFB;
     }
+    [data-testid="stSidebar"] [data-testid="stPageLink"] a {
+        border:0;
+        border-radius:8px;
+        padding:.45rem .5rem;
+        background:transparent;
+    }
+    [data-testid="stSidebar"] [data-testid="stPageLink"] a:hover {
+        border-color:transparent;
+        background:rgba(255,255,255,.08);
+    }
     @media (max-width: 900px) {
         .fps-command-strip { gap:.35rem; }
     }
@@ -407,7 +417,7 @@ def render_quality() -> None:
               <br>
               <div class="fps-status-label">Cobertura</div>
               <div class="fps-status-value">{safe_int(overview.get("players"))} jugadors</div>
-              <div class="fps-status-sub">{safe_int(overview.get("matches"))} partits.</div>
+              <div class="fps-status-sub">{safe_int(overview.get('matches'))} partits.</div>
             </div>
             """,
             unsafe_allow_html=True,
