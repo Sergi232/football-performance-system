@@ -34,14 +34,16 @@ PLAYER_METRICS = [
     ("dispossessed_per90", "Desposesiones / 90", "", 2),
 ]
 
-
-def _to_float(value: Any) -> float | None:
-    try:
-        if value is None or pd.isna(value):
-            return None
-        return float(value)
-    except (TypeError, ValueError):
-        return None
+_PER90_SOURCE = {
+    "passes_completed_per90": "passes_completed",
+    "shots_per90": "shots_total",
+    "goals_per90": "goals",
+    "assists_per90": "assists",
+    "tackles_won_per90": "tackles_won",
+    "interceptions_per90": "interceptions",
+    "turnovers_per90": "turnovers",
+    "dispossessed_per90": "dispossessed",
+}
 
 
 def _block_value(frame: pd.DataFrame, metric: str) -> float | None:
@@ -51,6 +53,11 @@ def _block_value(frame: pd.DataFrame, metric: str) -> float | None:
         total = pd.to_numeric(frame.get("passes_total"), errors="coerce").fillna(0).sum()
         completed = pd.to_numeric(frame.get("passes_completed"), errors="coerce").fillna(0).sum()
         return None if total <= 0 else float(completed / total * 100.0)
+    if metric in _PER90_SOURCE:
+        source = _PER90_SOURCE[metric]
+        minutes = pd.to_numeric(frame.get("minutes"), errors="coerce").fillna(0).sum()
+        total = pd.to_numeric(frame.get(source), errors="coerce").fillna(0).sum()
+        return None if minutes <= 0 else float(total * 90.0 / minutes)
     series = pd.to_numeric(frame.get(metric), errors="coerce")
     return None if series.dropna().empty else float(series.mean())
 
@@ -92,8 +99,7 @@ def build_match_technical_profile(history: pd.DataFrame, match_id: str) -> list[
     selected = ordered.loc[ordered["match_id"].astype(str) == str(match_id)]
     if selected.empty:
         return []
-    row = selected.iloc[0]
-    selected_date = row["match_date"]
+    selected_date = selected.iloc[0]["match_date"]
     prior = ordered.loc[ordered["match_date"] < selected_date].sort_values(
         ["match_date", "match_id"], ascending=[False, False]
     ).head(5)
@@ -115,38 +121,24 @@ def build_match_technical_profile(history: pd.DataFrame, match_id: str) -> list[
     return profile
 
 
-def _player_enrich(frame: pd.DataFrame) -> pd.DataFrame:
+def _player_prepare(frame: pd.DataFrame) -> pd.DataFrame:
     if frame.empty:
         return frame.copy()
     out = frame.copy()
-    minutes = pd.to_numeric(out.get("minutes"), errors="coerce").fillna(0)
     for col in [
-        "passes_total", "passes_completed", "shots_total", "goals", "assists",
+        "minutes", "passes_total", "passes_completed", "shots_total", "goals", "assists",
         "tackles_won", "interceptions", "turnovers", "dispossessed",
     ]:
         out[col] = pd.to_numeric(out.get(col), errors="coerce").fillna(0)
-    out["pass_completion_pct"] = out.apply(
-        lambda r: None if float(r["passes_total"]) <= 0 else float(r["passes_completed"] / r["passes_total"] * 100.0),
-        axis=1,
-    )
-    denom = minutes.replace(0, pd.NA)
-    out["passes_completed_per90"] = out["passes_completed"] * 90.0 / denom
-    out["shots_per90"] = out["shots_total"] * 90.0 / denom
-    out["goals_per90"] = out["goals"] * 90.0 / denom
-    out["assists_per90"] = out["assists"] * 90.0 / denom
-    out["tackles_won_per90"] = out["tackles_won"] * 90.0 / denom
-    out["interceptions_per90"] = out["interceptions"] * 90.0 / denom
-    out["turnovers_per90"] = out["turnovers"] * 90.0 / denom
-    out["dispossessed_per90"] = out["dispossessed"] * 90.0 / denom
     return out
 
 
 def build_player_technical_profile(history: pd.DataFrame) -> list[dict[str, Any]]:
     if history.empty:
         return []
-    ordered = _player_enrich(history)
+    ordered = _player_prepare(history)
     ordered["match_date"] = pd.to_datetime(ordered["match_date"])
-    ordered = ordered.loc[pd.to_numeric(ordered["minutes"], errors="coerce").fillna(0) > 0]
+    ordered = ordered.loc[ordered["minutes"] > 0]
     ordered = ordered.sort_values(["match_date", "match_id"], ascending=[False, False])
     latest = ordered.head(1)
     last5 = ordered.head(5)
