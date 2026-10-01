@@ -35,6 +35,9 @@ UNSUPPORTED_PATTERNS = (
     "risc de lesió", "injury risk", "fatiga", "readiness", "qui hauria de jugar",
 )
 
+_NUMBER_RE = re.compile(r"(?<![\w])[-+]?\d+(?:[\.,]\d+)?%?")
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+|\n+")
+
 
 def _norm(value: object) -> str:
     text = unicodedata.normalize("NFKD", str(value or ""))
@@ -79,7 +82,9 @@ def _resolve_match_query(db_path: Path, team_id: str, text: str) -> str | None:
     if matches.empty:
         return None
     target = _norm(text)
-    if any(token in target for token in ("ultim partit", "darrer partit", "last match")):
+    if any(token in target for token in (
+        "ultim partit", "darrer partit", "ultimo partido", "ultimo encuentro", "last match",
+    )):
         return str(matches.iloc[0]["match_id"])
     for row in matches.head(20).itertuples(index=False):
         opponent = str(getattr(row, "opponent", "") or "")
@@ -260,14 +265,16 @@ def _flatten_lines(value: Any, prefix: str = "", depth: int = 0) -> list[str]:
 def _deterministic_fallback(question: str, evidence: dict[str, Any], tools_used: list[str]) -> str:
     lines = _flatten_lines(evidence)
     useful = [line for line in lines if not line.endswith("=None")][:12]
+    spanish = any(token in _norm(question) for token in ("equipo", "partido", "jugador", "datos", "rendimiento", "quien", "quién", "que ", "qué "))
     if not useful:
-        return "No hi ha prou evidència estructurada disponible per respondre aquesta pregunta."
-    body = "\n".join(f"- {line}" for line in useful)
-    return (
-        "Síntesi local no disponible dins del límit de temps. Dades estructurades disponibles:\n"
-        f"{body}\n"
-        f"Evidència consultada: {', '.join(tools_used)}."
-    )
+        return (
+            "No hay suficiente evidencia estructurada para responder esta pregunta."
+            if spanish else
+            "No hi ha prou evidència estructurada disponible per respondre aquesta pregunta."
+        )
+    body = "\n".join(f"- {line}" for line in useful[:5])
+    intro = "Síntesis local no disponible. Evidencia estructurada:" if spanish else "Síntesi local no disponible. Evidència estructurada:"
+    return f"{intro}\n{body}\nEvidència consultada: {', '.join(tools_used)}."
 
 
 def _synthesize(question: str, evidence: dict[str, Any], *, history: list[dict[str, str]] | None, model: str, base_url: str) -> str:
@@ -300,6 +307,75 @@ def _synthesize(question: str, evidence: dict[str, Any], *, history: list[dict[s
     message = response.get("message") or {}
     text = str(message.get("content") or "").strip()
     return text or "No hi ha prou evidència per generar una resposta fiable."
+
+
+def _canon_number(token: str) -> str:
+    raw = token.strip().replace(",", ".")
+    pct = raw.endswith("%")
+    if pct:
+        raw = raw[:-1]
+    try:
+        value = float(raw)
+        core = f"{value:.12g}"
+    except ValueError:
+        core = raw
+    return core + ("%" if pct else "")
+
+
+def _evidence_numbers(evidence: dict[str, Any]) -> set[str]:
+    blob = "\n".join(_flatten_lines(evidence))
+    return {_canon_number(m.group(0)) for m in _NUMBER_RE.finditer(blob)}
+
+
+def _subject_labels(evidence: dict[str, Any]) -> list[str]:
+    labels: list[str] = []
+    for key in ("get_player_profile", "get_player_match_stats", "get_player_gps"):
+        payload = evidence.get(key)
+        if isinstance(payload, dict) and payload.get("player"):
+            labels.append(str(payload["player"]))
+    compare = evidence.get("compare_players")
+    if isinstance(compare, dict):
+        for row in compare.get("players") or []:
+            if isinstance(row, dict) and row.get("player"):
+                labels.append(str(row["player"]))
+    match = evidence.get("get_match_detail")
+    if isinstance(match, dict):
+        match_meta = match.get("match")
+        if isinstance(match_meta, dict) and match_meta.get("opponent"):
+            labels.append(str(match_meta["opponent"]))
+    return list(dict.fromkeys(labels))[:6]
+
+
+def _postprocess_grounded(question: str, text: str, evidence: dict[str, Any]) -> str:
+    """Enforce grounding and brevity deterministically after LLM synthesis.
+
+    Unsupported numeric sentences are removed rather than repaired or recalculated.
+    Subject labels come only from structured evidence. The final output is capped at
+    six sentence/line chunks so the product contract does not rely on model obedience.
+    """
+    supported = _evidence_numbers(evidence)
+    chunks = [chunk.strip() for chunk in _SENTENCE_SPLIT_RE.split(text) if chunk.strip()]
+    kept: list[str] = []
+    for chunk in chunks:
+        numbers = {_canon_number(m.group(0)) for m in _NUMBER_RE.finditer(chunk)}
+        if numbers and not numbers.issubset(supported):
+            continue
+        kept.append(chunk)
+
+    if not kept:
+        spanish = any(token in _norm(question) for token in ("equipo", "partido", "jugador", "datos", "rendimiento", "quien", "quién", "que ", "qué "))
+        kept = [
+            "No hay suficiente evidencia estructurada para sostener una respuesta numérica fiable."
+            if spanish else
+            "No hi ha prou evidència estructurada per sostenir una resposta numèrica fiable."
+        ]
+
+    labels = _subject_labels(evidence)
+    missing = [label for label in labels if _norm(label) not in _norm(" ".join(kept))]
+    if missing:
+        kept[0] = f"{' / '.join(missing)}: {kept[0]}"
+
+    return " ".join(kept[:6]).strip()
 
 
 def run_coach_agent_turn(
@@ -340,10 +416,11 @@ def run_coach_agent_turn(
         tools_used.append(name)
 
     try:
-        text = _synthesize(question, evidence, history=history, model=selected_model, base_url=selected_url)
+        raw_text = _synthesize(question, evidence, history=history, model=selected_model, base_url=selected_url)
+        text = _postprocess_grounded(question, raw_text, evidence)
         return CoachAgentResult(text, selected_model, 1 if tools_used else 0, tuple(tools_used), None)
     except Exception as exc:
-        fallback = _deterministic_fallback(question, evidence, tools_used)
+        fallback = _postprocess_grounded(question, _deterministic_fallback(question, evidence, tools_used), evidence)
         return CoachAgentResult(
             fallback,
             selected_model,
