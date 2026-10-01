@@ -15,9 +15,10 @@ EXPERT-01..07 N1000-N13000          BASELINE CERRADO / VALIDADO
 LLM-01                              PROTOTYPE v0.1 / CONTRATOS PASS
 LLM-02 LOCAL COACH COPILOT          CERRADO MVP / CASTELLANO / LIMITACIÓN MENOR DOCUMENTADA
 REPORTS-01                          PROTOTYPE v0.1 / CONTRATO PASS
-REPORTS-02 PROFESSIONAL PDF         ACTIVO — GATE VISUAL PENDIENTE
+REPORTS-02 PROFESSIONAL PDF         ACTIVO — ES+ANONIMIZACIÓN+GATE VISUAL PENDIENTES
 DASHBOARD-01                        CONTRACT PASS
-DASHBOARD PROFESSIONAL REDESIGN     IMPLEMENTADO / CHECK VISUAL LOCAL PENDIENTE
+DASHBOARD PROFESSIONAL REDESIGN     IMPLEMENTADO / CHECK ES+DEMO LOCAL PENDIENTE
+UI-PRESENTATION-ES-DEMO             IMPLEMENTADO / VALIDACIÓN LOCAL PENDIENTE
 PRODUCT-SPIRAL-01                   PREPARADO — UI/PDF SAFE AUTO-IMPROVEMENT + REGRESSION QA
 ARCHITECTURE-01                     CERRADO
 ANALYTICS-01                        CERRADO / VALIDADO
@@ -132,32 +133,20 @@ La revisión humana del primer gate automático detectó que un 136/136 técnico
 
 ### Decisión de idioma
 
-Para cerrar el MVP sin seguir gastando tiempo en i18n, el Coach Copilot oficial queda **solo en castellano**.
+El Coach Copilot oficial del MVP queda **solo en castellano**.
 
 Catalán no forma parte del contrato de aceptación de LLM-02. Puede recuperarse como extensión futura si aporta valor.
 
 ### Gate final ES — 01/10/2026
 
-Configuración:
-
 ```text
 model=qwen3:1.7b
 profile=balanced
 router ES=17/17 = 100%
-```
-
-Challenge sets:
-
-```text
 seed 20260930: 17/17 = 100.0%
 seed 20261001: 15/17 = 88.2%
 seed 20261002: 17/17 = 100.0%
 seed 20261003: 17/17 = 100.0%
-```
-
-Agregado:
-
-```text
 66/68 = 97.1% end-to-end
 runtime errors = 0
 safety failures = 0
@@ -167,28 +156,9 @@ subject contract = PASS
 average latency <= 12 s = PASS
 ```
 
-El gate automático estricto imprimió `FAIL` por:
+El gate automático estricto imprimió `FAIL` únicamente por límite de frases en 2/68 casos challenge y el efecto derivado sobre una categoría. No se detectaron fallos de seguridad, runtime, grounding, idioma ni sujeto.
 
-```text
-sentence_limit_100 = FAIL
-all_supported_categories_at_least_90 = FAIL
-```
-
-La segunda condición es derivada de los mismos dos casos challenge fallidos. No se detectaron fallos de seguridad, runtime, grounding, idioma ni sujeto.
-
-### Criterio de cierre
-
-LLM-02 se acepta como **MVP cerrado con limitación menor documentada** porque:
-
-- supera ampliamente el umbral global del 90%;
-- routing ES es 100%;
-- no hay errores de seguridad;
-- no hay errores de runtime;
-- no hay claims numéricos no grounded detectados;
-- el contrato de castellano pasa;
-- la limitación restante es de longitud/formato en 2/68 casos challenge, no de lógica crítica.
-
-No seguir iterando LLM-02 salvo que aparezca un error funcional grave durante el uso real.
+LLM-02 se acepta como **MVP cerrado con limitación menor documentada**. No seguir iterando salvo que aparezca un error funcional grave durante el uso real.
 
 ### Limitaciones explícitas del Copilot MVP
 
@@ -201,35 +171,67 @@ No soporta como capacidad validada:
 - recomendaciones tácticas automáticas;
 - fatiga, readiness o riesgo de lesión sin capa analítica validada.
 
-Estas preguntas deben devolver una limitación segura o evidencia descriptiva, no inventar una respuesta.
+## UI-PRESENTATION-ES-DEMO — 01/10/2026
+
+Objetivo: producto final visible en castellano y seguro para capturas/demostraciones sin modificar la base real.
+
+Arquitectura:
+
+```text
+DB / analytics reales
+→ IDs y cálculos originales intactos
+→ app/presentation.py
+→ alias de equipo / jugador / rival
+→ UI Streamlit en castellano
+```
+
+Implementado:
+
+- `app/presentation.py` como capa exclusivamente de presentación;
+- `FPS_DEMO_MODE=1` activado por defecto para evitar exposiciones accidentales;
+- `FPS_DEMO_MODE=0` permite vista privada local con identidades reales;
+- equipo → `Equipo Demo`;
+- jugadores → `Jugador 01`, `Jugador 02`, ... con alias estables por `player_id`;
+- rivales → `Rival 01`, `Rival 02`, ...;
+- sustitución adicional de variantes inequívocas de nombre/cognome/inicial+cognome en texto libre;
+- Home, Equipo, Jugador, Partido, Performance Index, Físico/GPS, Calidad y alertas y Asistente IA traducidos al castellano;
+- Asistente IA traduce alias → identidad real solo antes de consultar tools locales y vuelve a anonimizar la respuesta antes de mostrarla;
+- datos, IDs, Match Rating, Performance Index y motor experto no se modifican;
+- exportación PDF deshabilitada temporalmente en modo demo hasta completar anonimización de REPORTS-02;
+- `app/validate_demo_presentation.py` valida masking y busca restos visibles de catalán en las pantallas principales.
+
+Pendiente para cerrar UI-PRESENTATION-ES-DEMO:
+
+1. `py_compile` de los ficheros modificados;
+2. ejecutar `app/validate_demo_presentation.py` contra la DuckDB local;
+3. abrir Streamlit y confirmar visualmente Home / Jugador / Partido en modo demo;
+4. si PASS, cerrar dashboard visual.
 
 ## Producto actual
 
-### Home / Command Center
+### Home / Centro de mando
 
-Coach Command Center con último partido, brief operativo, forma, tendencias, cambios 5-vs-5, ratings destacados, calidad de datos y accesos principales.
-
-Pendiente: gate visual local.
+Último partido, brief operativo, forma, tendencias, cambios 5-vs-5, ratings destacados, calidad de datos y accesos principales. Castellano + demo masking implementados; validación local pendiente.
 
 ### Jugador
 
-Match Rating V5, confidence, perfil, Performance Index, dimensiones, evolución, técnico, motor experto, partidos y PDF.
+Match Rating V5, confianza, perfil, Performance Index, dimensiones, evolución, técnico, motor experto, partidos. Castellano + demo masking implementados.
 
 ### Equipo
 
-Match Rating V5, forma, matriz de plantilla, tendencias, participación, Performance Index complementario, historial y PDF.
+Match Rating V5, forma, matriz de plantilla, tendencias, participación, Performance Index complementario e historial. Castellano + demo masking implementados.
 
 ### Partido
 
-Ratings V5, confidence, roles, minutos, distribución, dimensiones, observaciones deterministas y PDF desde partido 1.
+Ratings V5, confianza, roles, minutos, distribución, dimensiones y observaciones deterministas. Castellano + demo masking implementados.
 
 ### Físico / GPS
 
-Capa descriptiva opcional sobre GPS canónico. La base local aún no contiene observaciones GPS reales suficientes para una demo completa. No usar HSR/sprint/load/fatigue/readiness sin definición validada.
+Capa descriptiva opcional sobre GPS canónico. UI en castellano y preparada para anonimizar jugadores/rivales cuando existan datos GPS. La base local aún no contiene observaciones GPS reales suficientes para una demo completa.
 
 ### Alertas
 
-Solo estados auditables de contexto/calidad. Sin diagnóstico de lesión, fatiga o readiness.
+Solo estados auditables de contexto/calidad. UI en castellano y jugadores anonimizados en modo demo.
 
 ## REPORTS-02 — professional PDFs
 
@@ -242,11 +244,13 @@ Estado técnico:
 - sin cálculos críticos en PDF;
 - validación de contrato PASS.
 
-Pendiente:
+Pendiente inmediato:
 
-1. inspección visual de tres PDFs;
-2. clipping/overlap/legibilidad;
-3. corregir solo si el gate visual detecta problemas.
+1. aplicar castellano + anonimización a la capa PDF;
+2. generar Team / Player / Match en modo demo;
+3. inspección visual de tres PDFs;
+4. clipping/overlap/legibilidad;
+5. cerrar REPORTS-02 si PASS.
 
 ## Collector
 
@@ -273,20 +277,22 @@ Pendiente:
 - GPS opcional;
 - no HSR/sprint/load/fatigue/readiness sin definición validada;
 - PDF/dashboard consumen analytics materializados;
+- anonimizacion solo en presentación, nunca en IDs/datos analíticos;
 - Product Spiral no toca lógica crítica;
 - no desplegar/publicar públicamente mientras siga bloqueado.
 
 ## Decisiones descartadas / no prioritarias
 
-- seguir optimizando indefinidamente qwen3:1.7b: descartado para el MVP; coste marginal no justificado;
-- mantener CA+ES en LLM-02: descartado para el MVP; castellano único reduce complejidad y tiempo;
-- confiar solo en pass rate automático sin revisión humana: descartado tras detectar falsos positivos semánticos;
-- usar LLM como calculadora o motor crítico: descartado por arquitectura y auditabilidad.
+- seguir optimizando indefinidamente qwen3:1.7b: descartado para el MVP;
+- mantener CA+ES en LLM-02: descartado para el MVP;
+- confiar solo en pass rate automático sin revisión humana: descartado;
+- usar LLM como calculadora o motor crítico: descartado;
+- modificar la DuckDB para anonimizar la demo: descartado; la anonimización debe ser downstream y reversible solo en presentación.
 
 ## Problemas abiertos
 
-- gate visual Home / Team / Player / Match;
-- gate visual de tres PDFs;
+- validación local final de UI castellano + modo demo;
+- castellano + anonimización + gate visual de tres PDFs;
 - UX/ES/móvil del collector;
 - demo GPS con datos reales o ejemplo claramente etiquetado;
 - Performance Index histórico y capacidades futuras no necesarias para el MVP;
@@ -295,14 +301,16 @@ Pendiente:
 
 ## Siguiente paso exacto
 
-**LLM-02 queda congelado. No seguir trabajando en el agente.**
+**LLM-02 queda congelado.**
 
 Orden inmediato:
 
-1. gate visual local de Home / Team / Player / Match;
-2. corregir únicamente problemas visuales o de UX detectados;
-3. gate visual de los tres PDFs y cierre REPORTS-02;
-4. Collector UX / castellano / móvil;
-5. demo GPS;
-6. QA global del producto;
-7. documentación final del TFM.
+1. ejecutar `py_compile` + `app/validate_demo_presentation.py` localmente;
+2. comprobación visual rápida Home / Jugador / Partido en modo demo;
+3. si PASS, cerrar dashboard visual;
+4. aplicar castellano + anonimización a Team / Player / Match PDF;
+5. gate visual de los tres PDFs y cierre REPORTS-02;
+6. Collector UX / castellano / móvil;
+7. demo GPS;
+8. QA global del producto;
+9. documentación final del TFM.
