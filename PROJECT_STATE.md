@@ -15,7 +15,8 @@ EXPERT-01..07 N1000-N13000          BASELINE CERRADO / VALIDADO
 LLM-01                              PROTOTYPE v0.1 / CONTRATOS PASS
 LLM-02 LOCAL COACH COPILOT          CERRADO MVP / CASTELLANO / LIMITACIÓN MENOR DOCUMENTADA
 REPORTS-01                          PROTOTYPE v0.1 / CONTRATO PASS
-REPORTS-02 PROFESSIONAL PDF         CERRADO / GATE TÉCNICO + VISUAL PASS / ES + DEMO ANONIMIZADA
+REPORTS-02 PROFESSIONAL PDF         BASELINE CERRADO / GATE TÉCNICO + VISUAL PASS
+REPORTS-03 ELITE TECHNICAL REPORTS  ACTIVO / RESEARCH + IMPLEMENTACIÓN HECHA / GATE PENDIENTE
 DASHBOARD-01                        CONTRACT PASS
 DASHBOARD PROFESSIONAL REDESIGN     IMPLEMENTADO
 UI-PRESENTATION-ES-DEMO             CONTRACT PASS / DEMO MASKING ACTIVO
@@ -133,6 +134,11 @@ critical_recalculation_guard=PASS
 Team / Player / Match generados
 human visual gate=PASS
 
+REPORTS-03 ELITE TECHNICAL GATE
+schema=0.6.0
+report_metrics=report_descriptive_v0.1
+estado=PENDIENTE DE EJECUCIÓN LOCAL + GATE VISUAL
+
 ATTENTION FLAGS CONTRACT: PASS
 MATCH MODE CONTRACT: PASS
 DASHBOARD-01 DATA CONTRACT: PASS
@@ -204,59 +210,77 @@ Autenticación real email/contraseña/sesiones NO implementada todavía. Está s
 
 La base demo actual contiene un solo equipo, por lo que el contrato multi-equipo se valida estructuralmente, no mediante una demo visual con varios clubes.
 
-## REPORTS-02 — CERRADO DEFINITIVAMENTE
+## REPORTS-02 — BASELINE CERRADO
 
-Objetivo final aprobado: informes técnicos profesionales independientes para el cuerpo técnico. No son una captura de la web ni un volcado de tablas.
+Objetivo aprobado: informes técnicos profesionales independientes para el cuerpo técnico. No son una captura de la web ni un volcado de tablas.
 
-Arquitectura:
+Baseline validada:
+- schema `0.5.0`;
+- castellano y anonimización;
+- Team 3 páginas, Player 2, Match 2;
+- gate automático y visual PASS.
+
+Se conserva como referencia estable y fallback de la fase anterior.
+
+## REPORTS-03 — ELITE TECHNICAL REPORTS — ACTIVO
+
+Motivo de reapertura: elevar el producto desde un informe profesional correcto a un informe diseñado explícitamente según flujos y preferencias documentadas de cuerpos técnicos.
+
+Investigación documentada en `docs/REPORT_DESIGN_RESEARCH.md` con referencias públicas a:
+- Opta / Stats Perform ProVision;
+- Hudl Wyscout Reports;
+- Hudl StatsBomb;
+- UEFA Technical Reports / Performance Insights;
+- Catapult para reporting físico;
+- estudios de practitioners sobre KPI y visualización.
+
+Principios adoptados:
+- cambio temporal antes que ranking;
+- raw / transparent metrics junto al Match Rating;
+- línea para evolución, cuadrante para plantilla, barras/tablas para comparación y trazabilidad;
+- KPI contextualizados por posición;
+- no crear rojo/verde como juicio bueno/malo para deltas descriptivos;
+- no inventar xG, posesión, pressures, pass networks, heatmaps o tracking sin datos válidos;
+- Match Report compara solo con 5 partidos anteriores, nunca futuros.
+
+Nueva capa descriptiva:
 
 ```text
-analytics materializados
-→ reports/data_builder.py · schema 0.5.0
-→ anonimización final de payload
-→ reports/pdf_engine_pro.py · componentes y visuales profesionales
-→ reports/pdf_engine_final.py · renderer canónico Team / Player / Match
-→ reports/pdf_engine_es.py · wrapper de compatibilidad para la app
-→ Exportar PDF en Equipo / Jugador / Partido
+reports/report_data_access.py
+→ agregados raw jugador-partido → equipo-partido
+reports/report_metrics.py
+→ report_descriptive_v0.1
+→ last match / last 5 / previous 5
+→ per90 ponderado por minutos para jugador
+→ comparación de Match solo contra 5 partidos anteriores
+reports/data_builder.py
+→ schema 0.6.0
+reports/pdf_engine_elite.py
+→ renderer REPORTS-03
+reports/pdf_engine_es.py
+→ wrapper de app apuntando al renderer elite
 ```
 
-Estado final:
+Métricas incorporadas cuando existen:
+- precisión de pase;
+- remates;
+- goles;
+- entradas ganadas;
+- intercepciones;
+- pérdidas;
+- desposesiones;
+- player per90 para producción individual;
+- Match Rating/confianza/dimensiones ya materializados;
+- Performance Index complementario;
+- motor experto y cobertura.
 
-- castellano;
-- anonimizados antes del render;
-- Team: 3 páginas profesionales;
-- Player: 2 páginas profesionales;
-- Match: 2 páginas profesionales;
-- portada y jerarquía visual propia de informe técnico;
-- KPIs priorizados;
-- bloques de lectura rápida;
-- gráficos vectoriales;
-- evolución temporal;
-- tablas de detalle solo cuando aportan trazabilidad;
-- calidad de evidencia y límites explícitos;
-- fechas limpias;
-- roles y perfiles traducidos;
-- códigos internos sustituidos por etiquetas legibles;
-- sin nombres reales detectados en payload demo;
-- el PDF consume analytics ya materializados;
-- el resumen de Match Rating del partido se toma de la capa analítica materializada;
-- no recalcula métricas críticas ni genera recomendaciones tácticas no validadas;
-- gate automático profesional PASS;
-- gate visual humano Team / Player / Match PASS;
-- `Exportar PDF` de la web utiliza el renderer profesional mediante el wrapper `reports/pdf_engine_es.py`.
-
-Ficheros clave:
-
-- `reports/data_builder.py`
-- `reports/pdf_engine_pro.py`
-- `reports/pdf_engine_final.py`
-- `reports/pdf_engine_es.py`
-- `reports/validate_reports_pro.py`
-- `app/pages/2_Jugador.py`
-- `app/pages/3_Equip.py`
-- `app/pages/4_Partit.py`
-
-No reabrir REPORTS-02 salvo bug funcional o nueva necesidad de producto claramente justificada.
+Pendiente para cerrar REPORTS-03:
+1. `py_compile` de la nueva capa;
+2. `validate_reports_pro.py` con schema 0.6.0;
+3. generar Team / Player / Match;
+4. gate visual humano con exigencia de staff profesional;
+5. corregir solo problemas demostrados;
+6. cerrar y volver a Collector.
 
 ## Producto actual
 
@@ -278,12 +302,11 @@ Capa opcional descriptiva. La base local no contiene suficientes observaciones G
 ### Alertas
 Solo estados auditables de contexto/calidad.
 
-## Collector — siguiente fase activa
+## Collector — siguiente fase tras REPORTS-03
 
-Funcionalmente cerrado; ahora toca producto/UX.
+Funcionalmente cerrado; falta producto/UX.
 
 Pendiente:
-
 1. simplificar interfaz de captura;
 2. castellano completo;
 3. mobile-first / responsive;
@@ -300,7 +323,8 @@ Pendiente:
 - demo anonimizada solo en presentación, no en base de datos;
 - control de acceso separado de autenticación;
 - PDFs consumen analytics materializados y no recalculan métricas críticas;
-- PDF final = informe técnico profesional independiente, no reproducción literal de la web.
+- PDF final = informe técnico profesional independiente, no reproducción literal de la web;
+- REPORTS-03 añade solo agregados descriptivos transparentes y versionados.
 
 ## Decisiones descartadas / aplazadas
 
@@ -312,10 +336,12 @@ Pendiente:
 - login SaaS completo, pagos y recuperación de contraseña: aplazado tras el MVP;
 - publicación pública del dataset real: bloqueada por derechos/licencia;
 - PDF como simple captura de la web: descartado;
-- PDF como tabla-resumen mínima: descartado.
+- PDF como tabla-resumen mínima: descartado;
+- copiar métricas/layouts propietarios de Opta/Wyscout/StatsBomb: descartado.
 
 ## Problemas abiertos
 
+- REPORTS-03 gate técnico + visual;
 - Collector UX / castellano / móvil;
 - demo GPS con datos reales o ejemplo claramente etiquetado;
 - autenticación real para producto comercial;
@@ -325,8 +351,8 @@ Pendiente:
 
 ## Siguiente paso exacto
 
-1. entrar en **COLLECTOR UX / castellano / móvil**;
-2. revisar el HTML existente sin sustituirlo sin motivo;
-3. simplificar interacción manteniendo la semántica ya aprobada;
-4. validar desktop + móvil;
+1. ejecutar gate local REPORTS-03 (`py_compile` + `validate_reports_pro.py`);
+2. revisar visualmente Team / Player / Match nuevos;
+3. cerrar REPORTS-03 si PASS;
+4. entrar en **COLLECTOR UX / castellano / móvil**;
 5. después demo GPS → QA global → documentación final TFM.
