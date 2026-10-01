@@ -46,9 +46,9 @@ def result_code(score_for: object, score_against: object) -> tuple[str, str]:
         return "—", "neutral"
     sf, sa = int(score_for), int(score_against)
     if sf > sa:
-        return f"V {sf}-{sa}", "positive"
+        return f"G {sf}-{sa}", "positive"
     if sf < sa:
-        return f"D {sf}-{sa}", "negative"
+        return f"P {sf}-{sa}", "negative"
     return f"E {sf}-{sa}", "neutral"
 
 
@@ -60,7 +60,7 @@ def recent_record(matches: pd.DataFrame, n: int = 5) -> str:
     for row in recent.itertuples(index=False):
         if pd.isna(row.score_for) or pd.isna(row.score_against):
             continue
-        labels.append("V" if row.score_for > row.score_against else "D" if row.score_for < row.score_against else "E")
+        labels.append("G" if row.score_for > row.score_against else "P" if row.score_for < row.score_against else "E")
     return " · ".join(labels) if labels else "—"
 
 
@@ -120,7 +120,7 @@ def scoreboard_card(team: str, opponent: str, score_for: object, score_against: 
             <div class="coach-score coach-{tone}">{html.escape(result)}</div>
             <div class="coach-score-team coach-score-team-right">{html.escape(opponent)}</div>
           </div>
-          <div class="coach-score-foot">Formació inicial: {html.escape(formation)}</div>
+          <div class="coach-score-foot">Formación inicial: {html.escape(formation)}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -166,11 +166,11 @@ def rating_trend_chart(history: pd.DataFrame, y_col: str = "median_match_rating"
         fig.add_trace(go.Scatter(
             x=frame["match_date"], y=rolling, mode="lines",
             line=dict(color=NAVY, width=2, dash="dot"),
-            hovertemplate="Mitjana mòbil 5: %{y:.2f}<extra></extra>",
+            hovertemplate="Media móvil 5: %{y:.2f}<extra></extra>",
         ))
         fig.update_layout(showlegend=True, legend=dict(orientation="h", y=1.08, x=0))
-        fig.data[0].name = "Partit"
-        fig.data[1].name = "Mitjana mòbil 5"
+        fig.data[0].name = "Partido"
+        fig.data[1].name = "Media móvil 5"
     fig.update_layout(**_base_layout())
     fig.update_yaxes(range=list(y_range), gridcolor=GRID, zeroline=False, title="")
     fig.update_xaxes(gridcolor="rgba(0,0,0,0)", title="")
@@ -189,7 +189,7 @@ def player_rating_chart(ratings: pd.DataFrame, max_players: int | None = None) -
     for row in frame.itertuples(index=False):
         confidence = getattr(row, "match_rating_confidence", None)
         profile = getattr(row, "position_group", None)
-        hover.append(f"{safe_text(profile)} · confiança {safe_number(confidence, 0, '%')}")
+        hover.append(f"{safe_text(profile)} · confianza {safe_number(confidence, 0, '%')}")
     fig = go.Figure(go.Bar(
         x=frame["match_rating_10"], y=frame["player"], orientation="h",
         marker=dict(color=ACCENT), text=frame["match_rating_10"].round(1), textposition="outside",
@@ -216,12 +216,12 @@ def squad_matrix_chart(snapshot: pd.DataFrame) -> go.Figure:
         marker=dict(size=12, color=ACCENT, opacity=.82, line=dict(width=1, color="#FFFFFF")),
         text=frame["player"],
         customdata=frame[["latest_match_rating", "latest_confidence"]].to_numpy(),
-        hovertemplate="<b>%{text}</b><br>Mitjana últims 5: %{x:.2f}<br>Delta 5 vs 5: %{y:+.2f}<br>Últim rating: %{customdata[0]:.2f}<br>Confiança: %{customdata[1]:.0f}%<extra></extra>",
+        hovertemplate="<b>%{text}</b><br>Media últimos 5: %{x:.2f}<br>Delta 5 vs 5: %{y:+.2f}<br>Último rating: %{customdata[0]:.2f}<br>Confianza: %{customdata[1]:.0f}%<extra></extra>",
     ))
     fig.add_hline(y=0, line_width=1, line_dash="dot", line_color="#9AA7B4")
     fig.update_layout(**_base_layout(360))
-    fig.update_xaxes(range=[3, 10], gridcolor=GRID, title="Mitjana Match Rating · últims 5")
-    fig.update_yaxes(gridcolor=GRID, zeroline=False, title="Canvi vs 5 anteriors")
+    fig.update_xaxes(range=[3, 10], gridcolor=GRID, title="Media Match Rating · últimos 5")
+    fig.update_yaxes(gridcolor=GRID, zeroline=False, title="Cambio vs 5 anteriores")
     return fig
 
 
@@ -268,7 +268,7 @@ def describe_trend(snapshot: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
 
 def names_with_delta(frame: pd.DataFrame) -> str:
     if frame.empty:
-        return "Sense historial comparable"
+        return "Sin historial comparable"
     bits = []
     for row in frame.itertuples(index=False):
         bits.append(f"{row.player} ({float(row.trend_delta_5v5):+.2f})")
@@ -276,4 +276,4 @@ def names_with_delta(frame: pd.DataFrame) -> str:
 
 
 def style_rating_table(frame: pd.DataFrame) -> pd.io.formats.style.Styler:
-    return frame.style.background_gradient(subset=[c for c in ["Rating", "Mitjana últims 5", "Match Rating"] if c in frame.columns], cmap="Greens", vmin=3, vmax=10)
+    return frame.style.background_gradient(subset=[c for c in ["Rating", "Media últimos 5", "Match Rating"] if c in frame.columns], cmap="Greens", vmin=3, vmax=10)
