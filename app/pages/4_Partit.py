@@ -37,7 +37,7 @@ from app.presentation import (
 )
 from app.ui_theme import apply_professional_theme, position_label, sidebar_navigation
 from reports.data_builder import build_match_report_data
-from reports.pdf_engine import render_pdf_bytes
+from reports.pdf_engine_es import render_pdf_bytes
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 
@@ -107,15 +107,12 @@ match = matches.loc[matches["match_id"].astype(str) == match_id].iloc[0]
 with action:
     st.write("")
     st.write("")
-    if demo_mode():
-        st.caption("PDF demo: se anonimizará en el siguiente bloque de trabajo.")
-    else:
-        try:
-            payload = build_match_report_data(path, team_id, match_id)
-            pdf_bytes = render_pdf_bytes(payload)
-            st.download_button("Exportar PDF", pdf_bytes, file_name=f"match_{match_id}.pdf", mime="application/pdf", width="stretch")
-        except Exception as exc:
-            st.warning(f"PDF no disponible: {exc}")
+    try:
+        payload = build_match_report_data(path, team_id, match_id)
+        pdf_bytes = render_pdf_bytes(payload)
+        st.download_button("Exportar PDF", pdf_bytes, file_name=f"match_{match_id}.pdf", mime="application/pdf", width="stretch")
+    except Exception as exc:
+        st.warning(f"PDF no disponible: {exc}")
 
 ratings = anonymize_frame(
     get_match_ratings(path, team_id, match_id),
