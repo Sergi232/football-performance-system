@@ -1,7 +1,9 @@
 """Presentation-only language and demo anonymisation helpers.
 
 This module never changes IDs, analytics, ratings or database values. It only
-changes what the Streamlit/PDF presentation layer displays.
+changes what the Streamlit/PDF presentation layer displays. Demo masking is enabled
+by default to avoid accidental exposure in screenshots or demonstrations; set
+FPS_DEMO_MODE=0 explicitly for a private local real-identity view.
 """
 from __future__ import annotations
 
@@ -16,7 +18,7 @@ TRUE_VALUES = {"1", "true", "yes", "on", "si", "sí"}
 
 def demo_mode() -> bool:
     """Return whether public/demo identity masking is enabled."""
-    return str(os.environ.get("FPS_DEMO_MODE", "0")).strip().lower() in TRUE_VALUES
+    return str(os.environ.get("FPS_DEMO_MODE", "1")).strip().lower() in TRUE_VALUES
 
 
 def display_team_name(raw_name: object, index: int = 1) -> str:
