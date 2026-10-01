@@ -62,7 +62,6 @@ CATALAN_MARKERS = (
     "Proveïdor",
     "Sense dades",
     "Sense historial",
-    "Equip",
 )
 
 
