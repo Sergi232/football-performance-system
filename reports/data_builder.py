@@ -1,4 +1,8 @@
-"""Build read-only structured payloads for Team / Player / Match PDF reports."""
+"""Build read-only structured payloads for Team / Player / Match PDF reports.
+
+The report layer consumes validated analytics only. In demo mode it anonymises
+presentation identities before PDF rendering; IDs and analytical values remain intact.
+"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -27,13 +31,19 @@ from app.match_rating_access import (
     get_team_match_rating_history,
     get_team_player_rating_snapshot,
 )
-from app.performance_score_access import (
-    SCORE_VERSION,
-    get_latest_player_score,
-    get_player_score_history,
+from app.performance_score_access import SCORE_VERSION, get_latest_player_score, get_player_score_history
+from app.presentation import (
+    anonymize_frame,
+    build_opponent_aliases,
+    build_player_aliases,
+    build_player_name_aliases,
+    demo_mode,
+    display_opponent,
+    display_team_name,
+    replace_known_names,
 )
 
-REPORT_SCHEMA_VERSION = "0.3.0"
+REPORT_SCHEMA_VERSION = "0.4.0"
 
 
 def _clean(value: Any) -> Any:
@@ -65,15 +75,6 @@ def _records(frame: pd.DataFrame, limit: int | None = None) -> list[dict[str, An
     return [{str(key): _clean(value) for key, value in row.items()} for row in frame.to_dict(orient="records")]
 
 
-def _team_identity(db_path: Path, team_id: str) -> dict[str, Any]:
-    teams = list_teams(db_path)
-    selected = teams.loc[teams["team_id"] == team_id]
-    if selected.empty:
-        raise ValueError(f"Unknown team_id: {team_id}")
-    row = selected.iloc[0]
-    return {"team_id": team_id, "display_name": _clean(row["display_name"])}
-
-
 def _guardrails() -> dict[str, bool]:
     return {
         "recommendation_policy_validated": False,
@@ -83,10 +84,68 @@ def _guardrails() -> dict[str, bool]:
     }
 
 
+def _context(db_path: Path, team_id: str) -> dict[str, Any]:
+    teams = list_teams(db_path)
+    ids = teams["team_id"].astype(str).tolist() if not teams.empty else []
+    if str(team_id) not in ids:
+        raise ValueError(f"Unknown or unauthorized team_id: {team_id}")
+    row = teams.loc[teams["team_id"].astype(str) == str(team_id)].iloc[0]
+    raw_team = str(row["display_name"])
+    team_index = ids.index(str(team_id)) + 1
+    squad = get_squad_summary(db_path, team_id)
+    matches = get_team_matches(db_path, team_id)
+    player_aliases = build_player_aliases(squad)
+    player_name_aliases = build_player_name_aliases(squad)
+    opponent_aliases = build_opponent_aliases(matches.get("opponent", pd.Series(dtype=str)).tolist())
+    return {
+        "raw_team": raw_team,
+        "team_display": display_team_name(raw_team, team_index),
+        "squad": squad,
+        "matches": matches,
+        "player_aliases": player_aliases,
+        "player_name_aliases": player_name_aliases,
+        "opponent_aliases": opponent_aliases,
+    }
+
+
+def _team_identity(team_id: str, ctx: dict[str, Any]) -> dict[str, Any]:
+    return {"team_id": str(team_id), "display_name": ctx["team_display"]}
+
+
+def _anon(frame: pd.DataFrame, ctx: dict[str, Any]) -> pd.DataFrame:
+    return anonymize_frame(
+        frame,
+        player_aliases_by_id=ctx["player_aliases"],
+        player_name_aliases=ctx["player_name_aliases"],
+        opponent_aliases=ctx["opponent_aliases"],
+    )
+
+
+def _mask_nested(value: Any, ctx: dict[str, Any]) -> Any:
+    if isinstance(value, dict):
+        return {k: _mask_nested(v, ctx) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_mask_nested(v, ctx) for v in value]
+    if isinstance(value, tuple):
+        return tuple(_mask_nested(v, ctx) for v in value)
+    if isinstance(value, str):
+        return replace_known_names(
+            value,
+            player_name_aliases=ctx["player_name_aliases"],
+            opponent_aliases=ctx["opponent_aliases"],
+            team_name=ctx["raw_team"],
+            team_alias=ctx["team_display"],
+        )
+    return _clean(value)
+
+
 def build_team_report_data(db_path: Path, team_id: str) -> dict[str, Any]:
     db_path = Path(db_path)
+    ctx = _context(db_path, team_id)
+    squad = _anon(ctx["squad"], ctx)
+    matches = _anon(ctx["matches"], ctx)
     try:
-        rating_snapshot = get_team_player_rating_snapshot(db_path, team_id)
+        rating_snapshot = _anon(get_team_player_rating_snapshot(db_path, team_id), ctx)
         rating_history = get_team_match_rating_history(db_path, team_id)
     except Exception:
         rating_snapshot = pd.DataFrame()
@@ -95,14 +154,16 @@ def build_team_report_data(db_path: Path, team_id: str) -> dict[str, Any]:
     return {
         "report_type": "team",
         "schema_version": REPORT_SCHEMA_VERSION,
+        "language": "es",
+        "demo_mode": demo_mode(),
         "engine_version": FINAL_ENGINE_VERSION,
         "feature_version": BASE_FEATURE_VERSION,
         "match_rating_version": MATCH_RATING_VERSION,
         "performance_index_version": SCORE_VERSION,
-        "team": _team_identity(db_path, team_id),
+        "team": _team_identity(team_id, ctx),
         "overview": {k: _clean(v) for k, v in get_team_overview(db_path, team_id).items()},
-        "matches": _records(get_team_matches(db_path, team_id)),
-        "squad": _records(get_squad_summary(db_path, team_id)),
+        "matches": _records(matches),
+        "squad": _records(squad),
         "rating_snapshot": _records(rating_snapshot),
         "rating_history": _records(rating_history),
         "guardrails": _guardrails(),
@@ -111,14 +172,15 @@ def build_team_report_data(db_path: Path, team_id: str) -> dict[str, Any]:
 
 def build_player_report_data(db_path: Path, team_id: str, player_id: str) -> dict[str, Any]:
     db_path = Path(db_path)
-    squad = get_squad_summary(db_path, team_id)
-    selected = squad.loc[squad["player_id"] == player_id]
+    ctx = _context(db_path, team_id)
+    squad = ctx["squad"]
+    selected = squad.loc[squad["player_id"].astype(str) == str(player_id)]
     if selected.empty:
         raise ValueError(f"Unknown player_id for team: {player_id}")
 
-    summary = _records(selected, 1)[0]
-    history = get_player_match_history(db_path, team_id, player_id)
-    ratings = get_player_match_ratings(db_path, team_id, player_id)
+    summary = _records(_anon(selected, ctx), 1)[0]
+    history = _anon(get_player_match_history(db_path, team_id, player_id), ctx)
+    ratings = _anon(get_player_match_ratings(db_path, team_id, player_id), ctx)
     gate = get_latest_player_gate(db_path, team_id, player_id)
 
     try:
@@ -139,17 +201,21 @@ def build_player_report_data(db_path: Path, team_id: str, player_id: str) -> dic
             continue
         frame = get_player_feature_history(db_path, player_id, feature_name)
         frame = frame.loc[frame["feature_value"].notna()].sort_values("match_date", ascending=False)
+        if "opponent" in frame.columns:
+            frame = _anon(frame, ctx)
         feature_history[feature_name] = _records(frame, 5)
 
     return {
         "report_type": "player",
         "schema_version": REPORT_SCHEMA_VERSION,
+        "language": "es",
+        "demo_mode": demo_mode(),
         "engine_version": FINAL_ENGINE_VERSION,
         "feature_version": BASE_FEATURE_VERSION,
         "match_rating_version": MATCH_RATING_VERSION,
         "performance_index_version": SCORE_VERSION,
-        "team": _team_identity(db_path, team_id),
-        "player_id": player_id,
+        "team": _team_identity(team_id, ctx),
+        "player_id": str(player_id),
         "summary": summary,
         "match_history": _records(history, 15),
         "match_ratings": _records(ratings.sort_values("match_date", ascending=False), 15),
@@ -163,29 +229,35 @@ def build_player_report_data(db_path: Path, team_id: str, player_id: str) -> dic
 
 def build_match_report_data(db_path: Path, team_id: str, match_id: str) -> dict[str, Any]:
     db_path = Path(db_path)
-    matches = get_team_matches(db_path, team_id)
-    selected = matches.loc[matches["match_id"] == match_id]
+    ctx = _context(db_path, team_id)
+    matches = ctx["matches"]
+    selected = matches.loc[matches["match_id"].astype(str) == str(match_id)]
     if selected.empty:
         raise ValueError(f"Unknown match_id for team: {match_id}")
 
-    lineup = get_match_lineup(db_path, team_id, match_id)
-    ratings = get_match_ratings(db_path, team_id, match_id)
-    observations = get_match_observations(db_path, team_id, match_id)
+    selected = _anon(selected, ctx)
+    lineup = _anon(get_match_lineup(db_path, team_id, match_id), ctx)
+    ratings = _anon(get_match_ratings(db_path, team_id, match_id), ctx)
+    observations = _mask_nested(get_match_observations(db_path, team_id, match_id), ctx)
     if not ratings.empty:
-        rating_names = ratings[[
+        merge_cols = [
             "player", "match_rating_10", "match_rating_confidence",
             "match_rating_status", "match_rating_context", "position_group",
-        ]].copy()
-        lineup = lineup.merge(rating_names, on="player", how="left")
+        ]
+        rating_names = ratings[[c for c in merge_cols if c in ratings.columns]].copy()
+        if "player" in lineup.columns and "player" in rating_names.columns:
+            lineup = lineup.merge(rating_names, on="player", how="left")
 
     return {
         "report_type": "match",
         "schema_version": REPORT_SCHEMA_VERSION,
+        "language": "es",
+        "demo_mode": demo_mode(),
         "engine_version": FINAL_ENGINE_VERSION,
         "feature_version": BASE_FEATURE_VERSION,
         "match_rating_version": MATCH_RATING_VERSION,
         "performance_index_version": SCORE_VERSION,
-        "team": _team_identity(db_path, team_id),
+        "team": _team_identity(team_id, ctx),
         "match": _records(selected, 1)[0],
         "lineup": _records(lineup),
         "ratings": _records(ratings),
