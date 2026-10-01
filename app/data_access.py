@@ -10,6 +10,8 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
+from app.access_control import assert_team_access, filter_authorized_teams
+
 
 BASE_FEATURE_VERSION = "0.1.0"
 FINAL_ENGINE_VERSION = "expert_0.7.0"
@@ -24,7 +26,7 @@ def connect_read_only(db_path: Path) -> duckdb.DuckDBPyConnection:
 
 def list_teams(db_path: Path) -> pd.DataFrame:
     with connect_read_only(db_path) as con:
-        return con.execute(
+        frame = con.execute(
             """
             SELECT
                 t.team_id,
@@ -37,9 +39,11 @@ def list_teams(db_path: Path) -> pd.DataFrame:
             ORDER BY matches DESC, t.display_name
             """
         ).df()
+    return filter_authorized_teams(frame)
 
 
 def get_team_overview(db_path: Path, team_id: str) -> dict:
+    assert_team_access(team_id)
     with connect_read_only(db_path) as con:
         row = con.execute(
             """
@@ -65,6 +69,7 @@ def get_team_overview(db_path: Path, team_id: str) -> dict:
 
 
 def get_team_matches(db_path: Path, team_id: str) -> pd.DataFrame:
+    assert_team_access(team_id)
     with connect_read_only(db_path) as con:
         return con.execute(
             """
@@ -87,6 +92,7 @@ def get_team_matches(db_path: Path, team_id: str) -> pd.DataFrame:
 
 
 def get_squad_summary(db_path: Path, team_id: str) -> pd.DataFrame:
+    assert_team_access(team_id)
     with connect_read_only(db_path) as con:
         return con.execute(
             """
@@ -115,6 +121,7 @@ def get_squad_summary(db_path: Path, team_id: str) -> pd.DataFrame:
 
 
 def get_player_match_history(db_path: Path, team_id: str, player_id: str) -> pd.DataFrame:
+    assert_team_access(team_id)
     with connect_read_only(db_path) as con:
         return con.execute(
             """
@@ -203,6 +210,7 @@ def get_player_feature_history(db_path: Path, player_id: str, feature_name: str)
 
 def get_latest_player_gate(db_path: Path, team_id: str, player_id: str) -> dict | None:
     """Return the latest played-match N12000/N13000 state from the validated final engine."""
+    assert_team_access(team_id)
     with connect_read_only(db_path) as con:
         row = con.execute(
             """
@@ -246,6 +254,7 @@ def get_latest_player_gate(db_path: Path, team_id: str, player_id: str) -> dict 
 
 
 def get_match_lineup(db_path: Path, team_id: str, match_id: str) -> pd.DataFrame:
+    assert_team_access(team_id)
     with connect_read_only(db_path) as con:
         return con.execute(
             """
