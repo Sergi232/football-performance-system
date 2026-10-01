@@ -8,15 +8,15 @@ import streamlit as st
 POSITION_LABELS = {
     "CB": "Central",
     "FB": "Lateral",
-    "FB_WB": "Lateral / Carriler",
-    "DM": "Pivot",
-    "CM": "Migcentre / Interior",
-    "DM_CM": "Migcentre / Interior",
-    "AM": "Mitjapunta",
-    "W": "Extrem",
-    "AM_W": "Mitjapunta / Extrem",
-    "ST": "Davanter",
-    "GK": "Porter",
+    "FB_WB": "Lateral / Carrilero",
+    "DM": "Pivote",
+    "CM": "Mediocentro / Interior",
+    "DM_CM": "Mediocentro / Interior",
+    "AM": "Mediapunta",
+    "W": "Extremo",
+    "AM_W": "Mediapunta / Extremo",
+    "ST": "Delantero",
+    "GK": "Portero",
     "OTHER_OUTFIELD": "Rol no observable",
 }
 
@@ -235,23 +235,23 @@ def sidebar_navigation() -> None:
         <div class="coach-brand">
           <div class="coach-brand-mark">FPS</div>
           <div class="coach-brand-title">Football Performance</div>
-          <div class="coach-brand-sub">Staff intelligence system</div>
+          <div class="coach-brand-sub">Sistema de inteligencia para el staff técnico</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
     st.sidebar.markdown("<div class='coach-nav-label'>Operativa</div>", unsafe_allow_html=True)
-    st.sidebar.page_link("streamlit_app.py", label="Centre de comandament", icon="🏠")
-    st.sidebar.page_link("pages/3_Equip.py", label="Equip", icon="🏟️")
-    st.sidebar.page_link("pages/4_Partit.py", label="Partit", icon="⚽")
+    st.sidebar.page_link("streamlit_app.py", label="Centro de mando", icon="🏠")
+    st.sidebar.page_link("pages/3_Equip.py", label="Equipo", icon="🏟️")
+    st.sidebar.page_link("pages/4_Partit.py", label="Partido", icon="⚽")
     st.sidebar.page_link("pages/2_Jugador.py", label="Jugador", icon="👤")
-    st.sidebar.markdown("<div class='coach-nav-label'>Anàlisi</div>", unsafe_allow_html=True)
+    st.sidebar.markdown("<div class='coach-nav-label'>Análisis</div>", unsafe_allow_html=True)
     st.sidebar.page_link("pages/1_Performance_Index.py", label="Performance Index", icon="📈")
-    st.sidebar.page_link("pages/6_Fisic_GPS.py", label="Físic / GPS", icon="📡")
-    st.sidebar.page_link("pages/7_Alertes.py", label="Qualitat i alertes", icon="🚩")
-    st.sidebar.markdown("<div class='coach-nav-label'>Assistent</div>", unsafe_allow_html=True)
-    st.sidebar.page_link("pages/5_Assistent_IA.py", label="Assistent IA", icon="💬")
-    st.sidebar.caption("V5 Match Rating · ús local")
+    st.sidebar.page_link("pages/6_Fisic_GPS.py", label="Físico / GPS", icon="📡")
+    st.sidebar.page_link("pages/7_Alertes.py", label="Calidad y alertas", icon="🚩")
+    st.sidebar.markdown("<div class='coach-nav-label'>Asistente</div>", unsafe_allow_html=True)
+    st.sidebar.page_link("pages/5_Assistent_IA.py", label="Asistente IA", icon="💬")
+    st.sidebar.caption("Match Rating V5 · uso local")
 
 
 def position_label(value: object) -> str:
