@@ -15,7 +15,7 @@ EXPERT-01..07 N1000-N13000          BASELINE CERRADO / VALIDADO
 LLM-01                              PROTOTYPE v0.1 / CONTRATOS PASS
 LLM-02 LOCAL COACH COPILOT          CERRADO MVP / CASTELLANO / LIMITACIÓN MENOR DOCUMENTADA
 REPORTS-01                          PROTOTYPE v0.1 / CONTRATO PASS
-REPORTS-02 PROFESSIONAL PDF         CERRADO VISUALMENTE / ES + DEMO ANONIMIZADA
+REPORTS-02 PROFESSIONAL PDF         CERRADO / GATE TÉCNICO + VISUAL PASS / ES + DEMO ANONIMIZADA
 DASHBOARD-01                        CONTRACT PASS
 DASHBOARD PROFESSIONAL REDESIGN     IMPLEMENTADO
 UI-PRESENTATION-ES-DEMO             CONTRACT PASS / DEMO MASKING ACTIVO
@@ -62,7 +62,7 @@ COLLECTOR / IMPORT + GPS opcional
 ASSISTANT IA      PDF
 ```
 
-La web es el producto principal. Los PDF son exportaciones estáticas complementarias.
+La web es el producto principal. Los PDF son informes técnicos profesionales complementarios para el cuerpo técnico.
 
 Regla global: ninguna capa superior puede inventar métricas, scores, clasificaciones o recomendaciones que no existan en una capa inferior validada.
 
@@ -124,13 +124,14 @@ staff_unauthorized_query_blocked=PASS
 restricted_without_assignment_fail_closed=PASS
 club_admin_scope=PASS
 
-REPORTS-02 PDF CONTRACT: PASS
-schema=0.4.1
-language_es=PASS
+REPORTS PROFESSIONAL GATE: PASS
+schema=0.5.0
+spanish=PASS
 anonymization=PASS
-real_identity_leak_payload=0
-guardrails=PASS
+materialized_match_summary=PASS
+critical_recalculation_guard=PASS
 Team / Player / Match generados
+human visual gate=PASS
 
 ATTENTION FLAGS CONTRACT: PASS
 MATCH MODE CONTRACT: PASS
@@ -203,43 +204,59 @@ Autenticación real email/contraseña/sesiones NO implementada todavía. Está s
 
 La base demo actual contiene un solo equipo, por lo que el contrato multi-equipo se valida estructuralmente, no mediante una demo visual con varios clubes.
 
-## REPORTS-02 — CERRADO
+## REPORTS-02 — CERRADO DEFINITIVAMENTE
+
+Objetivo final aprobado: informes técnicos profesionales independientes para el cuerpo técnico. No son una captura de la web ni un volcado de tablas.
 
 Arquitectura:
 
 ```text
 analytics materializados
-→ reports/data_builder.py
+→ reports/data_builder.py · schema 0.5.0
 → anonimización final de payload
-→ reports/pdf_engine_es.py
-→ PDF Team / Player / Match
+→ reports/pdf_engine_pro.py · componentes y visuales profesionales
+→ reports/pdf_engine_final.py · renderer canónico Team / Player / Match
+→ reports/pdf_engine_es.py · wrapper de compatibilidad para la app
+→ Exportar PDF en Equipo / Jugador / Partido
 ```
 
 Estado final:
 
-- schema `0.4.1`;
 - castellano;
 - anonimizados antes del render;
-- Team: 2 páginas útiles;
-- Player: 1 página;
-- Match: 1 página;
+- Team: 3 páginas profesionales;
+- Player: 2 páginas profesionales;
+- Match: 2 páginas profesionales;
+- portada y jerarquía visual propia de informe técnico;
+- KPIs priorizados;
+- bloques de lectura rápida;
+- gráficos vectoriales;
+- evolución temporal;
+- tablas de detalle solo cuando aportan trazabilidad;
+- calidad de evidencia y límites explícitos;
 - fechas limpias;
 - roles y perfiles traducidos;
 - códigos internos sustituidos por etiquetas legibles;
-- cobertura experta formateada en porcentaje;
-- estado experto traducido;
 - sin nombres reales detectados en payload demo;
-- gate visual humano PASS;
-- `Exportar PDF` reactivado en Equipo, Jugador y Partido mediante `reports/pdf_engine_es.py`.
+- el PDF consume analytics ya materializados;
+- el resumen de Match Rating del partido se toma de la capa analítica materializada;
+- no recalcula métricas críticas ni genera recomendaciones tácticas no validadas;
+- gate automático profesional PASS;
+- gate visual humano Team / Player / Match PASS;
+- `Exportar PDF` de la web utiliza el renderer profesional mediante el wrapper `reports/pdf_engine_es.py`.
 
 Ficheros clave:
 
 - `reports/data_builder.py`
+- `reports/pdf_engine_pro.py`
+- `reports/pdf_engine_final.py`
 - `reports/pdf_engine_es.py`
-- `reports/validate_reports_es.py`
+- `reports/validate_reports_pro.py`
 - `app/pages/2_Jugador.py`
 - `app/pages/3_Equip.py`
 - `app/pages/4_Partit.py`
+
+No reabrir REPORTS-02 salvo bug funcional o nueva necesidad de producto claramente justificada.
 
 ## Producto actual
 
@@ -247,13 +264,13 @@ Ficheros clave:
 Último partido, brief operativo, forma, tendencias, cambios 5-vs-5, ratings, calidad de datos y navegación.
 
 ### Jugador
-Match Rating V5, confianza, perfil, Performance Index, dimensiones, evolución, técnico, motor experto, partidos y PDF.
+Match Rating V5, confianza, perfil, Performance Index, dimensiones, evolución, técnico, motor experto, partidos y PDF profesional.
 
 ### Equipo
-Match Rating V5, forma, mapa de plantilla, tendencias, participación, Performance Index, historial y PDF.
+Match Rating V5, forma, mapa de plantilla, tendencias, participación, Performance Index, historial y PDF profesional.
 
 ### Partido
-Ratings V5, confianza, roles, minutos, dimensiones, observaciones deterministas y PDF.
+Ratings V5, confianza, roles, minutos, dimensiones, observaciones deterministas y PDF profesional.
 
 ### Físico / GPS
 Capa opcional descriptiva. La base local no contiene suficientes observaciones GPS reales para una demo completa.
@@ -282,7 +299,8 @@ Pendiente:
 - LLM downstream y sin acceso directo a DB;
 - demo anonimizada solo en presentación, no en base de datos;
 - control de acceso separado de autenticación;
-- PDFs consumen analytics materializados y no recalculan métricas críticas.
+- PDFs consumen analytics materializados y no recalculan métricas críticas;
+- PDF final = informe técnico profesional independiente, no reproducción literal de la web.
 
 ## Decisiones descartadas / aplazadas
 
@@ -292,11 +310,12 @@ Pendiente:
 - modificar DuckDB para anonimizar: descartado;
 - XI ideal / predicciones / fatiga / lesión sin capa analítica validada: no permitido;
 - login SaaS completo, pagos y recuperación de contraseña: aplazado tras el MVP;
-- publicación pública del dataset real: bloqueada por derechos/licencia.
+- publicación pública del dataset real: bloqueada por derechos/licencia;
+- PDF como simple captura de la web: descartado;
+- PDF como tabla-resumen mínima: descartado.
 
 ## Problemas abiertos
 
-- smoke test local tras reactivar exportación PDF en las tres páginas;
 - Collector UX / castellano / móvil;
 - demo GPS con datos reales o ejemplo claramente etiquetado;
 - autenticación real para producto comercial;
@@ -306,8 +325,8 @@ Pendiente:
 
 ## Siguiente paso exacto
 
-1. `git pull` y `py_compile` de `2_Jugador.py`, `3_Equip.py`, `4_Partit.py`;
-2. abrir Streamlit y confirmar que `Exportar PDF` aparece en Equipo / Jugador / Partido en `FPS_DEMO_MODE=1`;
-3. si PASS, no volver a tocar REPORTS-02;
-4. entrar en **COLLECTOR UX / castellano / móvil**;
+1. entrar en **COLLECTOR UX / castellano / móvil**;
+2. revisar el HTML existente sin sustituirlo sin motivo;
+3. simplificar interacción manteniendo la semántica ya aprobada;
+4. validar desktop + móvil;
 5. después demo GPS → QA global → documentación final TFM.
