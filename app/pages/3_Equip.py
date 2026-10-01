@@ -46,7 +46,7 @@ from app.presentation import (
 )
 from app.ui_theme import apply_professional_theme, position_label, sidebar_navigation
 from reports.data_builder import build_team_report_data
-from reports.pdf_engine import render_pdf_bytes
+from reports.pdf_engine_es import render_pdf_bytes
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 
@@ -60,9 +60,6 @@ def db_path() -> Path:
 
 
 def render_team_pdf(path: Path, team_id: str, team_name: str) -> None:
-    if demo_mode():
-        st.caption("PDF demo: se anonimizará en el siguiente bloque de trabajo.")
-        return
     try:
         payload = build_team_report_data(path, team_id)
         pdf_bytes = render_pdf_bytes(payload)
