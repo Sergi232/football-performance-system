@@ -103,6 +103,7 @@ def main() -> None:
 
     print("ACCESS CONTROL CONTRACT")
     print(f"all_teams={len(team_ids)}")
+    print(f"example_staff_team_id={first}")
     print("superadmin=PASS")
     print("staff_single_team=PASS")
     print("staff_unauthorized_query_blocked=PASS")
