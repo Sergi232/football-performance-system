@@ -8,6 +8,7 @@ FPS_DEMO_MODE=0 explicitly for a private local real-identity view.
 from __future__ import annotations
 
 import os
+from collections import Counter
 from collections.abc import Iterable
 
 import pandas as pd
@@ -38,14 +39,30 @@ def build_player_aliases(squad: pd.DataFrame) -> dict[str, str]:
 
 
 def build_player_name_aliases(squad: pd.DataFrame) -> dict[str, str]:
+    """Map full and unambiguous abbreviated player-name variants to demo aliases."""
     by_id = build_player_aliases(squad)
     if not by_id or "player" not in squad.columns:
         return {}
+
+    rows = squad[["player_id", "player"]].drop_duplicates("player_id").copy()
+    rows["player_id"] = rows["player_id"].astype(str)
+    rows["player"] = rows["player"].astype(str)
+    surnames = [name.split()[-1] for name in rows["player"] if name.strip()]
+    surname_counts = Counter(surnames)
+
     out: dict[str, str] = {}
-    for row in squad[["player_id", "player"]].drop_duplicates("player_id").itertuples(index=False):
+    for row in rows.itertuples(index=False):
         alias = by_id.get(str(row.player_id))
-        if alias and row.player is not None:
-            out[str(row.player)] = alias
+        raw = str(row.player).strip()
+        if not alias or not raw:
+            continue
+        out[raw] = alias
+        parts = raw.split()
+        surname = parts[-1]
+        if surname_counts[surname] == 1:
+            out[surname] = alias
+            if parts:
+                out[f"{parts[0][0]}. {surname}"] = alias
     return out
 
 
