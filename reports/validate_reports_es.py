@@ -35,7 +35,14 @@ def _write(name: str, payload: dict) -> tuple[Path, int]:
         raise AssertionError(f"{name}: PDF unexpectedly small ({len(pdf)} bytes)")
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     path = OUTPUT_DIR / name
-    path.write_bytes(pdf)
+    try:
+        path.write_bytes(pdf)
+    except PermissionError:
+        fallback_dir = OUTPUT_DIR / "_validation"
+        fallback_dir.mkdir(parents=True, exist_ok=True)
+        original = Path(name)
+        path = fallback_dir / f"{original.stem}_{os.getpid()}{original.suffix}"
+        path.write_bytes(pdf)
     return path, len(pdf)
 
 
@@ -78,13 +85,11 @@ def main() -> None:
     if eligible.empty:
         raise AssertionError("No player with appearance available")
     player_id = str(eligible.iloc[0]["player_id"])
-    raw_player = str(eligible.iloc[0]["player"])
 
     matches = get_team_matches(db_path, team_id)
     if matches.empty:
         raise AssertionError("No match available")
     match_id = str(matches.iloc[0]["match_id"])
-    raw_opponent = str(matches.iloc[0]["opponent"])
 
     team_payload = build_team_report_data(db_path, team_id)
     player_payload = build_player_report_data(db_path, team_id, player_id)
