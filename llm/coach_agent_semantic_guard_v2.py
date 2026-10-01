@@ -181,3 +181,8 @@ def install() -> None:
 
 
 install()
+
+# Keep older evaluator imports compatible: importing V2 also installs the latest
+# player-rating/component refinements. During a direct V3 import this resolves to the
+# partially initialized module and V3 completes installation immediately afterwards.
+from llm import coach_agent_semantic_guard_v3 as _latest_guard  # noqa: F401,E402
