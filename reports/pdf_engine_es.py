@@ -27,30 +27,118 @@ WHITE = colors.white
 
 POSITION_LABELS = {
     "CB": "Central",
+    "FB": "Lateral",
+    "WB": "Carrilero",
     "FB_WB": "Lateral / Carrilero",
+    "DM": "Mediocentro defensivo",
+    "CM": "Mediocentro",
     "DM_CM": "Mediocentro / Interior",
+    "AM": "Mediapunta",
+    "W": "Extremo",
     "AM_W": "Mediapunta / Extremo",
     "ST": "Delantero",
     "GK": "Portero",
     "OTHER_OUTFIELD": "Rol no observable",
 }
 
+ROLE_REPLACEMENTS = (
+    ("Defensive Midfielder", "Mediocentro defensivo"),
+    ("Attacking Midfielder", "Mediapunta"),
+    ("Wing Back", "Carrilero"),
+    ("Goalkeeper", "Portero"),
+    ("Midfielder", "Centrocampista"),
+    ("Defender", "Defensa"),
+    ("Striker", "Delantero"),
+    ("Substitute", "Suplente"),
+    ("Centre", "Centro"),
+    ("Right", "Derecha"),
+    ("Left", "Izquierda"),
+)
+
 
 def _safe(value: Any) -> str:
-    return "—" if value is None else str(value)
+    return "-" if value is None else str(value)
 
 
 def _fmt(value: Any, decimals: int = 1) -> str:
     try:
         if value is None:
-            return "—"
+            return "-"
         return f"{float(value):.{decimals}f}"
     except (TypeError, ValueError):
         return _safe(value)
 
 
+def _count(value: Any) -> str:
+    try:
+        if value is None:
+            return "-"
+        return str(int(round(float(value))))
+    except (TypeError, ValueError):
+        return _safe(value)
+
+
+def _date(value: Any) -> str:
+    if value is None:
+        return "-"
+    text = str(value).strip()
+    if not text:
+        return "-"
+    return text[:10] if len(text) >= 10 and text[4:5] == "-" and text[7:8] == "-" else text
+
+
 def _position(value: Any) -> str:
-    return "—" if value is None else POSITION_LABELS.get(str(value), str(value))
+    return "-" if value is None else POSITION_LABELS.get(str(value), str(value))
+
+
+def _roles(value: Any) -> str:
+    if value is None:
+        return "-"
+    text = str(value).strip()
+    if not text or text.lower() == "nan":
+        return "-"
+    for source, target in ROLE_REPLACEMENTS:
+        text = text.replace(source, target)
+    return text
+
+
+def _coverage(value: Any) -> str:
+    try:
+        if value is None:
+            return "-"
+        number = float(value)
+        if 0 <= number <= 1:
+            number *= 100
+        return f"{number:.0f}%"
+    except (TypeError, ValueError):
+        return _safe(value)
+
+
+def _expert_status(value: Any) -> str:
+    raw = str(value or "").strip()
+    labels = {
+        "RECOMMENDATION_NOT_ISSUED_POLICY_UNVALIDATED": "Sin recomendación: política no validada",
+        "RECOMMENDATION_NOT_ISSUED_INSUFFICIENT_EVIDENCE": "Sin recomendación: evidencia insuficiente",
+        "RECOMMENDATION_NOT_ISSUED_ROLE_UNAVAILABLE": "Sin recomendación: rol no disponible",
+    }
+    if raw in labels:
+        return labels[raw]
+    if raw.startswith("RECOMMENDATION_NOT_ISSUED_"):
+        return "Sin recomendación automática"
+    return raw.replace("_", " ").title() if raw else "-"
+
+
+def _rating_context(value: Any) -> str:
+    raw = str(value or "").upper()
+    if not raw:
+        return "Materializado"
+    if "GOALKEEPER" in raw:
+        return "Modelo específico de portero"
+    if "ROLE_UNAVAILABLE" in raw or "FALLBACK" in raw:
+        return "Rol no disponible - fallback"
+    if "POSITION_PRO" in raw or "OUTFIELD" in raw:
+        return "Jugador de campo - contexto posicional"
+    return "Materializado"
 
 
 def _styles() -> dict[str, ParagraphStyle]:
@@ -129,7 +217,7 @@ def _footer(canvas, doc) -> None:
     canvas.line(18 * mm, 14 * mm, A4[0] - 18 * mm, 14 * mm)
     canvas.setFont("Helvetica", 7)
     canvas.setFillColor(MUTED)
-    canvas.drawString(18 * mm, 9 * mm, "Football Performance System · exportación estructurada")
+    canvas.drawString(18 * mm, 9 * mm, "Football Performance System - exportación estructurada")
     canvas.drawRightString(A4[0] - 18 * mm, 9 * mm, f"Página {doc.page}")
     canvas.restoreState()
 
@@ -165,26 +253,45 @@ def _team_story(payload: dict[str, Any], styles: dict[str, ParagraphStyle], widt
     snapshot = payload.get("rating_snapshot") or []
     if snapshot:
         rows = [["Jugador", "Perfil", "Último rating", "Conf. %", "Media L5", "Delta 5v5"]]
-        for row in snapshot:
+        for row in snapshot[:16]:
             rows.append([row.get("player"), _position(row.get("latest_position_group")), _fmt(row.get("latest_match_rating")), _fmt(row.get("latest_confidence"), 0), _fmt(row.get("avg_last5")), _fmt(row.get("trend_delta_5v5"))])
         story.append(_table(rows, [42 * mm, 34 * mm, 23 * mm, 19 * mm, 22 * mm, 22 * mm], styles))
+        if len(snapshot) > 16:
+            story.append(Paragraph("Vista resumida. La plantilla completa con apariciones se incluye en la página siguiente.", styles["note"]))
     else:
         story.append(Paragraph("No hay Match Ratings materializados para la plantilla.", styles["body"]))
 
     story.append(Paragraph("Partidos recientes", styles["h2"]))
     rows = [["Fecha", "L/V", "Rival", "Marcador", "Formación"]]
-    for row in (payload.get("matches") or [])[:12]:
-        score = "—" if row.get("score_for") is None or row.get("score_against") is None else f"{row.get('score_for')}-{row.get('score_against')}"
-        rows.append([row.get("match_date"), row.get("venue"), row.get("opponent"), score, row.get("starting_formation")])
+    for row in (payload.get("matches") or [])[:8]:
+        score = "-" if row.get("score_for") is None or row.get("score_against") is None else f"{row.get('score_for')}-{row.get('score_against')}"
+        venue = {"H": "L", "A": "V"}.get(str(row.get("venue")), row.get("venue"))
+        rows.append([_date(row.get("match_date")), venue, row.get("opponent"), score, row.get("starting_formation") or "-"])
     story.append(_table(rows, [31 * mm, 12 * mm, 58 * mm, 24 * mm, 35 * mm], styles))
     _method_note(story, styles)
 
     story.append(PageBreak())
-    story.append(Paragraph("Plantilla", styles["h2"]))
-    rows = [["Jugador", "Apar.", "Tit.", "Minutos", "Goles", "Asist.", "Roles"]]
+    story.append(Paragraph("Plantilla con apariciones", styles["h2"]))
+    rows = [["Jugador", "Apar.", "Tit.", "Minutos", "Goles", "Asist.", "Roles observados"]]
+    active = []
     for row in payload.get("squad") or []:
-        rows.append([row.get("player"), row.get("appearances"), row.get("starts"), row.get("minutes"), row.get("goals"), row.get("assists"), row.get("observed_roles")])
-    story.append(_table(rows, [44 * mm, 14 * mm, 14 * mm, 19 * mm, 14 * mm, 16 * mm, 45 * mm], styles))
+        try:
+            if float(row.get("appearances") or 0) <= 0:
+                continue
+        except (TypeError, ValueError):
+            pass
+        active.append(row)
+    for row in active:
+        rows.append([
+            row.get("player"),
+            _count(row.get("appearances")),
+            _count(row.get("starts")),
+            _count(row.get("minutes")),
+            _count(row.get("goals")),
+            _count(row.get("assists")),
+            _roles(row.get("observed_roles")),
+        ])
+    story.append(_table(rows, [39 * mm, 13 * mm, 13 * mm, 18 * mm, 13 * mm, 15 * mm, 55 * mm], styles))
     return story
 
 
@@ -197,23 +304,23 @@ def _player_story(payload: dict[str, Any], styles: dict[str, ParagraphStyle], wi
     _header(story, payload, f"Informe de jugador · {_safe(summary.get('player'))}", styles)
 
     story.append(_kpis([
-        ("MATCH RATING", "—" if not latest else f"{_fmt(latest.get('match_rating_10'))}/10", "Último partido"),
-        ("CONFIANZA", "—" if not latest else f"{_fmt(latest.get('match_rating_confidence'), 0)}%", "Evidencia del partido"),
-        ("PERFORMANCE INDEX", "—" if not perf else f"{_fmt(perf.get('performance_score'))}/100", "Histórico / posicional"),
-        ("APARICIONES", summary.get("appearances"), "Temporada"),
-        ("MINUTOS", summary.get("minutes"), "Acumulados"),
+        ("MATCH RATING", "-" if not latest else f"{_fmt(latest.get('match_rating_10'))}/10", "Último partido"),
+        ("CONFIANZA", "-" if not latest else f"{_fmt(latest.get('match_rating_confidence'), 0)}%", "Evidencia del partido"),
+        ("PERFORMANCE INDEX", "-" if not perf else f"{_fmt(perf.get('performance_score'))}/100", "Histórico / posicional"),
+        ("APARICIONES", _count(summary.get("appearances")), "Temporada"),
+        ("MINUTOS", _count(summary.get("minutes")), "Acumulados"),
     ], width, styles))
 
     story.append(Paragraph("Perfil y producción", styles["h2"]))
     story.append(_table([
         ["Titularidades", "Goles", "Asistencias", "Roles observados"],
-        [summary.get("starts"), summary.get("goals"), summary.get("assists"), summary.get("observed_roles")],
+        [_count(summary.get("starts")), _count(summary.get("goals")), _count(summary.get("assists")), _roles(summary.get("observed_roles"))],
     ], [30 * mm, 24 * mm, 26 * mm, 80 * mm], styles))
 
     story.append(Paragraph("Historial reciente", styles["h2"]))
     rows = [["Fecha", "Rival", "Min", "Perfil", "Rating", "Conf. %"]]
     for row in ratings[:12]:
-        rows.append([row.get("match_date"), row.get("opponent"), _fmt(row.get("minutes_played"), 0), _position(row.get("position_group")), _fmt(row.get("match_rating_10")), _fmt(row.get("match_rating_confidence"), 0)])
+        rows.append([_date(row.get("match_date")), row.get("opponent"), _count(row.get("minutes_played")), _position(row.get("position_group")), _fmt(row.get("match_rating_10")), _fmt(row.get("match_rating_confidence"), 0)])
     story.append(_table(rows, [31 * mm, 48 * mm, 16 * mm, 31 * mm, 18 * mm, 18 * mm], styles))
 
     gate = payload.get("latest_role_fit_gate") or {}
@@ -221,8 +328,8 @@ def _player_story(payload: dict[str, Any], styles: dict[str, ParagraphStyle], wi
         story.append(Paragraph("Motor experto", styles["h2"]))
         story.append(_table([
             ["Rol observado", "Historial mismo rol", "Cobertura", "Estado final"],
-            [gate.get("observed_role"), gate.get("same_role_history"), gate.get("evidence_coverage"), gate.get("final_status")],
-        ], [35 * mm, 35 * mm, 25 * mm, 65 * mm], styles))
+            [_roles(gate.get("observed_role")), _count(gate.get("same_role_history")), _coverage(gate.get("evidence_coverage")), _expert_status(gate.get("final_status"))],
+        ], [39 * mm, 31 * mm, 22 * mm, 68 * mm], styles))
     _method_note(story, styles)
     return story
 
@@ -232,22 +339,30 @@ def _match_story(payload: dict[str, Any], styles: dict[str, ParagraphStyle], wid
     match = payload.get("match") or {}
     team = payload.get("team") or {}
     opponent = match.get("opponent") or "Rival"
-    score = "—" if match.get("score_for") is None or match.get("score_against") is None else f"{match.get('score_for')}-{match.get('score_against')}"
+    score = "-" if match.get("score_for") is None or match.get("score_against") is None else f"{match.get('score_for')}-{match.get('score_against')}"
     _header(story, payload, f"Informe de partido · {_safe(team.get('display_name'))} vs {_safe(opponent)}", styles)
     story.append(_kpis([
         ("MARCADOR", score, "Resultado"),
         ("SEDE", "Local" if match.get("venue") == "H" else "Visitante", "Contexto"),
-        ("FORMACIÓN", match.get("starting_formation") or "—", "Registro de origen"),
-        ("FECHA", match.get("match_date") or "—", "Partido"),
+        ("FORMACIÓN", match.get("starting_formation") or "-", "Registro de origen"),
+        ("FECHA", _date(match.get("match_date")), "Partido"),
     ], width, styles))
 
     ratings = payload.get("ratings") or []
     story.append(Paragraph("Match Rating por jugador", styles["h2"]))
     if ratings:
-        rows = [["Jugador", "Perfil", "Min", "Rating", "Conf. %", "Contexto"]]
+        rows = [["Jugador", "Perfil", "Min", "Rating", "Conf. %", "Método"]]
         for row in ratings:
-            rows.append([row.get("player"), _position(row.get("position_group")), _fmt(row.get("minutes_played"), 0), _fmt(row.get("match_rating_10")), _fmt(row.get("match_rating_confidence"), 0), row.get("match_rating_context") or row.get("rating_path")])
-        story.append(_table(rows, [41 * mm, 31 * mm, 14 * mm, 18 * mm, 18 * mm, 40 * mm], styles))
+            context_value = row.get("match_rating_context") or row.get("rating_path")
+            rows.append([
+                row.get("player"),
+                _position(row.get("position_group")),
+                _count(row.get("minutes_played")),
+                _fmt(row.get("match_rating_10")),
+                _fmt(row.get("match_rating_confidence"), 0),
+                _rating_context(context_value),
+            ])
+        story.append(_table(rows, [39 * mm, 31 * mm, 14 * mm, 18 * mm, 18 * mm, 42 * mm], styles))
     else:
         story.append(Paragraph("No hay ratings materializados para este partido.", styles["body"]))
 
