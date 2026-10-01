@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import ast
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -39,8 +40,8 @@ CATALAN_MARKERS = (
     "No hi ha",
     "No s'ha",
     "Últim partit",
-    "Últims ",
-    "Mitjana ",
+    "Últims",
+    "Mitjana",
     "Confiança",
     "Evidència",
     "Metodologia",
@@ -62,11 +63,26 @@ CATALAN_MARKERS = (
     "Proveïdor",
     "Sense dades",
     "Sense historial",
+    "Equip",
+    "Partit",
 )
 
 
 def db_path() -> Path:
     return Path(os.environ.get("FPS_DB_PATH", DEFAULT_DB)).expanduser().resolve()
+
+
+def _contains_catalan_marker(text: str) -> bool:
+    """Match Catalan markers as complete words/phrases, not Spanish prefixes.
+
+    Example: ``Evolució`` must not match Spanish ``Evolución`` and ``Equip``
+    must not match ``Equipo``.
+    """
+    for marker in CATALAN_MARKERS:
+        pattern = rf"(?<!\w){re.escape(marker)}(?!\w)"
+        if re.search(pattern, text):
+            return True
+    return False
 
 
 def visible_strings(path: Path) -> list[tuple[int, str]]:
@@ -77,7 +93,7 @@ def visible_strings(path: Path) -> list[tuple[int, str]]:
             text = node.value
             if "pages/" in text or "pages\\" in text:
                 continue
-            if any(marker in text for marker in CATALAN_MARKERS):
+            if _contains_catalan_marker(text):
                 found.append((getattr(node, "lineno", 0), text.replace("\n", " ")[:180]))
     return found
 
