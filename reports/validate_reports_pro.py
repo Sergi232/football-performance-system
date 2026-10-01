@@ -16,10 +16,12 @@ os.environ.setdefault("FPS_DEMO_MODE", "1")
 from app.data_access import get_squad_summary, get_team_matches, list_teams  # noqa: E402
 from app.presentation import demo_mode  # noqa: E402
 from reports.data_builder import build_match_report_data, build_player_report_data, build_team_report_data  # noqa: E402
-from reports.pdf_engine_final import render_pdf_bytes  # noqa: E402
+from reports.pdf_engine_elite import render_pdf_bytes  # noqa: E402
+from reports.report_metrics import REPORT_METRIC_VERSION  # noqa: E402
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 OUTPUT_DIR = ROOT / "reports" / "output" / "professional_demo"
+EXPECTED_SCHEMA = "0.6.0"
 
 
 def _slug(value: str) -> str:
@@ -64,6 +66,15 @@ def _assert_absent(payloads: list[dict], raw_values: list[str]) -> None:
         raise AssertionError(f"Real identities leaked into demo payload: {leaked[:10]}")
 
 
+def _assert_profile(payload: dict, key: str, minimum: int) -> None:
+    profile = payload.get(key) or []
+    if len(profile) < minimum:
+        raise AssertionError(f"{payload.get('report_type')}: {key} has only {len(profile)} rows")
+    for row in profile:
+        if "label" not in row or "key" not in row:
+            raise AssertionError(f"{payload.get('report_type')}: malformed technical profile row")
+
+
 def main() -> None:
     if not demo_mode():
         raise SystemExit("REPORTS-PRO: FAIL - FPS_DEMO_MODE must be enabled")
@@ -100,11 +111,16 @@ def main() -> None:
             raise AssertionError("Report payload language must be es")
         if payload.get("demo_mode") is not True:
             raise AssertionError("Report payload must declare demo_mode=True")
-        if payload.get("schema_version") != "0.5.0":
+        if payload.get("schema_version") != EXPECTED_SCHEMA:
             raise AssertionError(f"Unexpected schema: {payload.get('schema_version')}")
+        if payload.get("report_metric_version") != REPORT_METRIC_VERSION:
+            raise AssertionError(f"Unexpected report metric version: {payload.get('report_metric_version')}")
 
     if match_payload.get("match_summary") is None:
-        raise AssertionError("Materialized match summary is required by the final professional renderer")
+        raise AssertionError("Materialized match summary is required by the professional renderer")
+    _assert_profile(team_payload, "technical_profile", 6)
+    _assert_profile(player_payload, "technical_profile", 6)
+    _assert_profile(match_payload, "technical_profile", 6)
 
     raw_players = squad["player"].astype(str).tolist() if "player" in squad.columns else []
     raw_opponents = matches["opponent"].astype(str).tolist() if "opponent" in matches.columns else []
@@ -116,18 +132,20 @@ def main() -> None:
         _write(f"match_professional_{_slug(match_payload['match']['opponent'])}.pdf", match_payload),
     ]
 
-    print("REPORTS PROFESSIONAL GATE")
-    print("schema=0.5.0")
+    print("REPORTS ELITE TECHNICAL GATE")
+    print(f"schema={EXPECTED_SCHEMA}")
+    print(f"report_metrics={REPORT_METRIC_VERSION}")
     print(f"team={team_payload['team']['display_name']}")
     print(f"player={player_payload['summary']['player']}")
     print(f"opponent={match_payload['match']['opponent']}")
     print("spanish=PASS")
     print("anonymization=PASS")
+    print("technical_context=PASS")
     print("materialized_match_summary=PASS")
     print("critical_recalculation_guard=PASS")
     for path, size in outputs:
         print(f"PDF: {path} ({size} bytes)")
-    print("REPORTS PROFESSIONAL GATE: PASS")
+    print("REPORTS ELITE TECHNICAL GATE: PASS")
 
 
 if __name__ == "__main__":
