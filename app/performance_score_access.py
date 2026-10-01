@@ -6,6 +6,8 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
+from app.access_control import assert_team_access, filter_authorized_teams
+
 SCORE_VERSION = "performance_score_v0.2-experimental"
 
 
@@ -18,7 +20,7 @@ def connect_read_only(db_path: Path) -> duckdb.DuckDBPyConnection:
 
 def list_score_teams(db_path: Path) -> pd.DataFrame:
     with connect_read_only(db_path) as con:
-        return con.execute(
+        frame = con.execute(
             """
             SELECT DISTINCT s.team_id, t.display_name
             FROM player_match_performance_score s
@@ -28,9 +30,11 @@ def list_score_teams(db_path: Path) -> pd.DataFrame:
             """,
             [SCORE_VERSION],
         ).df()
+    return filter_authorized_teams(frame)
 
 
 def list_team_players(db_path: Path, team_id: str) -> pd.DataFrame:
+    assert_team_access(team_id)
     with connect_read_only(db_path) as con:
         return con.execute(
             """
@@ -50,6 +54,7 @@ def list_team_players(db_path: Path, team_id: str) -> pd.DataFrame:
 
 
 def get_player_score_history(db_path: Path, team_id: str, player_id: str) -> pd.DataFrame:
+    assert_team_access(team_id)
     with connect_read_only(db_path) as con:
         return con.execute(
             """
@@ -99,6 +104,7 @@ def get_team_score_snapshot(db_path: Path, team_id: str) -> pd.DataFrame:
     trend_delta_5v5 is descriptive only: latest five eligible scores minus the
     preceding five eligible scores. No threshold or performance label is applied.
     """
+    assert_team_access(team_id)
     with connect_read_only(db_path) as con:
         return con.execute(
             """
