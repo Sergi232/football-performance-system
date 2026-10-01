@@ -174,7 +174,12 @@ with tab_overview:
                 "Distribució": latest_rating.get("creation_progression"),
                 "Disciplina": latest_rating.get("discipline"),
             }
-            st.plotly_chart(dimension_chart(values), width="stretch", config={"displayModeBar": False})
+            st.plotly_chart(
+                dimension_chart(values),
+                width="stretch",
+                config={"displayModeBar": False},
+                key=f"player_dimensions_gk_{player_id}",
+            )
             st.caption("El porter segueix un model separat: 90% shot-stopping / 10% distribució en el nucli estructural.")
         else:
             values = {
@@ -184,21 +189,41 @@ with tab_overview:
                 "Finalització": latest_rating.get("finishing"),
                 "Disciplina": latest_rating.get("discipline"),
             }
-            st.plotly_chart(dimension_chart(values), width="stretch", config={"displayModeBar": False})
+            st.plotly_chart(
+                dimension_chart(values),
+                width="stretch",
+                config={"displayModeBar": False},
+                key=f"player_dimensions_outfield_{player_id}",
+            )
 
     section_header("Trajectòria de Match Rating", "Evolució partit a partit; escala fixa 3–10")
     if rating_history.empty:
         st.info("No hi ha historial disponible.")
     else:
-        st.plotly_chart(player_trend_chart(rating_history, "match_rating_10", (3, 10)), width="stretch", config={"displayModeBar": False})
+        st.plotly_chart(
+            player_trend_chart(rating_history, "match_rating_10", (3, 10)),
+            width="stretch",
+            config={"displayModeBar": False},
+            key=f"player_overview_rating_trend_{player_id}",
+        )
 
 with tab_trend:
     section_header("Evolució temporal", "Match Rating, Performance Index i mètriques base")
     if not rating_history.empty:
-        st.plotly_chart(player_trend_chart(rating_history, "match_rating_10", (3, 10)), width="stretch", config={"displayModeBar": False})
+        st.plotly_chart(
+            player_trend_chart(rating_history, "match_rating_10", (3, 10)),
+            width="stretch",
+            config={"displayModeBar": False},
+            key=f"player_tab_rating_trend_{player_id}",
+        )
     if not score_history.empty:
         st.markdown("#### Performance Index")
-        st.plotly_chart(player_trend_chart(score_history, "performance_score", (0, 100), hover_col=None), width="stretch", config={"displayModeBar": False})
+        st.plotly_chart(
+            player_trend_chart(score_history, "performance_score", (0, 100), hover_col=None),
+            width="stretch",
+            config={"displayModeBar": False},
+            key=f"player_tab_performance_index_{player_id}",
+        )
 
     features = list_base_features(path, player_id)
     if features:
@@ -208,7 +233,22 @@ with tab_trend:
         feature_history = get_player_feature_history(path, player_id, feature_name)
         if not feature_history.empty:
             chart_data = feature_history.rename(columns={"feature_value": "value"})
-            st.plotly_chart(player_trend_chart(chart_data, "value", (float(chart_data["value"].min()) if chart_data["value"].notna().any() else 0, float(chart_data["value"].max()) * 1.1 if chart_data["value"].notna().any() and float(chart_data["value"].max()) != float(chart_data["value"].min()) else 1), hover_col="opponent"), width="stretch", config={"displayModeBar": False})
+            st.plotly_chart(
+                player_trend_chart(
+                    chart_data,
+                    "value",
+                    (
+                        float(chart_data["value"].min()) if chart_data["value"].notna().any() else 0,
+                        float(chart_data["value"].max()) * 1.1
+                        if chart_data["value"].notna().any() and float(chart_data["value"].max()) != float(chart_data["value"].min())
+                        else 1,
+                    ),
+                    hover_col="opponent",
+                ),
+                width="stretch",
+                config={"displayModeBar": False},
+                key=f"player_feature_{player_id}_{feature_name}",
+            )
 
 with tab_technical:
     section_header("Rendiment tècnic", "Accions observades; sense convertir-les en conclusions automàtiques")
