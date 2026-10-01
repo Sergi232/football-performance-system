@@ -255,6 +255,13 @@ def build_match_report_data(db_path: Path, team_id: str, match_id: str) -> dict[
     lineup = _anon(get_match_lineup(db_path, team_id, match_id), ctx)
     ratings = _anon(get_match_ratings(db_path, team_id, match_id), ctx)
     observations = _mask_nested(get_match_observations(db_path, team_id, match_id), ctx)
+    try:
+        team_history = _anon(get_team_match_rating_history(db_path, team_id), ctx)
+        selected_summary = team_history.loc[team_history["match_id"].astype(str) == str(match_id)]
+        match_summary = None if selected_summary.empty else _records(selected_summary, 1)[0]
+    except Exception:
+        match_summary = None
+
     if not ratings.empty:
         merge_cols = [
             "player", "match_rating_10", "match_rating_confidence",
@@ -275,6 +282,7 @@ def build_match_report_data(db_path: Path, team_id: str, match_id: str) -> dict[
         "performance_index_version": SCORE_VERSION,
         "team": _team_identity(team_id, ctx),
         "match": _records(selected, 1)[0],
+        "match_summary": match_summary,
         "lineup": _records(lineup),
         "ratings": _records(ratings),
         "observations": observations,
