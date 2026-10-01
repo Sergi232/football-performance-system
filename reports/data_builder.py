@@ -42,7 +42,7 @@ from app.presentation import (
     replace_known_names,
 )
 
-REPORT_SCHEMA_VERSION = "0.4.1"
+REPORT_SCHEMA_VERSION = "0.5.0"
 
 
 def _clean(value: Any) -> Any:
@@ -139,12 +139,7 @@ def _mask_nested(value: Any, ctx: dict[str, Any]) -> Any:
 
 
 def _finalize_payload(payload: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
-    """Fail-safe presentation sanitization for every demo report payload.
-
-    Structured frame anonymisation remains the primary mechanism. This final pass
-    catches identities inside aggregates, nested observations, free-text fields or
-    future report additions before anything reaches the PDF renderer.
-    """
+    """Fail-safe presentation sanitization for every demo report payload."""
     if not demo_mode():
         return payload
     return _mask_nested(payload, ctx)
@@ -196,6 +191,13 @@ def build_player_report_data(db_path: Path, team_id: str, player_id: str) -> dic
     gate = get_latest_player_gate(db_path, team_id, player_id)
 
     try:
+        team_snapshot = _anon(get_team_player_rating_snapshot(db_path, team_id), ctx)
+        selected_snapshot = team_snapshot.loc[team_snapshot["player_id"].astype(str) == str(player_id)]
+        player_snapshot = None if selected_snapshot.empty else _records(selected_snapshot, 1)[0]
+    except Exception:
+        player_snapshot = None
+
+    try:
         latest_index = get_latest_player_score(db_path, team_id, player_id)
         index_history = get_player_score_history(db_path, team_id, player_id)
     except Exception:
@@ -229,6 +231,7 @@ def build_player_report_data(db_path: Path, team_id: str, player_id: str) -> dic
         "team": _team_identity(team_id, ctx),
         "player_id": str(player_id),
         "summary": summary,
+        "player_snapshot": player_snapshot,
         "match_history": _records(history, 15),
         "match_ratings": _records(ratings.sort_values("match_date", ascending=False), 15),
         "performance_index": None if latest_index is None else {k: _clean(v) for k, v in latest_index.items()},
