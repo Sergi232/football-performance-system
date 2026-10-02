@@ -1,9 +1,13 @@
 # COLLECTOR-01 — Auditoría final UX / contrato
 
-Fecha: 02/10/2026
-Estado: **REVISIÓN FINAL ABIERTA**
+Fecha de cierre: 03/10/2026
+Estado: **CERRADO — V1.1 OFICIAL / FINAL GATE PASS**
 
-Objetivo: cerrar el Data Collector como herramienta realmente utilizable durante o después de un partido de 90 minutos, sin cambiar la taxonomía aprobada `event_catalog v0.3.0` ni introducir métricas nuevas.
+Objetivo: cerrar el Data Collector como herramienta utilizable durante o después de un partido de 90 minutos, sin cambiar la taxonomía aprobada `event_catalog v0.3.0` ni introducir métricas nuevas.
+
+Implementación oficial: `collector/data_collector_futbol_v1.html`.
+Entrada oficial: `collector/data_collector_futbol.html`.
+Commit de implementación validada: `802173d` (`Finalize Collector V1.1`).
 
 ## Qué se conserva
 
@@ -23,80 +27,104 @@ La lógica de eventos aprobada se mantiene:
 - key pass / assist como qualifiers del pase;
 - autosave, undo, CSV y JSON.
 
-No se reabre la taxonomía de variables.
+No se ha reabierto la taxonomía de variables.
 
-## Hallazgos que deben corregirse antes de cerrar COLLECTOR-01
+## Hallazgos y resolución
 
-### 1. Contexto jugador incompleto respecto al contrato
+### 1. Contexto jugador incompleto — RESUELTO
 
 El contrato funcional aprobado incluye `jugador + dorsal + titular/suplente + minutos + rol/lado`.
 
-La implementación actual:
+V1.1 incorpora:
 
-- crea un dorsal por orden (`1..25`) pero no permite editarlo;
-- no guarda explícitamente `titular/suplente`;
-- sí guarda entrada/salida y minutos;
-- sí guarda rol/lado y cambios de rol.
+- dorsal editable;
+- titular/suplente almacenado explícitamente;
+- coherencia inicial entre estado y minutos;
+- guard de migración para autosaves previos incoherentes;
+- rol/lado y cambios de rol preservados.
 
-**Acción:** hacer editable el dorsal y almacenar explícitamente titular/suplente sin inferirlo silenciosamente de `minuteIn`.
+### 2. Rival no estructurado — RESUELTO
 
-### 2. Rival no está estructurado
+Se añade `opponentName` como metadato explícito, manteniendo `matchName` por compatibilidad.
 
-El contrato menciona `partido + fecha + equipo + rival`, pero la UI actual solo dispone de `matchName` y `teamName`; el rival queda implícito dentro del nombre del partido.
+### 3. Remates a puerta infracontabilizados — RESUELTO
 
-**Acción:** añadir `opponentName` como metadato explícito, manteniendo `matchName` por compatibilidad.
+El agregado derivado queda definido como:
 
-### 3. Resumen de remates a puerta infracontabiliza goles
+```text
+shots_on_target = SHOT GOAL + SHOT ON_TARGET
+```
 
-Los outcomes de SHOT son exclusivos: `GOAL`, `ON_TARGET`, `OFF_TARGET`, `BLOCKED`.
+No cambia el evento raw; se corrige únicamente el agregado derivado.
 
-Actualmente el resumen `A puerta` cuenta solo `ON_TARGET`. Un `GOAL` también debe formar parte del total derivado de remates a puerta.
+### 4. Interfaz no completamente en castellano — RESUELTO
 
-**Acción:** derivar `shots_on_target = GOAL + ON_TARGET`. No cambia el evento raw; corrige únicamente el agregado derivado.
+La UI visible V1.1 está en castellano. Los códigos técnicos internos (`PASS`, `SHOT`, etc.) se mantienen estables para no romper el contrato.
 
-### 4. La interfaz todavía no es castellano completo
+### 5. Responsive / mobile-first — CERRADO ESTRUCTURALMENTE
 
-Persisten textos visibles como `Passada`, `Llarga`, `Centre`, `Assistència`, `Tackle`, `Clearance`, `Save` y `Goal conceded`.
+V1.1 incorpora:
 
-**Acción:** traducir toda la interfaz visible a castellano manteniendo intactos los códigos técnicos internos (`PASS`, `SHOT`, etc.).
+- metadatos de partido accesibles en responsive;
+- botones táctiles con objetivos de 44–48 px;
+- layout adaptativo 4 → 3 → 2 → 1 columnas;
+- jugador activo y navegación anterior/siguiente accesibles durante captura;
+- exportación y configuración separadas de la captura principal;
+- roster contenido para evitar que domine el viewport;
+- reducción de texto secundario en anchos pequeños.
 
-### 5. Responsive existe, pero no es todavía mobile-first
+El gate valida `responsive_metadata_access=PASS` y `mobile_touch_targets=PASS`. Esto es validación estructural del layout; no se presenta como ensayo de usabilidad con usuarios reales ni como prueba en todos los dispositivos físicos.
 
-A menos de 900 px la UI pasa a una sola columna y también convierte `.two-col` en una sola columna. Esto hace que las familias de acciones frecuentes ocupen demasiada altura y obliga a mucho scroll durante captura.
+### 6. Jerarquía de uso — RESUELTO
 
-**Acción:**
-
-- mantener botones de acciones en dos columnas cuando el ancho lo permita;
-- aumentar targets táctiles a ~44–48 px;
-- reducir altura del roster en modo captura;
-- priorizar jugador activo + minuto + acciones por encima de exportación/configuración;
-- mantener navegación anterior/siguiente y deshacer accesibles;
-- no introducir menús que añadan clics a las acciones frecuentes.
-
-### 6. Jerarquía de uso
-
-La configuración de partido, roster y exportaciones compite visualmente con la captura durante el partido.
-
-**Acción:** separar conceptualmente:
+La interfaz separa conceptualmente:
 
 1. preparación del partido;
 2. captura rápida;
 3. revisión/resumen/exportación.
 
-La captura debe ser la zona dominante durante el uso real.
+La captura es la zona dominante durante el uso.
+
+### 7. Calidad HTML / accesibilidad básica — RESUELTO
+
+Los campos dinámicos de dorsal, nombre y estado disponen de `id`, `name` y label asociado. También se elimina el control interactivo que estaba dentro de `<summary>`.
+
+## Gate final
+
+Ejecución local confirmada el 03/10/2026:
+
+```text
+COLLECTOR V1.1 FINAL GATE: PASS
+catalog_version=0.3.0
+structured_opponent=PASS
+editable_shirt_number=PASS
+starter_substitute_explicit=PASS
+starter_minutes_consistency_guard=PASS
+shots_on_target_goal_plus_on_target=PASS
+spanish_visible_labels=PASS
+responsive_metadata_access=PASS
+mobile_touch_targets=PASS
+dynamic_form_ids_names_labels=PASS
+summary_interactive_element_guard=PASS
+event_taxonomy_unchanged=PASS
+official_entrypoint=PASS
+4 collector contract tests: PASS
+COLLECTOR-01 IMPLEMENTACION FINAL: PASS
+```
 
 ## Criterios de cierre
 
-COLLECTOR-01 solo se cerrará cuando:
+Criterios cumplidos:
 
-- `event_catalog v0.3.0` permanezca intacto;
-- dorsal y titular/suplente queden guardados explícitamente;
-- rival quede estructurado;
-- `A puerta` derive correctamente `GOAL + ON_TARGET`;
-- toda la UI visible esté en castellano;
-- la captura móvil sea operable sin scroll excesivo entre acciones frecuentes;
-- se mantengan autosave, undo, CSV, JSON, x/y de faltas, ABP y cambios de rol/formación;
-- `collector/validate_collector_mvp.py` y `tests/test_collector_contract.py` sigan pasando tras ampliar los gates de contexto/UX.
+- `event_catalog v0.3.0` permanece intacto;
+- dorsal y titular/suplente quedan guardados explícitamente;
+- rival queda estructurado;
+- `A puerta` deriva correctamente `GOAL + ON_TARGET`;
+- UI visible en castellano;
+- layout responsive y targets táctiles validados por contrato;
+- autosave, undo, CSV, JSON, x/y de faltas, ABP y cambios de rol/formación preservados;
+- tests de contrato pasan sobre V1.1;
+- la entrada oficial redirige a V1.1.
 
 ## Fuera de alcance de esta fase
 
@@ -107,4 +135,4 @@ COLLECTOR-01 solo se cerrará cuando:
 - cambios en Match Rating, Feature Engine o sistema experto;
 - rediseño del esquema analítico downstream.
 
-La automatización del Collector mediante vídeo queda como extensión futura; el objetivo actual es cerrar una captura manual rápida, consistente y defendible.
+La automatización del Collector mediante vídeo queda como extensión futura. El objetivo de COLLECTOR-01 era cerrar una captura manual rápida, consistente, auditable y compatible con el pipeline actual; ese objetivo queda cumplido.
