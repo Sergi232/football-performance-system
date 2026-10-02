@@ -3,6 +3,10 @@
 GPS remains optional. This layer aggregates only canonical GPS observations already
 normalized by GPS-01. It does NOT define sprint/HSR zones, fatigue, workload or any
 other threshold-based physical interpretation.
+
+Source precedence is explicit: real/provider GPS always ranks ahead of synthetic demo
+GPS for the same player-match. Import recency only breaks ties within the same source
+class, so demo data can never supersede an observed real record.
 """
 from __future__ import annotations
 
@@ -14,6 +18,8 @@ import duckdb
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 SUMMARY_VERSION = "gps_physical_summary_v0.1-descriptive"
+SYNTHETIC_PROVIDER = "FPS Synthetic Demo"
+SYNTHETIC_SOURCE_FORMAT = "synthetic_demo"
 
 
 def parse_args() -> argparse.Namespace:
@@ -39,8 +45,13 @@ def materialize(db_path: Path) -> dict[str, int]:
                     pm.team_id,
                     m.match_date,
                     gi.provider,
+                    gi.source_format,
                     gi.source_filename,
                     gi.imported_at,
+                    CASE
+                        WHEN gi.provider='{SYNTHETIC_PROVIDER}' OR gi.source_format='{SYNTHETIC_SOURCE_FORMAT}' THEN 1
+                        ELSE 0
+                    END::INTEGER AS source_priority,
                     COUNT(*)::BIGINT AS sample_count,
                     COUNT(o.distance_m)::BIGINT AS distance_sample_count,
                     COUNT(o.speed_m_s)::BIGINT AS speed_sample_count,
@@ -59,13 +70,16 @@ def materialize(db_path: Path) -> dict[str, int]:
                 JOIN matches m ON m.match_id = o.match_id
                 GROUP BY
                     o.gps_import_id, o.match_id, o.player_id, pm.team_id,
-                    m.match_date, gi.provider, gi.source_filename, gi.imported_at
+                    m.match_date, gi.provider, gi.source_format, gi.source_filename, gi.imported_at
             ), ranked AS (
                 SELECT
                     *,
                     ROW_NUMBER() OVER (
                         PARTITION BY match_id, player_id
-                        ORDER BY imported_at DESC NULLS LAST, gps_import_id DESC
+                        ORDER BY
+                            source_priority ASC,
+                            imported_at DESC NULLS LAST,
+                            gps_import_id DESC
                     ) AS import_rank
                 FROM aggregated
             )
@@ -101,6 +115,7 @@ def main() -> None:
     summary = materialize(args.db)
     print("GPS PHYSICAL SUMMARY MATERIALIZATION: COMPLETE")
     print(f"summary_version={SUMMARY_VERSION}")
+    print("source_precedence=REAL_OVER_SYNTHETIC")
     for key, value in summary.items():
         print(f"{key}={value}")
     print("No HSR/sprint zone, workload, fatigue or readiness threshold was created.")
