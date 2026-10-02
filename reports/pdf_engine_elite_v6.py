@@ -1,7 +1,7 @@
 """Elite technical PDF renderer v6 with descriptive GPS context.
 
 GPS remains optional and downstream of the canonical physical summary layer.
-This renderer never turns GPS into fatigue/readiness/injury-risk claims and never
+This renderer never turns GPS into fatigue/availability/injury-risk claims and never
 feeds physical values back into Match Rating, Performance Index or expert decisions.
 """
 from __future__ import annotations
@@ -56,12 +56,12 @@ def _gps_banner(gps: dict[str, Any], styles) -> Paragraph:
     if gps.get("contains_synthetic_demo"):
         text = (
             "<b>DATOS DEMO · GPS sintético.</b> Valores generados para demostrar el flujo técnico; "
-            "no son observaciones reales del deportista ni validan fatiga, readiness o riesgo de lesión."
+            "no son observaciones reales del deportista ni validan fatiga, disponibilidad física o riesgo de lesión."
         )
     else:
         text = (
             "<b>GPS descriptivo.</b> La lectura se limita a distancia, velocidad y aceleración observadas; "
-            "no se aplican umbrales automáticos de fatiga, readiness, sprint o riesgo de lesión."
+            "no se aplican umbrales automáticos de fatiga, disponibilidad física, esprint o riesgo de lesión."
         )
     return Paragraph(text, styles["note"])
 
@@ -98,7 +98,7 @@ def _team_gps_page(payload: dict[str, Any], styles, width: float) -> list[Any]:
     story.append(ui._kpi_row([
         ("Cobertura último registro", f"{ui._count(latest_cov.get('gps_players'))}/{ui._count(latest_cov.get('played_players'))}", "Jugadores con GPS / utilizados"),
         ("Proveedor", _providers(gps), "Procedencia del registro"),
-        ("Jugadores mostrados", str(len(players)), "Sin ranking físico"),
+        ("Jugadores mostrados", str(len(players)), "Sin clasificación física"),
         ("Rol no disponible", str(unresolved), "Se mantiene sin inferencia artificial"),
     ], width, styles))
 
@@ -175,7 +175,7 @@ def _player_gps_page(payload: dict[str, Any], styles, width: float) -> list[Any]
         [
             f"Último registro: {_km(latest.get('total_distance_m'))} en {_minutes(latest.get('minutes_played'))}, con velocidad máxima de {_kmh(latest.get('peak_speed_m_s'))}.",
             f"Rol de contexto: {_role(latest.get('effective_role'))}. Si el rol no está disponible, no se fuerza una comparación posicional.",
-            "La serie sirve para revisar evolución intra-jugador; no establece por sí sola estado de forma, fatiga, readiness ni riesgo de lesión.",
+            "La serie sirve para revisar evolución intra-jugador; no establece por sí sola estado de forma, fatiga, disponibilidad física ni riesgo de lesión.",
         ],
         width,
         styles,
@@ -190,7 +190,7 @@ def _match_gps_page(payload: dict[str, Any], styles, width: float) -> list[Any]:
     story: list[Any] = [PageBreak()]
     story += ui._section(
         "GPS · Partido",
-        f"Carga externa descriptiva frente a {opponent}. Lectura individual sin ranking de calidad.",
+        f"Carga externa descriptiva frente a {opponent}. Lectura individual sin clasificación de calidad.",
         width,
         styles,
     )
@@ -229,7 +229,7 @@ def _match_gps_page(payload: dict[str, Any], styles, width: float) -> list[Any]:
         [
             f"Cobertura del partido: {len(players)} jugadores con resumen GPS descriptivo.",
             f"Contexto posicional: {len(players) - unresolved} registros con rol disponible y {unresolved} sin rol recuperable de la fuente.",
-            "Cruzar la carga externa con minutos, rol y vídeo. No usar esta página como diagnóstico de fatiga o como ranking entre posiciones.",
+            "Cruzar la carga externa con minutos, rol y vídeo. No usar esta página como diagnóstico de fatiga o como clasificación entre posiciones.",
         ],
         width,
         styles,
