@@ -1,10 +1,10 @@
-import json
+﻿import json
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / "collector" / "event_catalog.json"
-HTML = ROOT / "collector" / "data_collector_futbol_mvp.html"
+HTML = ROOT / "collector" / "data_collector_futbol_v1.html"
 
 
 def load_catalog():
