@@ -3,7 +3,8 @@
 Uses coach_agent_fast so the same router-v2 + hybrid synthesis path used by the
 application is validated. The validator tolerates transient Ollama startup/busy
 latency, starts the local server only when it is clearly not listening, and warms
-the selected model before the product smoke cases.
+the selected model with the same context size used by production before the product
+smoke cases.
 """
 from __future__ import annotations
 
@@ -30,6 +31,10 @@ def _guardrail_ok(text: str) -> bool:
 
 
 def _warmup(model: str) -> None:
+    # Ollama may reload the same model when num_ctx changes. Warm with the exact
+    # production context so the first real smoke case does not pay a second model-load
+    # cost and get incorrectly classified as a synthesis timeout.
+    runtime_num_ctx = int(os.environ.get("FPS_AGENT_NUM_CTX", "1536"))
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": "Responde exactamente: OK"}],
@@ -38,7 +43,7 @@ def _warmup(model: str) -> None:
         "keep_alive": "30m",
         "options": {
             "temperature": 0,
-            "num_ctx": 512,
+            "num_ctx": runtime_num_ctx,
             "num_predict": 8,
         },
     }
