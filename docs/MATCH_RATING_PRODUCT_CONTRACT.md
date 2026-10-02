@@ -1,52 +1,139 @@
 # Match Rating — product contract
 
+Fecha de sincronización: 03/10/2026
+
 ## Purpose
 
-`Match Rating` is the immediate player-match evaluation exposed to the coaching staff after a match. It is deliberately separate from the historical `Performance Index`.
+`Match Rating` es la evaluación inmediata jugador-partido expuesta al cuerpo técnico después de un partido. Está deliberadamente separada del `Performance Index` histórico.
+
+## Versión vigente
+
+```text
+Match Rating: match_rating_v0.5-candidate
+Performance Index: performance_score_v0.2-experimental
+```
+
+Match Rating V5 es el baseline activo y congelado. No se modifica fórmula, pesos o arquitectura sin nueva evidencia, experimento explícito y validación.
 
 ## Operational requirement
 
-After the first processed match of a club, every player with `minutes_played > 0` must have:
+Después del primer partido procesado de un club, todo jugador con `minutes_played > 0` debe tener:
 
-- a Match Rating on the `/10` display scale;
-- an evidence confidence value;
-- a transparent rating context/status;
-- observed player-match data available for explanation;
-- inclusion in the match report.
+- Match Rating en escala `/10`;
+- valor de confianza/evidencia;
+- contexto/status transparente;
+- datos observados jugador-partido disponibles para explicación;
+- inclusión en Match Mode e informe de partido.
 
-No prior club history is required for the Match Rating.
+No se requiere historial previo del club.
 
-## Historical layer
+Contrato validado actual:
 
-`Performance Index` is complementary and may use historical/role context for:
+```text
+played_rows=590
+rated_rows=590
+rating_coverage=1.0000
+matches=38
+goalkeeper_rows=38
+generic_role_rows=172
+neutral_insufficient_evidence_rows=0
+first_match_rated_rows=16
+MATCH RATING CONTRACT: PASS
+```
 
-- evolution;
-- form;
-- consistency;
-- role profile;
-- descriptive trends.
+Control de integridad del baseline:
 
-It must not be presented as the per-match rating.
+```text
+nulls=0
+duplicates=0
+out_of_range=0
+```
 
-## Missing evidence
+## Outfield model
 
-Missing evidence must not be silently converted into observed zero. When evidence is insufficient for a complete evaluation, the product keeps the player visible and exposes reduced confidence/status rather than hiding the row or inventing actions.
+El modelo de jugadores de campo usa contexto posicional cuando existe rol fiable.
 
-## Source-role limitation
+Familias principales:
 
-If an external source labels a played appearance only as `Substitute` without a reliable tactical role, the match report may use a generic rating context. It must not infer a tactical position. The final amateur collector should record the player's entry role so this limitation is avoided in first-party data.
+```text
+CB / FB / DM / CM / AM / W / ST
+```
+
+La ruta activa validada es `OUTFIELD_PERF18_ANCHORED` cuando existe evidencia suficiente y rol resoluble.
+
+Los anchors decisivos son explícitos y auditables. No se introduce un castigo global automático por resultado del equipo.
 
 ## Goalkeepers
 
-Goalkeepers follow a separate rating path and are never evaluated with outfield positional dimensions.
+Los porteros siguen una ruta separada y nunca se evalúan mediante las dimensiones posicionales de jugadores de campo.
+
+Baseline vigente:
+
+```text
+90% shot-stopping
+10% distribución
+```
+
+Las 38 apariciones de portero de la temporada demo están cubiertas por esta ruta específica.
+
+## Missing role / generic route
+
+Si una fuente externa solo etiqueta una aparición jugada como `Substitute` y no existe rol táctico fiable, el sistema puede usar una ruta genérica de rating.
+
+Debe cumplir:
+- no inventar posición;
+- conservar al jugador visible;
+- exponer el contexto/ruta usada;
+- mantener confidence/provenance.
+
+La temporada demo actual contiene 172 apariciones evaluadas mediante esta ruta genérica por falta de rol fiable.
+
+El Collector first-party V1.1 registra rol/posición y cambios de rol para reducir esta limitación en datos propios.
+
+## Historical layer
+
+`Performance Index` es complementario y puede usar historia/contexto de rol para:
+- evolución;
+- forma;
+- consistencia;
+- perfil de rol;
+- tendencias descriptivas.
+
+No debe presentarse como Match Rating jugador-partido.
+
+## Missing evidence
+
+La ausencia de evidencia nunca se convierte silenciosamente en cero observado.
+
+Cuando una señal no está disponible:
+- se preserva `NULL`/ausencia cuando corresponde;
+- no se inventan acciones;
+- se conserva provenance y confidence;
+- la interfaz debe explicar la limitación.
 
 ## LLM boundary
 
-The assistant is downstream of the materialized Match Rating. It may explain the rating and its evidence, but it must not calculate, alter or replace the rating.
+El Coach Copilot está downstream del Match Rating materializado.
 
-## Current experimental versions
+Puede:
+- consultar el rating;
+- explicar la evidencia disponible;
+- describir evolución/comparaciones permitidas.
 
-- Match Rating: `match_rating_v0.1-experimental`
-- Performance Index: `performance_score_v0.2-experimental`
+No puede:
+- recalcularlo;
+- alterar pesos;
+- sustituir la ruta V5;
+- convertirlo automáticamente en una recomendación táctica.
 
-The `/10` presentation transform remains experimental and must be recalibrated before claiming equivalence with any external rating provider.
+## GPS boundary
+
+GPS es opcional y no modifica el Match Rating V5.
+
+En particular, GPS sintético de demo nunca alimenta el rating.
+
+## Interpretation boundary
+
+La escala `/10` es una escala propia del producto y no se presenta como equivalente a un rating propietario externo.
+
+Las referencias profesionales usadas durante el desarrollo sirven para normalización/validación experimental, no como dependencia necesaria del producto amateur ni como promesa de equivalencia con proveedores externos.
