@@ -311,7 +311,7 @@ def _player_story(payload: dict[str, Any], styles, width: float) -> list[Any]:
         if value is not None:
             dims.append((label, value))
     if dims:
-        block = _section("03 · Dimensiones del último partido", "Puntuaciones materializadas que explican la nota; no son un informe de scouting independiente.", width, styles)
+        block = _section("03 · Dimensiones del último partido", "Puntuaciones materializadas que explican la nota; no constituyen una evaluación independiente del jugador.", width, styles)
         block.append(_bar_chart(dims, width, 29 * mm, 0, 100))
         story.append(KeepTogether(block))
 
