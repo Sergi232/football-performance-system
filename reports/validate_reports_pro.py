@@ -16,7 +16,7 @@ os.environ.setdefault("FPS_DEMO_MODE", "1")
 from app.data_access import get_squad_summary, get_team_matches, list_teams  # noqa: E402
 from app.presentation import demo_mode  # noqa: E402
 from reports.data_builder import build_match_report_data, build_player_report_data, build_team_report_data  # noqa: E402
-from reports.pdf_engine_elite_v4 import render_pdf_bytes  # noqa: E402
+from reports.pdf_engine_elite_v5 import render_pdf_bytes  # noqa: E402
 from reports.report_metrics import REPORT_METRIC_VERSION  # noqa: E402
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
@@ -75,6 +75,15 @@ def _assert_profile(payload: dict, key: str, minimum: int) -> None:
             raise AssertionError(f"{payload.get('report_type')}: malformed technical profile row")
 
 
+def _assert_team_pulse_v5(payload: dict) -> None:
+    profile = payload.get("technical_profile") or []
+    required = {"last10", "all", "delta_10_all"}
+    for row in profile:
+        missing = required.difference(row)
+        if missing:
+            raise AssertionError(f"team technical profile missing V5 fields: {sorted(missing)}")
+
+
 def main() -> None:
     if not demo_mode():
         raise SystemExit("REPORTS-PRO: FAIL - FPS_DEMO_MODE must be enabled")
@@ -121,6 +130,7 @@ def main() -> None:
     _assert_profile(team_payload, "technical_profile", 6)
     _assert_profile(player_payload, "technical_profile", 6)
     _assert_profile(match_payload, "technical_profile", 6)
+    _assert_team_pulse_v5(team_payload)
 
     raw_players = squad["player"].astype(str).tolist() if "player" in squad.columns else []
     raw_opponents = matches["opponent"].astype(str).tolist() if "opponent" in matches.columns else []
@@ -132,7 +142,7 @@ def main() -> None:
         _write(f"match_professional_{_slug(match_payload['match']['opponent'])}.pdf", match_payload),
     ]
 
-    print("REPORTS ELITE TECHNICAL GATE V4")
+    print("REPORTS ELITE TECHNICAL GATE V5")
     print(f"schema={EXPECTED_SCHEMA}")
     print(f"report_metrics={REPORT_METRIC_VERSION}")
     print(f"team={team_payload['team']['display_name']}")
@@ -141,11 +151,12 @@ def main() -> None:
     print("spanish=PASS")
     print("anonymization=PASS")
     print("technical_context=PASS")
+    print("team_last10_all_context=PASS")
     print("materialized_match_summary=PASS")
     print("critical_recalculation_guard=PASS")
     for path, size in outputs:
         print(f"PDF: {path} ({size} bytes)")
-    print("REPORTS ELITE TECHNICAL GATE V4: PASS")
+    print("REPORTS ELITE TECHNICAL GATE V5: PASS")
 
 
 if __name__ == "__main__":
