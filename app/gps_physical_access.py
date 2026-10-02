@@ -62,12 +62,54 @@ def _effective_role_sql() -> str:
     """
 
 
+def _role_es(value: object) -> str | None:
+    """Localize source role labels for the Spanish product UI without changing semantics."""
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+
+    role_map = {
+        "goalkeeper": "Portero",
+        "defender": "Defensa",
+        "wing back": "Carrilero",
+        "midfielder": "Centrocampista",
+        "defensive midfielder": "Mediocentro defensivo",
+        "attacking midfielder": "Mediapunta",
+        "striker": "Delantero",
+        "forward": "Delantero",
+        "substitute": "Suplente",
+    }
+    side_map = {
+        "left": "Izquierda",
+        "centre": "Centro",
+        "center": "Centro",
+        "right": "Derecha",
+    }
+
+    parts = [part.strip() for part in raw.split("|", 1)]
+    main = role_map.get(parts[0].lower(), parts[0])
+    if len(parts) == 1 or not parts[1]:
+        return main
+
+    positions = [side.strip() for side in parts[1].split("/")]
+    localized_positions = [side_map.get(side.lower(), side) for side in positions]
+    return f"{main} | {'/'.join(localized_positions)}"
+
+
+def _localize_roles(frame: pd.DataFrame) -> pd.DataFrame:
+    if frame.empty or "effective_role" not in frame.columns:
+        return frame
+    frame = frame.copy()
+    frame["effective_role"] = frame["effective_role"].map(_role_es)
+    return frame
+
+
 def get_player_gps_history(db_path: Path, team_id: str, player_id: str) -> pd.DataFrame:
     if not summary_table_available(db_path):
         return pd.DataFrame()
     role_expr = _effective_role_sql()
     with _connect(db_path) as con:
-        return con.execute(
+        frame = con.execute(
             f"""
             SELECT
                 g.match_id, g.match_date,
@@ -92,6 +134,7 @@ def get_player_gps_history(db_path: Path, team_id: str, player_id: str) -> pd.Da
             """,
             [PHYSICAL_SUMMARY_VERSION, team_id, player_id],
         ).df()
+    return _localize_roles(frame)
 
 
 def get_latest_player_gps(db_path: Path, team_id: str, player_id: str) -> dict | None:
@@ -106,7 +149,7 @@ def get_match_gps_summary(db_path: Path, team_id: str, match_id: str) -> pd.Data
         return pd.DataFrame()
     role_expr = _effective_role_sql()
     with _connect(db_path) as con:
-        return con.execute(
+        frame = con.execute(
             f"""
             SELECT
                 p.display_name AS player,
@@ -128,6 +171,7 @@ def get_match_gps_summary(db_path: Path, team_id: str, match_id: str) -> pd.Data
             """,
             [PHYSICAL_SUMMARY_VERSION, team_id, match_id],
         ).df()
+    return _localize_roles(frame)
 
 
 def get_team_gps_match_coverage(db_path: Path, team_id: str) -> pd.DataFrame:
@@ -171,7 +215,7 @@ def get_team_latest_gps_snapshot(db_path: Path, team_id: str) -> pd.DataFrame:
         return pd.DataFrame()
     role_expr = _effective_role_sql()
     with _connect(db_path) as con:
-        return con.execute(
+        frame = con.execute(
             f"""
             WITH ranked AS (
                 SELECT
@@ -201,3 +245,4 @@ def get_team_latest_gps_snapshot(db_path: Path, team_id: str) -> pd.DataFrame:
             """,
             [PHYSICAL_SUMMARY_VERSION, team_id],
         ).df()
+    return _localize_roles(frame)
