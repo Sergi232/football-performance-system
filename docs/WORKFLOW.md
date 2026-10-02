@@ -1,6 +1,6 @@
 # Workflow del proyecto — fases, agentes y gates
 
-Fecha: 30/09/2026
+Fecha de sincronización: 03/10/2026
 
 Este documento define cómo se trabaja sobre el estado actual del Football Performance System.
 
@@ -8,305 +8,227 @@ Este documento define cómo se trabaja sobre el estado actual del Football Perfo
 
 ## 1. Regla operativa
 
-El proyecto ya no está en fase de construcción del núcleo base. Data, Features, Analytics, sistema experto, experimentación DS/IA baseline y Match Rating están construidos o validados en su estado actual.
-
-La fase activa es **FINAL PRODUCT**: robustez, QA, presentación, Coach Copilot, Reports, Collector UX, demostración GPS, Performance Index y documentación final.
+El núcleo funcional está cerrado y el **Global end-to-end QA está en PASS**.
 
 Regla principal:
 
-**No reabrir una capa cerrada salvo incidencia concreta, nueva evidencia o Decision Gate explícito.**
+**No reabrir una capa cerrada salvo incidencia funcional real, nueva evidencia o Decision Gate explícito.**
+
+Un test aislado que falla se interpreta primero dentro de su contrato y del estado documentado; no reabre automáticamente una arquitectura validada.
 
 ## 2. Estado de fases
 
 ```text
 F0  ARCHITECTURE                    CERRADO
-F1  DATA / COLLECTOR CORE           CERRADO
-F2  FEATURES                        CERRADO
+F1  DATA / COLLECTOR CORE           CERRADO / VALIDADO
+F2  FEATURES                        CERRADO / VALIDADO
 F3  ANALYTICS                       CERRADO / VALIDADO
 F4  EXPERT / DECISION BASELINE      CERRADO / VALIDADO
 F5  DS / AI EXPERIMENTAL CORE       CERRADO EN BASELINE ACTUAL
-F6  PRODUCT UX                      IMPLEMENTADO / GATE VISUAL FINAL
-F7  REPORTING + ASSISTANT           ACTIVO / QA FINAL
-F8  FINAL PRODUCT / PUBLICATION     ACTIVO
+F6  PRODUCT UX                      CERRADO / OPERATIVO
+F7  REPORTING + ASSISTANT           CERRADO MVP / VALIDADO
+F8  GLOBAL QA                       CERRADO / PASS
+F9  FINAL DOCUMENTATION             ACTIVO
+F10 REPRODUCIBILITY / CI            ACTIVO
+F11 MEMORIA / DEFENSA               SIGUIENTE
 ```
 
-`PROJECT_STATE.md` mantiene el detalle técnico y las versiones exactas.
+`PROJECT_STATE.md` mantiene versiones, resultados de gates y limitaciones exactas.
 
 ## 3. Orden actual de trabajo
 
 ```text
 DOCUMENTATION SYNC
         ↓
-COACH COPILOT QA
+REPRODUCIBILITY PACKAGE
         ↓
-PRODUCT SPIRAL + DASHBOARD REVIEW
+VALIDATOR PATH CONSISTENCY
         ↓
-HUMAN VISUAL GATE
+CI PUSH / PULL_REQUEST
         ↓
-REPORTS-02 VISUAL GATE
+TFM MEMORY / DELIVERY README
         ↓
-COLLECTOR UX / ES / MOBILE
-        ↓
-GPS DEMO
-        ↓
-PERFORMANCE INDEX / HISTORICAL LAYER
-        ↓
-GLOBAL QA / REGRESSION
-        ↓
-TFM DOCUMENTATION / PUBLICATION PACKAGE
+DEFENSE / FINAL DEMO
 ```
 
-No volver automáticamente a DATA / FEATURES / EXPERT / MATCH RATING si no existe un fallo concreto o evidencia nueva.
+No volver automáticamente a DATA / FEATURES / ANALYTICS / EXPERT / MATCH RATING / LLM / REPORTS si no existe un fallo concreto o evidencia nueva.
 
 ## 4. Agentes / responsabilidades
 
 ### A0 — Architect / Integrator
 
 Responsable de:
-
 - mantener arquitectura y contratos;
-- inspeccionar el código real antes de proponer cambios;
+- inspeccionar código y `PROJECT_STATE.md` antes de proponer cambios;
 - coordinar dependencias;
 - impedir lógica duplicada;
 - detectar documentation drift;
-- actualizar `PROJECT_STATE.md` cuando cambia una fase;
-- determinar el siguiente bloque real.
-
-Activo durante todo el proyecto.
+- decidir cuándo una incidencia requiere reabrir un módulo;
+- actualizar estado y siguiente prioridad.
 
 ### A1 — Data & Collector
 
-Propietario de:
+Propietario de Collector, taxonomía, esquema raw/normalized, imports, GPS normalization y data quality.
 
-- Collector;
-- taxonomía de eventos;
-- esquema raw/normalized;
-- imports;
-- GPS normalization;
-- data quality.
-
-Estado actual: core cerrado; Collector en mejora de producto.
+Estado: **cerrado en el MVP actual**.
 
 Pregunta de control: ¿la variable es observable, trazable y realista para fútbol amateur?
 
 ### A2 — Feature Engine
 
-Propietario de:
+Propietario de ratios/per90, strict-past, tendencia matemática y features por rol.
 
-- ratios/per90;
-- historial strict-past;
-- ventanas/tendencias matemáticas;
-- features por rol;
-- features físicas validadas.
-
-Estado actual: baseline cerrado.
+Estado: **FEATURE-01/02/03 cerrados y validados**.
 
 Pregunta de control: ¿la transformación es reproducible y leakage-safe?
 
 ### A3 — Analytics
 
-Propietario de:
+Propietario de self-history, peer-role, cambio, variabilidad y evidencia estructurada.
 
-- evolución;
-- cambio;
-- consistencia;
-- comparaciones;
-- sample sufficiency;
-- incertidumbre;
-- evidencia estructurada;
-- alertas descriptivas.
+Estado: **ANALYTICS-01 cerrado y validado**.
 
-Estado actual: baseline validado.
-
-Pregunta de control: ¿qué puede afirmar el sistema a partir de evidencia estructurada sin inventar una recomendación?
+Pregunta de control: ¿qué puede afirmar el sistema sin convertir evidencia descriptiva en una recomendación no validada?
 
 ### A4 — Expert / Decision Engine
 
-Propietario de:
+Propietario de N1000–N13000, reglas, confidence, justification y recommendation gate.
 
-- N1000–N13000;
-- reglas;
-- confidence;
-- justification;
-- recommendation gate.
+Estado: **expert_0.7.0 cerrado y validado**.
 
-Estado actual: baseline validado y auditable.
+Pregunta de control: ¿la salida es auditable, reproducible y autorizada por una policy validada?
 
-Pregunta de control: ¿la decisión es auditable, reproducible y autorizada por una policy validada?
+### A5 — DS / ML Validation
 
-### A5 — ML / Validation
+Propietario de experimentación, baselines, splits temporales, leakage, análisis de error, ablations y decisión deploy/no-deploy.
 
-Propietario de:
+Estado: **baseline experimental cerrado**.
 
-- experimentación DS/ML;
-- similitud/perfiles;
-- change detection;
-- role-fit cuando exista target válido;
-- comparación Expert vs ML cuando sea metodológicamente válida;
-- validación fuera de muestra;
-- análisis de error;
-- ablations;
-- reproducibilidad.
+Resultados principales:
+- change detection: experimental/no deploy;
+- similarity: exploratory/no deploy;
+- posición/rol: context-only; baseline simple superior al ML.
 
-Estado actual: baseline experimental documentado. No es la prioridad inmediata de producto salvo que Performance Index o una hipótesis nueva justifiquen reabrir un experimento.
-
-No se fuerza un modelo cuando no existen labels, ground truth o muestra suficiente.
+No se fuerza ML sin target/ground truth defendible.
 
 ### A6 — Product / UX
 
-Propietario de:
+Propietario de Home, Team, Player, Match, Físico/GPS, navegación, charts, responsive y estados vacíos.
 
-- Home / Command Center;
-- Team / Player / Match;
-- Physical/GPS;
-- jerarquía de información;
-- charts;
-- navegación;
-- responsive;
-- estados vacíos;
-- detalle/auditoría.
-
-Principio aprobado:
+Principio:
 
 ```text
 insight-first, audit-detail second
 ```
 
-Pregunta de control: ¿qué necesita entender primero el entrenador?
+Estado: **operativo y validado contractualmente**.
 
 ### A7 — Reporting
 
-Propietario de:
+Propietario de Team / Player / Match Reports, composición visual y export estático.
 
-- Team Report;
-- Player Report;
-- Match Report;
-- composición visual;
-- paginación;
-- export estático.
+Estado: **V6 cerrado; gate técnico + revisión visual PASS**.
 
-Consume resultados ya calculados. No crea nueva lógica analítica.
-
-Estado actual: contracts técnicos pasan; gate visual pendiente.
+Consume resultados calculados; no crea nueva lógica analítica.
 
 ### A8 — AI Assistant
 
-Propietario de:
+Propietario de lenguaje natural, routing determinista, tools read-only, síntesis local, semantic guard y guardrails.
 
-- lenguaje natural;
-- routing de tools;
-- retrieval de contexto estructurado;
-- síntesis;
-- explicación;
-- provider routing;
-- guardrails.
-
-Arquitectura actual:
+Arquitectura:
 
 ```text
 analytics materializados
 → Python tools read-only
-→ Ollama local
+→ router determinista
+→ compact evidence
+→ Ollama qwen3:1.7b
+→ semantic guard
 → Coach Copilot
 ```
 
-No calcula conclusiones críticas.
+Estado: **LLM-02 cerrado MVP / castellano / smoke 4/4 PASS**.
 
-Estado actual: implementado; QA adaptativo final en curso.
+Contrato operativo local:
+
+```text
+FPS_AGENT_NUM_CTX=1536
+FPS_AGENT_TIMEOUT=18
+thinking=False
+keep_alive=30m
+```
+
+El warm-up debe usar el mismo `num_ctx` que producción.
 
 ### A9 — QA / Publication
 
-Propietario de:
+Propietario de tests, regressions, privacidad, anonimización, demo, instalación limpia, release y documentación.
 
-- tests;
-- regressions;
-- contract gates;
-- seguridad;
-- privacidad;
-- anonimización;
-- demo;
-- instalación limpia;
-- release/documentación.
+Estado: **Global end-to-end QA PASS**.
 
-Acompaña todas las fases.
+Trabajo activo: reproducibilidad pública y CI final.
 
-## 5. Paralelismo permitido
+## 5. Cómo se interpreta un fallo nuevo
+
+Secuencia obligatoria:
+
+```text
+nuevo FAIL
+→ consultar PROJECT_STATE + contrato vigente
+→ localizar la capa propietaria
+→ decidir si es runtime/entorno, validator o producto
+→ corregir el fallo mínimo demostrado
+→ revalidar solo lo necesario
+→ actualizar estado si cambia una decisión o gate
+```
+
+No se rediseña arquitectura por defecto.
+
+## 6. Paralelismo permitido
 
 Permitido:
-
-- A0 y A9 acompañan todas las tareas;
-- Coach Copilot QA y Product Spiral pueden ejecutarse en paralelo si no comparten mutaciones críticas;
-- Product UX y Reports pueden mejorarse en paralelo respetando sus contracts;
-- Collector UX puede avanzar sin modificar la semántica de variables;
-- documentación final puede prepararse a medida que se cierran bloques.
+- documentación y reproducibilidad en paralelo si no modifican contratos analíticos;
+- CI y limpieza de documentación después de validar localmente los comandos;
+- preparación de memoria mientras se completa el paquete reproducible.
 
 No permitido:
-
 - Product inventando métricas;
 - Reports recalculando analytics;
 - LLM accediendo directamente a DuckDB o recalculando scores;
 - LLM emitiendo recomendaciones bloqueadas;
-- Product Spiral modificando analytics, datos, features, decision engine, LLM o GPS;
 - ML definiendo labels por intuición no documentada;
-- crear targets ML circulares y presentarlos como validación independiente;
-- alterar Match Rating V5 sin evidencia y validación nuevas.
-
-## 6. Product Spiral
-
-La mejora automática de presentación utiliza una allowlist estricta:
-
-```text
-app/ui_theme.py
-app/coach_ui.py
-reports/pdf_engine.py
-```
-
-El resto del núcleo analítico está protegido.
-
-Los cambios aceptados quedan en ramas locales `product-spiral-*`; no se hace push ni merge automático.
-
-El score automático solo evalúa cualidades objetivables. El gate visual humano es obligatorio antes de integrar cambios.
+- targets ML circulares presentados como validación independiente;
+- alterar Match Rating V5 sin evidencia y validación nuevas;
+- publicar datos profesionales sin derechos de redistribución.
 
 ## 7. Cómo se cierra un bloque
 
-Cada bloque relevante debe dejar, cuando corresponda:
-
-1. estado inicial / problema;
+Cada bloque relevante debe dejar:
+1. problema/objetivo;
 2. implementación o decisión;
-3. validación ejecutada;
+3. validación;
 4. resultado;
 5. limitaciones;
 6. regresiones comprobadas;
 7. documentación actualizada;
 8. siguiente prioridad única.
 
-Una tarea no se considera cerrada únicamente porque compile.
+Para UI/PDF se requiere revisión visual cuando el cambio sea visual.
 
-Para UI/PDF debe superar además revisión visual.
-
-Para DS/ML debe existir además:
-
-- hipótesis;
-- baseline;
-- split/validación apropiada;
-- métricas;
-- análisis de error;
-- decisión de despliegue o no despliegue.
+Para DS/ML se requiere hipótesis, baseline, split/validación, métricas, análisis de error y decisión deploy/no-deploy.
 
 ## 8. Decision Gates
 
 Sergi no valida decisiones técnicas ordinarias o reversibles.
 
-Solo se abre un gate si la decisión afecta:
-
+Solo se abre un gate si afecta:
 - significado deportivo;
 - arquitectura;
 - metodología;
 - métrica principal;
 - política de recomendación;
 - UX principal;
-- privacidad;
-- publicación;
+- privacidad/publicación;
 - scope del TFM.
 
 Formato:
@@ -315,10 +237,10 @@ Formato:
 ID
 DECISIÓN
 POR QUÉ IMPORTA
-OPCIONES (máximo 2–4)
+OPCIONES
 RECOMENDACIÓN
 IMPACTO
-DECISIÓN DE SERGI
+DECISIÓN
 ```
 
 No se abre gate para nombres de funciones, SQL ordinario, caching, tests rutinarios, refactors internos o detalles reversibles.
@@ -327,10 +249,10 @@ No se abre gate para nombres de funciones, SQL ordinario, caching, tests rutinar
 
 ### Al iniciar
 
-1. acceder al repositorio GitHub;
+1. acceder a GitHub;
 2. leer `PROJECT_STATE.md`;
-3. comprobar commits de `main` posteriores a su última actualización;
-4. consultar `docs/DECISIONS.md` y documentación específica si la tarea lo requiere;
+3. comprobar commits de `main` posteriores a su actualización;
+4. consultar `docs/DECISIONS.md` y documentación específica si aplica;
 5. inspeccionar el código real de la funcionalidad afectada;
 6. trabajar sobre el estado real, no sobre una conversación antigua.
 
@@ -348,41 +270,32 @@ código actual + commits recientes
 
 ### Durante
 
-- hacer cambios incrementales;
+- cambios incrementales;
 - respetar contracts;
-- preferir modificar el módulo existente antes que crear sistemas paralelos;
-- validar tras cada cambio relevante;
+- modificar el módulo existente antes que crear sistemas paralelos;
+- validar tras cambios relevantes;
 - no ampliar scope sin justificación.
 
 ### Al terminar
 
-1. ejecutar validaciones aplicables;
-2. comprobar regresiones;
-3. actualizar GitHub/documentación si cambia el estado;
-4. indicar a Sergi:
-   - qué se completó;
-   - qué validó;
-   - qué limitación queda;
-   - si existe un gate;
-   - cuál es el siguiente bloque exacto.
+Indicar de forma breve:
+- qué se completó;
+- qué validó;
+- qué limitación queda;
+- si existe gate;
+- siguiente bloque exacto.
 
-## 10. Prioridad actual aplicada
+## 10. Prioridad actual
 
 ```text
-1  Documentation sync                  ACTIVO
-2  Coach Copilot QA                    SIGUIENTE
-3  Product Spiral / dashboard review
-4  Human visual gate
-5  REPORTS-02 visual gate
-6  Collector UX / castellano / móvil
-7  GPS demo etiquetada
-8  Performance Index histórico
-9  Global QA / regression
-10 TFM docs / publication package
+1  Documentation sync               ACTIVO
+2  Reproducibility package          SIGUIENTE
+3  Validator path consistency
+4  Reactivar CI push/PR
+5  Memoria / README de entrega
+6  Defensa / demo final
 ```
 
-El criterio final no es maximizar funcionalidades.
-
-El criterio de cierre es:
+Criterio de cierre:
 
 **producto funcional + metodología defendible + arquitectura auditable + demostración reproducible + GitHub presentable.**
