@@ -16,7 +16,7 @@ LLM-01                              PROTOTYPE v0.1 / CONTRATOS PASS
 LLM-02 LOCAL COACH COPILOT          CERRADO MVP / CASTELLANO / LIMITACIÓN MENOR DOCUMENTADA
 REPORTS-01                          PROTOTYPE v0.1 / CONTRATO PASS
 REPORTS-02 PROFESSIONAL PDF         BASELINE CERRADO / GATE TÉCNICO + VISUAL PASS
-REPORTS-03 ELITE TECHNICAL REPORTS  CERRADO / V3 / GATE TÉCNICO + VISUAL PASS
+REPORTS-03 ELITE TECHNICAL REPORTS  CERRADO / V4 / GATE TÉCNICO + VISUAL PASS
 DASHBOARD-01                        CONTRACT PASS
 DASHBOARD PROFESSIONAL REDESIGN     IMPLEMENTADO
 UI-PRESENTATION-ES-DEMO             CONTRACT PASS / DEMO MASKING ACTIVO
@@ -123,7 +123,7 @@ staff_unauthorized_query_blocked=PASS
 restricted_without_assignment_fail_closed=PASS
 club_admin_scope=PASS
 
-REPORTS ELITE TECHNICAL GATE V3: PASS
+REPORTS ELITE TECHNICAL GATE V4: PASS
 schema=0.6.0
 report_metrics=report_descriptive_v0.1
 spanish=PASS
@@ -220,10 +220,10 @@ reports/report_metrics.py
 → Match solo contra 5 partidos anteriores
 reports/data_builder.py
 → schema 0.6.0
-reports/pdf_engine_elite_v3.py
+reports/pdf_engine_elite_v4.py
 → renderer final staff-facing
 reports/pdf_engine_es.py
-→ wrapper usado por la app, apunta a V3
+→ wrapper usado por la app, apunta a V4
 ```
 
 Métricas incorporadas cuando existen:
@@ -244,7 +244,9 @@ Diseño final validado:
 - Player: 2 páginas — resumen/trayectoria + claves específicas de revisión; dimensiones + perfil técnico reciente + producción + trazabilidad.
 - Match: 2 páginas — lectura rápida + huella técnica vs 5 previos; distribución de ratings + ficha + dimensiones + calidad de evidencia.
 
-V3 añade narrativa determinista de revisión, no diagnóstico causal. En portero evita presentar métricas no disponibles como si existieran y explicita límites de interpretación de la distribución.
+V3 añadió narrativa determinista de revisión, no diagnóstico causal. En portero evita presentar métricas no disponibles como si existieran y explicita límites de interpretación de la distribución.
+
+V4 mantiene toda la estructura V3 y añade al gráfico `Evolución del rendimiento` del Team etiquetas solo para los 2 picos más altos y los 2 más bajos, con fecha, rival y Match Rating mediano, para identificar rápidamente qué partidos revisar sin saturar la serie.
 
 REPORTS-03 queda congelado. No reabrir salvo error funcional, dato incorrecto o nueva evidencia/variable validada que justifique una mejora sustantiva.
 
@@ -254,13 +256,13 @@ REPORTS-03 queda congelado. No reabrir salvo error funcional, dato incorrecto o 
 Último partido, brief operativo, forma, tendencias, cambios 5-vs-5, ratings, calidad de datos y navegación.
 
 ### Jugador
-Match Rating V5, confianza, perfil, Performance Index, dimensiones, evolución, técnico, motor experto, partidos y PDF V3.
+Match Rating V5, confianza, perfil, Performance Index, dimensiones, evolución, técnico, motor experto, partidos y PDF V4.
 
 ### Equipo
-Match Rating V5, forma, mapa de plantilla, tendencias, participación, Performance Index, historial y PDF V3.
+Match Rating V5, forma, mapa de plantilla, tendencias, participación, Performance Index, historial y PDF V4.
 
 ### Partido
-Ratings V5, confianza, roles, minutos, dimensiones, observaciones deterministas y PDF V3.
+Ratings V5, confianza, roles, minutos, dimensiones, observaciones deterministas y PDF V4.
 
 ### Físico / GPS
 Capa opcional descriptiva. La base local no contiene suficientes observaciones GPS reales para una demo completa.
@@ -291,7 +293,7 @@ Pendiente:
 - PDFs consumen analytics materializados y no recalculan métricas críticas;
 - PDF final = informe técnico profesional independiente, no reproducción literal de la web;
 - REPORTS-03 añade solo agregados descriptivos transparentes y versionados;
-- REPORTS-03 V3 validado técnico + visual y congelado.
+- REPORTS-03 V4 validado técnico + visual y congelado.
 
 ## Decisiones descartadas / aplazadas
 
