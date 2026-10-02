@@ -33,7 +33,7 @@ from analytics.build_gps_physical_summary import materialize  # noqa: E402
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 MIGRATION = ROOT / "data" / "migrations" / "004_gps_normalization.sql"
-GENERATOR_VERSION = "gps_synthetic_demo_v1.1.1"
+GENERATOR_VERSION = "gps_synthetic_demo_v1.2.0"
 PROVIDER = "FPS Synthetic Demo"
 SOURCE_FORMAT = "synthetic_demo"
 
@@ -60,19 +60,45 @@ def _import_id(match_id: str) -> str:
 
 
 def _role_group(value: object) -> str:
-    text = str(value or "").strip().upper().replace("-", "_").replace("/", "_")
+    """Collapse source roles into demo physical families without inventing new roles."""
+    raw = str(value or "").strip().upper()
+    text = raw.replace("-", "_").replace("/", "_")
+
     if any(token in text for token in ("GOALKEEPER", "PORTERO", "KEEPER")) or text == "GK":
         return "GK"
+
+    if "WING BACK" in raw or "WING_BACK" in text or text in {"LWB", "RWB", "WB"}:
+        return "FB"
+
+    if raw.startswith("DEFENDER"):
+        # The source uses e.g. "Defender | Centre", "Defender | Left/Centre".
+        # Wide-capable defender profiles are grouped as FB for demo conditioning.
+        if "LEFT" in raw or "RIGHT" in raw:
+            return "FB"
+        return "CB"
     if any(token in text for token in ("CENTRE_BACK", "CENTER_BACK", "CENTRAL")) or text in {"CB", "DC"}:
         return "CB"
-    if any(token in text for token in ("FULL_BACK", "WING_BACK", "LATERAL")) or text in {"LB", "RB", "LWB", "RWB", "FB", "WB"}:
+    if any(token in text for token in ("FULL_BACK", "LATERAL")) or text in {"LB", "RB", "FB"}:
         return "FB"
-    if any(token in text for token in ("MIDFIELDER", "MEDIOCENTRO", "DEFENSIVE_MID", "CENTRAL_MID")) or text in {"CM", "DM", "CDM"}:
+
+    if raw.startswith("DEFENSIVE MIDFIELDER"):
+        return "CM"
+    if raw.startswith("ATTACKING MIDFIELDER"):
+        return "AM_W"
+    if raw.startswith("MIDFIELDER"):
+        # Pure left/right midfield profiles are treated as wide/attacking; source
+        # combinations containing Centre stay in the central-midfield family.
+        if "CENTRE" not in raw and ("LEFT" in raw or "RIGHT" in raw):
+            return "AM_W"
+        return "CM"
+    if any(token in text for token in ("DEFENSIVE_MID", "CENTRAL_MID", "MEDIOCENTRO")) or text in {"CM", "DM", "CDM"}:
         return "CM"
     if any(token in text for token in ("WINGER", "EXTREMO", "ATTACKING_MID", "INTERIOR")) or text in {"AM", "LW", "RW", "LM", "RM"}:
         return "AM_W"
+
     if any(token in text for token in ("FORWARD", "STRIKER", "DELANTERO", "CENTRE_FORWARD")) or text in {"ST", "CF", "FW"}:
         return "ST"
+
     return "OTHER"
 
 
@@ -171,7 +197,11 @@ def _appearance_rows(con: duckdb.DuckDBPyConnection, team_id: str | None) -> lis
             pm.team_id,
             pm.player_id,
             pm.minutes_played,
-            COALESCE(pm.primary_role, p.default_position, 'UNKNOWN') AS role,
+            CASE
+                WHEN UPPER(TRIM(COALESCE(pm.primary_role, ''))) IN ('SUBSTITUTE', 'SUB', 'BENCH')
+                    THEN COALESCE(NULLIF(TRIM(p.default_position), ''), 'UNKNOWN')
+                ELSE COALESCE(NULLIF(TRIM(pm.primary_role), ''), NULLIF(TRIM(p.default_position), ''), 'UNKNOWN')
+            END AS role,
             p.display_name,
             m.match_date
         FROM player_match pm
@@ -227,7 +257,7 @@ def generate(
                     "generator_version": GENERATOR_VERSION,
                     "seed": seed,
                     "sample_seconds": sample_seconds,
-                    "rule": "role_and_minutes_conditioned_demo_priors",
+                    "rule": "effective_role_and_minutes_conditioned_demo_priors",
                 }),
                 "SYNTHETIC DEMO ONLY. Not observed athlete data; generated to exercise the canonical GPS pipeline.",
             ))
