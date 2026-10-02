@@ -179,7 +179,12 @@ def _team_story(payload: dict[str, Any], styles, width: float) -> list[Any]:
     story.append(base_v3._review_box("Claves para la revisión técnica", _team_review_lines(payload), width, styles))
 
     story.append(PageBreak())
-    story += base_v2._section("05 · Seguimiento de plantilla", "Ordenado por minutos acumulados. El detalle sirve para decidir qué revisar, no para clasificar calidad.", width, styles)
+    story += base_v2._section(
+        "05 · Seguimiento de plantilla",
+        "Ordenado por minutos acumulados. Se muestran hasta 24 jugadores con más minutos; sirve para decidir qué revisar, no para clasificar calidad.",
+        width,
+        styles,
+    )
     snap_by_player = {str(row.get("player")): row for row in snapshot}
     rows = [["Jugador", "Perfil", "Min", "Último", "Media L5", "Δ 5v5", "Conf. %"]]
     for row in sorted(squad, key=lambda item: base_v2._num(item.get("minutes")) or 0, reverse=True):
@@ -213,13 +218,13 @@ def _team_story(payload: dict[str, Any], styles, width: float) -> list[Any]:
     story.append(Spacer(1, 2 * mm))
     story.append(base_v2._evidence_strip([
         ("Base", f"{base_v2._count(overview.get('matches'))} partidos · {base_v2._count(overview.get('players'))} jugadores"),
-        ("GPS", "Opcional · no condiciona Team Mode"),
+        ("GPS", "Opcional · no condiciona el modo equipo"),
         ("Interpretación", "Descriptiva y auditable"),
         ("Decisiones", "Sin recomendación automática"),
     ], width, styles))
     story.append(Spacer(1, 2 * mm))
     story.append(Paragraph(
-        "El informe combina resultados materializados con agregados descriptivos transparentes. No calcula xG, posesión, presión o tracking si la fuente no los contiene.",
+        "El informe combina resultados materializados con agregados descriptivos transparentes. No calcula xG, posesión, presión o seguimiento posicional si la fuente no los contiene.",
         styles["note"],
     ))
     return story
