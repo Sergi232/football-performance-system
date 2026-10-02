@@ -1,14 +1,18 @@
 """Validation contract for the closed Spanish-only local Coach Copilot MVP.
 
 Uses coach_agent_fast so the same router-v2 + hybrid synthesis path used by the
-application is validated. The validator performs a tiny Ollama warm-up first to
-avoid classifying model cold-start latency as a product regression.
+application is validated. The validator tolerates transient Ollama startup/busy
+latency, starts the local server only when it is clearly not listening, and warms
+the selected model before the product smoke cases.
 """
 from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess
 import sys
+import time
 import urllib.request
 from pathlib import Path
 
@@ -48,6 +52,65 @@ def _warmup(model: str) -> None:
         response.read()
 
 
+def _ollama_executable() -> str | None:
+    found = shutil.which("ollama")
+    if found:
+        return found
+    local_app_data = os.environ.get("LOCALAPPDATA")
+    if local_app_data:
+        candidate = Path(local_app_data) / "Programs" / "Ollama" / "ollama.exe"
+        if candidate.exists():
+            return str(candidate)
+    return None
+
+
+def _connection_refused(error: object) -> bool:
+    text = str(error or "").casefold()
+    return any(token in text for token in ("10061", "connection refused", "denegó expresamente", "actively refused"))
+
+
+def _start_ollama_server() -> bool:
+    executable = _ollama_executable()
+    if not executable:
+        return False
+    kwargs: dict[str, object] = {
+        "stdout": subprocess.DEVNULL,
+        "stderr": subprocess.DEVNULL,
+    }
+    if os.name == "nt":
+        kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    try:
+        subprocess.Popen([executable, "serve"], **kwargs)
+    except Exception:
+        return False
+    return True
+
+
+def _wait_for_ollama() -> dict:
+    """Return a stable Ollama status without treating one slow /api/tags call as outage."""
+    status = ollama_status()
+    if status.get("available"):
+        return status
+
+    # If nothing is listening, starting the local service is safe and useful. A plain
+    # timeout can mean Ollama is still finishing a previous CPU request, so do not
+    # launch a second server in that case; just give the existing one time to recover.
+    if _connection_refused(status.get("error")):
+        started = _start_ollama_server()
+        print(f"ollama_autostart={'STARTED' if started else 'UNAVAILABLE'}")
+
+    last = status
+    for attempt in range(1, 7):
+        time.sleep(3)
+        last = ollama_status()
+        if last.get("available"):
+            if attempt > 1:
+                print(f"ollama_status_recovered_after_attempt={attempt}")
+            return last
+        print(f"ollama_status_retry={attempt}/6 error={last.get('error')}")
+    return last
+
+
 def main() -> None:
     db_raw = os.environ.get("FPS_DB_PATH")
     if not db_raw:
@@ -64,7 +127,7 @@ def main() -> None:
     team_name = str(teams.iloc[0]["display_name"])
 
     model = os.environ.get("FPS_LOCAL_LLM_MODEL", DEFAULT_MODEL)
-    status = ollama_status()
+    status = _wait_for_ollama()
     print("LOCAL AGENT VALIDATION")
     print(f"team={team_name}")
     print(f"ollama_available={status['available']}")
@@ -75,7 +138,7 @@ def main() -> None:
 
     if not status["available"]:
         print(f"error={status['error']}")
-        raise SystemExit("LOCAL AGENT CONTRACT: FAIL (Ollama unavailable)")
+        raise SystemExit("LOCAL AGENT CONTRACT: FAIL (Ollama unavailable after retries)")
     if model not in status["models"]:
         print("installed_models=" + ",".join(status["models"]))
         raise SystemExit(f"LOCAL AGENT CONTRACT: FAIL (run: ollama pull {model})")
