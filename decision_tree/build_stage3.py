@@ -94,12 +94,17 @@ def main() -> None:
         if not parent_rows:
             raise RuntimeError(f"EXPERT-03 requires validated parent engine {parent_version}")
 
+        # N9000 is an evidence gate for observed GPS only. Synthetic demo rows are
+        # deliberately excluded so demo data can never become expert evidence.
         gps_counts = dict(
             ((m, p), n)
             for m, p, n in con.execute(
                 """
-                SELECT match_id, player_id, COUNT(*)
-                FROM gps_observations
+                SELECT go.match_id, go.player_id, COUNT(*)
+                FROM gps_observations go
+                JOIN gps_imports gi ON gi.gps_import_id = go.gps_import_id
+                WHERE lower(coalesce(gi.provider, '')) <> 'fps synthetic demo'
+                  AND lower(coalesce(gi.source_format, '')) <> 'synthetic_demo'
                 GROUP BY 1,2
                 """
             ).fetchall()
@@ -136,7 +141,7 @@ def main() -> None:
             rows.append((
                 decision_id(engine_version, match_id, player_id, node_id), match_id, player_id,
                 node_id, node["result_type"], classify_gps(gps_n), 1.0,
-                f"Normalized gps_observations for this player-match={gps_n}. No physical value is estimated when GPS is absent; no sprint/HIE/load threshold is applied.",
+                f"Observed non-synthetic normalized gps_observations for this player-match={gps_n}. Synthetic demo GPS is excluded from expert evidence. No physical value is estimated when observed GPS is absent; no sprint/HIE/load threshold is applied.",
                 engine_version,
             ))
 
@@ -187,8 +192,8 @@ def main() -> None:
     print(f"new nodes per player-match: {len(nodes)}")
     print(f"decision rows written: {written}")
     print("family rows: " + ", ".join(f"{name}={count}" for name, count in families))
-    print(f"player-match rows with GPS observed: {gps_observed}")
-    print("N8000 uses own-team context only; N9000 degrades explicitly when GPS is absent.")
+    print(f"player-match rows with observed non-synthetic GPS: {gps_observed}")
+    print("N8000 uses own-team context only; N9000 degrades explicitly when observed GPS is absent and ignores synthetic demo GPS.")
 
 
 if __name__ == "__main__":
