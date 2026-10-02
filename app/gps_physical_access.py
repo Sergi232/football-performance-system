@@ -48,16 +48,33 @@ def get_gps_summary_status(db_path: Path) -> dict:
     return {"table_available": True, **dict(zip(keys, [int(v or 0) for v in row]))}
 
 
+def _effective_role_sql() -> str:
+    """Return a SQL expression that never invents a role for unresolved substitutes."""
+    return """
+        CASE
+            WHEN UPPER(TRIM(COALESCE(pm.primary_role, ''))) IN ('SUBSTITUTE', 'SUB', 'BENCH') THEN
+                CASE
+                    WHEN UPPER(TRIM(COALESCE(p.default_position, ''))) IN ('', 'SUBSTITUTE', 'SUB', 'BENCH') THEN NULL
+                    ELSE NULLIF(TRIM(p.default_position), '')
+                END
+            ELSE COALESCE(NULLIF(TRIM(pm.primary_role), ''), NULLIF(TRIM(p.default_position), ''))
+        END
+    """
+
+
 def get_player_gps_history(db_path: Path, team_id: str, player_id: str) -> pd.DataFrame:
     if not summary_table_available(db_path):
         return pd.DataFrame()
+    role_expr = _effective_role_sql()
     with _connect(db_path) as con:
         return con.execute(
-            """
+            f"""
             SELECT
                 g.match_id, g.match_date,
                 opp.display_name AS opponent,
                 CASE WHEN tm.is_home THEN 'H' ELSE 'A' END AS venue,
+                pm.minutes_played,
+                {role_expr} AS effective_role,
                 g.provider, g.source_filename,
                 g.sample_count, g.total_distance_m, g.peak_speed_m_s,
                 g.max_acceleration_m_s2, g.min_acceleration_m_s2,
@@ -66,6 +83,8 @@ def get_player_gps_history(db_path: Path, team_id: str, player_id: str) -> pd.Da
                 g.quality_metadata_sample_count
             FROM player_match_gps_summary g
             JOIN team_match tm ON tm.match_id=g.match_id AND tm.team_id=g.team_id
+            JOIN player_match pm ON pm.match_id=g.match_id AND pm.player_id=g.player_id
+            JOIN players p ON p.player_id=g.player_id
             LEFT JOIN teams opp ON opp.team_id=tm.opponent_team_id
             WHERE g.summary_version=? AND g.import_rank=1
               AND g.team_id=? AND g.player_id=?
@@ -85,12 +104,16 @@ def get_latest_player_gps(db_path: Path, team_id: str, player_id: str) -> dict |
 def get_match_gps_summary(db_path: Path, team_id: str, match_id: str) -> pd.DataFrame:
     if not summary_table_available(db_path):
         return pd.DataFrame()
+    role_expr = _effective_role_sql()
     with _connect(db_path) as con:
         return con.execute(
-            """
+            f"""
             SELECT
                 p.display_name AS player,
-                g.player_id, g.provider,
+                g.player_id,
+                pm.minutes_played,
+                {role_expr} AS effective_role,
+                g.provider, g.source_filename,
                 g.sample_count, g.total_distance_m, g.peak_speed_m_s,
                 g.max_acceleration_m_s2, g.min_acceleration_m_s2,
                 g.observation_duration_s,
@@ -98,6 +121,7 @@ def get_match_gps_summary(db_path: Path, team_id: str, match_id: str) -> pd.Data
                 g.quality_metadata_sample_count
             FROM player_match_gps_summary g
             JOIN players p ON p.player_id=g.player_id
+            JOIN player_match pm ON pm.match_id=g.match_id AND pm.player_id=g.player_id
             WHERE g.summary_version=? AND g.import_rank=1
               AND g.team_id=? AND g.match_id=?
             ORDER BY p.display_name
@@ -145,9 +169,10 @@ def get_team_gps_match_coverage(db_path: Path, team_id: str) -> pd.DataFrame:
 def get_team_latest_gps_snapshot(db_path: Path, team_id: str) -> pd.DataFrame:
     if not summary_table_available(db_path):
         return pd.DataFrame()
+    role_expr = _effective_role_sql()
     with _connect(db_path) as con:
         return con.execute(
-            """
+            f"""
             WITH ranked AS (
                 SELECT
                     g.*,
@@ -161,12 +186,16 @@ def get_team_latest_gps_snapshot(db_path: Path, team_id: str) -> pd.DataFrame:
             SELECT
                 p.display_name AS player,
                 r.player_id, r.match_id, r.match_date,
+                pm.minutes_played,
+                {role_expr} AS effective_role,
+                r.provider, r.source_filename,
                 r.total_distance_m, r.peak_speed_m_s,
                 r.max_acceleration_m_s2, r.min_acceleration_m_s2,
                 r.observation_duration_s,
                 r.distance_coverage_pct, r.speed_coverage_pct, r.acceleration_coverage_pct
             FROM ranked r
             JOIN players p ON p.player_id=r.player_id
+            JOIN player_match pm ON pm.match_id=r.match_id AND pm.player_id=r.player_id
             WHERE r.rn=1
             ORDER BY p.display_name
             """,
