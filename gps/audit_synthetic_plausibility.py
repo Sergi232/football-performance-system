@@ -73,7 +73,7 @@ def audit(db_path: Path) -> dict:
               ON pm.match_id=g.match_id AND pm.player_id=g.player_id
             JOIN players p ON p.player_id=g.player_id
             JOIN gps_imports gi ON gi.gps_import_id=g.gps_import_id
-            WHERE g.import_rank=1 AND g.provider=?
+            WHERE g.provider=?
             ORDER BY g.match_id, g.player_id
             """,
             [PROVIDER],
