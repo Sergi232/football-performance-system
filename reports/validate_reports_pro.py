@@ -17,7 +17,7 @@ from app.data_access import get_squad_summary, get_team_matches, list_teams  # n
 from app.gps_physical_access import PHYSICAL_SUMMARY_VERSION  # noqa: E402
 from app.presentation import demo_mode  # noqa: E402
 from reports.data_builder import build_match_report_data, build_player_report_data, build_team_report_data  # noqa: E402
-from reports.pdf_engine_elite_v6 import render_pdf_bytes  # noqa: E402
+from reports.pdf_engine_elite_v6 import _role as render_gps_role, render_pdf_bytes  # noqa: E402
 from reports.report_metrics import REPORT_METRIC_VERSION  # noqa: E402
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
@@ -113,8 +113,11 @@ def _assert_gps(payload: dict) -> None:
     report_type = payload.get("report_type")
     if report_type == "team":
         rows = gps.get("latest_match_players") or []
-        if not rows or not (gps.get("coverage") or []):
+        latest_cov = gps.get("latest_match_coverage") or []
+        if not rows or not latest_cov or not (gps.get("coverage") or []):
             raise AssertionError("team: GPS latest-match rows or coverage missing")
+        if str(latest_cov[0].get("match_id")) != str(gps.get("latest_match_id")):
+            raise AssertionError("team: latest GPS coverage and selected GPS match are misaligned")
     elif report_type == "player":
         rows = gps.get("history") or []
         if not rows or gps.get("latest") is None:
@@ -130,12 +133,12 @@ def _assert_gps(payload: dict) -> None:
         for key in ("total_distance_m", "peak_speed_m_s", "max_acceleration_m_s2", "min_acceleration_m_s2"):
             if key not in row:
                 raise AssertionError(f"{report_type}: GPS row missing {key}")
-        role = str(row.get("effective_role") or "").lower()
-        leaked_terms = [term for term in ENGLISH_ROLE_TERMS if term in role]
+        rendered_role = render_gps_role(row.get("effective_role")).lower()
+        leaked_terms = [term for term in ENGLISH_ROLE_TERMS if term in rendered_role]
         if leaked_terms:
             raise AssertionError(
-                f"{report_type}: GPS role label is not localized to Spanish: "
-                f"{row.get('effective_role')} ({', '.join(leaked_terms)})"
+                f"{report_type}: rendered GPS role label is not localized to Spanish: "
+                f"{render_gps_role(row.get('effective_role'))} ({', '.join(leaked_terms)})"
             )
 
     forbidden = ("fatigue", "readiness", "injury_risk", "hsr", "sprint_zone", "workload_score")
@@ -217,6 +220,7 @@ def main() -> None:
     print("physical_gps_context=PASS")
     print("synthetic_demo_label=PASS")
     print("minutes_role_context=PASS")
+    print("gps_latest_match_alignment=PASS")
     print("gps_role_localization=PASS")
     print("unsupported_physical_claims_guard=PASS")
     print("materialized_match_summary=PASS")
