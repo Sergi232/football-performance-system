@@ -109,8 +109,17 @@ def main() -> None:
         if gps_bad:
             raise RuntimeError(f"invalid N9000 GPS states: {gps_bad}")
 
+        # N9000 is allowed to observe real/provider GPS only. Synthetic demo GPS is
+        # product/demo data and must never become expert-system evidence.
         gps_expected = dict(((m, p), n) for m, p, n in con.execute(
-            "SELECT match_id, player_id, COUNT(*) FROM gps_observations GROUP BY 1,2"
+            """
+            SELECT go.match_id, go.player_id, COUNT(*)
+            FROM gps_observations go
+            JOIN gps_imports gi ON gi.gps_import_id = go.gps_import_id
+            WHERE lower(coalesce(gi.provider, '')) <> 'fps synthetic demo'
+              AND lower(coalesce(gi.source_format, '')) <> 'synthetic_demo'
+            GROUP BY 1,2
+            """
         ).fetchall())
         gps_rows = con.execute(
             """
@@ -123,7 +132,7 @@ def main() -> None:
             expected = "GPS_OBSERVED" if gps_expected.get((match_id, player_id), 0) > 0 else "GPS_NOT_AVAILABLE"
             mismatches += int(value != expected)
         if mismatches:
-            raise RuntimeError(f"N9000 GPS availability mismatches: {mismatches}")
+            raise RuntimeError(f"N9000 observed non-synthetic GPS availability mismatches: {mismatches}")
 
         values = [str(v[0]).upper() for v in con.execute(
             "SELECT result_value FROM decision_results WHERE engine_version = ?", [engine_version]
@@ -144,8 +153,9 @@ def main() -> None:
     print(f"family coverage: N8000={n8000}, N9000={n9000}")
     print("N1000-N7000 exact carry-forward: PASS")
     print("N8000 own-team context contract: PASS")
-    print("N9000 optional GPS availability contract: PASS")
-    print(f"player-match rows with GPS observed: {gps_observed}")
+    print("N9000 observed non-synthetic GPS availability contract: PASS")
+    print(f"player-match rows with observed non-synthetic GPS: {gps_observed}")
+    print("Synthetic demo GPS is excluded from expert evidence: PASS")
     print("No physical estimate, sprint/HIE/load threshold, score, weight, percentile or recommendation was created.")
 
 
