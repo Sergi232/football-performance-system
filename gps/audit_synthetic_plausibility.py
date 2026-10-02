@@ -55,7 +55,11 @@ def audit(db_path: Path) -> dict:
                 g.match_id,
                 g.player_id,
                 pm.minutes_played,
-                COALESCE(pm.primary_role, p.default_position, 'UNKNOWN') AS role_raw,
+                CASE
+                    WHEN UPPER(TRIM(COALESCE(pm.primary_role, ''))) IN ('SUBSTITUTE', 'SUB', 'BENCH')
+                        THEN COALESCE(NULLIF(TRIM(p.default_position), ''), 'UNKNOWN')
+                    ELSE COALESCE(NULLIF(TRIM(pm.primary_role), ''), NULLIF(TRIM(p.default_position), ''), 'UNKNOWN')
+                END AS role_raw,
                 g.total_distance_m,
                 g.peak_speed_m_s,
                 g.max_acceleration_m_s2,
@@ -116,7 +120,6 @@ def audit(db_path: Path) -> dict:
         baseline_distance = prior["distance90"] * exposure
         ratio = distance_m / baseline_distance if baseline_distance > 0 else math.nan
         ratio_values.append(ratio)
-        # Generator intensity factor is explicitly clipped to 0.84..1.16.
         if not (0.8399 <= ratio <= 1.1601):
             violations.append(f"distance_contract:{match_id}:{player_id}:{ratio:.3f}")
 
