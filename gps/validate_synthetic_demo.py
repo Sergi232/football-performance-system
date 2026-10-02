@@ -2,14 +2,18 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 import duckdb
 
-from analytics.build_gps_physical_summary import SUMMARY_VERSION
-from gps.generate_synthetic_demo import GENERATOR_VERSION, PROVIDER, SOURCE_FORMAT
-
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from analytics.build_gps_physical_summary import SUMMARY_VERSION  # noqa: E402
+from gps.generate_synthetic_demo import GENERATOR_VERSION, PROVIDER, SOURCE_FORMAT  # noqa: E402
+
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 
 
@@ -57,10 +61,10 @@ def validate(db_path: Path) -> dict[str, int]:
         maps = int(con.execute(
             """
             SELECT COUNT(*)
-            FROM gps_player_map pm
+            FROM gps_player_map gpm
             JOIN gps_imports gi USING(gps_import_id)
             WHERE gi.provider=? AND gi.source_format=?
-              AND pm.mapping_method='SYNTHETIC_DEMO_EXACT'
+              AND gpm.mapping_method='SYNTHETIC_DEMO_EXACT'
             """,
             [PROVIDER, SOURCE_FORMAT],
         ).fetchone()[0])
@@ -100,11 +104,7 @@ def validate(db_path: Path) -> dict[str, int]:
             FROM gps_observations o
             JOIN gps_imports gi USING(gps_import_id)
             WHERE gi.provider=? AND gi.source_format=?
-              AND (
-                    o.distance_m < 0
-                    OR o.speed_m_s < 0
-                    OR o.timestamp_ms < 0
-                  )
+              AND (o.distance_m < 0 OR o.speed_m_s < 0 OR o.timestamp_ms < 0)
             """,
             [PROVIDER, SOURCE_FORMAT],
         ).fetchone()[0])
@@ -129,10 +129,12 @@ def validate(db_path: Path) -> dict[str, int]:
 
         mapped_appearances = int(con.execute(
             """
-            SELECT COUNT(DISTINCT (gi.match_id, pm.player_id))
-            FROM gps_player_map pm
-            JOIN gps_imports gi USING(gps_import_id)
-            WHERE gi.provider=? AND gi.source_format=?
+            SELECT COUNT(*) FROM (
+                SELECT DISTINCT gi.match_id, gpm.player_id
+                FROM gps_player_map gpm
+                JOIN gps_imports gi USING(gps_import_id)
+                WHERE gi.provider=? AND gi.source_format=?
+            )
             """,
             [PROVIDER, SOURCE_FORMAT],
         ).fetchone()[0])
