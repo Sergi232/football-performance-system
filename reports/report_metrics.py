@@ -10,7 +10,7 @@ from typing import Any
 
 import pandas as pd
 
-REPORT_METRIC_VERSION = "report_descriptive_v0.1"
+REPORT_METRIC_VERSION = "report_descriptive_v0.2"
 
 TEAM_METRICS = [
     ("pass_completion_pct", "Precisión de pase", "%", 1),
@@ -71,21 +71,33 @@ def build_team_technical_profile(history: pd.DataFrame) -> list[dict[str, Any]]:
     latest = ordered.head(1)
     last5 = ordered.head(5)
     previous5 = ordered.iloc[5:10]
+    last10 = ordered.head(10)
+    all_matches = ordered
     profile = []
     for key, label, suffix, decimals in TEAM_METRICS:
         current = _block_value(latest, key)
         recent = _block_value(last5, key)
         previous = _block_value(previous5, key)
         delta = None if recent is None or previous is None else recent - previous
+        recent10 = _block_value(last10, key)
+        all_value = _block_value(all_matches, key)
+        delta10_all = None if recent10 is None or all_value is None else recent10 - all_value
         profile.append({
             "key": key,
             "label": label,
             "suffix": suffix,
             "decimals": decimals,
             "current": current,
+            # Legacy 5v5 fields are preserved because the squad trend layer uses them.
             "last5": recent,
             "previous5": previous,
             "delta_5v5": delta,
+            # Staff-facing Team Pulse comparison.
+            "last10": recent10,
+            "all": all_value,
+            "delta_10_all": delta10_all,
+            "sample_last10": int(len(last10)),
+            "sample_all": int(len(all_matches)),
         })
     return profile
 
