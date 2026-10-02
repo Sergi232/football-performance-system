@@ -1,6 +1,6 @@
 # PROJECT_STATE
 
-Última actualización: 02/10/2026
+Última actualización: 03/10/2026
 
 Memoria técnica operativa del proyecto. Si contradice un chat antiguo, prevalece este archivo junto con el código actual de `main`.
 
@@ -8,7 +8,7 @@ Memoria técnica operativa del proyecto. Si contradice un chat antiguo, prevalec
 
 ```text
 DATA-01/02/03/04                    CERRADO / VALIDADO
-COLLECTOR-01 MVP                    CERRADO FUNCIONALMENTE / UX+ES+MÓVIL PENDIENTE
+COLLECTOR-01                        CERRADO / V1.1 OFICIAL / FINAL GATE PASS
 GPS-01 NORMALIZATION                CERRADO / VALIDADO ESTRUCTURALMENTE
 GPS-DEMO SYNTHETIC                  CERRADO / VALIDADO EN DUCKDB
 GPS PHYSICAL SUMMARY                CERRADO / VALIDADO / REAL > SYNTHETIC
@@ -50,6 +50,7 @@ La hipótesis está **contrastada favorablemente en su dimensión técnica y arq
 
 Evidencia ya disponible:
 - temporada completa de demostración: 38 partidos y 590 apariciones jugador-partido;
+- Data Collector V1.1 cerrado y compatible con la taxonomía aprobada;
 - Data Layer DuckDB con unidad principal jugador-partido;
 - Feature Engine determinista y temporalmente seguro;
 - Match Rating V5 operativo desde el primer partido;
@@ -106,19 +107,88 @@ Regla global: ninguna capa superior puede inventar métricas, scores, clasificac
 
 Unidad principal: jugador-partido.
 
-Collector funcional actual:
-- identificación: jugador, dorsal, rol/posición, titular/suplente, minutos;
+Collector V1.1 actual:
+- identificación: jugador, dorsal editable, titular/suplente explícito, minutos;
+- contexto de partido: partido, equipo, rival, fecha, formación;
 - pase: completada, no completada, pase clave, asistencia;
 - progresión: centro, pase largo;
 - 1v1: regate completado, pérdida;
 - finalización: remate, remate a puerta, bloqueado, gol;
-- defensa: entrada, intercepción, bloqueo;
+- defensa: entrada, intercepción, bloqueo, despeje;
 - disciplina: falta cometida, falta recibida, tarjeta, penal;
 - portero: parada, gol encajado;
-- contexto: rol/posición, lado, formación, cambio de posición;
-- equipo/ABP: córners y faltas peligrosas a favor/en contra, con resultado posterior cuando exista en la fuente.
+- contexto jugador: rol/posición, lado y cambio de posición;
+- equipo/ABP: córners a favor/en contra y resultado posterior de la secuencia;
+- faltas con localización x/y para derivar posteriormente peligrosidad con regla validada.
 
-GPS es opcional y se normaliza a esquema común. No se recogen manualmente métricas avanzadas derivables.
+Reglas clave:
+- `SHOT GOAL` y `SHOT ON_TARGET` cuentan en el agregado derivado `A puerta`;
+- una pasada `LONG` o `CROSS` ya cuenta en pase total;
+- `PASS FAIL` y `DRIBBLE FAIL` generan pérdidas derivadas;
+- no existe botón subjetivo `falta_peligrosa`;
+- no se registran manualmente métricas avanzadas derivables.
+
+GPS es opcional y se normaliza a esquema común.
+
+## COLLECTOR-01 — CERRADO V1.1
+
+Implementación oficial:
+
+```text
+collector/data_collector_futbol.html
+→ collector/data_collector_futbol_v1.html
+```
+
+Taxonomía vigente:
+
+```text
+event_catalog v0.3.0
+```
+
+Commit de implementación final validada: `802173d` — `Finalize Collector V1.1`.
+
+Cierre confirmado localmente:
+
+```text
+COLLECTOR V1.1 FINAL GATE: PASS
+catalog_version=0.3.0
+structured_opponent=PASS
+editable_shirt_number=PASS
+starter_substitute_explicit=PASS
+starter_minutes_consistency_guard=PASS
+shots_on_target_goal_plus_on_target=PASS
+spanish_visible_labels=PASS
+responsive_metadata_access=PASS
+mobile_touch_targets=PASS
+dynamic_form_ids_names_labels=PASS
+summary_interactive_element_guard=PASS
+event_taxonomy_unchanged=PASS
+official_entrypoint=PASS
+4 collector contract tests: PASS
+COLLECTOR-01 IMPLEMENTACION FINAL: PASS
+```
+
+V1.1 incorpora y preserva:
+- UI visible en castellano;
+- dorsal editable;
+- titular/suplente explícito y coherente con minutos iniciales;
+- rival estructurado como `opponentName`;
+- metadatos accesibles en responsive;
+- targets táctiles adecuados;
+- autosave, undo, CSV eventos, CSV resumen y JSON;
+- captura x/y de faltas;
+- flujo de ABP;
+- cambios de rol/formación;
+- `id`, `name` y labels asociados en campos dinámicos;
+- eliminación de control interactivo dentro de `<summary>`.
+
+La validación responsive es estructural/contractual; no se presenta como estudio de usabilidad con usuarios reales ni como certificación de todos los dispositivos físicos.
+
+Documentación:
+- `collector/COLLECTOR_MVP.md`;
+- `collector/COLLECTOR_UX_AUDIT.md`;
+- `collector/validate_collector_v1.py`;
+- `tests/test_collector_contract.py`.
 
 ## GPS — estado validado
 
@@ -204,6 +274,9 @@ Match Rating V5 permanece congelado. No modificar fórmula, pesos o arquitectura
 ## Gates principales validados
 
 ```text
+COLLECTOR V1.1 FINAL GATE: PASS
+4 collector contract tests: PASS
+
 MATCH RATING CONTRACT: PASS
 590/590 apariciones valoradas
 38/38 partidos
@@ -381,30 +454,23 @@ Ratings V5, confianza, roles, minutos, dimensiones, observaciones deterministas,
 ### Físico / GPS
 Capa opcional descriptiva operativa. Demo sintética canónica disponible, explícitamente etiquetada como no observada y subordinada a GPS real.
 
+### Collector
+V1.1 oficial. Captura manual rápida de eventos observables y contexto, en castellano y con layout responsive, sin alterar la taxonomía `event_catalog v0.3.0`.
+
 ### Alertas
 Solo estados auditables de contexto/calidad.
 
-## Collector — pendiente de producto/UX
-
-Funcionalmente cerrado; falta:
-1. simplificar interfaz de captura;
-2. castellano completo;
-3. mobile-first / responsive;
-4. reducir clics y fricción durante 90 minutos;
-5. mantener exactamente la semántica y compatibilidad del esquema actual;
-6. no añadir nuevas variables sin justificar recogibilidad y uso final.
-
 ## Prioridad académica actual
 
-El proyecto ya tiene suficiente profundidad técnica. A partir de este punto, el valor marginal más alto está en **cerrar, validar y documentar** antes que añadir módulos nuevos.
+El proyecto ya tiene suficiente profundidad técnica. A partir de este punto, el valor marginal más alto está en **QA global, cierre documental y reproducibilidad** antes que añadir módulos nuevos.
 
 Orden recomendado para maximizar calidad del TFM:
-1. Collector final: UX, castellano y móvil;
-2. QA global end-to-end del producto;
-3. memoria: problema, hipótesis, metodología, arquitectura, experimentos, resultados, limitaciones y conclusiones;
-4. documentación reproducible de instalación/demo;
-5. validación con entrenadores/analistas reales si es viable, sin inventar participantes ni resultados;
-6. preparar defensa y demo final.
+1. QA/regresión global end-to-end del producto;
+2. memoria: problema, hipótesis, metodología, arquitectura, experimentos, resultados, limitaciones y conclusiones;
+3. documentación reproducible de instalación/demo;
+4. validación con entrenadores/analistas reales si es viable, sin inventar participantes ni resultados;
+5. preparar defensa y demo final;
+6. Power BI o validación comercial solo como complementos opcionales si queda margen.
 
 ## Extensiones futuras / opcionales
 
@@ -456,6 +522,7 @@ No implementar ni afirmar prevención de lesiones, readiness o riesgo individual
 
 ## Experimentos / decisiones relevantes
 
+- Collector V1.1 cerrado sin modificar `event_catalog v0.3.0`;
 - Match Rating V5 validado y congelado;
 - Performance Index separado del Match Rating;
 - sistema experto jerárquico preferido frente a un único `DecisionTreeClassifier`;
@@ -488,7 +555,6 @@ No implementar ni afirmar prevención de lesiones, readiness o riesgo individual
 
 ## Problemas abiertos
 
-- Collector UX / castellano / móvil;
 - QA global final end-to-end del producto;
 - documentación final del TFM y README de entrega;
 - defensa/demo final;
@@ -499,10 +565,9 @@ No implementar ni afirmar prevención de lesiones, readiness o riesgo individual
 
 ## Siguiente paso exacto
 
-1. retomar `COLLECTOR-01` y hacer la revisión final UX del HTML actual sin cambiar la semántica aprobada;
-2. dejar toda la interfaz del collector en castellano;
-3. reducir clics y mejorar uso mobile-first para captura durante 90 minutos;
-4. validar que la salida siga encajando exactamente con el esquema jugador-partido actual;
-5. ejecutar QA global end-to-end: collector/import → DuckDB → features → analytics → expert → dashboard → asistente → PDF;
-6. cerrar documentación final (`README.md`, arquitectura, instalación, demo, hipótesis, resultados y limitaciones);
-7. preparar la defensa del TFM y, solo si queda margen, añadir Power BI o validación comercial como complementos opcionales.
+1. ejecutar QA/regresión global end-to-end: Collector/import → DuckDB → Feature Engine → analytics → sistema experto → dashboard → asistente → PDF;
+2. verificar contratos, compatibilidad de esquemas, ausencia de recalculaciones críticas y funcionamiento sin GPS;
+3. registrar incidencias reales del QA y corregir solo fallos concretos, sin reabrir módulos ya cerrados por preferencia estética;
+4. cerrar documentación final (`README.md`, arquitectura, instalación, demo, hipótesis, metodología, resultados y limitaciones);
+5. preparar la defensa del TFM;
+6. solo si queda margen, añadir Power BI, validación con entrenadores reales o sección comercial como complementos opcionales.
