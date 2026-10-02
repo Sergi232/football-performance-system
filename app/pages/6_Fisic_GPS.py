@@ -34,6 +34,7 @@ from app.presentation import (
 from app.ui_theme import apply_professional_theme, sidebar_navigation
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
+SYNTHETIC_PROVIDER = "FPS Synthetic Demo"
 
 st.set_page_config(page_title="Físico / GPS · Football Performance System", page_icon="📡", layout="wide")
 apply_professional_theme()
@@ -84,9 +85,9 @@ display_team_labels = {tid: display_team_name(raw_team_labels[tid], team_ids.ind
 team_id = st.selectbox("Equipo", options=team_ids, format_func=lambda x: display_team_labels[x])
 
 page_header(
-    "PHYSICAL PERFORMANCE · GPS OPCIONAL",
+    "RENDIMIENTO FÍSICO · GPS OPCIONAL",
     "Físico / GPS",
-    "Capa descriptiva sobre datos GPS normalizados. No estima fatiga, carga ni readiness sin una definición validada.",
+    "Capa descriptiva sobre datos GPS normalizados. No estima fatiga, carga ni disponibilidad física sin una definición validada.",
     PHYSICAL_SUMMARY_VERSION,
 )
 
@@ -106,7 +107,7 @@ if status["rows"] == 0:
         metric_card("Jugadores con GPS", str(status["players"]), "Cobertura actual")
     with st.expander("¿Qué mostrará esta capa cuando haya GPS?"):
         st.write("Distancia observada, velocidad máxima, aceleración máxima, desaceleración máxima, duración observada y cobertura de canales.")
-        st.write("Todavía no se han definido zonas HSR, sprints, carga, fatiga o readiness.")
+        st.write("Todavía no se han definido zonas HSR, esprints, carga, fatiga o disponibilidad física.")
     st.stop()
 
 coverage = get_team_gps_match_coverage(path, team_id)
@@ -120,6 +121,12 @@ snapshot = anonymize_frame(snapshot, player_aliases_by_id=player_aliases, player
 if not coverage.empty and "opponent" in coverage.columns:
     coverage = coverage.copy()
     coverage["opponent"] = coverage["opponent"].map(lambda x: display_opponent(x, opponent_aliases))
+
+if not snapshot.empty and "provider" in snapshot.columns and SYNTHETIC_PROVIDER in set(snapshot["provider"].dropna().astype(str)):
+    st.warning(
+        "DATOS DEMO · GPS sintético. Estos valores se han generado para demostrar el flujo del producto; "
+        "no son observaciones reales de los jugadores y no validan fatiga, disponibilidad física ni riesgo de lesión."
+    )
 
 tab_team, tab_player, tab_match, tab_method = st.tabs(["Equipo", "Jugador", "Partido", "Metodología"])
 
@@ -241,4 +248,4 @@ with tab_method:
     st.write("La distancia es la suma de `distance_m`, definida como distancia incremental por muestra.")
     st.write("Velocidad, aceleración y desaceleración son máximos/mínimos observados en los campos canónicos normalizados.")
     st.write("La cobertura muestra cuántas muestras tienen cada canal disponible; no es una nota de calidad del jugador.")
-    st.warning("Todavía NO se han definido zonas de velocidad, HSR, sprints, carga, fatiga ni readiness.")
+    st.warning("Todavía NO se han definido zonas de velocidad, HSR, esprints, carga, fatiga ni disponibilidad física.")
