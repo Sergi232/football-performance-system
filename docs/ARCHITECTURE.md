@@ -1,24 +1,22 @@
 # Arquitectura v1 — Football Performance System
 
-Estado: **ARCHITECTURE-01 / propuesta congelable**  
-Fecha: 25/09/2026
+Estado: **ARCHITECTURE-01 / CERRADO**  
+Fecha de sincronización: 03/10/2026
 
-Este documento define la arquitectura de referencia del producto. Si un cambio futuro contradice esta arquitectura, debe justificarse mediante una decisión documentada en `docs/DECISIONS.md`.
+Este documento define la arquitectura vigente del producto. `PROJECT_STATE.md` y el código actual de `main` prevalecen si existe cualquier discrepancia histórica.
 
 ## 1. Objetivo del producto
 
-Producto web para equipos amateur o semiprofesionales sin departamento de análisis que transforme datos realistas de vídeo y GPS opcional en información útil, auditable y explicable para el cuerpo técnico.
+Producto web para equipos amateur o semiprofesionales sin departamento de análisis que transforma datos realistas de vídeo y GPS opcional en información útil, auditable y explicable para el cuerpo técnico.
 
-La web es el producto principal. El LLM y los PDF son capas de interacción/presentación, no motores de cálculo.
+La web es el producto principal. El LLM y los PDF son capas downstream de interacción/presentación y no motores de cálculo crítico.
 
-## 2. Principio arquitectónico central
+## 2. Arquitectura vigente
 
 ```text
-CAPTURA / IMPORT
+COLLECTOR / IMPORT + GPS OPCIONAL
         ↓
-RAW DATA
-        ↓
-NORMALIZED DATA
+RAW / NORMALIZED DATA
         ↓
 FEATURE ENGINE
         ↓
@@ -26,37 +24,43 @@ ANALYTICS ENGINE
         ↓
 DECISION ENGINE
         ↓
-PRODUCT SERVICE LAYER
+PRODUCT SERVICE / ACCESS LAYER
         ↓
-WEB / REPORTS / AI ASSISTANT
+WEB DASHBOARD
+   ↓              ↓
+AI ASSISTANT      PDF
 ```
 
-Regla: **una capa superior no puede inventar cálculos, métricas, rankings o recomendaciones que no existan en una capa inferior validada**.
+Regla central: **una capa superior no puede inventar cálculos, métricas, scores, rankings, clasificaciones o recomendaciones que no existan en una capa inferior validada**.
 
-## 3. Capas y responsabilidades
+## 3. Capas y estado
 
 ### L0 — Governance / Architecture
 
-Responsable de:
-- contratos entre módulos;
-- decisiones arquitectónicas;
-- gates de aprobación;
-- orden de trabajo;
-- estado del proyecto;
-- evitar duplicidades y parches incompatibles.
+Responsable de contratos, decisiones, gates, estado del proyecto, documentación y prevención de duplicidades.
 
-Fuente de verdad: GitHub (`PROJECT_STATE.md`, `docs/ARCHITECTURE.md`, `docs/WORKFLOW.md`, `docs/DECISIONS.md`).
+Fuente de verdad:
+
+```text
+código actual de main + commits recientes
+→ PROJECT_STATE.md
+→ docs/DECISIONS.md
+→ docs/ARCHITECTURE.md
+→ documentación específica del módulo
+→ README.md / docs/WORKFLOW.md
+→ conversaciones antiguas
+```
 
 ### L1 — Capture / Import
 
 Incluye:
-- Data Collector de vídeo;
+- Data Collector V1.1 oficial;
 - imports de datos externos;
-- GPS opcional y multi-proveedor.
+- GPS opcional multi-proveedor.
 
-Responsabilidad: recoger hechos observables y trazables con coste realista para fútbol amateur.
+Estado: **cerrado/validado en el MVP actual**.
 
-No calcula conclusiones.
+Responsabilidad: recoger hechos observables, trazables y realistas para fútbol amateur. No calcula conclusiones.
 
 ### L2 — Data Layer
 
@@ -73,229 +77,249 @@ Responsabilidad:
 - contexto de equipo;
 - trazabilidad/procedencia.
 
+Estado: **cerrado/validado**.
+
 Debe preservar ausencia y ambigüedad. No rellena datos mediante supuestos silenciosos.
 
 ### L3 — Feature Engine
 
-Responsabilidad: convertir raw data en variables derivadas reproducibles.
-
-Permitido:
+Responsabilidad:
 - ratios;
 - per90;
 - históricos strict-past;
-- tendencias matemáticas;
+- tendencia matemática;
 - variabilidad;
-- features condicionadas a rol;
-- features físicas cuando exista GPS y definición validada.
+- features condicionadas a rol.
+
+Estado: **FEATURE-01/02/03 cerrados y validados**.
 
 No decide si un valor es bueno/malo ni recomienda.
 
 ### L4 — Analytics Engine
 
-Esta es la principal capa todavía incompleta.
-
 Responsabilidad: convertir features en evidencia analítica estructurada.
 
-Debe resolver, de forma explícita y validada:
+Incluye:
 - evolución;
 - cambio;
 - consistencia;
-- comparación;
+- comparación self-history;
+- comparación peer-role cuando existe rol observado;
 - contexto;
-- suficiencia de muestra;
-- incertidumbre;
-- alertas analíticas descriptivas.
+- tamaño de muestra;
+- evidencia y provenance.
 
-Salida esperada: objetos/resultados estructurados que puedan consumir Expert System, dashboard, reports y assistant.
+Estado: **ANALYTICS-01 cerrado y validado**.
+
+Self-role y peer-role permanecen separados. No se introducen thresholds deportivos arbitrarios.
 
 ### L5 — Decision Engine
 
-Incluye el sistema experto N1000–N13000 y, cuando proceda, modelos validados.
+Sistema experto jerárquico N1000–N13000.
 
-Cada resultado debe conservar:
+Cada resultado conserva:
 
 ```text
 input → condition → result → confidence → justification
 ```
 
-No se emite recomendación final sin política validada.
+Estado: **expert_0.7.0 cerrado/validado**.
 
-### L6 — ML Layer
+N13000 actúa como gate y no emite recomendación táctica sin policy validada.
+
+GPS sintético no constituye evidencia física observada para N9000.
+
+### L6 — DS / ML Layer
 
 ML es complementario y posterior al baseline determinista/experto.
 
-Casos posibles:
-- similitud entre jugadores;
-- clasificación de perfiles;
-- detección de cambios;
-- role-fit;
-- comparación Expert vs ML.
+Experimentos realizados:
+- change detection: señal experimental, no deploy;
+- player similarity: exploratorio, estabilidad insuficiente, no deploy;
+- clasificación de posición/rol: experimento cerrado como `context-only`; el baseline simple de última posición superó al ML.
 
-No se incorpora si no existe dataset suficiente y una hipótesis clara.
+Estado: **baseline experimental cerrado; no hay modelo ML adicional desplegado en el producto**.
 
-### L7 — Product Service Layer
+No se fuerza un modelo cuando no existe target o ground truth defendible.
 
-Capa intermedia obligatoria entre motores y interfaces.
+### L7 — Performance layers
 
-Responsabilidad:
-- consultas comunes TEAM / PLAYER / MATCH;
-- payloads estructurados;
-- provenance;
-- restricciones de acceso;
-- selección de insights;
-- evitar que web, PDF y LLM reimplementen lógica.
-
-Objetivo: una misma verdad analítica alimenta todas las salidas.
-
-### L8 — Web Product
-
-Modos:
-- TEAM MODE — principal;
-- PLAYER MODE — complementario;
-- MATCH VIEW;
-- RIVAL MODE — futuro.
-
-La interfaz final será **insight-first**, no table-first. Las tablas quedan como auditoría/detalle.
-
-La web debe responder preguntas del entrenador antes de mostrar el detalle numérico.
-
-### L9 — AI Assistant
-
-Arquitectura obligatoria:
+Dos capas distintas:
 
 ```text
-DATA → ANALYTICS → DECISION ENGINE → PRODUCT CONTEXT → LLM → COACH
+MATCH RATING
+= evaluación inmediata jugador-partido
+= match_rating_v0.5-candidate
+= disponible desde partido 1
+
+PERFORMANCE INDEX
+= capa histórica/posicional complementaria
+= performance_score_v0.2-experimental
 ```
 
-El LLM puede:
-- interpretar preguntas;
-- explicar resultados;
-- resumir;
-- redactar texto;
-- navegar evidencia.
+Match Rating V5 está congelado como baseline vigente. El Performance Index sigue siendo experimental y no sustituye al Match Rating.
 
-No puede:
-- crear métricas críticas;
-- inventar datos;
-- recalcular rankings;
-- saltarse N13000;
-- sustituir el motor analítico.
-
-Proveedor final (local/cloud/híbrido) se decide mediante gate específico.
-
-### L10 — Reporting
-
-Player / Match / Team-period reports.
-
-Los informes consumen la misma Product Service Layer que la web.
-
-Principio final: el PDF debe ser una representación estática profesional de insights ya calculados, no una tabla exportada ni una segunda lógica de negocio.
-
-### L11 — QA / Publication
+### L8 — Product Service / Access Layer
 
 Responsabilidad:
-- tests;
-- regresión;
+- consultas TEAM / PLAYER / MATCH;
+- payloads estructurados;
+- provenance;
+- acceso a Match Rating, Performance Index, expert, GPS y alertas;
+- autorización por equipo;
+- evitar que web, PDF y LLM reimplementen lógica analítica.
+
+Estado: **operativo y validado contractualmente**.
+
+Autorización estructural:
+- SUPERADMIN;
+- CLUB_ADMIN;
+- STAFF.
+
+Autenticación real email/contraseña/sesiones no forma parte del MVP cerrado.
+
+### L9 — Web Product
+
+Modos actuales:
+- TEAM MODE — principal;
+- PLAYER MODE — complementario;
+- MATCH MODE;
+- FÍSICO / GPS;
+- CALIDAD / ALERTAS;
+- ASISTENTE IA;
+- RIVAL MODE — futuro.
+
+Principio:
+
+```text
+insight-first, audit-detail second
+```
+
+Estado: **dashboard profesional operativo; contratos de datos, presentación demo, compatibilidad, access control, alertas y Match Mode en PASS**.
+
+### L10 — AI Assistant
+
+Arquitectura vigente:
+
+```text
+DuckDB local
+→ analytics / expert system materializados
+→ tools Python read-only
+→ router determinista
+→ compact evidence
+→ Ollama qwen3:1.7b
+→ semantic guard
+→ Coach Copilot
+```
+
+Versión oficial MVP: **castellano**.
+
+El LLM puede interpretar y explicar evidencia estructurada, pero no puede crear métricas críticas, recalcular Match Rating/Performance Index, saltarse N13000 ni emitir recomendaciones bloqueadas.
+
+Estado: **LLM-02 cerrado MVP**. Smoke final local: `LOCAL AGENT CONTRACT: PASS (4/4)`.
+
+Perfil operativo validado:
+
+```text
+model=qwen3:1.7b
+thinking=False
+FPS_AGENT_NUM_CTX=1536
+FPS_AGENT_TIMEOUT=18
+keep_alive=30m
+```
+
+El warm-up debe usar el mismo `num_ctx` que producción para evitar recarga del runner/model context en CPU.
+
+### L11 — Reporting
+
+Informes Team / Player / Match V6.
+
+Flujo:
+
+```text
+analytics materializados
+→ reports/report_metrics.py
+→ reports/data_builder.py
+→ reports/pdf_engine_elite_v6.py
+→ PDF
+```
+
+Estado: **REPORTS V6 cerrado / gate técnico + revisión visual PASS**.
+
+Los PDF no recalculan Match Rating, Performance Index ni decisiones expertas.
+
+### L12 — QA / Publication
+
+Responsabilidad:
+- tests y regresión;
 - leakage checks;
 - privacidad;
 - anonimización;
-- instalación limpia;
-- demo publicable;
+- demo;
+- instalación reproducible;
 - GitHub;
 - documentación TFM.
 
-## 4. Orden obligatorio de desarrollo
+Estado: **Global end-to-end QA cerrado en PASS el 03/10/2026**.
+
+La exportación demo anonimizda pasa su contrato, pero la redistribución pública del dataset fuente sigue bloqueada por derechos/licencia.
+
+## 4. Cadena validada end-to-end
 
 ```text
-ARCHITECTURE-01
-        ↓
-ANALYTICS-01
-        ↓
-DECISION POLICY / N13000
-        ↓
-PRODUCT UX
-        ↓
-REPORTS-02
-        ↓
-ASSISTANT ARCHITECTURE
-        ↓
-ML (solo si aporta valor)
-        ↓
-FINAL PRODUCT / PUBLICATION
+Collector
+→ DuckDB
+→ Features
+→ Analytics
+→ Match Rating
+→ GPS
+→ Expert N1000-N13000
+→ Dashboard
+→ Access control
+→ Demo presentation
+→ Coach Copilot
+→ PDF
+→ Public-demo anonymization
 ```
 
-No se continúa una capa si necesita una definición no cerrada de la capa anterior.
-
-## 5. Qué reutilizamos del prototipo v0.1
-
-Se conserva como infraestructura válida:
-- DuckDB y esquema base;
-- Collector funcional;
-- normalización GPS;
-- FEATURE-01/02/03;
-- sistema experto N1000–N13000 como baseline auditable;
-- `app.data_access` y contratos read-only;
-- guardrails del assistant;
-- tooling de PDF como prueba técnica;
-- tooling de anonimización/publication;
-- tests existentes.
-
-No se considera producto final todavía:
-- UX actual de Streamlit;
-- PDF actual de ReportLab;
-- routing LLM definitivo;
-- política final N13000;
-- presentación de insights.
-
-## 6. Regla de decisiones
-
-No se pide aprobación para decisiones técnicas reversibles u ordinarias.
-
-Se abre un **Decision Gate** solo si la elección puede alterar uno de estos elementos:
-1. significado deportivo;
-2. arquitectura o dependencias entre capas;
-3. política de recomendación;
-4. experiencia principal del usuario;
-5. privacidad / proveedor LLM;
-6. derechos de publicación;
-7. metodología académica relevante.
-
-El resto lo decide el responsable técnico/arquitecto y se documenta si es necesario.
-
-## 7. Gates estructurales previstos
-
-- `DG-AN-01` — comparaciones analíticas válidas;
-- `DG-N13-01` — qué constituye una recomendación y con qué evidencia;
-- `DG-UX-01` — jerarquía final TEAM / PLAYER / MATCH;
-- `DG-LLM-01` — local / cloud / híbrido;
-- `DG-REP-01` — estructura de informes profesionales;
-- `DG-PUB-01` — dataset públicamente redistribuible.
-
-Solo estos gates, o equivalentes de impacto comparable, requieren intervención explícita del usuario.
-
-## 8. Regla de transición entre fases
-
-Cada fase debe terminar con:
+Resultado vigente:
 
 ```text
-INPUT CONTRACT
-IMPLEMENTATION
-VALIDATION
-OUTPUT CONTRACT
-OPEN RISKS
-NEXT UNLOCKED PHASE
+GLOBAL END-TO-END QA: PASS
 ```
 
-Si la validación falla, no se parchea la interfaz para ocultarlo: se corrige en la capa propietaria del problema.
+## 5. Reglas de estabilidad
 
-## 9. Fuente de verdad
+No reabrir una capa cerrada por preferencia estética o por un test aislado sin interpretar primero su contrato y el estado documentado.
 
-Orden de prioridad:
+Una capa solo se reabre si existe:
+1. incidencia funcional real;
+2. nueva evidencia que invalida una decisión;
+3. cambio de scope explícito;
+4. Decision Gate de impacto estructural.
 
-1. `PROJECT_STATE.md` — estado operativo actual;
-2. `docs/ARCHITECTURE.md` — arquitectura vigente;
-3. `docs/DECISIONS.md` — decisiones estructurales y gates;
-4. `docs/WORKFLOW.md` — orden de trabajo y agentes;
-5. README — presentación e instalación.
+## 6. Decision Gates
 
-Los chats sirven para trabajar, pero GitHub conserva la memoria técnica definitiva.
+Los gates estructurales relevantes ya resueltos o documentados incluyen:
+- `DG-AN-01` — comparaciones analíticas;
+- `DG-N13-01` — recommendation gate;
+- `DG-UX-01` — jerarquía TEAM / PLAYER / MATCH;
+- `DG-LLM-01` — arquitectura local del Assistant;
+- `DG-REP-01` — informes técnicos;
+- `DG-PUB-01` — redistribución de datos, todavía bloqueada por licencia.
+
+Sergi no valida decisiones técnicas ordinarias o reversibles. Solo se abre gate si afecta significado deportivo, arquitectura, metodología, métrica principal, política de recomendación, UX principal, privacidad/publicación o scope del TFM.
+
+## 7. Prioridad actual
+
+El núcleo funcional está cerrado. La prioridad es:
+
+```text
+DOCUMENTATION SYNC
+→ REPRODUCIBILITY PACKAGE
+→ CI FINAL
+→ MEMORIA TFM
+→ DEFENSA / DEMO
+```
+
+No se añaden módulos nuevos salvo que aparezca una necesidad real del cierre académico o una incidencia funcional demostrada.
