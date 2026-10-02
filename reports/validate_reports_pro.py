@@ -16,7 +16,7 @@ os.environ.setdefault("FPS_DEMO_MODE", "1")
 from app.data_access import get_squad_summary, get_team_matches, list_teams  # noqa: E402
 from app.presentation import demo_mode  # noqa: E402
 from reports.data_builder import build_match_report_data, build_player_report_data, build_team_report_data  # noqa: E402
-from reports.pdf_engine_elite import render_pdf_bytes  # noqa: E402
+from reports.pdf_engine_elite_v2 import render_pdf_bytes  # noqa: E402
 from reports.report_metrics import REPORT_METRIC_VERSION  # noqa: E402
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
