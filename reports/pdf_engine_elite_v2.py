@@ -256,12 +256,12 @@ def _team_story(payload: dict[str, Any], styles, width: float) -> list[Any]:
     story.append(Spacer(1, 2 * mm))
     story.append(_evidence_strip([
         ("Base", f"{_count(overview.get('matches'))} partidos · {_count(overview.get('players'))} jugadores"),
-        ("GPS", "Opcional · no condiciona Team Mode"),
+        ("GPS", "Opcional · no condiciona el modo equipo"),
         ("Interpretación", "Descriptiva y auditable"),
         ("Decisiones", "Sin recomendación automática"),
     ], width, styles))
     story.append(Spacer(1, 2 * mm))
-    story.append(Paragraph("El informe combina resultados materializados con agregados descriptivos transparentes. No calcula xG, posesión, presión o tracking si la fuente no los contiene.", styles["note"]))
+    story.append(Paragraph("El informe combina resultados materializados con agregados descriptivos transparentes. No calcula xG, posesión, presión o seguimiento posicional si la fuente no los contiene.", styles["note"]))
     return story
 
 
@@ -290,7 +290,7 @@ def _player_story(payload: dict[str, Any], styles, width: float) -> list[Any]:
     performance_text = _fmt(perf.get("performance_score"), 1, "/100") if _num(perf.get("performance_score")) is not None else "No disponible"
     coverage_value = _num(gate.get("evidence_coverage"))
     coverage_pct = coverage_value * 100 if coverage_value is not None and 0 <= coverage_value <= 1 else coverage_value
-    story += _section("01 · Resumen para el staff", "Contexto, forma y disponibilidad de evidencia.", width, styles)
+    story += _section("01 · Resumen para el cuerpo técnico", "Contexto, forma y disponibilidad de evidencia.", width, styles)
     story.append(_insight_grid([
         ("Último partido", f"{_safe(latest.get('opponent'))} · {score}", f"{_date(latest.get('match_date'))} · {_count(latest.get('minutes_played'))} min", TEAL),
         ("Perfil observado", profile, f"{_count(summary.get('appearances'))} apariciones · {_count(summary.get('minutes'))} min", NAVY_2),
@@ -305,13 +305,13 @@ def _player_story(payload: dict[str, Any], styles, width: float) -> list[Any]:
 
     story.append(PageBreak())
     dims = []
-    dim_defs = [("Shot-stopping", "defensive_contribution"), ("Distribución", "creation_progression"), ("Disciplina", "discipline")] if group == "GK" else [("Amenaza ofensiva", "attacking_threat"), ("Creación / progresión", "creation_progression"), ("Contribución defensiva", "defensive_contribution"), ("Finalización", "finishing"), ("Disciplina", "discipline")]
+    dim_defs = [("Paradas", "defensive_contribution"), ("Distribución", "creation_progression"), ("Disciplina", "discipline")] if group == "GK" else [("Amenaza ofensiva", "attacking_threat"), ("Creación / progresión", "creation_progression"), ("Contribución defensiva", "defensive_contribution"), ("Finalización", "finishing"), ("Disciplina", "discipline")]
     for label, key in dim_defs:
         value = _num(latest.get(key))
         if value is not None:
             dims.append((label, value))
     if dims:
-        block = _section("03 · Dimensiones del último partido", "Scores materializados que explican la nota; no son un scouting independiente.", width, styles)
+        block = _section("03 · Dimensiones del último partido", "Puntuaciones materializadas que explican la nota; no son un informe de scouting independiente.", width, styles)
         block.append(_bar_chart(dims, width, 29 * mm, 0, 100))
         story.append(KeepTogether(block))
 
@@ -325,7 +325,7 @@ def _player_story(payload: dict[str, Any], styles, width: float) -> list[Any]:
     story += _section("05 · Producción reciente", "Acciones registradas con contexto de minutos; se evita sobreinterpretar volúmenes sin exposición.", width, styles)
     rating_by_match = {str(row.get("match_id")): row for row in ratings}
     if group == "GK":
-        rows = [["Fecha", "Rival", "Min", "Pases", "Precisión", "Rating", "Conf. %"]]
+        rows = [["Fecha", "Rival", "Min", "Pases", "Precisión", "Nota", "Conf. %"]]
         for row in sorted(history, key=lambda item: _date(item.get("match_date")), reverse=True)[:5]:
             completed, total = _num(row.get("passes_completed")), _num(row.get("passes_total"))
             passes = f"{int(completed)}/{int(total)}" if completed is not None and total is not None else "-"
@@ -356,9 +356,9 @@ def _player_story(payload: dict[str, Any], styles, width: float) -> list[Any]:
 def _short_context(row: dict[str, Any]) -> str:
     path = str(row.get("rating_path") or row.get("match_rating_context") or "").upper()
     if "GOALKEEPER" in path:
-        return "GK"
+        return "Portero"
     if "ROLE_UNAVAILABLE" in path or "FALLBACK" in path:
-        return "Fallback"
+        return "Rol no disponible"
     return "Posicional"
 
 
@@ -379,7 +379,7 @@ def _match_story(payload: dict[str, Any], styles, width: float) -> list[Any]:
         ("Marcador", score, f"{team} vs {opponent}"),
         ("Rating mediano", _fmt(summary.get("median_match_rating"), 2, "/10"), "Valor materializado"),
         ("Confianza mediana", _fmt(summary.get("median_confidence"), 0, "%"), "Valor materializado"),
-        ("Rol no disponible", str(fallback), "Fallback explícito"),
+        ("Rol analítico no disponible", str(fallback), "Ruta alternativa explícita"),
     ], width, styles))
 
     scorers = observations.get("goal_scorers") or []
@@ -411,7 +411,7 @@ def _match_story(payload: dict[str, Any], styles, width: float) -> list[Any]:
     story.append(_bar_chart([(name, float(value)) for name, value in bars[:15]], width, 43 * mm, 3, 10))
 
     story += _section("04 · Ficha de jugadores", "Minutos, perfil, Match Rating, confianza y contexto del cálculo.", width, styles)
-    rows = [["Jugador", "Perfil", "Min", "Rating", "Conf. %", "Contexto"]]
+    rows = [["Jugador", "Perfil", "Min", "Nota", "Conf. %", "Contexto"]]
     for row in sorted(ratings, key=lambda item: _num(item.get("match_rating_10")) or -999, reverse=True):
         rows.append([row.get("player"), _position(row.get("position_group")), _count(row.get("minutes_played")), _fmt(row.get("match_rating_10"), 2), _fmt(row.get("match_rating_confidence"), 0), _short_context(row)])
     story.append(_compact_table(rows, [37*mm, 31*mm, 14*mm, 19*mm, 20*mm, 46*mm], styles))
@@ -428,7 +428,7 @@ def _match_story(payload: dict[str, Any], styles, width: float) -> list[Any]:
     story += _section("06 · Calidad de evidencia", "Límites antes de convertir los datos en una decisión técnica.", width, styles)
     story.append(_evidence_strip([
         ("Jugadores utilizados", str(len(ratings))),
-        ("Fallback de rol", str(fallback)),
+        ("Rol analítico no disponible", str(fallback)),
         ("Confianza mínima", _fmt(min(confidence) if confidence else None, 0, "%")),
         ("Uso", "Revisión descriptiva"),
     ], width, styles))
