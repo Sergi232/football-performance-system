@@ -24,6 +24,18 @@ DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 OUTPUT_DIR = ROOT / "reports" / "output" / "professional_demo"
 EXPECTED_SCHEMA = "0.7.0"
 SYNTHETIC_PROVIDER = "FPS Synthetic Demo"
+ENGLISH_ROLE_TERMS = (
+    "goalkeeper",
+    "defender",
+    "wing back",
+    "midfielder",
+    "striker",
+    "forward",
+    "left",
+    "right",
+    "centre",
+    "center",
+)
 
 
 def _slug(value: str) -> str:
@@ -118,6 +130,13 @@ def _assert_gps(payload: dict) -> None:
         for key in ("total_distance_m", "peak_speed_m_s", "max_acceleration_m_s2", "min_acceleration_m_s2"):
             if key not in row:
                 raise AssertionError(f"{report_type}: GPS row missing {key}")
+        role = str(row.get("effective_role") or "").lower()
+        leaked_terms = [term for term in ENGLISH_ROLE_TERMS if term in role]
+        if leaked_terms:
+            raise AssertionError(
+                f"{report_type}: GPS role label is not localized to Spanish: "
+                f"{row.get('effective_role')} ({', '.join(leaked_terms)})"
+            )
 
     forbidden = ("fatigue", "readiness", "injury_risk", "hsr", "sprint_zone", "workload_score")
     serialized = json.dumps(gps, ensure_ascii=False, default=str).lower()
@@ -198,6 +217,7 @@ def main() -> None:
     print("physical_gps_context=PASS")
     print("synthetic_demo_label=PASS")
     print("minutes_role_context=PASS")
+    print("gps_role_localization=PASS")
     print("unsupported_physical_claims_guard=PASS")
     print("materialized_match_summary=PASS")
     print("critical_recalculation_guard=PASS")
