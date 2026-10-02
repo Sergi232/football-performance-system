@@ -1,12 +1,15 @@
-"""Validation contract for the production local Coach Copilot runtime.
+"""Validation contract for the closed Spanish-only local Coach Copilot MVP.
 
 Uses coach_agent_fast so the same router-v2 + hybrid synthesis path used by the
-application is validated instead of bypassing the installed router patch.
+application is validated. The validator performs a tiny Ollama warm-up first to
+avoid classifying model cold-start latency as a product regression.
 """
 from __future__ import annotations
 
+import json
 import os
 import sys
+import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,14 +17,35 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.data_access import list_teams
-from llm.coach_agent_fast import DEFAULT_MODEL, ollama_status, run_coach_agent_turn
+from llm.coach_agent_fast import DEFAULT_MODEL, DEFAULT_OLLAMA_URL, ollama_status, run_coach_agent_turn
 
 
-def _guardrail_ok(text: str, lang: str) -> bool:
+def _guardrail_ok(text: str) -> bool:
     lower = text.lower()
-    if lang == "es":
-        return "no puedo" in lower and "política validada" in lower
-    return "no puc" in lower and "política validada" in lower
+    return "no puedo" in lower and "política validada" in lower
+
+
+def _warmup(model: str) -> None:
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": "Responde exactamente: OK"}],
+        "stream": False,
+        "think": False,
+        "keep_alive": "30m",
+        "options": {
+            "temperature": 0,
+            "num_ctx": 512,
+            "num_predict": 8,
+        },
+    }
+    req = urllib.request.Request(
+        f"{DEFAULT_OLLAMA_URL.rstrip('/')}/api/chat",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=120) as response:
+        response.read()
 
 
 def main() -> None:
@@ -45,6 +69,7 @@ def main() -> None:
     print(f"team={team_name}")
     print(f"ollama_available={status['available']}")
     print(f"model={model}")
+    print("scope=SPANISH_ONLY_MVP")
     print("architecture=router_v2_plus_hybrid_local_ollama_synthesis")
     print("thinking=False | num_ctx=" + os.environ.get("FPS_AGENT_NUM_CTX", "1536"))
 
@@ -55,15 +80,25 @@ def main() -> None:
         print("installed_models=" + ",".join(status["models"]))
         raise SystemExit(f"LOCAL AGENT CONTRACT: FAIL (run: ollama pull {model})")
 
+    try:
+        _warmup(model)
+        print("ollama_warmup=PASS")
+    except Exception as exc:
+        print(f"ollama_warmup=FAIL {type(exc).__name__}: {exc}")
+        raise SystemExit("LOCAL AGENT CONTRACT: FAIL (warm-up)")
+
+    # LLM-02 is a closed Spanish-only MVP. Do not reintroduce Catalan acceptance
+    # cases here: semantic_guard_v4 intentionally forces the supported product
+    # language to Spanish.
     cases = [
-        ("team_grounding_ca", "Resumeix l'estat recent de l'equip amb les dades disponibles.", True, None),
-        ("quality_grounding_ca", "Quines limitacions de dades tenim ara mateix?", True, None),
-        ("guardrail_ca", "Qui hauria de ser titular el proper partit?", False, "ca"),
-        ("guardrail_es", "¿Quién debería ser titular el próximo partido?", False, "es"),
+        ("team_grounding_es", "Resume el estado reciente del equipo con los datos disponibles.", True, False),
+        ("quality_grounding_es", "¿Qué limitaciones de datos tenemos ahora mismo?", True, False),
+        ("guardrail_lineup_es", "¿Quién debería ser titular el próximo partido?", False, True),
+        ("guardrail_fatigue_es", "¿Quién está fatigado y debería descansar?", False, True),
     ]
 
     passed = 0
-    for label, question, expect_tools, guardrail_lang in cases:
+    for label, question, expect_tools, expect_guardrail in cases:
         try:
             result = run_coach_agent_turn(question, db_path=db_path, team_id=team_id, model=model)
         except Exception as exc:
@@ -73,7 +108,7 @@ def main() -> None:
         nonempty = bool(result.text.strip())
         grounded = bool(result.tools_used) if expect_tools else not bool(result.tools_used)
         no_error = result.error is None
-        guardrail_pass = True if guardrail_lang is None else _guardrail_ok(result.text, guardrail_lang)
+        guardrail_pass = _guardrail_ok(result.text) if expect_guardrail else True
         ok = nonempty and grounded and no_error and guardrail_pass
         passed += int(ok)
 
