@@ -33,7 +33,7 @@ from analytics.build_gps_physical_summary import materialize  # noqa: E402
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 MIGRATION = ROOT / "data" / "migrations" / "004_gps_normalization.sql"
-GENERATOR_VERSION = "gps_synthetic_demo_v1"
+GENERATOR_VERSION = "gps_synthetic_demo_v1.1"
 PROVIDER = "FPS Synthetic Demo"
 SOURCE_FORMAT = "synthetic_demo"
 
@@ -113,24 +113,34 @@ def _samples(
 ) -> list[tuple[int, float, float, float, int]]:
     rng = random.Random(_stable_seed(seed, match_id, player_id))
     targets = _targets(minutes, role, rng)
-    duration_s = max(1, int(round(minutes * 60.0)))
-    n_intervals = max(1, math.ceil(duration_s / sample_seconds))
-    timestamps = [min(i * sample_seconds, duration_s) for i in range(n_intervals + 1)]
-    if timestamps[-1] != duration_s:
-        timestamps.append(duration_s)
+
+    # Work in milliseconds so even very short appearances can contain separate
+    # positive- and negative-acceleration observations.
+    duration_ms = max(1, int(round(minutes * 60.0 * 1000.0)))
+    step_ms = sample_seconds * 1000
+    n_intervals = max(1, math.ceil(duration_ms / step_ms))
+    timestamps = [min(i * step_ms, duration_ms) for i in range(n_intervals + 1)]
+    if timestamps[-1] != duration_ms:
+        timestamps.append(duration_ms)
+    if len(timestamps) == 2 and duration_ms > 1:
+        midpoint = max(1, duration_ms // 2)
+        if midpoint < duration_ms:
+            timestamps.insert(1, midpoint)
 
     interval_count = len(timestamps) - 1
     weights = [max(0.05, rng.lognormvariate(0.0, 0.55)) for _ in range(interval_count)]
     weight_sum = sum(weights)
     distances = [targets["distance_m"] * w / weight_sum for w in weights]
 
-    peak_idx = rng.randrange(1, len(timestamps))
-    accel_idx = rng.randrange(1, len(timestamps))
-    decel_idx = rng.randrange(1, len(timestamps))
+    candidate_indices = list(range(1, len(timestamps)))
+    peak_idx = rng.choice(candidate_indices)
+    accel_idx = rng.choice(candidate_indices)
+    decel_candidates = [idx for idx in candidate_indices if idx != accel_idx]
+    decel_idx = rng.choice(decel_candidates) if decel_candidates else accel_idx
 
     out: list[tuple[int, float, float, float, int]] = [(0, 0.0, 0.0, 0.0, 1)]
     for idx in range(1, len(timestamps)):
-        dt = max(1, timestamps[idx] - timestamps[idx - 1])
+        dt = max(0.001, (timestamps[idx] - timestamps[idx - 1]) / 1000.0)
         distance = distances[idx - 1]
         mean_speed = distance / dt
         speed = _clip(mean_speed * rng.uniform(0.65, 1.65), 0.0, targets["peak_speed_m_s"] * 0.90)
@@ -141,7 +151,7 @@ def _samples(
             acceleration = targets["max_acceleration_m_s2"]
         if idx == decel_idx:
             acceleration = targets["min_acceleration_m_s2"]
-        out.append((timestamps[idx] * 1000, distance, speed, acceleration, idx + 1))
+        out.append((int(timestamps[idx]), distance, speed, acceleration, idx + 1))
     return out
 
 
