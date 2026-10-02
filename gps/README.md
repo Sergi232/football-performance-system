@@ -102,6 +102,44 @@ El normalizador no rellena valores ausentes. Marca, entre otros:
 
 Los valores imposibles se dejan vacíos en la salida normalizada y se conserva el flag.
 
+## Demo sintética integrada
+
+Mientras no exista un fichero GPS real aprobado, la aplicación puede demostrar el flujo físico con datos sintéticos explícitos mediante `gps/generate_synthetic_demo.py`.
+
+La demo **no escribe números directamente en Streamlit ni en los PDF**. Entra por las mismas tablas canónicas que usaría un proveedor real:
+
+```text
+jugador-partido + minutos + rol
+→ generador sintético determinista
+→ gps_imports
+→ gps_player_map
+→ gps_observations
+→ player_match_gps_summary
+→ app/gps_physical_access.py
+→ dashboard Físico / GPS
+→ reports (cuando la capa de reporting físico esté conectada)
+```
+
+Trazabilidad obligatoria de la demo:
+
+- `provider = FPS Synthetic Demo`;
+- `source_format = synthetic_demo`;
+- `mapping_version = gps_synthetic_demo_v1`;
+- `mapping_config.synthetic_demo = true`;
+- notas explícitas de que no son observaciones reales de deportistas.
+
+El generador está condicionado por minutos y grupo de posición para producir una demo internamente coherente, pero sus priors **no son umbrales científicos, referencias normativas ni objetivos de rendimiento**. Los datos sintéticos no pueden alimentar Match Rating, Performance Index, decisiones expertas, fatiga, readiness ni riesgo de lesión.
+
+El generador es idempotente respecto a su propio proveedor: al repetirse sustituye exclusivamente sus filas sintéticas y no modifica imports GPS reales.
+
+Validación específica:
+
+```bash
+python gps/validate_synthetic_demo.py --db <ruta_duckdb>
+```
+
+El gate comprueba procedencia sintética explícita, mapping jugador-partido, valores básicos válidos, ausencia de duplicados y llegada correcta a `player_match_gps_summary`.
+
 ## Validación
 
 Como todavía no hay un archivo GPS real aprobado en el proyecto, GPS-01 se valida primero con un fixture sintético que simula un proveedor distinto:
