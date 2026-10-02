@@ -38,6 +38,40 @@ FINAL-01                            ACTIVO / PRODUCTO FINAL
 PUBLIC DEPLOYMENT                   NO HACER — derechos/licencia no resueltos
 ```
 
+## Hipótesis principal del TFM
+
+Formulación actual:
+
+> **Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte a la decisión a partir de datos de vídeo y GPS opcional, capaz de transformarlos en información sobre rendimiento, evolución, rol y comportamiento físico de los jugadores y del equipo.**
+
+### Estado de contraste
+
+La hipótesis está **contrastada favorablemente en su dimensión técnica y arquitectónica** mediante un prototipo funcional end-to-end.
+
+Evidencia ya disponible:
+- temporada completa de demostración: 38 partidos y 590 apariciones jugador-partido;
+- Data Layer DuckDB con unidad principal jugador-partido;
+- Feature Engine determinista y temporalmente seguro;
+- Match Rating V5 operativo desde el primer partido;
+- Performance Index histórico/posicional separado del Match Rating;
+- sistema experto jerárquico y auditable N1000-N13000;
+- Team / Player / Match Mode operativos;
+- GPS opcional integrado mediante capa canónica normalizada;
+- dashboard profesional;
+- Coach Copilot local downstream de analytics;
+- PDF Team / Player / Match V6 con contexto GPS descriptivo;
+- anonimización de presentación, control de acceso y gates de seguridad.
+
+Lo que **NO** está demostrado y no debe afirmarse en la memoria:
+- que el sistema mejore objetivamente las decisiones de un entrenador;
+- que aumente el rendimiento deportivo del equipo;
+- que el GPS sintético valide fisiología real;
+- fatiga, readiness/disponibilidad física o riesgo de lesión;
+- capacidad predictiva clínica o preventiva;
+- impacto comercial real sin validación de mercado.
+
+La validación con entrenadores/analistas reales sería una mejora fuerte, pero **no puede inventarse ni simularse como evidencia empírica**. Si se realiza, debe ser con participantes reales y metodología documentada.
+
 ## Fuente de verdad
 
 ```text
@@ -360,6 +394,66 @@ Funcionalmente cerrado; falta:
 5. mantener exactamente la semántica y compatibilidad del esquema actual;
 6. no añadir nuevas variables sin justificar recogibilidad y uso final.
 
+## Prioridad académica actual
+
+El proyecto ya tiene suficiente profundidad técnica. A partir de este punto, el valor marginal más alto está en **cerrar, validar y documentar** antes que añadir módulos nuevos.
+
+Orden recomendado para maximizar calidad del TFM:
+1. Collector final: UX, castellano y móvil;
+2. QA global end-to-end del producto;
+3. memoria: problema, hipótesis, metodología, arquitectura, experimentos, resultados, limitaciones y conclusiones;
+4. documentación reproducible de instalación/demo;
+5. validación con entrenadores/analistas reales si es viable, sin inventar participantes ni resultados;
+6. preparar defensa y demo final.
+
+## Extensiones futuras / opcionales
+
+### Power BI
+
+Puede añadirse como **capa alternativa de consumo**, no como sustituto ni duplicado de la web.
+
+Objetivo defendible:
+- demostrar que la capa analítica es independiente del front-end;
+- reutilizar el mismo modelo de datos para Team / Player / Match / GPS;
+- ofrecer una opción útil para cuerpos técnicos que ya trabajen con el ecosistema Microsoft.
+
+No es requisito para cerrar el TFM ni debe retrasar el producto principal.
+
+### Validación comercial / go-to-market
+
+Puede incorporarse como apartado complementario de viabilidad empresarial:
+- target: clubes amateur/semi-profesionales sin departamento de análisis;
+- propuesta de valor;
+- competidores y alternativas;
+- modelo de pricing hipotético;
+- coste de implantación;
+- piloto y canal de captación.
+
+El scraping de contactos o emailing no forma parte del núcleo DS/IA del TFM. Si se realiza posteriormente, debe respetar protección de datos, términos de uso y normativa aplicable. No presentar contactos inventados ni validación comercial simulada.
+
+### Automatización futura del Data Collector
+
+Extensión estratégica prioritaria a medio plazo:
+- visión por computador y análisis automático de vídeo;
+- automatización parcial de eventos actualmente manuales;
+- reducción de tiempo y coste de captura;
+- aumento del volumen/frecuencia de datos disponibles;
+- mantenimiento del mismo pipeline analítico downstream.
+
+No se considera implementada ni validada actualmente.
+
+### Datos antropométricos y contexto médico
+
+Edad, altura o peso pueden estudiarse como contexto adicional si existe fuente fiable y justificación analítica.
+
+Un módulo médico/lesiones queda como extensión futura y requeriría:
+- datos reales y autorizados;
+- gobernanza y control de acceso reforzados;
+- separación clara entre información deportiva y sanitaria;
+- validación específica antes de cualquier alerta clínica.
+
+No implementar ni afirmar prevención de lesiones, readiness o riesgo individual sin evidencia suficiente.
+
 ## Experimentos / decisiones relevantes
 
 - Match Rating V5 validado y congelado;
@@ -375,7 +469,8 @@ Funcionalmente cerrado; falta:
 - no inferir una posición de partido cuando la fuente solo informa `Substitute`;
 - rol contextual GPS y rol analítico Match Rating son contratos distintos;
 - GPS sintético no alimenta Match Rating, Performance Index ni decisiones expertas;
-- PDF final = informe técnico profesional independiente, no reproducción literal de la web.
+- PDF final = informe técnico profesional independiente, no reproducción literal de la web;
+- la hipótesis principal se plantea como viabilidad técnica/auditable, no como prueba de mejora causal de decisiones deportivas.
 
 ## Decisiones descartadas / aplazadas
 
@@ -388,14 +483,17 @@ Funcionalmente cerrado; falta:
 - login SaaS completo, pagos y recuperación de contraseña: aplazado tras el MVP;
 - publicación pública del dataset real: bloqueada por derechos/licencia;
 - PDF como simple captura de la web: descartado;
-- copiar métricas/layouts propietarios de Opta/Wyscout/StatsBomb: descartado.
+- copiar métricas/layouts propietarios de Opta/Wyscout/StatsBomb: descartado;
+- inventar validación con entrenadores, clientes o usuarios: no permitido.
 
 ## Problemas abiertos
 
 - Collector UX / castellano / móvil;
 - QA global final end-to-end del producto;
-- autenticación real para producto comercial;
 - documentación final del TFM y README de entrega;
+- defensa/demo final;
+- validación con usuarios reales si es viable;
+- autenticación real para producto comercial;
 - derechos/licencia antes de despliegue público;
 - validación futura con GPS real si se dispone de un proveedor/dataset autorizado.
 
@@ -405,5 +503,6 @@ Funcionalmente cerrado; falta:
 2. dejar toda la interfaz del collector en castellano;
 3. reducir clics y mejorar uso mobile-first para captura durante 90 minutos;
 4. validar que la salida siga encajando exactamente con el esquema jugador-partido actual;
-5. después ejecutar QA global end-to-end: collector/import → DuckDB → features → analytics → expert → dashboard → asistente → PDF;
-6. cerrar documentación final (`README.md`, arquitectura, instalación, demo y limitaciones) para entrega del TFM.
+5. ejecutar QA global end-to-end: collector/import → DuckDB → features → analytics → expert → dashboard → asistente → PDF;
+6. cerrar documentación final (`README.md`, arquitectura, instalación, demo, hipótesis, resultados y limitaciones);
+7. preparar la defensa del TFM y, solo si queda margen, añadir Power BI o validación comercial como complementos opcionales.
