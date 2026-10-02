@@ -44,7 +44,9 @@ def _minutes(value: Any) -> str:
 
 def _role(value: Any) -> str:
     text = str(value or "").strip()
-    return text if text else "Rol no disponible"
+    if not text:
+        return "Rol no disponible"
+    return ui._roles(text)
 
 
 def _providers(gps: dict[str, Any]) -> str:
@@ -91,8 +93,8 @@ def _team_gps_page(payload: dict[str, Any], styles, width: float) -> list[Any]:
     story.append(Spacer(1, 3 * mm))
 
     players = list(gps.get("latest_match_players") or [])
-    coverage = list(gps.get("coverage") or [])
-    latest_cov = coverage[0] if coverage else {}
+    latest_cov_rows = list(gps.get("latest_match_coverage") or [])
+    latest_cov = latest_cov_rows[0] if latest_cov_rows else {}
     unresolved = sum(1 for row in players if not str(row.get("effective_role") or "").strip())
 
     story.append(ui._kpi_row([
@@ -120,8 +122,9 @@ def _team_gps_page(payload: dict[str, Any], styles, width: float) -> list[Any]:
     story.append(narrative._review_box(
         "Claves para la revisión física",
         [
-            f"Cobertura: {ui._count(latest_cov.get('gps_players'))} de {ui._count(latest_cov.get('played_players'))} jugadores utilizados tienen registro GPS en el último alcance mostrado.",
+            f"Cobertura: {ui._count(latest_cov.get('gps_players'))} de {ui._count(latest_cov.get('played_players'))} jugadores utilizados tienen registro GPS en el último partido con GPS.",
             f"Contexto: cada fila conserva minutos y rol cuando la fuente lo permite; {unresolved} registros mantienen el rol como no disponible en lugar de inventarlo.",
+            "El rol mostrado en GPS es contexto descriptivo y no sustituye el rol analítico utilizado por Match Rating.",
             "Uso recomendado: revisar cambios físicos junto al contexto de minutos, rol y vídeo; estas métricas no diagnostican fatiga ni rendimiento táctico por sí solas.",
         ],
         width,
@@ -174,7 +177,8 @@ def _player_gps_page(payload: dict[str, Any], styles, width: float) -> list[Any]
         "Claves para la revisión física",
         [
             f"Último registro: {_km(latest.get('total_distance_m'))} en {_minutes(latest.get('minutes_played'))}, con velocidad máxima de {_kmh(latest.get('peak_speed_m_s'))}.",
-            f"Rol de contexto: {_role(latest.get('effective_role'))}. Si el rol no está disponible, no se fuerza una comparación posicional.",
+            f"Rol de contexto GPS: {_role(latest.get('effective_role'))}. Si el rol no está disponible, no se fuerza una comparación posicional.",
+            "El rol contextual GPS no sustituye el rol analítico empleado por Match Rating.",
             "La serie sirve para revisar evolución intra-jugador; no establece por sí sola estado de forma, fatiga, disponibilidad física ni riesgo de lesión.",
         ],
         width,
@@ -205,8 +209,8 @@ def _match_gps_page(payload: dict[str, Any], styles, width: float) -> list[Any]:
     story.append(ui._kpi_row([
         ("Jugadores con GPS", str(len(players)), "Registro del partido"),
         ("Proveedor", _providers(gps), "Procedencia"),
-        ("Rol disponible", str(len(players) - unresolved), "Con contexto posicional"),
-        ("Rol no disponible", str(unresolved), "Sin inferencia artificial"),
+        ("Rol GPS disponible", str(len(players) - unresolved), "Contexto físico descriptivo"),
+        ("Rol GPS no disponible", str(unresolved), "Sin inferencia artificial"),
     ], width, styles))
 
     rows = [["Jugador", "Rol", "Min", "Distancia", "V. máx", "Acel. máx", "Decel. máx"]]
@@ -228,7 +232,8 @@ def _match_gps_page(payload: dict[str, Any], styles, width: float) -> list[Any]:
         "Claves para la revisión física",
         [
             f"Cobertura del partido: {len(players)} jugadores con resumen GPS descriptivo.",
-            f"Contexto posicional: {len(players) - unresolved} registros con rol disponible y {unresolved} sin rol recuperable de la fuente.",
+            f"Contexto posicional GPS: {len(players) - unresolved} registros con rol disponible y {unresolved} sin rol recuperable de la fuente.",
+            "El contexto GPS puede usar una posición descriptiva disponible aunque Match Rating mantenga una ruta de rol no disponible; ambas capas tienen contratos distintos.",
             "Cruzar la carga externa con minutos, rol y vídeo. No usar esta página como diagnóstico de fatiga o como clasificación entre posiciones.",
         ],
         width,
