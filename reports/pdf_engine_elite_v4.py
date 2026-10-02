@@ -20,7 +20,7 @@ from reports import pdf_engine_elite_v3 as base
 
 
 def _short_date(value: Any) -> str:
-    text = base._date(value)
+    text = base_v2._date(value)
     if len(text) >= 10 and text[4] == "-" and text[7] == "-":
         return f"{text[8:10]}/{text[5:7]}"
     return text[:10]
@@ -28,11 +28,11 @@ def _short_date(value: Any) -> str:
 
 def _team_trend_chart(payload: dict[str, Any], width: float, height: float, y_min: float = 3, y_max: float = 10) -> Drawing:
     history = sorted(
-        [row for row in list(payload.get("rating_history") or []) if base._num(row.get("median_match_rating")) is not None],
-        key=lambda row: base._date(row.get("match_date")),
+        [row for row in list(payload.get("rating_history") or []) if base_v2._num(row.get("median_match_rating")) is not None],
+        key=lambda row: base_v2._date(row.get("match_date")),
     )
     matches = list(payload.get("matches") or [])
-    opponent_by_date = {base._date(row.get("match_date")): base._safe(row.get("opponent"), "Rival") for row in matches}
+    opponent_by_date = {base_v2._date(row.get("match_date")): base_v2._safe(row.get("opponent"), "Rival") for row in matches}
 
     drawing = Drawing(width, height)
     left, right, bottom, top = 30, 10, 18, 18
@@ -40,9 +40,9 @@ def _team_trend_chart(payload: dict[str, Any], width: float, height: float, y_mi
 
     for i in range(4):
         y = bottom + plot_h * i / 3
-        drawing.add(Line(left, y, left + plot_w, y, strokeColor=base.GRID, strokeWidth=0.8))
+        drawing.add(Line(left, y, left + plot_w, y, strokeColor=base_v2.GRID, strokeWidth=0.8))
         value = y_min + (y_max - y_min) * i / 3
-        drawing.add(String(2, y - 3, f"{value:.1f}", fontName="Helvetica", fontSize=6, fillColor=base.MUTED))
+        drawing.add(String(2, y - 3, f"{value:.1f}", fontName="Helvetica", fontSize=6, fillColor=base_v2.MUTED))
 
     if not history:
         return drawing
@@ -60,9 +60,9 @@ def _team_trend_chart(payload: dict[str, Any], width: float, height: float, y_mi
             path.moveTo(x, y)
         else:
             path.lineTo(x, y)
-        drawing.add(Circle(x, y, 2.6, fillColor=base.TEAL, strokeColor=base.WHITE, strokeWidth=0.8))
+        drawing.add(Circle(x, y, 2.6, fillColor=base_v2.TEAL, strokeColor=base_v2.WHITE, strokeWidth=0.8))
 
-    path.strokeColor = base.TEAL
+    path.strokeColor = base_v2.TEAL
     path.strokeWidth = 2.2
     path.fillColor = None
     drawing.add(path)
@@ -70,7 +70,7 @@ def _team_trend_chart(payload: dict[str, Any], width: float, height: float, y_mi
     # Preserve sparse date anchors on the x-axis.
     for idx in sorted(set([0, n // 2, n - 1])):
         x, _ = coords[idx]
-        drawing.add(String(x, 2, base._date(history[idx].get("match_date"))[:10], textAnchor="middle", fontName="Helvetica", fontSize=5.8, fillColor=base.MUTED))
+        drawing.add(String(x, 2, base_v2._date(history[idx].get("match_date"))[:10], textAnchor="middle", fontName="Helvetica", fontSize=5.8, fillColor=base_v2.MUTED))
 
     # Two highest + two lowest observations, deduplicated.
     high_idx = sorted(range(n), key=lambda i: values[i], reverse=True)[:2]
@@ -84,7 +84,7 @@ def _team_trend_chart(payload: dict[str, Any], width: float, height: float, y_mi
     for idx in selected:
         x, y = coords[idx]
         row = history[idx]
-        date_key = base._date(row.get("match_date"))
+        date_key = base_v2._date(row.get("match_date"))
         opponent = opponent_by_date.get(date_key, "Rival")
         label = f"{_short_date(date_key)} · {opponent} · {values[idx]:.2f}"
 
@@ -95,8 +95,8 @@ def _team_trend_chart(payload: dict[str, Any], width: float, height: float, y_mi
         text_x = x - 5 if on_right else x + 5
         anchor = "end" if on_right else "start"
 
-        drawing.add(Line(x, y + (3 if is_high else -3), x, label_y + (-2 if is_high else 7), strokeColor=base.MUTED, strokeWidth=0.45))
-        drawing.add(String(text_x, label_y, label, textAnchor=anchor, fontName="Helvetica-Bold", fontSize=5.2, fillColor=base.TEXT))
+        drawing.add(Line(x, y + (3 if is_high else -3), x, label_y + (-2 if is_high else 7), strokeColor=base_v2.MUTED, strokeWidth=0.45))
+        drawing.add(String(text_x, label_y, label, textAnchor=anchor, fontName="Helvetica-Bold", fontSize=5.2, fillColor=base_v2.TEXT))
 
     return drawing
 
