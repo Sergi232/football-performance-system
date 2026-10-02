@@ -1,17 +1,18 @@
 # Estrategia Data Science + IA del TFM
 
-Fecha: 26/09/2026
+Fecha de sincronización: 03/10/2026
 
 ## 1. Prioridad académica
 
-El TFM pertenece a un máster de Data Science e Inteligencia Artificial. El producto web es el vehículo de entrega, pero el valor académico central debe quedar demostrado en datos, analítica, modelado, validación y explicabilidad.
+El TFM pertenece a un máster de Data Science e Inteligencia Artificial. El producto web es el vehículo de entrega, pero el valor académico central se demuestra en datos, feature engineering, analítica, modelado, validación, explicabilidad y decisiones de no-deploy cuando la evidencia no es suficiente.
 
 ```text
 DATA
 → FEATURE ENGINE
 → ANALYTICS / STATISTICS
 → EXPERT SYSTEM
-→ PERFORMANCE SCORE / DS-ML VALIDATION
+→ MATCH RATING / PERFORMANCE INDEX
+→ DS-ML EXPERIMENTATION
 → VALIDATION / EXPLAINABILITY
 → PRODUCT
 → LLM
@@ -19,28 +20,30 @@ DATA
 
 El proyecto no debe convertirse en un dashboard con un LLM añadido.
 
-## 2. Objetivo analítico principal
+## 2. Constructos de rendimiento vigentes
 
-El objetivo central es construir un **score de rendimiento jugador-partido** útil para el cuerpo técnico y defendible académicamente.
-
-Arquitectura objetivo:
+El proyecto distingue dos capas:
 
 ```text
-PLAYER-MATCH DATA
-→ DIMENSIONES DE RENDIMIENTO
-→ SCORE GLOBAL VALIDADO
-→ EVOLUCIÓN / CONSISTENCIA
-→ CONTEXTO DE ROL
-→ INSIGHTS / RECOMENDACIONES
+MATCH RATING
+= evaluación inmediata jugador-partido
+= match_rating_v0.5-candidate
+= disponible desde partido 1
+
+PERFORMANCE INDEX
+= capa histórica/posicional complementaria
+= performance_score_v0.2-experimental
 ```
 
-Rol y posición son contexto, no el objetivo principal. Pueden usarse para comparar de forma justa, contextualizar métricas o analizar encaje, pero no deben desplazar el foco del rendimiento.
+Match Rating V5 es el baseline activo y validado. El Performance Index sigue siendo experimental y no sustituye al Match Rating.
 
-No existe todavía una fórmula de score aprobada. Pesos, signos, escala y thresholds deben validarse.
+No se modifican pesos, signos, escalas o arquitectura de Match Rating V5 sin nueva evidencia, experimento explícito y validación.
 
-## 3. Componentes Data Science obligatorios
+## 3. Componentes Data Science
 
 ### DS-1 — Data engineering y calidad
+
+Cerrado/validado en el MVP actual:
 - esquema reproducible;
 - raw vs derived;
 - trazabilidad;
@@ -49,28 +52,40 @@ No existe todavía una fórmula de score aprobada. Pesos, signos, escala y thres
 - tests de contrato.
 
 ### DS-2 — Feature engineering
-- ratios y tasas reproducibles;
-- variables por 90;
-- historial temporal strict-past;
-- evolución y tendencia;
-- variables condicionadas a rol cuando proceda;
-- futuras features físicas si existe GPS real.
+
+Cerrado/validado:
+- FEATURE-01: features base;
+- FEATURE-02: históricos strict-past;
+- FEATURE-03: contexto de rol observado.
+
+Principios:
+- ratios/tasas reproducibles;
+- per90;
+- ausencia preservada;
+- temporal leakage control;
+- rol observado, no inferido cuando falta evidencia.
 
 ### DS-3 — Analytics estadístico
+
+ANALYTICS-01 cerrado/validado.
+
+Incluye:
 - comparación jugador vs self-history;
-- comparación jugador vs peers del mismo rol cuando exista rol observado;
+- comparación jugador vs peers del mismo rol observado;
 - variabilidad;
 - cambio temporal;
-- tamaño de muestra;
-- incertidumbre;
-- detección de cambios y señales descriptivas.
+- tamaño de muestra/evidencia;
+- provenance.
 
-No se inventarán umbrales de significancia práctica. Deben justificarse empíricamente o con literatura.
+Self-role y peer-role permanecen separados.
+
+No se inventan umbrales de significancia práctica o etiquetas bueno/malo sin justificación.
 
 ### DS-4 — Sistema experto auditable
+
 El árbol N1000–N13000 actúa como baseline interpretable.
 
-Cada salida importante mantiene:
+Cada salida mantiene:
 
 ```text
 input
@@ -80,69 +95,108 @@ input
 → justification
 ```
 
-N4000-N7000 ya estructuran dominios de rendimiento, pero su catálogo actual declara explícitamente que higher/lower es descriptivo hasta validar el valor práctico. Por tanto no se pueden sumar directamente en un rating sin validar dirección y peso.
+Estado: `expert_0.7.0` cerrado y validado.
 
-### DS-5 — Performance score
-El score debe cumplir:
-- unidad principal `player_match`;
-- inputs recollibles en fútbol amateur;
-- dimensiones separadas antes de agregación global;
-- rol como contexto, no como sustituto de rendimiento;
-- GPS opcional;
-- pesos y signos justificados;
-- score reproducible y explicable;
-- validación contra referencia independiente cuando sea posible;
-- sensibilidad y ablations documentadas.
+N13000 es un recommendation gate: no emite recomendación táctica sin policy validada.
 
-No se usarán por defecto pesos iguales, PCA interpretado como calidad o una escala 0-100 sin justificación.
+### DS-5 — Match Rating
 
-## 4. Evidencia DS/ML ya obtenida
+Unidad: `player_match`.
+
+Requisitos cerrados:
+- disponible desde primer partido;
+- 590/590 apariciones jugadas valoradas en la temporada demo;
+- modelo posicional de campo cuando existe rol fiable;
+- ruta separada de portero;
+- fallback genérico cuando el rol no es fiable;
+- no inventar posición;
+- confidence/provenance;
+- no depender de GPS;
+- no depender de historia previa del club.
+
+Versión activa: `match_rating_v0.5-candidate`.
+
+### DS-6 — Performance Index
+
+Capa histórica/posicional complementaria.
+
+Versión actual: `performance_score_v0.2-experimental`.
+
+Puede apoyar lectura de evolución, forma, consistencia y contexto de rol, pero su estado experimental debe permanecer explícito.
+
+## 4. Evidencia DS/ML obtenida
 
 ### Change detection
-Resultado experimental útil pero sin threshold de despliegue.
+
+Resultado: señal experimental útil, sin threshold de despliegue defendible.
+
+Decisión: `NO_DEPLOY`.
 
 ### Player similarity
-Resultado exploratorio con estabilidad temporal insuficiente para producto.
 
-### Observed role classification
-Se auditó el target, se separó `Substitute`, se redujo la taxonomía a posiciones de fuente y se ejecutaron modelos leakage-safe hasta DSAI-10.
+Resultado: exploratorio, con estabilidad temporal insuficiente.
 
-DSAI-11 queda detenido por reorientación metodológica antes de usarlo como evidencia final. La clasificación de posición estaba ocupando demasiado peso respecto al objetivo principal del TFM.
+Decisión: `NO_DEPLOY`.
 
-La posición se conserva como contexto del rendimiento. El trabajo previo sigue siendo útil académicamente como demostración de target audit, leakage control, reformulación de labels y validación temporal.
+### Observed/source position classification
 
-## 5. PERF-01 — auditoría del score
+Se auditó el target, se separó `Substitute`, se reconstruyó una taxonomía de posición de fuente y se ejecutaron modelos leakage-safe.
 
-Antes de calcular un score se audita:
-- cobertura real de las FEATURE-01;
-- cobertura de dominios N4000-N7000;
-- disponibilidad de rol observado;
-- posibles anchors externos de validación en la fuente profesional;
-- direcciones/pesos todavía no validados.
+El experimento final demostró que un baseline futbolístico simple basado en la última posición observada del jugador (~89.4% accuracy en el benchmark de robustez documentado) superaba claramente al enfoque ML pre-match.
 
-Un rating externo de proveedor, si existe, solo puede usarse como referencia de validación o target experimental. No puede ser un input obligatorio del producto amateur.
+Decisión metodológica:
 
-## 6. Role / player fit
+```text
+POSITION / ROLE ML = CONTEXT ONLY / NO DEPLOY
+```
 
-No existe todavía un ground truth independiente de fit.
+Resultado académico relevante: no se fuerza ML cuando una regla simple y trazable funciona mejor.
 
-N12000 es evidencia descriptiva y N13000 es un gate. Ninguno puede convertirse en target del ML y luego utilizarse como validación independiente.
+## 5. Role / player fit
 
-Estado: `REFORMULATE_TARGET`.
+No existe ground truth independiente suficiente de fit.
 
-## 7. Expert vs ML
+N12000 es evidencia descriptiva y N13000 es un gate. Ninguno puede convertirse simultáneamente en target ML y referencia independiente de validación.
 
-Solo se puede comparar cuando ambos métodos resuelvan exactamente la misma tarea contra una referencia independiente común.
+Estado:
 
-N13000 no puede actuar simultáneamente como profesor del ML y como verdad de validación.
+```text
+REFORMULATE_TARGET / NO DEPLOY
+```
 
-Estado: `BLOCKED_SHARED_TARGET`.
+## 6. Expert vs ML
 
-## 8. Calibración de N13000
+Solo es válido comparar ambos cuando resuelven exactamente la misma tarea contra una referencia independiente común.
 
-La confianza de recomendación necesita outcomes o labels externos defendibles. No se derivará de una regla arbitraria ni del propio score interno.
+N13000 no puede actuar a la vez como profesor del ML y verdad de validación.
 
-Estado: `BLOCKED_GROUND_TRUTH`.
+Estado:
+
+```text
+BLOCKED_SHARED_TARGET
+```
+
+## 7. Calibración de recomendación
+
+La confianza/recomendación final requeriría outcomes o labels externos defendibles.
+
+No se deriva de una regla arbitraria ni del propio score interno.
+
+Estado:
+
+```text
+BLOCKED_GROUND_TRUTH
+```
+
+## 8. GPS
+
+GPS es opcional y descriptivo.
+
+La demo sintética sirve para validar el flujo técnico, no fisiología real.
+
+No se despliegan métricas de HSR, sprint, workload, fatiga, readiness o riesgo de lesión sin definición y validación específica.
+
+GPS sintético no alimenta Match Rating, Performance Index ni decisiones expertas.
 
 ## 9. Metodología de validación
 
@@ -166,36 +220,43 @@ Cuando no exista muestra, target o criterio suficiente, **no desplegar** es un r
 El LLM es una capa de interacción y explicación, no el núcleo científico.
 
 ```text
-DATA → ANALYTICS → DECISION ENGINE → STRUCTURED CONTEXT → LLM → COACH
+DATA
+→ ANALYTICS
+→ DECISION ENGINE
+→ STRUCTURED CONTEXT / READ-ONLY TOOLS
+→ LOCAL LLM
+→ SEMANTIC GUARD
+→ COACH
 ```
 
-Puede responder preguntas, explicar outputs, resumir evolución y redactar informes. No puede crear el performance score, inventar pesos ni sustituir validación DS/ML.
+MVP vigente:
+- castellano;
+- Ollama local;
+- `qwen3:1.7b`;
+- router determinista;
+- tools Python read-only;
+- semantic guard;
+- sin acceso directo del LLM a DuckDB.
 
-La arquitectura final local/cloud/híbrida se decide en `DG-LLM-01` más adelante.
+El LLM no crea Match Rating, Performance Index, features críticas ni decisiones expertas.
 
-## 11. Orden actual
+## 11. Orden académico actual
 
 ```text
-DATA / FEATURES / ANALYTICS ✓
+DATA / FEATURES / ANALYTICS          ✓
+EXPERT BASELINE                     ✓
+MATCH RATING V5                     ✓
+PERFORMANCE INDEX EXPERIMENTAL      ✓
+DS/ML EXPERIMENTS + NO-DEPLOY       ✓
+COACH COPILOT                       ✓
+REPORTS / PRODUCT                   ✓
+GLOBAL END-TO-END QA                ✓
         ↓
-EXPERT BASELINE ✓
+DOCUMENTATION / REPRODUCIBILITY     ← ACTUAL
         ↓
-DSAI-02..10 ✓
-DSAI-11 ATURADO / CONTEXT ONLY
+MEMORIA TFM
         ↓
-PERF-01 SCORE AUDIT ← ARA
-        ↓
-DIMENSION VALIDATION
-        ↓
-WEIGHT / TARGET VALIDATION
-        ↓
-PERFORMANCE SCORE
-        ↓
-PRODUCT UX
-        ↓
-REPORTS + ASSISTANT
-        ↓
-FINAL PRODUCT / TFM
+DEFENSA / DEMO
 ```
 
 ## 12. Criterio académico de éxito
@@ -205,9 +266,9 @@ El TFM debe poder defender:
 2. cómo se crean features leakage-safe;
 3. qué evidencia estadística se deriva;
 4. cómo funciona el sistema experto;
-5. cómo se define y valida el constructo de rendimiento;
-6. cómo se construye el score sin pesos arbitrarios;
-7. qué tareas DS/ML se consideraron, descartaron o reformularon y por qué;
-8. cómo se validan estabilidad, error, contexto y evolución;
+5. cómo se construye y valida Match Rating;
+6. por qué Performance Index se mantiene separado y experimental;
+7. qué tareas DS/ML se probaron y por qué algunas no se despliegan;
+8. cómo se controlan estabilidad, error, contexto y leakage;
 9. qué aporta la IA generativa y cuáles son sus límites;
-10. cómo todo ello llega a un producto usable por el entrenador.
+10. cómo todo ello llega a un producto usable y auditable.
