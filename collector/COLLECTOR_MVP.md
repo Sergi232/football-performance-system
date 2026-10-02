@@ -1,6 +1,10 @@
 # Data Collector MVP — contrato funcional
 
-Estado: **aceptado funcionalmente**. Los retoques visuales/UX quedan como mejora posterior y no bloquean GPS ni Feature Engine.
+Estado: **baseline funcional aceptada; cierre final COLLECTOR-01 reabierto para corregir contexto y UX**.
+
+La taxonomía de eventos `event_catalog v0.3.0` permanece cerrada. La revisión final no añade métricas nuevas: corrige discrepancias entre el contrato y la implementación, completa castellano y mejora el uso móvil.
+
+Auditoría vigente: [`COLLECTOR_UX_AUDIT.md`](COLLECTOR_UX_AUDIT.md).
 
 ## Objetivo
 
@@ -18,6 +22,12 @@ El Collector debe conservar:
 
 No se debe inferir automáticamente una formación que el usuario no haya indicado.
 
+En la revisión final se deben cerrar dos discrepancias de la implementación actual:
+
+- el dorsal existe por defecto pero debe poder editarse;
+- titular/suplente debe almacenarse explícitamente, no inferirse silenciosamente del minuto de entrada;
+- el rival debe existir como metadato estructurado además del nombre libre del partido.
+
 ## Flujo de interacción
 
 Prioridad: un clic por acción siempre que sea posible.
@@ -26,12 +36,12 @@ Prioridad: un clic por acción siempre que sea posible.
 
 Botones directos:
 
-- `Passada ✓` → `PASS | NORMAL | SUCCESS`
-- `Passada ✗` → `PASS | NORMAL | FAIL`
-- `Llarga ✓` → `PASS | LONG | SUCCESS`
-- `Llarga ✗` → `PASS | LONG | FAIL`
-- `Centre ✓` → `PASS | CROSS | SUCCESS`
-- `Centre ✗` → `PASS | CROSS | FAIL`
+- `Pase ✓` → `PASS | NORMAL | SUCCESS`
+- `Pase ✗` → `PASS | NORMAL | FAIL`
+- `Pase largo ✓` → `PASS | LONG | SUCCESS`
+- `Pase largo ✗` → `PASS | LONG | FAIL`
+- `Centro ✓` → `PASS | CROSS | SUCCESS`
+- `Centro ✗` → `PASS | CROSS | FAIL`
 
 Una pasada `LONG` o `CROSS` ya cuenta como pase total. No se registra además una `NORMAL`.
 
@@ -40,7 +50,7 @@ Dos marcadores contextuales pueden añadirse sin crear una segunda acción de pa
 - `key_pass=true`: pase que conduce directamente a un remate de un compañero antes de cambiar la posesión;
 - `assist=true`: último pase que conduce directamente a gol. Implica pase completado y `key_pass=true`.
 
-Para mantener pocos clics, la interfaz puede ofrecer `Passada clau` tras un remate y `Assistència` tras un gol, vinculando la última pasada válida.
+Para mantener pocos clics, la interfaz puede ofrecer `Pase clave` tras un remate y `Asistencia` tras un gol, vinculando la última pasada válida.
 
 ### Regate y pérdida
 
@@ -58,6 +68,8 @@ Un regate fallado ya genera pérdida derivada. `LOSS` se reserva para pérdidas 
 - `SHOT | BLOCKED`
 
 El poste se incluye en `OFF_TARGET` en el MVP. Cada resultado cuenta automáticamente como remate total.
+
+Como los outcomes son exclusivos, el agregado derivado `remates a puerta` debe contar `GOAL + ON_TARGET`.
 
 ### Defensa
 
@@ -87,7 +99,7 @@ Una expulsión por segunda amarilla se guarda como `CARD | RED` con `second_yell
 
 `player_id` identifica al jugador que gana o concede el penalti cuando se conoce. El evento `PENALTY` no suma por sí mismo un remate o gol al jugador, porque el lanzador puede ser otro. Cuando el lanzador propio se conoce, la interfaz puede crear automáticamente un `SHOT` enlazado para ese jugador.
 
-### Porter
+### Portero
 
 - `GK | SAVE`
 - `GK | GOAL_CONCEDED`
@@ -123,6 +135,7 @@ No se usa una categoría manual `CHANCE`, porque sería menos reproducible. El o
 - `PASS FAIL` genera pérdida `FAILED_PASS`.
 - `DRIBBLE FAIL` genera pérdida `FAILED_DRIBBLE`.
 - `SHOT` siempre suma a remate total.
+- `SHOT GOAL` y `SHOT ON_TARGET` suman al agregado derivado de remates a puerta.
 - `TACKLE SUCCESS` suma a tackle total y ganado.
 - `assist=true` implica `key_pass=true` y pase completado.
 - los agregados de equipo no se escriben manualmente si pueden derivarse de los eventos.
@@ -140,6 +153,15 @@ No se usa una categoría manual `CHANCE`, porque sería menos reproducible. El o
 - guardado JSON;
 - autosave local del navegador.
 
+La revisión final debe además:
+
+- dejar toda la interfaz visible en castellano;
+- hacer editable el dorsal;
+- guardar titular/suplente explícitamente;
+- estructurar el rival;
+- priorizar jugador activo + minuto + acciones en móvil;
+- mantener targets táctiles adecuados y reducir scroll innecesario.
+
 ## Variables que NO se capturan manualmente en el MVP
 
 - posesión;
@@ -153,9 +175,10 @@ No se usa una categoría manual `CHANCE`, porque sería menos reproducible. El o
 ## Archivos
 
 - `collector/event_catalog.json` — taxonomía v0.3.0.
-- `collector/data_collector_futbol_mvp.html` — implementación funcional aceptada.
+- `collector/data_collector_futbol_mvp.html` — implementación funcional baseline; pendiente de revisión final UX/contexto.
 - `collector/data_collector_futbol.html` — entrada principal que abre la versión MVP.
 - `collector/validate_collector_mvp.py` — validador standalone.
+- `collector/COLLECTOR_UX_AUDIT.md` — auditoría final UX/contrato.
 - `tests/test_collector_contract.py` — tests de contrato.
 
-La taxonomía MVP queda cerrada. Los cambios visuales posteriores no deben alterar el contrato de datos sin una decisión explícita.
+La taxonomía MVP queda cerrada. Los cambios visuales y de contexto final no deben alterar el contrato de eventos sin una decisión explícita.
