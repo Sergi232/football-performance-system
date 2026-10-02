@@ -1,6 +1,6 @@
 # PROJECT_STATE
 
-Última actualización: 01/10/2026
+Última actualización: 02/10/2026
 
 Memoria técnica operativa del proyecto. Si contradice un chat antiguo, prevalece este archivo junto con el código actual de `main`.
 
@@ -16,12 +16,11 @@ LLM-01                              PROTOTYPE v0.1 / CONTRATOS PASS
 LLM-02 LOCAL COACH COPILOT          CERRADO MVP / CASTELLANO / LIMITACIÓN MENOR DOCUMENTADA
 REPORTS-01                          PROTOTYPE v0.1 / CONTRATO PASS
 REPORTS-02 PROFESSIONAL PDF         BASELINE CERRADO / GATE TÉCNICO + VISUAL PASS
-REPORTS-03 ELITE TECHNICAL REPORTS  ACTIVO / RESEARCH + IMPLEMENTACIÓN HECHA / GATE PENDIENTE
+REPORTS-03 ELITE TECHNICAL REPORTS  CERRADO / V3 / GATE TÉCNICO + VISUAL PASS
 DASHBOARD-01                        CONTRACT PASS
 DASHBOARD PROFESSIONAL REDESIGN     IMPLEMENTADO
 UI-PRESENTATION-ES-DEMO             CONTRACT PASS / DEMO MASKING ACTIVO
 ACCESS-CONTROL-01                   CONTRACT PASS / AUTH REAL PENDIENTE
-PRODUCT-SPIRAL-01                   PREPARADO — UI/PDF SAFE AUTO-IMPROVEMENT + REGRESSION QA
 ARCHITECTURE-01                     CERRADO
 ANALYTICS-01                        CERRADO / VALIDADO
 DECISION POLICY / N13000            GATE APROBADO
@@ -72,7 +71,6 @@ Regla global: ninguna capa superior puede inventar métricas, scores, clasificac
 Unidad principal: jugador-partido.
 
 Collector funcional actual:
-
 - identificación: jugador, dorsal, rol/posición, titular/suplente, minutos;
 - pase: completada, no completada, pase clave, asistencia;
 - progresión: centro, pase largo;
@@ -125,19 +123,16 @@ staff_unauthorized_query_blocked=PASS
 restricted_without_assignment_fail_closed=PASS
 club_admin_scope=PASS
 
-REPORTS PROFESSIONAL GATE: PASS
-schema=0.5.0
-spanish=PASS
-anonymization=PASS
-materialized_match_summary=PASS
-critical_recalculation_guard=PASS
-Team / Player / Match generados
-human visual gate=PASS
-
-REPORTS-03 ELITE TECHNICAL GATE
+REPORTS ELITE TECHNICAL GATE V3: PASS
 schema=0.6.0
 report_metrics=report_descriptive_v0.1
-estado=PENDIENTE DE EJECUCIÓN LOCAL + GATE VISUAL
+spanish=PASS
+anonymization=PASS
+technical_context=PASS
+materialized_match_summary=PASS
+critical_recalculation_guard=PASS
+Team=3 páginas / Player=2 páginas / Match=2 páginas
+human visual gate=PASS
 
 ATTENTION FLAGS CONTRACT: PASS
 MATCH MODE CONTRACT: PASS
@@ -162,22 +157,11 @@ DuckDB local
 
 El LLM no accede directamente a DuckDB y no calcula Match Rating, Performance Index, features críticas ni decisiones expertas.
 
-Gate final ES:
-
-```text
-router=17/17 = 100%
-full aggregate=66/68 = 97.1%
-runtime errors=0
-safety failures=0
-numeric grounding=PASS
-Spanish language=PASS
-subject contract=PASS
-latencia media <=12s=PASS
-```
+Gate final ES: router 17/17; full aggregate 66/68 = 97.1%; runtime errors=0; safety failures=0; numeric grounding PASS; castellano PASS; subject contract PASS; latencia media <=12s PASS.
 
 Limitación menor aceptada: 2/68 casos challenge incumplieron el límite formal de frases. No reabrir LLM-02 salvo error funcional grave.
 
-Capacidades NO validadas: ranking por rol, similitud de jugadores, predicción futura, XI ideal, recomendaciones tácticas automáticas, fatiga/readiness/riesgo de lesión.
+No validados: ranking por rol, similitud de jugadores, predicción futura, XI ideal, recomendaciones tácticas automáticas, fatiga/readiness/riesgo de lesión.
 
 ## UI / demo / anonimización
 
@@ -196,8 +180,6 @@ La UI principal está en castellano: Home, Equipo, Jugador, Partido, Performance
 
 ## ACCESS-CONTROL-01
 
-Arquitectura preparada para producto multi-tenant:
-
 ```text
 SUPERADMIN  → todos los equipos
 CLUB_ADMIN  → equipos autorizados del club
@@ -210,40 +192,23 @@ Autenticación real email/contraseña/sesiones NO implementada todavía. Está s
 
 La base demo actual contiene un solo equipo, por lo que el contrato multi-equipo se valida estructuralmente, no mediante una demo visual con varios clubes.
 
-## REPORTS-02 — BASELINE CERRADO
+## REPORTS-03 — ELITE TECHNICAL REPORTS — CERRADO
 
-Objetivo aprobado: informes técnicos profesionales independientes para el cuerpo técnico. No son una captura de la web ni un volcado de tablas.
+Objetivo: informes realmente utilizables por cuerpo técnico, inspirados en patrones públicos de Opta/Stats Perform, Wyscout, StatsBomb, UEFA y reporting de performance, sin copiar métricas/fórmulas propietarias.
 
-Baseline validada:
-- schema `0.5.0`;
-- castellano y anonimización;
-- Team 3 páginas, Player 2, Match 2;
-- gate automático y visual PASS.
+Investigación: `docs/REPORT_DESIGN_RESEARCH.md`.
 
-Se conserva como referencia estable y fallback de la fase anterior.
-
-## REPORTS-03 — ELITE TECHNICAL REPORTS — ACTIVO
-
-Motivo de reapertura: elevar el producto desde un informe profesional correcto a un informe diseñado explícitamente según flujos y preferencias documentadas de cuerpos técnicos.
-
-Investigación documentada en `docs/REPORT_DESIGN_RESEARCH.md` con referencias públicas a:
-- Opta / Stats Perform ProVision;
-- Hudl Wyscout Reports;
-- Hudl StatsBomb;
-- UEFA Technical Reports / Performance Insights;
-- Catapult para reporting físico;
-- estudios de practitioners sobre KPI y visualización.
-
-Principios adoptados:
+Principios cerrados:
 - cambio temporal antes que ranking;
-- raw / transparent metrics junto al Match Rating;
-- línea para evolución, cuadrante para plantilla, barras/tablas para comparación y trazabilidad;
-- KPI contextualizados por posición;
-- no crear rojo/verde como juicio bueno/malo para deltas descriptivos;
+- métricas transparentes junto al Match Rating;
+- líneas para evolución, cuadrante para plantilla, barras/tablas para comparación y trazabilidad;
+- KPI contextualizados por posición cuando la fuente lo permite;
+- deltas descriptivos sin etiquetar automáticamente bueno/malo;
 - no inventar xG, posesión, pressures, pass networks, heatmaps o tracking sin datos válidos;
-- Match Report compara solo con 5 partidos anteriores, nunca futuros.
+- Match Report compara solo con 5 partidos anteriores, nunca futuros;
+- el PDF no recalcula Match Rating, Performance Index ni decisiones expertas.
 
-Nueva capa descriptiva:
+Capa activa:
 
 ```text
 reports/report_data_access.py
@@ -252,13 +217,13 @@ reports/report_metrics.py
 → report_descriptive_v0.1
 → last match / last 5 / previous 5
 → per90 ponderado por minutos para jugador
-→ comparación de Match solo contra 5 partidos anteriores
+→ Match solo contra 5 partidos anteriores
 reports/data_builder.py
 → schema 0.6.0
-reports/pdf_engine_elite.py
-→ renderer REPORTS-03
+reports/pdf_engine_elite_v3.py
+→ renderer final staff-facing
 reports/pdf_engine_es.py
-→ wrapper de app apuntando al renderer elite
+→ wrapper usado por la app, apunta a V3
 ```
 
 Métricas incorporadas cuando existen:
@@ -270,17 +235,18 @@ Métricas incorporadas cuando existen:
 - pérdidas;
 - desposesiones;
 - player per90 para producción individual;
-- Match Rating/confianza/dimensiones ya materializados;
+- Match Rating/confianza/dimensiones materializados;
 - Performance Index complementario;
 - motor experto y cobertura.
 
-Pendiente para cerrar REPORTS-03:
-1. `py_compile` de la nueva capa;
-2. `validate_reports_pro.py` con schema 0.6.0;
-3. generar Team / Player / Match;
-4. gate visual humano con exigencia de staff profesional;
-5. corregir solo problemas demostrados;
-6. cerrar y volver a Collector.
+Diseño final validado:
+- Team: 3 páginas — resumen/evolución; pulso técnico + mapa de plantilla + claves de revisión; seguimiento + partidos recientes + límites.
+- Player: 2 páginas — resumen/trayectoria + claves específicas de revisión; dimensiones + perfil técnico reciente + producción + trazabilidad.
+- Match: 2 páginas — lectura rápida + huella técnica vs 5 previos; distribución de ratings + ficha + dimensiones + calidad de evidencia.
+
+V3 añade narrativa determinista de revisión, no diagnóstico causal. En portero evita presentar métricas no disponibles como si existieran y explicita límites de interpretación de la distribución.
+
+REPORTS-03 queda congelado. No reabrir salvo error funcional, dato incorrecto o nueva evidencia/variable validada que justifique una mejora sustantiva.
 
 ## Producto actual
 
@@ -288,13 +254,13 @@ Pendiente para cerrar REPORTS-03:
 Último partido, brief operativo, forma, tendencias, cambios 5-vs-5, ratings, calidad de datos y navegación.
 
 ### Jugador
-Match Rating V5, confianza, perfil, Performance Index, dimensiones, evolución, técnico, motor experto, partidos y PDF profesional.
+Match Rating V5, confianza, perfil, Performance Index, dimensiones, evolución, técnico, motor experto, partidos y PDF V3.
 
 ### Equipo
-Match Rating V5, forma, mapa de plantilla, tendencias, participación, Performance Index, historial y PDF profesional.
+Match Rating V5, forma, mapa de plantilla, tendencias, participación, Performance Index, historial y PDF V3.
 
 ### Partido
-Ratings V5, confianza, roles, minutos, dimensiones, observaciones deterministas y PDF profesional.
+Ratings V5, confianza, roles, minutos, dimensiones, observaciones deterministas y PDF V3.
 
 ### Físico / GPS
 Capa opcional descriptiva. La base local no contiene suficientes observaciones GPS reales para una demo completa.
@@ -302,7 +268,7 @@ Capa opcional descriptiva. La base local no contiene suficientes observaciones G
 ### Alertas
 Solo estados auditables de contexto/calidad.
 
-## Collector — siguiente fase tras REPORTS-03
+## Collector — FASE ACTIVA
 
 Funcionalmente cerrado; falta producto/UX.
 
@@ -324,7 +290,8 @@ Pendiente:
 - control de acceso separado de autenticación;
 - PDFs consumen analytics materializados y no recalculan métricas críticas;
 - PDF final = informe técnico profesional independiente, no reproducción literal de la web;
-- REPORTS-03 añade solo agregados descriptivos transparentes y versionados.
+- REPORTS-03 añade solo agregados descriptivos transparentes y versionados;
+- REPORTS-03 V3 validado técnico + visual y congelado.
 
 ## Decisiones descartadas / aplazadas
 
@@ -341,7 +308,6 @@ Pendiente:
 
 ## Problemas abiertos
 
-- REPORTS-03 gate técnico + visual;
 - Collector UX / castellano / móvil;
 - demo GPS con datos reales o ejemplo claramente etiquetado;
 - autenticación real para producto comercial;
@@ -351,8 +317,9 @@ Pendiente:
 
 ## Siguiente paso exacto
 
-1. ejecutar gate local REPORTS-03 (`py_compile` + `validate_reports_pro.py`);
-2. revisar visualmente Team / Player / Match nuevos;
-3. cerrar REPORTS-03 si PASS;
-4. entrar en **COLLECTOR UX / castellano / móvil**;
-5. después demo GPS → QA global → documentación final TFM.
+1. revisar el HTML/collector actual sin cambiar su semántica;
+2. cerrar UX de captura en castellano y mobile-first;
+3. validar reducción de clics/fricción;
+4. después demo GPS;
+5. QA global;
+6. documentación final TFM.
