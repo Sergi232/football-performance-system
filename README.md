@@ -19,7 +19,8 @@ El núcleo analítico principal está construido y validado. La fase activa es *
 Estado resumido:
 
 - Data Layer DuckDB con unidad principal `player_match`;
-- Data Collector HTML funcional, pendiente de simplificación UX, castellano completo y mobile-first;
+- Data Collector HTML V1.1 cerrado y oficial, en castellano, responsive, con dorsal editable, titular/suplente explícito, rival estructurado y gate final PASS;
+- taxonomía del Collector `event_catalog v0.3.0` preservada sin cambios;
 - normalización GPS multi-proveedor validada estructuralmente;
 - GPS demo sintético canónico validado, explícitamente etiquetado y subordinado a GPS real;
 - resumen físico descriptivo `gps_physical_summary_v0.1-descriptive` validado;
@@ -44,6 +45,8 @@ Documentación clave:
 - [`docs/DECISIONS.md`](docs/DECISIONS.md) — decisiones estructurales;
 - [`docs/DATA_SCIENCE_AI_STRATEGY.md`](docs/DATA_SCIENCE_AI_STRATEGY.md) — estrategia académica DS/IA;
 - [`dsai/README.md`](dsai/README.md) — experimentación DS/ML;
+- [`collector/COLLECTOR_MVP.md`](collector/COLLECTOR_MVP.md) — contrato y estado V1.1 del Collector;
+- [`collector/COLLECTOR_UX_AUDIT.md`](collector/COLLECTOR_UX_AUDIT.md) — auditoría de cierre del Collector;
 - [`product/README.md`](product/README.md) — Product Spiral;
 - [`publication/README.md`](publication/README.md) — publicación y datos demo.
 
@@ -68,6 +71,51 @@ AI ASSISTANT       PDF
 ```
 
 Regla arquitectónica principal: **una capa superior no puede inventar cálculos, métricas, scores, clasificaciones o recomendaciones que no existan en una capa inferior validada**.
+
+## Data Collector V1.1
+
+La entrada oficial es:
+
+```text
+collector/data_collector_futbol.html
+→ collector/data_collector_futbol_v1.html
+```
+
+El Collector registra eventos observables y contexto de partido; no calcula métricas avanzadas. La taxonomía vigente es `event_catalog v0.3.0`.
+
+Funciones cerradas en V1.1:
+
+- partido, equipo, rival, fecha y formación;
+- jugador, dorsal editable, titular/suplente, entrada/salida y minutos;
+- rol, lado y cambios de rol;
+- pase normal/largo/centro con éxito/fallo;
+- pase clave y asistencia como qualifiers;
+- regates y pérdidas;
+- remates con outcomes exclusivos y `A puerta = GOAL + ON_TARGET`;
+- entradas, intercepciones, bloqueos y despejes;
+- faltas con captura x/y;
+- tarjetas y segunda amarilla;
+- penaltis ganados/concedidos;
+- córners y resultado de ABP;
+- portero: parada y gol encajado;
+- autosave, undo, CSV de eventos, CSV resumen y JSON;
+- interfaz visible en castellano;
+- layout responsive y targets táctiles;
+- controles dinámicos con `id`, `name` y labels asociados.
+
+Gate final confirmado:
+
+```text
+COLLECTOR V1.1 FINAL GATE: PASS
+starter_minutes_consistency_guard=PASS
+shots_on_target_goal_plus_on_target=PASS
+responsive_metadata_access=PASS
+mobile_touch_targets=PASS
+dynamic_form_ids_names_labels=PASS
+event_taxonomy_unchanged=PASS
+official_entrypoint=PASS
+4 collector contract tests: PASS
+```
 
 ## Rendimiento
 
@@ -221,7 +269,7 @@ insight-first, audit-detail second
 
 La interfaz debe responder primero qué necesita entender el entrenador y permitir después profundizar en métricas, tablas, dimensiones, provenance y calidad de datos.
 
-El dashboard profesional está operativo. El trabajo de producto pendiente se concentra principalmente en el Data Collector y en el QA final end-to-end.
+El dashboard profesional está operativo y el Data Collector V1.1 está cerrado. El trabajo de producto pendiente se concentra ahora en el **QA/regresión global end-to-end**, documentación final y reproducibilidad de la demo.
 
 ## Informes PDF
 
@@ -326,6 +374,7 @@ streamlit run app\streamlit_app.py
 Según el módulo afectado:
 
 ```powershell
+python collector\validate_collector_v1.py
 python app\validate_dashboard.py
 python app\validate_ui_compatibility.py
 python app\validate_attention_flags.py
@@ -375,13 +424,12 @@ El núcleo analítico no se reconstruye salvo incidencia concreta o evidencia nu
 
 Orden de cierre actual:
 
-1. finalizar Data Collector: UX + castellano + mobile-first;
-2. QA/regresión global end-to-end;
-3. cerrar documentación del TFM: hipótesis, metodología, experimentos, resultados, limitaciones y conclusiones;
-4. asegurar instalación/demo reproducible;
-5. validar con entrenadores/analistas reales si es viable;
-6. preparar defensa y demo final;
-7. solo si queda margen, añadir Power BI o una sección comercial como complementos opcionales.
+1. QA/regresión global end-to-end: Collector/import → DuckDB → features → analytics → expert system → dashboard → asistente → PDF;
+2. cerrar documentación del TFM: hipótesis, metodología, experimentos, resultados, limitaciones y conclusiones;
+3. asegurar instalación/demo reproducible;
+4. validar con entrenadores/analistas reales si es viable;
+5. preparar defensa y demo final;
+6. solo si queda margen, añadir Power BI o una sección comercial como complementos opcionales.
 
 Criterio de cierre:
 
