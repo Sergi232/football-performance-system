@@ -23,6 +23,12 @@ from app.data_access import (
     list_base_features,
     list_teams,
 )
+from app.gps_physical_access import (
+    PHYSICAL_SUMMARY_VERSION,
+    get_match_gps_summary,
+    get_player_gps_history,
+    get_team_gps_match_coverage,
+)
 from app.match_insights import get_match_observations
 from app.match_rating_access import (
     MATCH_RATING_VERSION,
@@ -49,7 +55,8 @@ from reports.report_metrics import (
     build_team_technical_profile,
 )
 
-REPORT_SCHEMA_VERSION = "0.6.0"
+REPORT_SCHEMA_VERSION = "0.7.0"
+GPS_SYNTHETIC_PROVIDER = "FPS Synthetic Demo"
 
 
 def _clean(value: Any) -> Any:
@@ -97,6 +104,25 @@ def _guardrails() -> dict[str, bool]:
         "cross_player_ranking_allowed": False,
         "report_may_recalculate_critical_metrics": False,
         "report_may_issue_tactical_recommendation": False,
+    }
+
+
+def _gps_meta(*frames: pd.DataFrame) -> dict[str, Any]:
+    providers: set[str] = set()
+    available = False
+    for frame in frames:
+        if frame is None or frame.empty:
+            continue
+        available = True
+        if "provider" in frame.columns:
+            providers.update(str(v) for v in frame["provider"].dropna().astype(str).tolist() if str(v).strip())
+    ordered = sorted(providers)
+    return {
+        "available": available,
+        "summary_version": PHYSICAL_SUMMARY_VERSION,
+        "providers": ordered,
+        "contains_synthetic_demo": GPS_SYNTHETIC_PROVIDER in providers,
+        "all_synthetic_demo": bool(providers) and providers == {GPS_SYNTHETIC_PROVIDER},
     }
 
 
@@ -177,6 +203,24 @@ def build_team_report_data(db_path: Path, team_id: str) -> dict[str, Any]:
         rating_snapshot = pd.DataFrame()
         rating_history = pd.DataFrame()
 
+    try:
+        gps_coverage_raw = get_team_gps_match_coverage(db_path, team_id)
+        gps_coverage = _anon(gps_coverage_raw, ctx)
+        latest_match_id = None
+        if not ctx["matches"].empty:
+            latest_row = ctx["matches"].sort_values("match_date", ascending=False).iloc[0]
+            latest_match_id = str(latest_row["match_id"])
+        gps_latest_raw = get_match_gps_summary(db_path, team_id, latest_match_id) if latest_match_id else pd.DataFrame()
+        gps_latest = _anon(gps_latest_raw, ctx)
+        gps = {
+            **_gps_meta(gps_latest_raw),
+            "latest_match_id": latest_match_id,
+            "coverage": _records(gps_coverage, 15),
+            "latest_match_players": _records(gps_latest),
+        }
+    except Exception:
+        gps = {**_gps_meta(), "latest_match_id": None, "coverage": [], "latest_match_players": []}
+
     payload = {
         "report_type": "team",
         "schema_version": REPORT_SCHEMA_VERSION,
@@ -195,6 +239,7 @@ def build_team_report_data(db_path: Path, team_id: str) -> dict[str, Any]:
         "rating_history": _records(rating_history),
         "technical_history": _records(technical_history),
         "technical_profile": _clean_nested(technical_profile),
+        "gps": gps,
         "guardrails": _guardrails(),
     }
     return _finalize_payload(payload, ctx)
@@ -228,6 +273,18 @@ def build_player_report_data(db_path: Path, team_id: str, player_id: str) -> dic
     except Exception:
         latest_index = None
         index_history = pd.DataFrame()
+
+    try:
+        gps_history_raw = get_player_gps_history(db_path, team_id, player_id)
+        gps_history = _anon(gps_history_raw.sort_values("match_date", ascending=False), ctx) if not gps_history_raw.empty else pd.DataFrame()
+        latest_gps = None if gps_history.empty else _records(gps_history, 1)[0]
+        gps = {
+            **_gps_meta(gps_history_raw),
+            "latest": latest_gps,
+            "history": _records(gps_history, 15),
+        }
+    except Exception:
+        gps = {**_gps_meta(), "latest": None, "history": []}
 
     available = set(list_base_features(db_path, player_id))
     preferred = [
@@ -265,6 +322,7 @@ def build_player_report_data(db_path: Path, team_id: str, player_id: str) -> dic
         "latest_role_fit_gate": None if gate is None else {k: _clean(v) for k, v in gate.items()},
         "feature_history": feature_history,
         "technical_profile": _clean_nested(technical_profile),
+        "gps": gps,
         "guardrails": _guardrails(),
     }
     return _finalize_payload(payload, ctx)
@@ -290,6 +348,16 @@ def build_match_report_data(db_path: Path, team_id: str, match_id: str) -> dict[
         match_summary = None if selected_summary.empty else _records(selected_summary, 1)[0]
     except Exception:
         match_summary = None
+
+    try:
+        gps_match_raw = get_match_gps_summary(db_path, team_id, match_id)
+        gps_match = _anon(gps_match_raw, ctx)
+        gps = {
+            **_gps_meta(gps_match_raw),
+            "players": _records(gps_match),
+        }
+    except Exception:
+        gps = {**_gps_meta(), "players": []}
 
     if not ratings.empty:
         merge_cols = [
@@ -317,6 +385,7 @@ def build_match_report_data(db_path: Path, team_id: str, match_id: str) -> dict[
         "ratings": _records(ratings),
         "observations": observations,
         "technical_profile": _clean_nested(technical_profile),
+        "gps": gps,
         "guardrails": _guardrails(),
     }
     return _finalize_payload(payload, ctx)
