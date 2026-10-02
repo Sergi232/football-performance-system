@@ -103,7 +103,7 @@ def _player_review_lines(payload: dict[str, Any]) -> list[str]:
         return [
             f"Distribución reciente: precisión {_value_text(pase, 'last5')} vs {_value_text(pase, 'previous5')} ({_delta_text(pase, 'delta_5v5')}).",
             f"Pases completados / 90: {_value_text(completados, 'last5')} vs {_value_text(completados, 'previous5')} ({_delta_text(completados, 'delta_5v5')}).",
-            "El dataset no distingue longitud, riesgo ni objetivo del pase; usar vídeo antes de interpretar la calidad de la distribución.",
+            "El conjunto de datos no distingue longitud, riesgo ni objetivo del pase; usar vídeo antes de interpretar la calidad de la distribución.",
         ]
     selected = base._player_metric_selection(profile, group)
     lines = []
