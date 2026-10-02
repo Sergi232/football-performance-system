@@ -14,14 +14,16 @@ if str(ROOT) not in sys.path:
 os.environ.setdefault("FPS_DEMO_MODE", "1")
 
 from app.data_access import get_squad_summary, get_team_matches, list_teams  # noqa: E402
+from app.gps_physical_access import PHYSICAL_SUMMARY_VERSION  # noqa: E402
 from app.presentation import demo_mode  # noqa: E402
 from reports.data_builder import build_match_report_data, build_player_report_data, build_team_report_data  # noqa: E402
-from reports.pdf_engine_elite_v5 import render_pdf_bytes  # noqa: E402
+from reports.pdf_engine_elite_v6 import render_pdf_bytes  # noqa: E402
 from reports.report_metrics import REPORT_METRIC_VERSION  # noqa: E402
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 OUTPUT_DIR = ROOT / "reports" / "output" / "professional_demo"
-EXPECTED_SCHEMA = "0.6.0"
+EXPECTED_SCHEMA = "0.7.0"
+SYNTHETIC_PROVIDER = "FPS Synthetic Demo"
 
 
 def _slug(value: str) -> str:
@@ -84,6 +86,45 @@ def _assert_team_pulse_v5(payload: dict) -> None:
             raise AssertionError(f"team technical profile missing V5 fields: {sorted(missing)}")
 
 
+def _assert_gps(payload: dict) -> None:
+    gps = payload.get("gps") or {}
+    if gps.get("available") is not True:
+        raise AssertionError(f"{payload.get('report_type')}: GPS should be available in validated demo DB")
+    if gps.get("summary_version") != PHYSICAL_SUMMARY_VERSION:
+        raise AssertionError(f"{payload.get('report_type')}: unexpected GPS summary version")
+    providers = set(gps.get("providers") or [])
+    if SYNTHETIC_PROVIDER not in providers:
+        raise AssertionError(f"{payload.get('report_type')}: synthetic GPS provenance missing")
+    if gps.get("contains_synthetic_demo") is not True:
+        raise AssertionError(f"{payload.get('report_type')}: synthetic GPS flag missing")
+
+    report_type = payload.get("report_type")
+    if report_type == "team":
+        rows = gps.get("latest_match_players") or []
+        if not rows or not (gps.get("coverage") or []):
+            raise AssertionError("team: GPS latest-match rows or coverage missing")
+    elif report_type == "player":
+        rows = gps.get("history") or []
+        if not rows or gps.get("latest") is None:
+            raise AssertionError("player: GPS history/latest missing")
+    else:
+        rows = gps.get("players") or []
+        if not rows:
+            raise AssertionError("match: GPS player rows missing")
+
+    for row in rows:
+        if "minutes_played" not in row or "effective_role" not in row:
+            raise AssertionError(f"{report_type}: GPS row lacks minutes/role context")
+        for key in ("total_distance_m", "peak_speed_m_s", "max_acceleration_m_s2", "min_acceleration_m_s2"):
+            if key not in row:
+                raise AssertionError(f"{report_type}: GPS row missing {key}")
+
+    forbidden = ("fatigue", "readiness", "injury_risk", "hsr", "sprint_zone", "workload_score")
+    serialized = json.dumps(gps, ensure_ascii=False, default=str).lower()
+    if any(term in serialized for term in forbidden):
+        raise AssertionError(f"{report_type}: unsupported physical interpretation leaked into GPS payload")
+
+
 def main() -> None:
     if not demo_mode():
         raise SystemExit("REPORTS-PRO: FAIL - FPS_DEMO_MODE must be enabled")
@@ -116,6 +157,7 @@ def main() -> None:
 
     for payload in payloads:
         _guardrails(payload)
+        _assert_gps(payload)
         if payload.get("language") != "es":
             raise AssertionError("Report payload language must be es")
         if payload.get("demo_mode") is not True:
@@ -142,9 +184,10 @@ def main() -> None:
         _write(f"match_professional_{_slug(match_payload['match']['opponent'])}.pdf", match_payload),
     ]
 
-    print("REPORTS ELITE TECHNICAL GATE V5")
+    print("REPORTS ELITE TECHNICAL GATE V6")
     print(f"schema={EXPECTED_SCHEMA}")
     print(f"report_metrics={REPORT_METRIC_VERSION}")
+    print(f"gps_summary={PHYSICAL_SUMMARY_VERSION}")
     print(f"team={team_payload['team']['display_name']}")
     print(f"player={player_payload['summary']['player']}")
     print(f"opponent={match_payload['match']['opponent']}")
@@ -152,11 +195,15 @@ def main() -> None:
     print("anonymization=PASS")
     print("technical_context=PASS")
     print("team_last10_all_context=PASS")
+    print("physical_gps_context=PASS")
+    print("synthetic_demo_label=PASS")
+    print("minutes_role_context=PASS")
+    print("unsupported_physical_claims_guard=PASS")
     print("materialized_match_summary=PASS")
     print("critical_recalculation_guard=PASS")
     for path, size in outputs:
         print(f"PDF: {path} ({size} bytes)")
-    print("REPORTS ELITE TECHNICAL GATE V5: PASS")
+    print("REPORTS ELITE TECHNICAL GATE V6: PASS")
 
 
 if __name__ == "__main__":
