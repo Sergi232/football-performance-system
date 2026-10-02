@@ -166,31 +166,48 @@ try {
     python .\collector\validate_collector_v1.py
     if ($LASTEXITCODE -ne 0) { throw 'validate_collector_v1.py ha fallado.' }
 
-    python -m pytest .\tests\test_collector_contract.py -q
-    if ($LASTEXITCODE -ne 0) { throw 'test_collector_contract.py ha fallado.' }
+    python -c "import pytest" 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        python -m pytest .\tests\test_collector_contract.py -q
+        if ($LASTEXITCODE -ne 0) { throw 'test_collector_contract.py ha fallado con pytest.' }
+    }
+    else {
+        Write-Host 'pytest no está instalado; ejecutando los tests de contrato con el runner Python estándar.'
+        $fallback = @'
+import importlib.util
+from pathlib import Path
+
+path = Path("tests/test_collector_contract.py")
+spec = importlib.util.spec_from_file_location("test_collector_contract", path)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+tests = [getattr(module, name) for name in sorted(dir(module)) if name.startswith("test_") and callable(getattr(module, name))]
+for test in tests:
+    test()
+print(f"{len(tests)} collector contract tests: PASS")
+'@
+        $fallback | python -
+        if ($LASTEXITCODE -ne 0) { throw 'test_collector_contract.py ha fallado con el runner estándar.' }
+    }
 
     git diff --check
     if ($LASTEXITCODE -ne 0) { throw 'git diff --check ha fallado.' }
 
-    $paths = @(
-        'collector/data_collector_futbol_v1.html',
-        'collector/data_collector_futbol.html',
-        'collector/validate_collector_v1.py',
-        'tests/test_collector_contract.py'
-    )
-    git add -- $paths
+    git add -- collector/data_collector_futbol_v1.html collector/data_collector_futbol.html collector/validate_collector_v1.py tests/test_collector_contract.py
     git diff --cached --quiet
     if ($LASTEXITCODE -eq 0) {
-        Write-Host 'No hay cambios nuevos que commitear; los gates han pasado.'
+        Write-Host 'No hay cambios nuevos del Collector para confirmar.'
     }
     else {
-        git commit -m 'Close Collector V1.1 UX mobile and accessibility'
+        git commit -m "Finalize Collector V1.1"
         if ($LASTEXITCODE -ne 0) { throw 'git commit ha fallado.' }
         git push origin main
         if ($LASTEXITCODE -ne 0) { throw 'git push ha fallado.' }
-        Write-Host ''
-        Write-Host 'COLLECTOR V1.1: cambios validados, commit creadо y push completado.'
     }
+
+    Write-Host ''
+    Write-Host 'COLLECTOR-01 IMPLEMENTACIÓN FINAL: PASS'
+    git status --short
 }
 finally {
     Pop-Location
