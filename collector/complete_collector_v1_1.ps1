@@ -27,6 +27,21 @@ print(f"{len(tests)} collector contract tests: PASS")
     $fallback | python -
     if ($LASTEXITCODE -ne 0) { throw 'test_collector_contract.py ha fallado.' }
 
+    # Normaliza el final de los archivos generados por PowerShell: una sola nueva línea al EOF.
+    $normalizePaths = @(
+        '.\collector\data_collector_futbol_v1.html',
+        '.\collector\data_collector_futbol.html',
+        '.\collector\validate_collector_v1.py',
+        '.\tests\test_collector_contract.py'
+    )
+    foreach ($path in $normalizePaths) {
+        if (Test-Path $path) {
+            $text = Get-Content $path -Raw -Encoding UTF8
+            $text = $text.TrimEnd([char[]]"`r`n")
+            Set-Content -Path $path -Value $text -Encoding UTF8
+        }
+    }
+
     git diff --check
     if ($LASTEXITCODE -ne 0) { throw 'git diff --check ha fallado.' }
 
