@@ -86,8 +86,8 @@ def _targets(minutes: float, role: str, rng: random.Random) -> dict[str, float]:
     intensity = _clip(rng.normalvariate(1.0, 0.06), 0.84, 1.16)
     distance_m = prior["distance90"] * exposure * intensity
 
-    # Peak speed depends less on minutes than volume but short appearances have fewer
-    # opportunities to reach an individual maximum.
+    # Peak speed depends less on minutes than volume, but shorter appearances have
+    # fewer opportunities to reach a maximum.
     opportunity = 0.86 + 0.14 * min(1.0, minutes / 60.0)
     peak_kmh = prior["peak_kmh"] * opportunity * _clip(rng.normalvariate(1.0, 0.035), 0.91, 1.09)
     peak_kmh = _clip(peak_kmh, 20.0 if role == "GK" else 24.0, 36.5)
@@ -128,8 +128,7 @@ def _samples(
     accel_idx = rng.randrange(1, len(timestamps))
     decel_idx = rng.randrange(1, len(timestamps))
 
-    out: list[tuple[int, float, float, float, int]] = []
-    out.append((0, 0.0, 0.0, 0.0, 1))
+    out: list[tuple[int, float, float, float, int]] = [(0, 0.0, 0.0, 0.0, 1)]
     for idx in range(1, len(timestamps)):
         dt = max(1, timestamps[idx] - timestamps[idx - 1])
         distance = distances[idx - 1]
@@ -195,9 +194,67 @@ def generate(
         if not appearances:
             raise RuntimeError("No player-match appearances with minutes_played > 0")
 
+        by_match: dict[str, list[tuple]] = {}
+        for row in appearances:
+            by_match.setdefault(str(row[0]), []).append(row)
+
+        import_rows = []
+        for match_id in by_match:
+            import_rows.append((
+                _import_id(match_id),
+                match_id,
+                PROVIDER,
+                f"synthetic_demo_{match_id}.generated",
+                GENERATOR_VERSION,
+                SOURCE_FORMAT,
+                1.0 / sample_seconds,
+                "PLAYER_EXPOSURE_ZERO_SYNTHETIC",
+                "NONE",
+                "delta",
+                json.dumps({"distance": "m", "speed": "m/s", "acceleration": "m/s2"}),
+                json.dumps({
+                    "synthetic_demo": True,
+                    "generator_version": GENERATOR_VERSION,
+                    "seed": seed,
+                    "sample_seconds": sample_seconds,
+                    "rule": "role_and_minutes_conditioned_demo_priors",
+                }),
+                "SYNTHETIC DEMO ONLY. Not observed athlete data; generated to exercise the canonical GPS pipeline.",
+            ))
+
+        map_rows: list[tuple] = []
+        all_observations: list[tuple] = []
+        for match_id, rows in by_match.items():
+            gps_import_id = _import_id(match_id)
+            for _, _, player_id, minutes, role_raw, player_name, _ in rows:
+                role = _role_group(role_raw)
+                source_key = f"synthetic:{player_id}"
+                map_rows.append((gps_import_id, source_key, player_name, player_id, "SYNTHETIC_DEMO_EXACT", 1.0))
+                for timestamp_ms, distance_m, speed_m_s, acceleration_m_s2, source_row_number in _samples(
+                    match_id=match_id,
+                    player_id=str(player_id),
+                    minutes=float(minutes),
+                    role=role,
+                    seed=seed,
+                    sample_seconds=sample_seconds,
+                ):
+                    all_observations.append((
+                        gps_import_id,
+                        match_id,
+                        player_id,
+                        timestamp_ms,
+                        None,
+                        None,
+                        distance_m,
+                        speed_m_s,
+                        acceleration_m_s2,
+                        source_row_number,
+                        None,
+                    ))
+
         con.execute("BEGIN TRANSACTION")
         try:
-            # Idempotent and safe: delete only rows created by this synthetic provider.
+            # Idempotent and safe: remove only rows from this synthetic demo provider.
             old_ids = [r[0] for r in con.execute(
                 "SELECT gps_import_id FROM gps_imports WHERE provider=? AND source_format=?",
                 [PROVIDER, SOURCE_FORMAT],
@@ -208,77 +265,8 @@ def generate(
                 con.execute(f"DELETE FROM gps_player_map WHERE gps_import_id IN ({placeholders})", old_ids)
                 con.execute(f"DELETE FROM gps_imports WHERE gps_import_id IN ({placeholders})", old_ids)
 
-            by_match: dict[str, list[tuple]] = {}
-            for row in appearances:
-                by_match.setdefault(str(row[0]), []).append(row)
-
-            import_rows = []
-            map_rows = []
-            observation_count = 0
-
-            for match_id, rows in by_match.items():
-                gps_import_id = _import_id(match_id)
-                import_rows.append((
-                    gps_import_id,
-                    match_id,
-                    PROVIDER,
-                    f"synthetic_demo_{match_id}.generated",
-                    GENERATOR_VERSION,
-                    SOURCE_FORMAT,
-                    1.0 / sample_seconds,
-                    "PLAYER_EXPOSURE_ZERO_SYNTHETIC",
-                    "NONE",
-                    "delta",
-                    json.dumps({"distance": "m", "speed": "m/s", "acceleration": "m/s2"}),
-                    json.dumps({
-                        "synthetic_demo": True,
-                        "generator_version": GENERATOR_VERSION,
-                        "seed": seed,
-                        "sample_seconds": sample_seconds,
-                        "rule": "role_and_minutes_conditioned_demo_priors",
-                    }),
-                    "SYNTHETIC DEMO ONLY. Not observed athlete data; generated to exercise the canonical GPS pipeline.",
-                ))
-
-                obs_rows = []
-                for _, _, player_id, minutes, role_raw, player_name, _ in rows:
-                    role = _role_group(role_raw)
-                    source_key = f"synthetic:{player_id}"
-                    map_rows.append((gps_import_id, source_key, player_name, player_id, "SYNTHETIC_DEMO_EXACT", 1.0))
-                    for timestamp_ms, distance_m, speed_m_s, acceleration_m_s2, source_row_number in _samples(
-                        match_id=match_id,
-                        player_id=str(player_id),
-                        minutes=float(minutes),
-                        role=role,
-                        seed=seed,
-                        sample_seconds=sample_seconds,
-                    ):
-                        obs_rows.append((
-                            gps_import_id,
-                            match_id,
-                            player_id,
-                            timestamp_ms,
-                            None,
-                            None,
-                            distance_m,
-                            speed_m_s,
-                            acceleration_m_s2,
-                            source_row_number,
-                            None,
-                        ))
-
-                con.executemany(
-                    """
-                    INSERT INTO gps_observations(
-                        gps_import_id, match_id, player_id, timestamp_ms,
-                        x, y, distance_m, speed_m_s, acceleration_m_s2,
-                        source_row_number, quality_flags
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    obs_rows,
-                )
-                observation_count += len(obs_rows)
-
+            # Parent rows must exist before mappings and observations because both
+            # canonical child tables reference gps_imports.
             con.executemany(
                 """
                 INSERT INTO gps_imports(
@@ -298,6 +286,16 @@ def generate(
                 """,
                 map_rows,
             )
+            con.executemany(
+                """
+                INSERT INTO gps_observations(
+                    gps_import_id, match_id, player_id, timestamp_ms,
+                    x, y, distance_m, speed_m_s, acceleration_m_s2,
+                    source_row_number, quality_flags
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                all_observations,
+            )
             con.execute("COMMIT")
         except Exception:
             con.execute("ROLLBACK")
@@ -306,9 +304,9 @@ def generate(
     physical = materialize(db_path)
     return {
         "appearances": len(appearances),
-        "imports": len(by_match),
+        "imports": len(import_rows),
         "player_maps": len(map_rows),
-        "observations": observation_count,
+        "observations": len(all_observations),
         "summary_rows": int(physical["summary_rows"]),
         "latest_rows": int(physical["latest_rows"]),
     }
