@@ -16,7 +16,7 @@ os.environ.setdefault("FPS_DEMO_MODE", "1")
 from app.data_access import get_squad_summary, get_team_matches, list_teams  # noqa: E402
 from app.presentation import demo_mode  # noqa: E402
 from reports.data_builder import build_match_report_data, build_player_report_data, build_team_report_data  # noqa: E402
-from reports.pdf_engine_elite_v2 import render_pdf_bytes  # noqa: E402
+from reports.pdf_engine_elite_v3 import render_pdf_bytes  # noqa: E402
 from reports.report_metrics import REPORT_METRIC_VERSION  # noqa: E402
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
@@ -132,7 +132,7 @@ def main() -> None:
         _write(f"match_professional_{_slug(match_payload['match']['opponent'])}.pdf", match_payload),
     ]
 
-    print("REPORTS ELITE TECHNICAL GATE")
+    print("REPORTS ELITE TECHNICAL GATE V3")
     print(f"schema={EXPECTED_SCHEMA}")
     print(f"report_metrics={REPORT_METRIC_VERSION}")
     print(f"team={team_payload['team']['display_name']}")
@@ -145,7 +145,7 @@ def main() -> None:
     print("critical_recalculation_guard=PASS")
     for path, size in outputs:
         print(f"PDF: {path} ({size} bytes)")
-    print("REPORTS ELITE TECHNICAL GATE: PASS")
+    print("REPORTS ELITE TECHNICAL GATE V3: PASS")
 
 
 if __name__ == "__main__":
