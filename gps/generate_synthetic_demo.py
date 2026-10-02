@@ -33,7 +33,7 @@ from analytics.build_gps_physical_summary import materialize  # noqa: E402
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 MIGRATION = ROOT / "data" / "migrations" / "004_gps_normalization.sql"
-GENERATOR_VERSION = "gps_synthetic_demo_v1.1"
+GENERATOR_VERSION = "gps_synthetic_demo_v1.1.1"
 PROVIDER = "FPS Synthetic Demo"
 SOURCE_FORMAT = "synthetic_demo"
 
@@ -262,21 +262,30 @@ def generate(
                         None,
                     ))
 
-        con.execute("BEGIN TRANSACTION")
-        try:
-            # Idempotent and safe: remove only rows from this synthetic demo provider.
-            old_ids = [r[0] for r in con.execute(
-                "SELECT gps_import_id FROM gps_imports WHERE provider=? AND source_format=?",
-                [PROVIDER, SOURCE_FORMAT],
-            ).fetchall()]
-            if old_ids:
-                placeholders = ",".join("?" for _ in old_ids)
+        # DuckDB FK indexes may reject deleting a parent in the same transaction
+        # where its children were deleted. Commit synthetic child cleanup first.
+        old_ids = [r[0] for r in con.execute(
+            "SELECT gps_import_id FROM gps_imports WHERE provider=? AND source_format=?",
+            [PROVIDER, SOURCE_FORMAT],
+        ).fetchall()]
+        if old_ids:
+            placeholders = ",".join("?" for _ in old_ids)
+            con.execute("BEGIN TRANSACTION")
+            try:
                 con.execute(f"DELETE FROM gps_observations WHERE gps_import_id IN ({placeholders})", old_ids)
                 con.execute(f"DELETE FROM gps_player_map WHERE gps_import_id IN ({placeholders})", old_ids)
+                con.execute("COMMIT")
+            except Exception:
+                con.execute("ROLLBACK")
+                raise
+
+        # Parent cleanup and replacement happen only after child deletion is committed.
+        con.execute("BEGIN TRANSACTION")
+        try:
+            if old_ids:
+                placeholders = ",".join("?" for _ in old_ids)
                 con.execute(f"DELETE FROM gps_imports WHERE gps_import_id IN ({placeholders})", old_ids)
 
-            # Parent rows must exist before mappings and observations because both
-            # canonical child tables reference gps_imports.
             con.executemany(
                 """
                 INSERT INTO gps_imports(
