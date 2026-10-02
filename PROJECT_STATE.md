@@ -11,13 +11,14 @@ DATA-01/02/03/04                    CERRADO / VALIDADO
 COLLECTOR-01 MVP                    CERRADO FUNCIONALMENTE / UX+ES+MÓVIL PENDIENTE
 GPS-01 NORMALIZATION                CERRADO / VALIDADO ESTRUCTURALMENTE
 GPS-DEMO SYNTHETIC                  CERRADO / VALIDADO EN DUCKDB
+GPS PHYSICAL SUMMARY                CERRADO / VALIDADO / REAL > SYNTHETIC
 FEATURE-01/02/03                    CERRADO / VALIDADO
 EXPERT-01..07 N1000-N13000          BASELINE CERRADO / VALIDADO
 LLM-01                              PROTOTYPE v0.1 / CONTRATOS PASS
 LLM-02 LOCAL COACH COPILOT          CERRADO MVP / CASTELLANO / LIMITACIÓN MENOR DOCUMENTADA
 REPORTS-01                          PROTOTYPE v0.1 / CONTRATO PASS
 REPORTS-02 PROFESSIONAL PDF         BASELINE CERRADO / GATE TÉCNICO + VISUAL PASS
-REPORTS-03 ELITE TECHNICAL REPORTS  CERRADO / V5 / GATE TÉCNICO + VISUAL PASS
+REPORTS-03 ELITE TECHNICAL REPORTS  CERRADO / V6 / GPS INTEGRADO / GATE PASS
 DASHBOARD-01                        CONTRACT PASS
 DASHBOARD PROFESSIONAL REDESIGN     IMPLEMENTADO
 UI-PRESENTATION-ES-DEMO             CONTRACT PASS / DEMO MASKING ACTIVO
@@ -98,7 +99,8 @@ archivo proveedor / generador demo
 → player_match_gps_summary
 → app/gps_physical_access.py
 → dashboard Físico / GPS
-→ reports (integración física pendiente)
+→ reports/data_builder.py
+→ PDF Team / Player / Match V6
 ```
 
 Demo sintética activa:
@@ -121,22 +123,31 @@ La demo es determinista y sirve exclusivamente para demostrar el producto cuando
 Condicionamiento validado:
 - minutos jugados: sí;
 - rol/posición cuando la fuente lo permite: sí;
-- correlación minutos-distancia observada en la demo: 0.9225;
+- correlación minutos-distancia: 0.9225;
 - rango distancia respecto al prior rol+minutos: 0.840..1.148;
 - duplicados de muestras: 0;
 - duplicados de resúmenes latest: 0;
 - procedencia sintética explícita: PASS.
 
-Familias físicas demo:
-`GK`, `CB`, `FB`, `CM`, `AM_W`, `ST`, `OTHER`.
+Familias físicas demo: `GK`, `CB`, `FB`, `CM`, `AM_W`, `ST`, `OTHER`.
 
 Cobertura posicional:
 - 482/590 apariciones (81.7%) tienen rol resoluble desde `primary_role` o `default_position`;
-- 108/590 (18.3%) no tienen posición recuperable: tanto `primary_role` como `default_position` indican `Substitute`;
-- esas 108 apariciones permanecen en `OTHER` y usan un prior genérico de demo;
-- no se les asigna una posición específica inventada ni se debe interpretar su valor como comparación posicional.
+- 108/590 (18.3%) no tienen posición recuperable: `primary_role` y `default_position` indican `Substitute`;
+- esas 108 apariciones permanecen en `OTHER` y usan prior genérico de demo;
+- no se les asigna una posición específica inventada ni se interpreta su valor como comparación posicional.
 
-No se han introducido umbrales de HSR, sprint, workload, fatiga, readiness o riesgo de lesión.
+Precedencia de fuentes cerrada y validada:
+
+```text
+GPS REAL / proveedor observado
+→ siempre prioridad sobre GPS sintético para el mismo jugador-partido
+→ imported_at solo desempata dentro de la misma clase de fuente
+```
+
+`gps/validate_physical_summary.py` incluye fixture explícito con GPS real antiguo + sintético más reciente y exige que el real quede seleccionado.
+
+No se han introducido umbrales de HSR, sprint, workload, fatiga, readiness/disponibilidad física o riesgo de lesión.
 
 GPS no modifica Match Rating, Performance Index ni decisiones del sistema experto.
 
@@ -170,6 +181,7 @@ GPS SYNTHETIC DEMO CONTRACT: PASS
 generator_version=gps_synthetic_demo_v1.2.0
 canonical_flow=PASS
 player_match_linkage=PASS
+source_precedence=REAL_OVER_SYNTHETIC
 duplicate_samples=0
 duplicate_latest_summaries=0
 
@@ -178,6 +190,30 @@ scope=INTERNAL_DEMO_COHERENCE_NOT_PHYSIOLOGICAL_VALIDATION
 minutes_conditioning=PASS
 role_conditioning=PASS
 synthetic_provenance=PASS
+
+GPS PHYSICAL SUMMARY CONTRACT: PASS
+summary_version=gps_physical_summary_v0.1-descriptive
+source_precedence_fixture=REAL_OVER_SYNTHETIC:PASS
+db_gps_observations=38197
+db_summary_rows=590
+db_latest_rows=590
+
+REPORTS ELITE TECHNICAL GATE V6: PASS
+schema=0.7.0
+report_metrics=report_descriptive_v0.2
+gps_summary=gps_physical_summary_v0.1-descriptive
+spanish=PASS
+anonymization=PASS
+technical_context=PASS
+team_last10_all_context=PASS
+physical_gps_context=PASS
+synthetic_demo_label=PASS
+minutes_role_context=PASS
+gps_latest_match_alignment=PASS
+gps_role_localization=PASS
+unsupported_physical_claims_guard=PASS
+materialized_match_summary=PASS
+critical_recalculation_guard=PASS
 
 DEMO PRESENTATION: PASS
 team=Equipo Demo
@@ -191,15 +227,6 @@ staff_single_team=PASS
 staff_unauthorized_query_blocked=PASS
 restricted_without_assignment_fail_closed=PASS
 club_admin_scope=PASS
-
-REPORTS ELITE TECHNICAL GATE V5: PASS
-schema=0.6.0
-report_metrics=report_descriptive_v0.2
-spanish=PASS
-anonymization=PASS
-technical_context=PASS
-materialized_match_summary=PASS
-critical_recalculation_guard=PASS
 
 ATTENTION FLAGS CONTRACT: PASS
 MATCH MODE CONTRACT: PASS
@@ -245,6 +272,8 @@ IDs, datos, Match Rating, Performance Index y motor experto permanecen intactos.
 
 La UI principal está en castellano: Home, Equipo, Jugador, Partido, Performance Index, Físico/GPS, Calidad y alertas, Asistente IA.
 
+La página Físico/GPS etiqueta explícitamente `DATOS DEMO · GPS sintético` cuando corresponde y no presenta la demo como observación real.
+
 ## ACCESS-CONTROL-01
 
 ```text
@@ -259,9 +288,9 @@ Autenticación real email/contraseña/sesiones NO implementada todavía. Está s
 
 La base demo actual contiene un solo equipo, por lo que el contrato multi-equipo se valida estructuralmente, no mediante una demo visual con varios clubes.
 
-## REPORTS-03 — ELITE TECHNICAL REPORTS — CERRADO BASELINE
+## REPORTS-03 — ELITE TECHNICAL REPORTS — CERRADO V6
 
-Los informes son técnicos y staff-facing; no son una captura literal de la web.
+Los informes son técnicos para el cuerpo técnico; no son una captura literal de la web.
 
 Capa activa:
 
@@ -271,11 +300,13 @@ reports/report_data_access.py
 reports/report_metrics.py
 → report_descriptive_v0.2
 reports/data_builder.py
-→ schema 0.6.0
-reports/pdf_engine_elite_v5.py
-→ renderer activo
+→ schema 0.7.0 + contexto GPS read-only
+reports/pdf_engine_elite_v6.py
+→ renderer activo Team / Player / Match
 reports/pdf_engine_es.py
 → wrapper usado por la app
+reports/validate_reports_pro.py
+→ gate V6
 ```
 
 Principios cerrados:
@@ -284,11 +315,20 @@ Principios cerrados:
 - deltas descriptivos sin etiquetar automáticamente bueno/malo;
 - no inventar xG, posesión, pressures, pass networks, heatmaps o tracking sin datos válidos;
 - Match Report compara solo con historia anterior, nunca futura;
-- el PDF no recalcula Match Rating, Performance Index ni decisiones expertas.
+- el PDF no recalcula Match Rating, Performance Index ni decisiones expertas;
+- GPS es descriptivo, downstream y opcional;
+- GPS sintético se etiqueta explícitamente como `DATOS DEMO`;
+- el rol contextual GPS no sustituye el rol analítico del Match Rating;
+- ninguna métrica GPS emite claims de fatiga, disponibilidad física, lesión o calidad del jugador.
 
-V5 incorpora pulso Team `Último / Últimos 10 / Todos / Δ 10 vs todos` y claves deterministas de revisión técnica.
+V6 conserva el pulso Team `Último / Últimos 10 / Todos / Δ 10 vs todos`, añade GPS descriptivo a los tres informes y `Claves para la revisión física` deterministas.
 
-La extensión física GPS todavía NO está conectada a los PDFs.
+Validación final local:
+- Team PDF: 4 páginas;
+- Player PDF: 3 páginas;
+- Match PDF: 3 páginas;
+- gate técnico V6: PASS;
+- revisión visual realizada sin clipping, solapamientos graves ni tablas fuera de página.
 
 ## Producto actual
 
@@ -296,16 +336,16 @@ La extensión física GPS todavía NO está conectada a los PDFs.
 Último partido, brief operativo, forma, tendencias, cambios, ratings, calidad de datos y navegación.
 
 ### Jugador
-Match Rating V5, confianza, perfil, Performance Index, dimensiones, evolución, técnico, motor experto, partidos y PDF V5.
+Match Rating V5, confianza, perfil, Performance Index, dimensiones, evolución, técnico, motor experto, partidos, GPS descriptivo y PDF V6.
 
 ### Equipo
-Match Rating V5, forma, mapa de plantilla, tendencias, participación, Performance Index, historial y PDF V5.
+Match Rating V5, forma, mapa de plantilla, tendencias, participación, Performance Index, historial, GPS descriptivo y PDF V6.
 
 ### Partido
-Ratings V5, confianza, roles, minutos, dimensiones, observaciones deterministas y PDF V5.
+Ratings V5, confianza, roles, minutos, dimensiones, observaciones deterministas, GPS descriptivo y PDF V6.
 
 ### Físico / GPS
-Capa opcional descriptiva operativa. La demo sintética canónica está disponible y explícitamente etiquetada como no observada.
+Capa opcional descriptiva operativa. Demo sintética canónica disponible, explícitamente etiquetada como no observada y subordinada a GPS real.
 
 ### Alertas
 Solo estados auditables de contexto/calidad.
@@ -330,8 +370,10 @@ Funcionalmente cerrado; falta:
 - control de acceso separado de autenticación;
 - PDFs consumen analytics materializados y no recalculan métricas críticas;
 - GPS real y GPS demo comparten la capa canónica normalizada;
+- GPS real tiene precedencia sobre demo sintética para un mismo jugador-partido;
 - demo GPS sintética condicionada por minutos y rol cuando el rol está disponible;
 - no inferir una posición de partido cuando la fuente solo informa `Substitute`;
+- rol contextual GPS y rol analítico Match Rating son contratos distintos;
 - GPS sintético no alimenta Match Rating, Performance Index ni decisiones expertas;
 - PDF final = informe técnico profesional independiente, no reproducción literal de la web.
 
@@ -350,21 +392,18 @@ Funcionalmente cerrado; falta:
 
 ## Problemas abiertos
 
-- integrar la capa física GPS descriptiva en PDF Team / Player / Match;
-- mantener etiqueta explícita de GPS sintético en demo;
-- no convertir GPS descriptivo en claims de fatiga/readiness/lesión;
 - Collector UX / castellano / móvil;
+- QA global final end-to-end del producto;
 - autenticación real para producto comercial;
-- QA global final;
-- documentación final del TFM;
-- derechos/licencia antes de despliegue público.
+- documentación final del TFM y README de entrega;
+- derechos/licencia antes de despliegue público;
+- validación futura con GPS real si se dispone de un proveedor/dataset autorizado.
 
 ## Siguiente paso exacto
 
-1. conectar `player_match_gps_summary` a `reports/data_builder.py` mediante acceso read-only;
-2. añadir bloques físicos descriptivos a Team / Player / Match PDF V5;
-3. añadir `Claves para la revisión física` deterministas y trazables;
-4. etiquetar claramente `GPS sintético / DATOS DEMO` cuando el proveedor sea `FPS Synthetic Demo`;
-5. no introducir fatiga, readiness, riesgo de lesión, HSR o sprint thresholds;
-6. extender `reports/validate_reports_pro.py` y pasar gate técnico;
-7. después retomar Collector UX y QA global.
+1. retomar `COLLECTOR-01` y hacer la revisión final UX del HTML actual sin cambiar la semántica aprobada;
+2. dejar toda la interfaz del collector en castellano;
+3. reducir clics y mejorar uso mobile-first para captura durante 90 minutos;
+4. validar que la salida siga encajando exactamente con el esquema jugador-partido actual;
+5. después ejecutar QA global end-to-end: collector/import → DuckDB → features → analytics → expert → dashboard → asistente → PDF;
+6. cerrar documentación final (`README.md`, arquitectura, instalación, demo y limitaciones) para entrega del TFM.
