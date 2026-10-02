@@ -1,20 +1,28 @@
 # Data layer
 
-La capa `data/` es la fuente estructurada del Football Performance System.
+Fecha de sincronización: 03/10/2026
+
+La capa `data/` es la base estructurada del Football Performance System.
 
 ## Objetivo
 
 Convertir diferentes fuentes de entrada en un esquema común y reproducible sin mezclar datos brutos con métricas derivadas.
 
-Fuentes previstas:
+Fuentes actuales/previstas:
 
 ```text
-Data Collector
+Data Collector first-party
 PannaData / Opta (desarrollo y validación)
-GPS normalizado
+GPS normalizado opcional
 ```
 
-Salida común:
+Unidad analítica principal:
+
+```text
+player_match = jugador + partido
+```
+
+Tablas/capas principales del producto:
 
 ```text
 teams
@@ -24,24 +32,30 @@ team_match
 player_match
 player_role_stints
 match_events
-gps_*
+gps_imports
+gps_player_map
+gps_observations
 player_match_features
+player_match_gps_summary
 decision_results
+player_match_rating
 ```
 
-## Esquema
+## Principios
 
-El esquema inicial está definido en `data/schema.sql`.
+- raw y derived permanecen separados;
+- imports reproducibles e idempotentes;
+- ausencia y ambigüedad se preservan;
+- ningún mapping obligatorio se resuelve mediante suposición silenciosa;
+- ninguna capa analítica depende de nombres reales;
+- IDs/provenance se mantienen para auditoría;
+- datos profesionales de desarrollo no se redistribuyen automáticamente.
 
-Versión actual:
+## Taxonomía de eventos
 
-```text
-0.1.0
-```
+La tabla central de acciones es `match_events`.
 
-La tabla central de acciones es `match_events` y la unidad analítica principal es `player_match` (jugador + partido).
-
-La taxonomía de eventos se almacena mediante:
+Contrato lógico:
 
 ```text
 action_type
@@ -50,80 +64,98 @@ outcome
 qualifiers
 ```
 
-No se codifica cada acción como una columna distinta. Esto permite cerrar posteriormente córners, faltas peligrosas o ABP sin rediseñar la base completa.
-
-## Caso demostrador
+La taxonomía first-party oficial está versionada en:
 
 ```text
-Deportivo Alavés — LaLiga 2025/26
-Opta team id: 4dtdjgnpdq9uw4sdutti0vaar
+collector/event_catalog.json
+catalog_version=0.3.0
 ```
 
-Los datos originales son locales y no se publican en el repositorio.
+El Collector V1.1 ya consume/preserva esta taxonomía.
 
-## Pipeline acumulativo
+## Caso demostrador local
 
-### Stage 1 — esquema + auditoría + fixtures
+El desarrollo y la validación se han realizado sobre una temporada profesional completa usada como demostrador técnico.
 
-Desde la raíz del repositorio:
+Cobertura validada:
+
+```text
+matches=38
+played player-match appearances=590
+squad players=36
+```
+
+Los datos originales permanecen locales y no se publican en el repositorio.
+
+## Pipeline de importación
+
+### DATA-01 — esquema / fixtures
 
 ```bash
 python data/run_stage1.py
 ```
 
-Ejecuta:
+Responsabilidad:
+- inicializar/actualizar DuckDB;
+- auditar fuentes;
+- localizar los partidos objetivo;
+- cargar `teams`, `matches`, `team_match`;
+- validar integridad y duplicados.
 
-```text
-init_database.py
-→ audit_pannadata_sources.py
-→ import_demo_fixtures.py
-→ validate_demo_database.py
-```
-
-Contrato:
-
-- inicializa/actualiza DuckDB;
-- audita nombres y tipos reales de los Parquet;
-- localiza los partidos del Alavés por ID Opta;
-- limita el caso a 2025/26;
-- aborta por defecto si no obtiene exactamente 38 partidos;
-- carga `teams`, `matches` y `team_match` de forma idempotente;
-- valida duplicados e integridad básica.
-
-### Stage 2A — jugadores y participación
-
-La orden acumulativa recomendada es:
+### DATA-02 — jugadores / player_match / roles
 
 ```bash
 python data/run_stage2.py
 ```
 
-`run_stage2.py` vuelve a ejecutar Stage 1 de forma idempotente y después ejecuta:
+Responsabilidad:
+- cargar jugadores y participación;
+- minutos;
+- titularidad cuando existe;
+- posición/rol observado;
+- alineaciones/formación cuando la fuente lo permite;
+- `player_role_stints`;
+- mantener ambigüedad si la fuente solo informa `Substitute`.
+
+### DATA-03 — eventos
+
+Los eventos externos se normalizan al contrato del Collector:
 
 ```text
-opta_player_stats.parquet
-→ import_demo_player_match.py
-→ players
-→ player_match
-→ validate_demo_database.py
+source event
+→ match_events
+→ action_type + subtype + outcome + qualifiers
 ```
 
-Contrato de Stage 2A:
+Se preserva `source_event_id` para trazabilidad y deduplicación.
 
-- utiliza únicamente los 38 `source_match_id` validados en Stage 1;
-- filtra explícitamente por el `source_team_id` del Alavés;
-- requiere identificadores de partido, equipo, jugador y minutos;
-- aborta ante duplicados jugador-partido;
-- rechaza minutos negativos o superiores a 130;
-- carga nombre, posición, titularidad y dorsal cuando la fuente los contiene;
-- no inventa titularidad/posición cuando no están disponibles;
-- exige cobertura de `player_match` en los 38 partidos una vez existen filas.
+Incluye las familias necesarias del MVP: pase, progresión, 1v1, remate, defensa, faltas, tarjetas, penalti, portero y ABP/córner cuando la fuente permite reconstruirlos.
+
+### DATA-04 — materialización / validación final
+
+La base local actual alimenta Feature Engine, Analytics, Match Rating, sistema experto, GPS, dashboard, Assistant y Reports.
+
+Validación global de DB actual:
+
+```text
+demo_team_exists=PASS
+matches=38
+distinct_matches=38
+duplicate_source_match_ids=0
+missing_opponents=0
+missing_source_match_ids=0
+player_match_rows_present=PASS
+match_event_rows_present=PASS
+player_match_fixture_coverage=38
+invalid_minutes=0
+orphan_match_events=0
+duplicate_source_events=0
+Validation status: PASS
+```
 
 ## Política fail-fast de mappings
 
-Los importadores intentan resolver variantes habituales de nombres de columna, pero una columna obligatoria no resuelta provoca un error que muestra las columnas reales de la fuente.
-
-Esto es deliberado:
+Los importadores pueden resolver variantes conocidas de nombres de columna, pero una columna obligatoria no resuelta provoca error y muestra las columnas reales.
 
 ```text
 campo desconocido → STOP + diagnóstico
@@ -135,13 +167,23 @@ Nunca:
 campo desconocido → suposición silenciosa
 ```
 
-La auditoría completa queda en:
+## GPS
+
+GPS entra por una capa canónica separada:
 
 ```text
-data/source_schema_audit.json
+archivo proveedor / demo sintética
+→ gps_imports
+→ gps_player_map
+→ gps_observations
+→ player_match_gps_summary
 ```
 
+GPS es opcional y no modifica los datos técnicos raw ni el Match Rating.
+
 ## Archivos locales excluidos de Git
+
+Entre otros:
 
 ```text
 data/football_performance.duckdb
@@ -150,60 +192,25 @@ data/validation_report.json
 *.parquet
 ```
 
-Se puede indicar otra ubicación:
+Puede indicarse otra ubicación mediante argumentos de los runners o `FPS_DB_PATH` en las capas que lo soportan.
 
-```bash
-python data/run_stage2.py --input-dir C:/ruta/pannadata --db C:/ruta/football_performance.duckdb
+## Publicación
+
+La base real/de desarrollo no se considera redistribuible por defecto.
+
+La anonimización elimina identidad, pero **no concede derechos de redistribución**.
+
+El contrato de publicación local se valida con:
+
+```powershell
+python publication\validate_public_demo.py --source <db_origen> --output <db_demo>
 ```
 
-## Siguiente etapa — lineups y roles
-
-Después de validar Stage 2A se incorporará `opta_lineups.parquet` para completar de forma verificable:
+Estado actual:
 
 ```text
-titularidad
-formación inicial
-posición/rol
-cambios de rol/posición si la fuente lo permite
+PUBLICATION-01 ANONYMIZED DEMO CONTRACT: PASS
+REDISTRIBUTION STATUS: NOT CLEARED
 ```
 
-Salida:
-
-```text
-player_match (enriquecido)
-player_role_stints
-team_match.starting_formation
-```
-
-## Eventos
-
-Después se mapeará `opta_events` al catálogo versionado del Collector:
-
-```text
-PannaData/Opta event
-→ match_events
-→ action_type + subtype + outcome + qualifiers
-```
-
-Se preservará `source_event_id` para trazabilidad y deduplicación.
-
-## Tiros y penaltis
-
-`opta_shot_events` / `opta_shots` se usarán para resolver explícitamente:
-
-- remates a portería;
-- bloqueos;
-- goles;
-- penaltis y resultado;
-- qualifiers necesarios.
-
-No se inferirá un resultado crítico si la fuente no permite reconstruirlo de forma verificable.
-
-## Principios de esta capa
-
-- datos originales y derivados separados;
-- imports reproducibles e idempotentes;
-- ninguna dependencia de nombres reales en las capas analíticas;
-- no publicar copias completas de PannaData/Opta;
-- anonimizar el demostrador antes de incorporarlo al repositorio público;
-- validar cada etapa antes de habilitar la siguiente.
+El paquete público final deberá usar un dataset sintético reproducible o un dataset abierto con licencia compatible si la licencia de la fuente profesional no permite redistribución.
