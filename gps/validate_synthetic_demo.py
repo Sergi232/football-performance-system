@@ -143,7 +143,7 @@ def validate(db_path: Path) -> dict[str, int]:
             """
             SELECT COUNT(*)
             FROM player_match_gps_summary
-            WHERE summary_version=? AND import_rank=1 AND provider=?
+            WHERE summary_version=? AND provider=?
             """,
             [SUMMARY_VERSION, PROVIDER],
         ).fetchone()[0])
@@ -151,6 +151,21 @@ def validate(db_path: Path) -> dict[str, int]:
             raise AssertionError(
                 f"Synthetic mappings/summary mismatch: mappings={mapped_appearances}, summary={summary_rows}"
             )
+
+        duplicate_synthetic = int(con.execute(
+            """
+            SELECT COUNT(*) FROM (
+                SELECT match_id, player_id, COUNT(*) n
+                FROM player_match_gps_summary
+                WHERE summary_version=? AND provider=?
+                GROUP BY match_id, player_id
+                HAVING COUNT(*) > 1
+            )
+            """,
+            [SUMMARY_VERSION, PROVIDER],
+        ).fetchone()[0])
+        if duplicate_synthetic:
+            raise AssertionError(f"Duplicate synthetic GPS summaries: {duplicate_synthetic}")
 
         duplicate_latest = int(con.execute(
             """
@@ -167,12 +182,33 @@ def validate(db_path: Path) -> dict[str, int]:
         if duplicate_latest:
             raise AssertionError(f"Duplicate latest GPS summaries: {duplicate_latest}")
 
+        synthetic_over_real = int(con.execute(
+            """
+            SELECT COUNT(*)
+            FROM player_match_gps_summary s
+            WHERE s.summary_version=?
+              AND s.provider=?
+              AND s.import_rank=1
+              AND EXISTS (
+                    SELECT 1
+                    FROM player_match_gps_summary r
+                    WHERE r.summary_version=s.summary_version
+                      AND r.match_id=s.match_id
+                      AND r.player_id=s.player_id
+                      AND r.provider<>?
+              )
+            """,
+            [SUMMARY_VERSION, PROVIDER, PROVIDER],
+        ).fetchone()[0])
+        if synthetic_over_real:
+            raise AssertionError(f"Synthetic GPS incorrectly outranks real GPS: {synthetic_over_real}")
+
         distance_bounds = con.execute(
             """
             SELECT MIN(total_distance_m), MAX(total_distance_m),
                    MIN(peak_speed_m_s*3.6), MAX(peak_speed_m_s*3.6)
             FROM player_match_gps_summary
-            WHERE summary_version=? AND import_rank=1 AND provider=?
+            WHERE summary_version=? AND provider=?
             """,
             [SUMMARY_VERSION, PROVIDER],
         ).fetchone()
@@ -203,6 +239,7 @@ def main() -> None:
     print("provenance=SYNTHETIC_DEMO_EXPLICIT")
     print("canonical_flow=PASS")
     print("player_match_linkage=PASS")
+    print("source_precedence=REAL_OVER_SYNTHETIC")
     print("duplicate_samples=0")
     print("duplicate_latest_summaries=0")
     for key, value in result.items():
