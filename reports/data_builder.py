@@ -206,20 +206,34 @@ def build_team_report_data(db_path: Path, team_id: str) -> dict[str, Any]:
     try:
         gps_coverage_raw = get_team_gps_match_coverage(db_path, team_id)
         gps_coverage = _anon(gps_coverage_raw, ctx)
+        gps_available_raw = (
+            gps_coverage_raw.loc[pd.to_numeric(gps_coverage_raw["gps_players"], errors="coerce").fillna(0) > 0]
+            .sort_values(["match_date", "match_id"], ascending=[False, False])
+            if not gps_coverage_raw.empty else pd.DataFrame()
+        )
         latest_match_id = None
-        if not ctx["matches"].empty:
-            latest_row = ctx["matches"].sort_values("match_date", ascending=False).iloc[0]
-            latest_match_id = str(latest_row["match_id"])
+        latest_gps_coverage_raw = pd.DataFrame()
+        if not gps_available_raw.empty:
+            latest_match_id = str(gps_available_raw.iloc[0]["match_id"])
+            latest_gps_coverage_raw = gps_available_raw.head(1)
         gps_latest_raw = get_match_gps_summary(db_path, team_id, latest_match_id) if latest_match_id else pd.DataFrame()
         gps_latest = _anon(gps_latest_raw, ctx)
+        latest_gps_coverage = _anon(latest_gps_coverage_raw, ctx) if not latest_gps_coverage_raw.empty else pd.DataFrame()
         gps = {
             **_gps_meta(gps_latest_raw),
             "latest_match_id": latest_match_id,
             "coverage": _records(gps_coverage, 15),
+            "latest_match_coverage": _records(latest_gps_coverage, 1),
             "latest_match_players": _records(gps_latest),
         }
     except Exception:
-        gps = {**_gps_meta(), "latest_match_id": None, "coverage": [], "latest_match_players": []}
+        gps = {
+            **_gps_meta(),
+            "latest_match_id": None,
+            "coverage": [],
+            "latest_match_coverage": [],
+            "latest_match_players": [],
+        }
 
     payload = {
         "report_type": "team",
