@@ -140,7 +140,7 @@ def _player_gps_page(payload: dict[str, Any], styles, width: float) -> list[Any]
     story: list[Any] = [PageBreak()]
     story += ui._section(
         "GPS · Perfil físico",
-        f"Evolución descriptiva de {name}. Comparar siempre con minutos y rol del propio jugador.",
+        f"Evolución descriptiva de {name}. Se muestran hasta 10 registros GPS recientes; comparar siempre con minutos y rol del propio jugador.",
         width,
         styles,
     )
