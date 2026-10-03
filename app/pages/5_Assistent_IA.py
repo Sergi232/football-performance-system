@@ -1,4 +1,4 @@
-"""Asistente IA local basado en Ollama y herramientas validadas del sistema."""
+"""Asistente IA híbrido: runtime local y proveedor OpenAI opcional con clave del usuario."""
 from __future__ import annotations
 
 import os
@@ -22,7 +22,8 @@ from app.presentation import (
     replace_known_names,
 )
 from app.ui_theme import apply_professional_theme, sidebar_navigation
-from llm.coach_agent_fast import DEFAULT_MODEL, ollama_status, run_coach_agent_turn
+from llm.coach_agent_external import DEFAULT_OPENAI_MODEL, run_coach_agent_turn as run_openai_agent_turn
+from llm.coach_agent_fast import DEFAULT_MODEL, ollama_status, run_coach_agent_turn as run_local_agent_turn
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 TOOL_LABELS = {
@@ -46,8 +47,8 @@ def db_path() -> Path:
     return Path(os.environ.get("FPS_DB_PATH", DEFAULT_DB)).expanduser().resolve()
 
 
-def history_key(team_id: str) -> str:
-    return f"fps_local_agent_history::{team_id}"
+def history_key(team_id: str, provider: str) -> str:
+    return f"fps_agent_history::{provider}::{team_id}"
 
 
 def _replace_aliases_with_real(text: str, reverse_map: dict[str, str]) -> str:
@@ -76,26 +77,47 @@ if teams.empty:
     st.stop()
 
 page_header(
-    "ASISTENTE IA · LOCAL",
+    "ASISTENTE IA",
     "Asistente IA",
-    "Pregunta de forma natural. Las consultas claras se resuelven de forma determinista y el modelo local solo interpreta lenguaje ambiguo cuando hace falta.",
-    "Procesamiento local · Ollama opcional para lenguaje ambiguo",
+    "Pregunta de forma natural. Las consultas claras se resuelven de forma determinista; para lenguaje ambiguo puedes usar el modelo local o, opcionalmente, OpenAI con tu propia API key.",
+    "Datos y métricas calculados por Football Performance System",
 )
 
 raw_team_labels = {str(r.team_id): str(r.display_name) for r in teams.itertuples(index=False)}
 team_ids = list(raw_team_labels)
 display_team_labels = {tid: display_team_name(raw_team_labels[tid], team_ids.index(tid) + 1) for tid in team_ids}
-selector, status_col, action = st.columns([1.6, 1.0, 0.55])
+
+selector, provider_col, model_col, action = st.columns([1.45, 1.15, 1.15, 0.55])
 with selector:
     team_id = st.selectbox("Equipo", team_ids, format_func=lambda x: display_team_labels[x])
-with status_col:
-    model = st.text_input("Modelo local", value=os.environ.get("FPS_LOCAL_LLM_MODEL", DEFAULT_MODEL))
+with provider_col:
+    provider_label = st.selectbox(
+        "Motor de lenguaje",
+        ["Local · Qwen", "OpenAI API · clave propia"],
+        index=0,
+    )
+provider = "openai" if provider_label.startswith("OpenAI") else "local"
+with model_col:
+    if provider == "local":
+        model = st.text_input("Modelo", value=os.environ.get("FPS_LOCAL_LLM_MODEL", DEFAULT_MODEL))
+    else:
+        model = st.text_input("Modelo", value=os.environ.get("FPS_OPENAI_MODEL", DEFAULT_OPENAI_MODEL))
 with action:
     st.write("")
     st.write("")
     if st.button("Limpiar chat", width="stretch"):
-        st.session_state[history_key(team_id)] = []
+        st.session_state[history_key(team_id, provider)] = []
         st.rerun()
+
+api_key = ""
+if provider == "openai":
+    api_key = st.text_input(
+        "OpenAI API key",
+        value=os.environ.get("OPENAI_API_KEY", ""),
+        type="password",
+        placeholder="sk-...",
+        help="Se usa para las llamadas de esta sesión. Football Performance System no la guarda en DuckDB ni en archivos del proyecto.",
+    )
 
 raw_team_name = raw_team_labels[team_id]
 team_name = display_team_labels[team_id]
@@ -123,24 +145,32 @@ def to_runtime(text: object) -> str:
     return _replace_aliases_with_real(str(text), reverse_aliases)
 
 
-status = ollama_status()
-installed = status.get("models") or []
-model_ready = bool(status.get("available") and model in installed)
+if provider == "local":
+    status = ollama_status()
+    installed = status.get("models") or []
+    model_ready = bool(status.get("available") and model in installed)
 
-if model_ready:
-    st.success(f"Modo híbrido disponible · {model} · consultas claras sin LLM, lenguaje ambiguo con Qwen")
-elif not status.get("available"):
-    st.warning("Modo determinista disponible. Ollama no está activo, por lo que las consultas que requieran interpretación semántica no podrán resolverse.")
-    st.code("ollama serve", language="powershell")
-    if status.get("error"):
-        st.caption(status["error"])
+    if model_ready:
+        st.success(f"Modo híbrido local disponible · {model} · consultas claras sin LLM, lenguaje ambiguo con Qwen")
+    elif not status.get("available"):
+        st.warning("Modo determinista disponible. Ollama no está activo, por lo que las consultas que requieran interpretación semántica no podrán resolverse.")
+        st.code("ollama serve", language="powershell")
+        if status.get("error"):
+            st.caption(status["error"])
+    else:
+        st.warning(f"Modo determinista disponible. Falta `{model}` para interpretar consultas ambiguas.")
+        st.code(f"ollama pull {model}", language="powershell")
+        if installed:
+            st.caption("Modelos disponibles: " + ", ".join(installed))
 else:
-    st.warning(f"Modo determinista disponible. Falta `{model}` para interpretar consultas ambiguas.")
-    st.code(f"ollama pull {model}", language="powershell")
-    if installed:
-        st.caption("Modelos disponibles: " + ", ".join(installed))
+    if api_key.strip():
+        st.success(
+            f"Modo OpenAI preparado · {model} · las consultas claras siguen siendo locales y la API se usa solo cuando hace falta interpretación semántica."
+        )
+    else:
+        st.info("Introduce tu propia OpenAI API key para activar el modo externo. El modo local sigue disponible sin coste por consulta.")
 
-key = history_key(team_id)
+key = history_key(team_id, provider)
 if key not in st.session_state:
     st.session_state[key] = []
 
@@ -184,8 +214,8 @@ suggestions = [
 if not history:
     cols = st.columns(2)
     for idx, suggestion in enumerate(suggestions):
-        if cols[idx % 2].button(suggestion, key=f"local_agent_suggestion_{idx}", width="stretch"):
-            st.session_state["fps_local_agent_pending"] = suggestion
+        if cols[idx % 2].button(suggestion, key=f"agent_suggestion_{provider}_{idx}", width="stretch"):
+            st.session_state[f"fps_agent_pending::{provider}"] = suggestion
             st.rerun()
 
 for message in history:
@@ -200,11 +230,12 @@ for message in history:
             with st.expander("Evidencia consultada"):
                 st.write("Consultas utilizadas: " + tools_label(trace.get("tools_used", [])))
                 st.write(f"Rondas de interpretación semántica: {trace.get('tool_rounds', 0)}")
-                st.write(f"Modelo local: `{trace.get('model', model)}`")
+                st.write(f"Motor: {trace.get('provider_label', provider_label)}")
+                st.write(f"Modelo: `{trace.get('model', model)}`")
                 if trace.get("error"):
                     st.caption(f"Incidencia: {trace['error']}")
 
-pending = st.session_state.pop("fps_local_agent_pending", None)
+pending = st.session_state.pop(f"fps_agent_pending::{provider}", None)
 question = st.chat_input("Pregunta sobre el equipo, jugadores, partidos, evolución, estadísticas o GPS...")
 if pending and not question:
     question = pending
@@ -221,40 +252,68 @@ if question:
         st.markdown(question)
 
     with st.chat_message("assistant"):
-        with st.spinner("Consultando los datos locales..."):
-            result = run_coach_agent_turn(
-                runtime_question,
-                db_path=path,
-                team_id=team_id,
-                history=previous,
-                model=model,
-            )
-        display_answer = to_display(result.text)
-        st.markdown(display_answer)
-        with st.expander("Evidencia consultada"):
-            st.write("Consultas utilizadas: " + tools_label(list(result.tools_used)))
-            st.write(f"Rondas de interpretación semántica: {result.tool_rounds}")
-            st.write(f"Modelo local: `{result.model}`")
-            if result.error:
-                st.caption(f"Incidencia: {result.error}")
+        with st.spinner("Consultando Football Performance System..."):
+            if provider == "openai":
+                if not api_key.strip():
+                    result = None
+                else:
+                    result = run_openai_agent_turn(
+                        runtime_question,
+                        db_path=path,
+                        team_id=team_id,
+                        history=previous,
+                        model=model,
+                        api_key=api_key,
+                    )
+            else:
+                result = run_local_agent_turn(
+                    runtime_question,
+                    db_path=path,
+                    team_id=team_id,
+                    history=previous,
+                    model=model,
+                )
 
-    history.append(
-        {
-            "role": "assistant",
-            "content": display_answer,
-            "trace": {
-                "tools_used": list(result.tools_used),
-                "tool_rounds": result.tool_rounds,
-                "model": result.model,
-                "error": result.error,
-            },
-        }
-    )
-    st.session_state[key] = history
+        if result is None:
+            st.error("Falta la OpenAI API key para usar este modo.")
+        else:
+            display_answer = to_display(result.text)
+            st.markdown(display_answer)
+            with st.expander("Evidencia consultada"):
+                st.write("Consultas utilizadas: " + tools_label(list(result.tools_used)))
+                st.write(f"Rondas de interpretación semántica: {result.tool_rounds}")
+                st.write(f"Motor: {provider_label}")
+                st.write(f"Modelo: `{result.model}`")
+                if result.error:
+                    st.caption(f"Incidencia: {result.error}")
+
+            history.append(
+                {
+                    "role": "assistant",
+                    "content": display_answer,
+                    "trace": {
+                        "tools_used": list(result.tools_used),
+                        "tool_rounds": result.tool_rounds,
+                        "model": result.model,
+                        "provider_label": provider_label,
+                        "error": result.error,
+                    },
+                }
+            )
+            st.session_state[key] = history
 
 with st.expander("Arquitectura y límites"):
-    st.write("Flujo: pregunta → router determinista de alta confianza → Qwen solo si la intención sigue siendo ambigua → herramientas Python de solo lectura → DuckDB / Analytics / Expert System → respuesta factual determinista → entrenador.")
-    st.write("Qwen no tiene acceso directo a DuckDB, no calcula Match Rating, Performance Index ni decisiones del motor experto y no redacta valores numéricos críticos por su cuenta.")
-    st.write("Las consultas deterministas siguen disponibles aunque Ollama no esté activo; solo el fallback semántico depende del modelo local.")
+    st.write(
+        "Flujo: pregunta → router determinista de alta confianza → modelo de lenguaje solo si la intención sigue siendo ambigua → herramientas Python de solo lectura → DuckDB / Analytics / Expert System → evidencia estructurada → respuesta → entrenador."
+    )
+    st.write(
+        "Ni Qwen ni OpenAI tienen acceso directo a DuckDB. Match Rating, Performance Index, rankings y decisiones críticas se calculan fuera del LLM."
+    )
+    if provider == "local":
+        st.write("En modo local, la interpretación semántica se procesa mediante Ollama en `127.0.0.1` cuando hace falta.")
+    else:
+        st.write(
+            "En modo OpenAI, solo la pregunta/contexto necesario y la evidencia estructurada requerida se envían al proveedor externo; la API key pertenece al usuario y no se persiste en DuckDB."
+        )
     if demo_mode():
         st.caption("Modo demo activo: las identidades se sustituyen solo en la capa de presentación; los cálculos internos conservan los IDs originales.")
