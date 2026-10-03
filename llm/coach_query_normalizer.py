@@ -1,14 +1,22 @@
 """Conservative normalization for natural Coach Copilot questions.
 
-The LLM remains the primary semantic router. This module only canonicalizes a
-small set of high-confidence supported intents when spelling, accents or terse
-coach phrasing would otherwise make routing brittle. It never calculates data
-or selects unsupported football conclusions.
+Granite remains the primary semantic router. This module only canonicalizes a
+small set of high-confidence supported intents when accents, punctuation,
+common typos or terse coach phrasing would otherwise make routing brittle.
+It never calculates football data or creates unsupported conclusions.
 """
 from __future__ import annotations
 
+import difflib
 import re
 import unicodedata
+
+_DOMAIN_WORDS = {
+    "goleador", "goles", "asistencias", "remates", "disparos", "minutos",
+    "apariciones", "gps", "fisico", "distancia", "velocidad", "evolucion",
+    "evolucionado", "rendimiento", "partido", "resultado", "calidad",
+    "limitaciones", "cansancio", "fatiga", "lesion",
+}
 
 
 def _norm(value: object) -> str:
@@ -16,6 +24,18 @@ def _norm(value: object) -> str:
     text = "".join(ch for ch in text if not unicodedata.combining(ch))
     text = re.sub(r"[^a-zA-Z0-9]+", " ", text.casefold())
     return " ".join(text.split())
+
+
+def _fix_domain_typos(text: str) -> str:
+    """Correct only near-miss football-domain tokens, never names/entities."""
+    out: list[str] = []
+    for token in text.split():
+        if token in _DOMAIN_WORDS or token.isdigit() or len(token) < 5:
+            out.append(token)
+            continue
+        match = difflib.get_close_matches(token, _DOMAIN_WORDS, n=1, cutoff=0.84)
+        out.append(match[0] if match else token)
+    return " ".join(out)
 
 
 def _contains_any(text: str, terms: tuple[str, ...]) -> bool:
@@ -37,13 +57,9 @@ def _rival_alias(text: str) -> str | None:
 
 
 def canonicalize_question(question: str) -> str:
-    """Return a canonical supported phrasing only for high-confidence intents.
-
-    Unknown or ambiguous questions are returned unchanged so Granite remains the
-    primary interpreter and unsupported questions still fail closed.
-    """
+    """Return a canonical phrasing only for high-confidence supported intents."""
     original = str(question or "").strip()
-    q = _norm(original)
+    q = _fix_domain_typos(_norm(original))
     if not q:
         return original
 
