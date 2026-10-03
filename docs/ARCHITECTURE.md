@@ -202,33 +202,37 @@ Estado: **dashboard profesional operativo; contratos de datos, presentación dem
 Arquitectura vigente:
 
 ```text
-DuckDB local
-→ analytics / expert system materializados
+pregunta natural
+→ Ollama Granite 4.2 3B / clasificación estructurada de intención
 → tools Python read-only
-→ router determinista
-→ compact evidence
-→ Ollama qwen3:1.7b
-→ semantic guard
+→ DuckDB + analytics / expert system materializados
+→ evidencia estructurada compacta
+→ Ollama Granite 4.2 3B / síntesis
+→ guard numérico / policy
 → Coach Copilot
 ```
 
 Versión oficial MVP: **castellano**.
 
-El LLM puede interpretar y explicar evidencia estructurada, pero no puede crear métricas críticas, recalcular Match Rating/Performance Index, saltarse N13000 ni emitir recomendaciones bloqueadas.
+El LLM interpreta la intención y redacta sobre evidencia estructurada, pero no accede directamente a DuckDB ni puede crear métricas críticas, recalcular Match Rating/Performance Index, saltarse N13000 o emitir recomendaciones bloqueadas.
 
-Estado: **LLM-02 cerrado MVP**. Smoke final local: `LOCAL AGENT CONTRACT: PASS (4/4)`.
+Las consultas observadas se ejecutan en herramientas de solo lectura. Una pregunta fuera de cobertura devuelve una limitación explícita y no cae en un resumen genérico del equipo.
+
+Estado: **LLM-02 cerrado funcionalmente**. Gate local real con DuckDB profesional: `LOCAL AGENT CONTRACT: PASS (9/9)`.
 
 Perfil operativo validado:
 
 ```text
-model=qwen3:1.7b
+model=granite4.2:3b
 thinking=False
 FPS_AGENT_NUM_CTX=1536
-FPS_AGENT_TIMEOUT=18
 keep_alive=30m
+average_elapsed=34.7s en el PC objetivo
 ```
 
-El warm-up debe usar el mismo `num_ctx` que producción para evitar recarga del runner/model context en CPU.
+El gate cubre máximo goleador, asistencias, evolución de jugador, GPS, partido, estado del equipo, calidad de datos, fatiga/cansancio bloqueado y pregunta fuera de alcance.
+
+No están validadas las inferencias de fatiga/readiness/lesión, XI ideal ni recomendaciones tácticas automáticas.
 
 ### L11 — Reporting
 
@@ -315,10 +319,9 @@ Sergi no valida decisiones técnicas ordinarias o reversibles. Solo se abre gate
 El núcleo funcional está cerrado. La prioridad es:
 
 ```text
-DOCUMENTATION SYNC
-→ REPRODUCIBILITY PACKAGE
-→ CI FINAL
-→ MEMORIA TFM
+REVISIÓN VISUAL FINAL
+→ CAPTURAS CANÓNICAS
+→ MAQUETACIÓN MEMORIA
 → DEFENSA / DEMO
 ```
 
