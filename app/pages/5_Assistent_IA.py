@@ -26,14 +26,14 @@ from llm.coach_agent_fast import DEFAULT_MODEL, ollama_status, run_coach_agent_t
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 TOOL_LABELS = {
+    "query_team_stats": "Estadísticas observadas del equipo",
     "get_team_snapshot": "Resumen del equipo",
     "get_data_quality": "Calidad de datos",
-    "get_player_snapshot": "Perfil del jugador",
-    "get_player_history": "Historial del jugador",
-    "get_match_snapshot": "Resumen del partido",
-    "get_match_ratings": "Match Ratings del partido",
-    "get_expert_evidence": "Evidencia del motor experto",
-    "get_gps_summary": "Resumen GPS",
+    "get_player_profile": "Perfil del jugador",
+    "get_player_match_stats": "Historial del jugador",
+    "get_match_detail": "Resumen del partido",
+    "compare_players": "Comparación de jugadores",
+    "get_player_gps": "Datos GPS del jugador",
 }
 
 st.set_page_config(page_title="Asistente IA · Football Performance System", page_icon="💬", layout="wide")
@@ -77,7 +77,7 @@ if teams.empty:
 page_header(
     "ASISTENTE IA · LOCAL",
     "Asistente IA",
-    "Pregunta sobre los datos del equipo. El agente decide qué consultas locales necesita y puede encadenar varias antes de responder.",
+    "Pregunta de forma natural. El agente interpreta la intención y consulta únicamente datos estructurados de solo lectura antes de responder.",
     "Ollama · procesamiento local",
 )
 
@@ -152,11 +152,10 @@ with st.expander("¿Qué puede hacer el agente?", expanded=not history):
     with c1:
         st.markdown(
             """
+            - consultar goleadores, asistencias, remates, minutos y apariciones;
             - resumir equipo y partidos;
-            - explicar Match Ratings;
-            - analizar evolución reciente;
-            - comparar descriptivamente jugadores indicados;
-            - consultar roles y motor experto;
+            - explicar perfiles y evolución reciente;
+            - comparar descriptivamente jugadores;
             - revisar calidad de datos y GPS.
             """
         )
@@ -172,10 +171,10 @@ with st.expander("¿Qué puede hacer el agente?", expanded=not history):
         )
 
 suggestions = [
-    "¿Quién presenta el cambio reciente más grande y con qué muestra?",
+    "¿Quién es el máximo goleador?",
+    "¿Cómo ha evolucionado un jugador en los últimos partidos?",
     "Resume el último partido y los jugadores más destacados descriptivamente.",
     "¿Qué limitaciones de datos tenemos ahora mismo?",
-    "Explica la evolución reciente de un jugador con datos suficientes.",
 ]
 if not history:
     cols = st.columns(2)
@@ -201,7 +200,7 @@ for message in history:
                     st.caption(f"Incidencia: {trace['error']}")
 
 pending = st.session_state.pop("fps_local_agent_pending", None)
-question = st.chat_input("Pregunta sobre el equipo, jugadores, partidos, evolución, roles, GPS...")
+question = st.chat_input("Pregunta sobre el equipo, jugadores, partidos, evolución, estadísticas o GPS...")
 if pending and not question:
     question = pending
 
@@ -249,7 +248,7 @@ if question:
     st.session_state[key] = history
 
 with st.expander("Arquitectura y límites"):
-    st.write("Flujo: DuckDB → Analytics / Expert System → consultas Python de solo lectura → Ollama local → entrenador.")
+    st.write("Flujo: pregunta → modelo local → herramientas Python de solo lectura → DuckDB / Analytics / Expert System → modelo local → validación factual → entrenador.")
     st.write("El modelo local no tiene acceso directo a DuckDB y no recalcula Match Rating, Performance Index ni decisiones del motor experto.")
     st.write("Los datos del chat y de las consultas se envían solo a Ollama en `127.0.0.1` por defecto.")
     if demo_mode():
