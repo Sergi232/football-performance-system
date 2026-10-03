@@ -1,4 +1,4 @@
-"""Match Mode — immediate post-match review for technical staff."""
+"""Modo Partido: revisión inmediata postpartido para el cuerpo técnico."""
 from __future__ import annotations
 
 import os
@@ -124,7 +124,7 @@ observations = get_match_observations(path, team_id, match_id)
 match_opponent = display_opponent(match.get("opponent"), opponent_aliases)
 
 page_header(
-    "MATCH MODE · POSTPARTIDO",
+    "MODO PARTIDO · POSTPARTIDO",
     f"{team_name} vs {match_opponent}",
     "Revisión inmediata: marcador, distribución del rendimiento, observaciones y calidad de la evidencia.",
     str(pd.to_datetime(match["match_date"]).date()),
@@ -152,7 +152,7 @@ with k2:
 with k3:
     metric_card("Jugadores utilizados", str(len(ratings)), "Apariciones con minutos")
 with k4:
-    metric_card("Rol no disponible", str(fallback_rows), "Fallback explícito, sin imputar posición")
+    metric_card("Rol no disponible", str(fallback_rows), "Modelo de respaldo explícito, sin imputar posición")
 
 st.write("")
 tab_review, tab_players, tab_dimensions, tab_evidence = st.tabs(["Revisión técnica", "Jugadores", "Dimensiones", "Evidencia"])
@@ -209,12 +209,13 @@ with tab_players:
         display["Rating"] = pd.to_numeric(display["match_rating_10"], errors="coerce")
         display["Confianza %"] = pd.to_numeric(display["match_rating_confidence"], errors="coerce")
         display["Min"] = pd.to_numeric(display["minutes_played"], errors="coerce")
+        display["Titular"] = display["started"].map({True: "Sí", False: "No", 1: "Sí", 0: "No"}).fillna("—")
         display["Contexto"] = display["rating_path"].replace({
-            "OUTFIELD_PERF18_ANCHORED": "Jugador de campo posicional",
-            "GOALKEEPER_PERF18_SHOT90_DIST10": "Portero específico",
-            "OUTFIELD_ROLE_UNAVAILABLE_FALLBACK_V2": "Rol no disponible · fallback",
+            "OUTFIELD_PERF18_ANCHORED": "Jugador de campo · contexto posicional",
+            "GOALKEEPER_PERF18_SHOT90_DIST10": "Portero · modelo específico",
+            "OUTFIELD_ROLE_UNAVAILABLE_FALLBACK_V2": "Rol no disponible · modelo de respaldo",
         })
-        table = display[["player", "Perfil", "Min", "started", "Rating", "Confianza %", "Contexto"]].copy()
+        table = display[["player", "Perfil", "Min", "Titular", "Rating", "Confianza %", "Contexto"]].copy()
         table.columns = ["Jugador", "Perfil", "Min", "Titular", "Rating", "Confianza %", "Contexto"]
         table = table.sort_values("Rating", ascending=False)
         st.dataframe(
@@ -245,7 +246,7 @@ with tab_dimensions:
         st.markdown("#### Portero")
         for r in keepers.to_dict(orient="records"):
             values = {
-                "Shot-stopping": r.get("defensive_contribution"),
+                "Paradas": r.get("defensive_contribution"),
                 "Distribución": r.get("creation_progression"),
                 "Disciplina": r.get("discipline"),
             }
@@ -260,15 +261,20 @@ with tab_evidence:
     with e2:
         metric_card("Confianza mediana", safe_number(confidence.median() if not confidence.empty else None, 0, "%"), "Valor central del partido")
     with e3:
-        metric_card("Fallback de rol", str(fallback_rows), "Casos sin rol táctico fiable")
+        metric_card("Rol no disponible", str(fallback_rows), "Casos sin rol táctico fiable")
 
-    fallbacks = ratings[ratings["rating_path"] == "OUTFIELD_ROLE_UNAVAILABLE_FALLBACK_V2"]
+    fallbacks = ratings[ratings["rating_path"] == "OUTFIELD_ROLE_UNAVAILABLE_FALLBACK_V2"].copy()
     if not fallbacks.empty:
-        st.warning("Los casos siguientes conservan el rating V2 porque la fuente histórica no permite asignar un rol posicional fiable.")
-        st.dataframe(fallbacks[["player", "minutes_played", "match_rating_10", "match_rating_confidence"]], hide_index=True, width="stretch")
+        st.warning("Las apariciones siguientes utilizan el modelo de respaldo de Match Rating V5 porque la fuente histórica no permite asignar un rol posicional fiable.")
+        fallbacks["Minutos"] = pd.to_numeric(fallbacks["minutes_played"], errors="coerce")
+        fallbacks["Match Rating"] = pd.to_numeric(fallbacks["match_rating_10"], errors="coerce")
+        fallbacks["Confianza %"] = pd.to_numeric(fallbacks["match_rating_confidence"], errors="coerce")
+        table = fallbacks[["player", "Minutos", "Match Rating", "Confianza %"]].copy()
+        table.columns = ["Jugador", "Minutos", "Match Rating", "Confianza %"]
+        st.dataframe(table, hide_index=True, width="stretch")
     else:
         st.success("Todas las apariciones de jugadores de campo del partido tienen contexto posicional fiable.")
 
 with st.expander("Metodología y límites"):
-    st.write(f"Match Rating activo: `{MATCH_RATING_VERSION}`.")
+    st.write(f"Versión técnica del Match Rating: `{MATCH_RATING_VERSION}`.")
     st.write("Las observaciones son deterministas. Esta pantalla no utiliza un LLM para calcular ni modificar ratings.")
