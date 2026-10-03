@@ -9,6 +9,10 @@ def test_natural_scorer_paraphrase_is_canonicalized():
     assert canonicalize_question("quien ha marcado mas goles") == "¿Quién es el máximo goleador?"
 
 
+def test_common_domain_typo_is_canonicalized():
+    assert canonicalize_question("quien es el maximo goleadr") == "¿Quién es el máximo goleador?"
+
+
 def test_assists_without_punctuation_is_canonicalized():
     assert canonicalize_question("quien tiene mas asistencias") == "¿Quién lleva más asistencias?"
 
