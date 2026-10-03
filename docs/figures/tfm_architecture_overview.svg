@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L12,6 L0,12 z" fill="#2f3b52"/>
+    </marker>
+    <style>
+      .title{font:700 34px Arial,sans-serif;fill:#172033}
+      .sub{font:400 18px Arial,sans-serif;fill:#516074}
+      .box{fill:#f7f9fc;stroke:#2f3b52;stroke-width:2;rx:16}
+      .box2{fill:#eef4ff;stroke:#315c9e;stroke-width:2;rx:16}
+      .box3{fill:#eef9f2;stroke:#2d7a4f;stroke-width:2;rx:16}
+      .label{font:700 21px Arial,sans-serif;fill:#172033;text-anchor:middle}
+      .small{font:400 15px Arial,sans-serif;fill:#4f5f72;text-anchor:middle}
+      .arrow{stroke:#2f3b52;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+      .dash{stroke:#7a8797;stroke-width:2;stroke-dasharray:8 6;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1400" height="760" fill="#ffffff"/>
+  <text x="70" y="62" class="title">Football Performance System — arquitectura end-to-end</text>
+  <text x="70" y="95" class="sub">Separación explícita entre captura, cálculo analítico, decisión y lenguaje natural</text>
+
+  <rect x="70" y="165" width="210" height="110" class="box2"/>
+  <text x="175" y="207" class="label">VIDEO / COLLECTOR</text>
+  <text x="175" y="238" class="small">eventos observables</text>
+
+  <rect x="70" y="335" width="210" height="110" class="box2"/>
+  <text x="175" y="377" class="label">GPS OPCIONAL</text>
+  <text x="175" y="408" class="small">normalización proveedor</text>
+
+  <rect x="345" y="250" width="210" height="110" class="box"/>
+  <text x="450" y="291" class="label">RAW / NORMALIZED</text>
+  <text x="450" y="322" class="small">DuckDB</text>
+
+  <rect x="620" y="250" width="210" height="110" class="box"/>
+  <text x="725" y="291" class="label">FEATURE ENGINE</text>
+  <text x="725" y="322" class="small">FEATURE-01 / 02 / 03</text>
+
+  <rect x="895" y="250" width="210" height="110" class="box"/>
+  <text x="1000" y="291" class="label">ANALYTICS</text>
+  <text x="1000" y="322" class="small">evidencia descriptiva</text>
+
+  <rect x="1170" y="250" width="170" height="110" class="box3"/>
+  <text x="1255" y="291" class="label">DECISIÓN</text>
+  <text x="1255" y="322" class="small">N1000–N13000</text>
+
+  <rect x="895" y="500" width="210" height="110" class="box3"/>
+  <text x="1000" y="542" class="label">DASHBOARD</text>
+  <text x="1000" y="573" class="small">Team / Player / Match</text>
+
+  <rect x="620" y="500" width="210" height="110" class="box3"/>
+  <text x="725" y="542" class="label">COACH COPILOT</text>
+  <text x="725" y="573" class="small">LLM local grounded</text>
+
+  <rect x="1170" y="500" width="170" height="110" class="box3"/>
+  <text x="1255" y="542" class="label">PDF</text>
+  <text x="1255" y="573" class="small">Team / Player / Match</text>
+
+  <path d="M280 220 C320 220,320 280,345 290" class="arrow"/>
+  <path d="M280 390 C320 390,320 330,345 320" class="arrow"/>
+  <line x1="555" y1="305" x2="620" y2="305" class="arrow"/>
+  <line x1="830" y1="305" x2="895" y2="305" class="arrow"/>
+  <line x1="1105" y1="305" x2="1170" y2="305" class="arrow"/>
+  <path d="M1255 360 L1255 500" class="arrow"/>
+  <path d="M1170 335 C1090 430,1050 465,1000 500" class="arrow"/>
+  <path d="M895 335 C820 430,780 465,725 500" class="dash"/>
+
+  <text x="70" y="705" class="sub">Regla central: una capa superior no inventa métricas, scores o recomendaciones no soportadas por una capa inferior validada.</text>
+</svg>
