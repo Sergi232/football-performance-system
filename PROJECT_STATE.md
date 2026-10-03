@@ -26,9 +26,12 @@ LLM-01                              CONTRATOS PASS
 LLM-02 LOCAL COACH COPILOT          CERRADO MVP / CASTELLANO / SMOKE 4/4 PASS
 REPORTS-03 ELITE TECHNICAL REPORTS  CERRADO / V6 / GATE PASS
 PUBLIC DEMO ANONYMIZED              CONTRACT PASS / REDISTRIBUCIÓN NO AUTORIZADA
+PUBLIC DEMO SYNTHETIC               CERRADO / PASS / REDISTRIBUIBLE
+REPRODUCIBILITY                     CERRADO / PASS
+CI AUTOMÁTICO                       CERRADO / PASS
 GLOBAL END-TO-END QA                CERRADO / PASS
-FINAL-01                            PRODUCTO FUNCIONAL / CIERRE DOCUMENTAL
-PUBLIC DEPLOYMENT                   NO HACER — derechos/licencia no resueltos
+FINAL-01                            PRODUCTO FUNCIONAL / MEMORIA Y DEFENSA
+PUBLIC DEPLOYMENT                   NO HACER — derechos/licencia del dataset real no resueltos
 ```
 
 ## Hipótesis principal del TFM
@@ -453,6 +456,74 @@ Collector
 
 La exportación demo anonimizada no concede derechos de redistribución del dataset fuente.
 
+## Reproducibilidad pública + CI — CERRADO 03/10/2026
+
+Se ha separado formalmente el caso profesional privado de una demo pública sintética reproducible.
+
+### Demo sintética pública
+
+Builder/validator:
+- `publication/build_synthetic_demo.py`;
+- `publication/validate_synthetic_demo.py`.
+
+Gate local confirmado:
+
+```text
+SYNTHETIC PUBLIC DEMO CONTRACT: PASS
+demo_version=synthetic_public_demo_v0.1.0
+matches=12
+players=18
+player_match=216
+played=192
+FEATURE-01=6048
+FEATURE-02=42336
+FEATURE-03=30456
+analytics_rows=12096
+expert_rows=39960
+N13000=648
+ratings=192
+performance_index=192
+gps=192
+app_read_layer=PASS
+report_payloads=PASS
+professional_source_rows=0
+redistribution_status=REDISTRIBUTABLE_SYNTHETIC_DEMO
+```
+
+La demo se genera desde cero y no copia filas, nombres, IDs ni provenance del caso profesional.
+
+Match Rating V5 y Performance Index en esta demo pública son **fixtures sintéticos de compatibilidad de producto**, no una revalidación científica de los modelos calibrados sobre el caso profesional.
+
+### CI automático
+
+Workflow activo: `.github/workflows/tests.yml`.
+
+Triggers:
+- `push`;
+- `pull_request`;
+- `workflow_dispatch`.
+
+El CI ejecuta en Ubuntu/Python 3.13:
+1. instalación de dependencias;
+2. `pytest -q`;
+3. construcción y validación completa de la demo sintética pública.
+
+Primera ejecución automática: FAIL de entorno porque el runner no tenía la raíz del repo en `PYTHONPATH`; no fue un fallo funcional del producto.
+
+Corrección: commit `894740e` (`Fix CI Python import path`).
+
+Ejecución posterior confirmada:
+
+```text
+GitHub Actions run 37081464123
+Install dependencies: PASS
+Run unit and contract tests: PASS
+Build and validate synthetic public demo: PASS
+Conclusion: SUCCESS
+```
+
+Esto demuestra que el repositorio puede validarse desde un entorno limpio sin depender de la DuckDB privada del desarrollador.
+
 ## Experimentos / decisiones relevantes
 
 - Collector V1.1 congelado sobre `event_catalog v0.3.0`;
@@ -468,7 +539,9 @@ La exportación demo anonimizada no concede derechos de redistribución del data
 - GPS real tiene precedencia;
 - synthetic GPS no alimenta Match Rating, Performance Index ni decisiones expertas;
 - no inferir posición específica para suplentes sin dato observacional;
-- hipótesis principal = viabilidad técnica/auditable, no mejora causal del rendimiento.
+- hipótesis principal = viabilidad técnica/auditable, no mejora causal del rendimiento;
+- demo pública final separada del caso profesional mediante generación sintética desde cero;
+- CI automático obligatorio para evitar regresiones en `main`.
 
 ## Decisiones descartadas / aplazadas
 
@@ -486,20 +559,17 @@ La exportación demo anonimizada no concede derechos de redistribución del data
 
 ## Problemas abiertos
 
-- documentación histórica todavía desactualizada en algunos archivos secundarios;
-- paquete de reproducibilidad pública sin depender de la DuckDB privada;
-- CI de push/PR debe reactivarse antes de publicación final;
-- documentación final de memoria/README de entrega;
-- defensa/demo final;
+- memoria académica definitiva del TFM;
+- revisión final/archivo de documentación histórica secundaria si aporta claridad al repositorio;
+- defensa y demo final;
 - autenticación real si el producto evoluciona a uso comercial;
-- derechos/licencia antes de despliegue público;
+- derechos/licencia antes de cualquier despliegue público del dataset profesional;
 - validación con GPS real y usuarios reales si se dispone de datos/participantes autorizados.
 
 ## Siguiente paso exacto
 
-1. sincronizar documentación desactualizada con este estado (`README`, arquitectura, workflow y contratos específicos);
-2. cerrar reproducibilidad: instalación/demo reproducible sin depender de datos privados no redistribuibles;
-3. uniformizar validators y reactivar CI de `push` / `pull_request`;
-4. cerrar memoria del TFM: problema, hipótesis, metodología, arquitectura, experimentos, resultados, limitaciones y conclusiones;
-5. preparar defensa y demo final;
-6. Power BI, validación comercial o nuevos módulos solo como complementos si queda margen.
+1. cerrar la memoria del TFM: problema, hipótesis, objetivos, metodología, arquitectura, diseño de datos, Feature Engine, sistema experto, Match Rating, GPS, LLM, dashboard, validación, resultados, limitaciones y conclusiones;
+2. preparar una tabla de evidencias/gates para que cada claim de la memoria tenga soporte reproducible;
+3. hacer revisión final del repositorio y archivar documentación histórica que pueda confundir sin perder trazabilidad;
+4. preparar defensa y demo final;
+5. Power BI, validación comercial, autenticación completa o nuevos módulos solo como complementos si queda margen.
