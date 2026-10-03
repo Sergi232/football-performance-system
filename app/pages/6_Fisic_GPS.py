@@ -1,4 +1,4 @@
-"""Professional optional physical/GPS dashboard view."""
+"""Vista profesional de la capa física/GPS opcional."""
 from __future__ import annotations
 
 import os
@@ -35,6 +35,7 @@ from app.ui_theme import apply_professional_theme, sidebar_navigation
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 SYNTHETIC_PROVIDER = "FPS Synthetic Demo"
+VENUE_LABELS = {"H": "L", "A": "V", "Home": "L", "Away": "V", "Local": "L", "Visitante": "V"}
 
 st.set_page_config(page_title="Físico / GPS · Football Performance System", page_icon="📡", layout="wide")
 apply_professional_theme()
@@ -67,6 +68,12 @@ def seconds(value: object) -> str:
     if value is None or pd.isna(value):
         return "—"
     return f"{float(value) / 60.0:.1f} min"
+
+
+def venue_short(value: object) -> str:
+    if value is None or pd.isna(value):
+        return "—"
+    return VENUE_LABELS.get(str(value), str(value))
 
 
 path = db_path()
@@ -149,6 +156,7 @@ with tab_team:
     else:
         show = gps_matches.copy()
         show["match_date"] = pd.to_datetime(show["match_date"]).dt.date
+        show["venue"] = show["venue"].map(venue_short)
         show["gps_player_coverage_pct"] = pd.to_numeric(show["gps_player_coverage_pct"], errors="coerce").round(0)
         show = show[["match_date", "opponent", "venue", "played_players", "gps_players", "gps_player_coverage_pct"]]
         show.columns = ["Fecha", "Rival", "L/V", "Participantes", "Con GPS", "Cobertura %"]
@@ -213,6 +221,8 @@ with tab_player:
         show["match_date"] = pd.to_datetime(show["match_date"]).dt.date
         if "opponent" in show.columns:
             show["opponent"] = show["opponent"].map(lambda x: display_opponent(x, opponent_aliases))
+        if "venue" in show.columns:
+            show["venue"] = show["venue"].map(venue_short)
         show["distance_km"] = pd.to_numeric(show["total_distance_m"], errors="coerce") / 1000.0
         show["speed_kmh"] = pd.to_numeric(show["peak_speed_m_s"], errors="coerce") * 3.6
         show = show[["match_date", "opponent", "venue", "distance_km", "speed_kmh", "max_acceleration_m_s2", "min_acceleration_m_s2", "sample_count"]]
@@ -244,8 +254,8 @@ with tab_match:
 
 with tab_method:
     section_header("Contrato físico actual")
-    st.write(f"Versión: `{PHYSICAL_SUMMARY_VERSION}`")
+    st.write(f"Versión técnica: `{PHYSICAL_SUMMARY_VERSION}`")
     st.write("La distancia es la suma de `distance_m`, definida como distancia incremental por muestra.")
-    st.write("Velocidad, aceleración y desaceleración son máximos/mínimos observados en los campos canónicos normalizados.")
+    st.write("Velocidad, aceleración y desaceleración son máximos y mínimos observados en los campos canónicos normalizados.")
     st.write("La cobertura muestra cuántas muestras tienen cada canal disponible; no es una nota de calidad del jugador.")
     st.warning("Todavía NO se han definido zonas de velocidad, HSR, esprints, carga, fatiga ni disponibilidad física.")
