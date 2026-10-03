@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="620" viewBox="0 0 1400 620">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#2f3b52"/>
+    </marker>
+    <style>
+      .title{font:700 34px Arial,sans-serif;fill:#172033}
+      .sub{font:400 18px Arial,sans-serif;fill:#516074}
+      .box{fill:#f7f9fc;stroke:#2f3b52;stroke-width:2;rx:16}
+      .logic{fill:#eef9f2;stroke:#2d7a4f;stroke-width:2;rx:16}
+      .llm{fill:#fff6e8;stroke:#a96614;stroke-width:2;rx:16}
+      .label{font:700 20px Arial,sans-serif;fill:#172033;text-anchor:middle}
+      .small{font:400 15px Arial,sans-serif;fill:#4f5f72;text-anchor:middle}
+      .arrow{stroke:#2f3b52;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+      .rule{font:700 17px Arial,sans-serif;fill:#8f2d2d;text-anchor:middle}
+    </style>
+  </defs>
+  <rect width="1400" height="620" fill="#fff"/>
+  <text x="70" y="62" class="title">Coach Copilot — el LLM no es el motor analítico</text>
+  <text x="70" y="95" class="sub">Los cálculos críticos se resuelven antes de la síntesis lingüística</text>
+
+  <rect x="55" y="215" width="170" height="105" class="box"/>
+  <text x="140" y="257" class="label">DATA</text>
+  <text x="140" y="286" class="small">DuckDB</text>
+
+  <rect x="270" y="215" width="180" height="105" class="logic"/>
+  <text x="360" y="257" class="label">ANALYTICS</text>
+  <text x="360" y="286" class="small">evidencia materializada</text>
+
+  <rect x="495" y="215" width="200" height="105" class="logic"/>
+  <text x="595" y="257" class="label">DECISION ENGINE</text>
+  <text x="595" y="286" class="small">experto / gates</text>
+
+  <rect x="740" y="215" width="180" height="105" class="logic"/>
+  <text x="830" y="257" class="label">READ-ONLY TOOLS</text>
+  <text x="830" y="286" class="small">consultas permitidas</text>
+
+  <rect x="965" y="215" width="150" height="105" class="box"/>
+  <text x="1040" y="257" class="label">ROUTER</text>
+  <text x="1040" y="286" class="small">intención</text>
+
+  <rect x="1160" y="160" width="180" height="105" class="llm"/>
+  <text x="1250" y="202" class="label">OLLAMA LLM</text>
+  <text x="1250" y="231" class="small">qwen3:1.7b</text>
+
+  <rect x="1160" y="330" width="180" height="105" class="llm"/>
+  <text x="1250" y="372" class="label">SEMANTIC GUARD</text>
+  <text x="1250" y="401" class="small">límites de claims</text>
+
+  <rect x="965" y="455" width="180" height="105" class="logic"/>
+  <text x="1055" y="497" class="label">COACH</text>
+  <text x="1055" y="526" class="small">respuesta explicada</text>
+
+  <line x1="225" y1="267" x2="270" y2="267" class="arrow"/>
+  <line x1="450" y1="267" x2="495" y2="267" class="arrow"/>
+  <line x1="695" y1="267" x2="740" y2="267" class="arrow"/>
+  <line x1="920" y1="267" x2="965" y2="267" class="arrow"/>
+  <path d="M1115 267 C1140 267,1145 215,1160 215" class="arrow"/>
+  <line x1="1250" y1="265" x2="1250" y2="330" class="arrow"/>
+  <path d="M1160 382 C1100 410,1070 435,1055 455" class="arrow"/>
+
+  <text x="690" y="390" class="rule">NO calcula Match Rating · NO inventa métricas · NO crea recomendaciones tácticas no validadas</text>
+</svg>
