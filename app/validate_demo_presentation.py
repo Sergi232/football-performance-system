@@ -35,6 +35,7 @@ PRESENTATION_FILES = [
     ROOT / "app" / "pages" / "5_Assistent_IA.py",
     ROOT / "app" / "pages" / "6_Fisic_GPS.py",
     ROOT / "app" / "pages" / "7_Alertes.py",
+    ROOT / "analytics" / "build_attention_flags.py",
 ]
 CATALAN_MARKERS = (
     "No hi ha",
@@ -65,6 +66,10 @@ CATALAN_MARKERS = (
     "Sense historial",
     "Equip",
     "Partit",
+    "La font",
+    "Hi ha",
+    "cap posició",
+    "d’aquesta",
 )
 
 
@@ -73,11 +78,7 @@ def db_path() -> Path:
 
 
 def _contains_catalan_marker(text: str) -> bool:
-    """Match Catalan markers as complete words/phrases, not Spanish prefixes.
-
-    Example: ``Evolució`` must not match Spanish ``Evolución`` and ``Equip``
-    must not match ``Equipo``.
-    """
+    """Match Catalan markers as complete words/phrases, not Spanish prefixes."""
     for marker in CATALAN_MARKERS:
         pattern = rf"(?<!\w){re.escape(marker)}(?!\w)"
         if re.search(pattern, text):
