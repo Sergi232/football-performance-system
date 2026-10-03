@@ -1,11 +1,12 @@
 """Compatibility entry point for the local Coach Copilot.
 
-The public API is preserved while the runtime delegates to the hybrid generic-query
-agent. Natural user wording is kept intact; high-confidence routing is handled by
-Python and ambiguous queries fall back to the local semantic router.
+The public API delegates to the hybrid generic-query agent, with a thin safety and
+normalization layer for real UI/CLI usage. High-confidence questions stay
+deterministic; only genuinely ambiguous supported language falls back to Qwen.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from llm.coach_agent_general import (
@@ -15,22 +16,114 @@ from llm.coach_agent_general import (
     ollama_status,
 )
 
+# Windows PowerShell 5 can replace non-ASCII characters with '?' when piping a
+# here-string into Python. The browser does not have this problem, but repairing a
+# small set of common Spanish football/query tokens keeps CLI validation faithful.
+_MOJIBAKE_REPAIRS = (
+    ("?qui?n", "quien"),
+    ("?qu?", "que"),
+    ("?c?mo", "como"),
+    ("?cu?l", "cual"),
+    ("?cu?nt", "cuant"),
+    ("m?s", "mas"),
+    ("?ltim", "ultim"),
+    ("d?a", "dia"),
+    ("d?as", "dias"),
+    ("est?", "esta"),
+    ("pas?", "paso"),
+    ("lesi?n", "lesion"),
+    ("deber?a", "deberia"),
+    ("alineaci?n", "alineacion"),
+    ("teor?a", "teoria"),
+    ("evoluci?n", "evolucion"),
+    ("comparaci?n", "comparacion"),
+    ("m?ximo", "maximo"),
+    ("m?nimo", "minimo"),
+    ("f?sic", "fisic"),
+    ("aceleraci?n", "aceleracion"),
+    ("desaceleraci?n", "desaceleracion"),
+    ("ens??ame", "ensename"),
+)
 
-def _current_question(args: tuple[Any, ...], kwargs: dict[str, Any]) -> str:
-    if args:
-        return str(args[0])
-    return str(kwargs.get("question") or "")
+_UNVALIDATED_CRITERION_MESSAGE = (
+    "No puedo determinar quién es el jugador más completo, más determinante o mejor en general "
+    "porque ese criterio no tiene una definición analítica única y validada en el sistema. "
+    "Puedo compararlos con métricas concretas como Match Rating, tendencia, goles, asistencias, "
+    "remates, minutos o GPS descriptivo."
+)
+
+
+def _repair_console_text(value: object) -> str:
+    text = str(value or "").strip()
+    if not text or "?" not in text:
+        return text
+    out = text
+    for bad, good in _MOJIBAKE_REPAIRS:
+        out = re.sub(re.escape(bad), good, out, flags=re.IGNORECASE)
+    # PowerShell may also replace the leading inverted question mark only.
+    out = re.sub(r"^\?+(?=[A-Za-zÁÉÍÓÚÜÑáéíóúüñ])", "", out)
+    return out
+
+
+def _policy_block(question: str) -> str | None:
+    from llm import coach_agent_general as agent
+
+    q = agent._norm(question)
+    # If the user already names an approved metric, words such as "mejor" are only
+    # ordering language (e.g. "mejor rating") and must remain supported.
+    if agent._metric_in_text(question) is not None:
+        return None
+    ambiguous = (
+        "mas completo",
+        "mas determinante",
+        "mejor jugador",
+        "mejor en general",
+        "mas importante",
+        "rinde mejor",
+        "ha rendido mejor",
+        "mejor rendimiento",
+    )
+    if any(token in q for token in ambiguous):
+        return _UNVALIDATED_CRITERION_MESSAGE
+    return None
+
+
+def _canonicalize_supported_profile_query(question: str) -> str:
+    """Map broad but unambiguous player-profile wording to an existing tool family.
+
+    This is intent normalization, not a new football rule: the underlying answer is
+    still generated from get_player_profile and already-materialized analytics.
+    """
+    from llm import coach_agent_general as agent
+
+    q = agent._norm(question)
+    profile_phrases = (
+        "ponme al dia sobre ",
+        "hablame de ",
+        "dame un resumen de ",
+        "resumeme a ",
+        "que tal va ",
+        "como va ",
+    )
+    if any(phrase in q for phrase in profile_phrases):
+        return f"perfil y evolucion del jugador: {question}"
+    return question
+
+
+def _repair_history(history: list[dict[str, Any]] | None) -> list[dict[str, Any]] | None:
+    if not history:
+        return history
+    repaired: list[dict[str, Any]] = []
+    for item in history:
+        current = dict(item)
+        if str(current.get("role") or "") == "user" and current.get("content") is not None:
+            current["content"] = _repair_console_text(current["content"])
+        repaired.append(current)
+    return repaired
 
 
 def _collapse_followup_history(question: str, history: list[dict[str, Any]] | None) -> list[dict[str, Any]] | None:
-    """Keep the latest substantive user query as the anchor for chained follow-ups.
-
-    Example:
-    base ranking -> "y el segundo?" -> "que evidencias tienes?"
-
-    The evidence question must be resolved against the base ranking, not against the
-    ordinal follow-up. This stays deterministic and avoids an unnecessary Qwen call.
-    """
+    """Keep the latest substantive user query as the anchor for chained follow-ups."""
     if not history:
         return history
 
@@ -49,34 +142,45 @@ def _collapse_followup_history(question: str, history: list[dict[str, Any]] | No
                 break
         if last_user_idx is None:
             break
-
         last_user_text = str(trimmed[last_user_idx].get("content") or "").strip()
         if not agent._followup(last_user_text):
             break
-
-        # Remove the previous follow-up and any assistant response after it. The
-        # remaining history ends at the substantive anchor query/answer pair.
+        # Remove the previous follow-up and its assistant response. The remaining
+        # history ends at the substantive anchor query/answer pair.
         trimmed = trimmed[:last_user_idx]
-
     return trimmed
 
 
-def _prepare_kwargs(args: tuple[Any, ...], kwargs: dict[str, Any]) -> dict[str, Any]:
-    prepared = dict(kwargs)
-    prepared.setdefault("model", DEFAULT_MODEL)
-    question = _current_question(args, prepared)
-    if "history" in prepared:
-        prepared["history"] = _collapse_followup_history(question, prepared.get("history"))
-    return prepared
+def _prepare_call(args: tuple[Any, ...], kwargs: dict[str, Any]) -> tuple[tuple[Any, ...], dict[str, Any], str | None]:
+    prepared_args = list(args)
+    prepared_kwargs = dict(kwargs)
+
+    raw_question = str(prepared_args[0]) if prepared_args else str(prepared_kwargs.get("question") or "")
+    repaired_question = _repair_console_text(raw_question)
+    blocked = _policy_block(repaired_question)
+    routed_question = _canonicalize_supported_profile_query(repaired_question)
+
+    if prepared_args:
+        prepared_args[0] = routed_question
+    else:
+        prepared_kwargs["question"] = routed_question
+    prepared_kwargs.setdefault("model", DEFAULT_MODEL)
+
+    if "history" in prepared_kwargs:
+        history = _repair_history(prepared_kwargs.get("history"))
+        prepared_kwargs["history"] = _collapse_followup_history(routed_question, history)
+
+    return tuple(prepared_args), prepared_kwargs, blocked
 
 
 def run_coach_agent_turn(*args: Any, **kwargs: Any) -> CoachAgentResult:
     from llm.coach_agent_general import run_coach_agent_turn as _run
 
-    return _run(*args, **_prepare_kwargs(args, kwargs))
+    prepared_args, prepared_kwargs, blocked = _prepare_call(args, kwargs)
+    if blocked:
+        return CoachAgentResult(blocked, str(prepared_kwargs.get("model") or DEFAULT_MODEL), 0, (), None)
+    return _run(*prepared_args, **prepared_kwargs)
 
 
 def run_coach_agent(*args: Any, **kwargs: Any) -> str:
-    from llm.coach_agent_general import run_coach_agent as _run
-
-    return _run(*args, **_prepare_kwargs(args, kwargs))
+    return run_coach_agent_turn(*args, **kwargs).text
