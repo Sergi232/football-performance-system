@@ -2,68 +2,54 @@
 
 Última actualización: 03/10/2026
 
-Memoria técnica operativa del proyecto. Si contradice un chat antiguo, prevalecen el código actual de `main` y este archivo.
+Fuente de verdad operativa del proyecto junto con el código actual de `main`. Si contradice un chat antiguo, prevalece este archivo.
 
 ---
 
-# 1. Estado actual
+# ESTADO EJECUTIVO
 
 ```text
-DATA-01/02/03/04                    CERRADO / VALIDADO
-COLLECTOR-01                        CERRADO / V1.1 OFICIAL / FINAL GATE PASS
-GPS-01 NORMALIZATION                CERRADO / VALIDADO ESTRUCTURALMENTE
-GPS-DEMO SYNTHETIC                  CERRADO / VALIDADO
-GPS PHYSICAL SUMMARY                CERRADO / VALIDADO / REAL > SYNTHETIC
-FEATURE-01/02/03                    CERRADO / VALIDADO
-ANALYTICS-01                        CERRADO / VALIDADO
-EXPERT-01..07 N1000-N13000          BASELINE CERRADO / VALIDADO
-PERF-18 MATCH RATING                CERRADO / V5 ACTIVA / CONGELADA
-PERFORMANCE INDEX                   v0.2 EXPERIMENTAL / OPERATIVO
-DASHBOARD TEAM / PLAYER / MATCH     OPERATIVO / QA PASS
-DASHBOARD PHYSICAL / GPS            CERRADO / VALIDADO
-ALERTS-01 ATTENTION CENTRE          CERRADO / VALIDADO v0.3
-UI-PRESENTATION-ES-DEMO             CONTRACT PASS
-ACCESS-CONTROL-01                   CONTRACT PASS / AUTH REAL PENDIENTE
-LLM-01                              CONTRATOS PASS
-LLM-02 LOCAL COACH COPILOT          CERRADO MVP / CASTELLANO / SMOKE 4/4 PASS
-REPORTS-03 ELITE REPORTS            CERRADO / V6 / GATE PASS
-PUBLIC DEMO ANONYMIZED              PASS / NO REDISTRIBUIBLE
-PUBLIC DEMO SYNTHETIC               CERRADO / PASS / REDISTRIBUIBLE
-REPRODUCIBILITY                     CERRADO / PASS
-CI AUTOMÁTICO                       ACTIVO / PASS
-GLOBAL END-TO-END QA                CERRADO / PASS
-TFM MARCO TEÓRICO                   BORRADOR ACADÉMICO CREADO
-TFM METODOLOGÍA                     BORRADOR ACADÉMICO CREADO
-TFM RESULTADOS                      BORRADOR ACADÉMICO CREADO
-TFM DISCUSIÓN / CONCLUSIONES        BORRADOR ACADÉMICO CREADO
-TFM EVIDENCE MATRIX                 CREADA
-TFM TABLAS RESULTADOS               CREADAS
-TFM FIGURAS ARQUITECTURA            5 SVG CREADOS
-TFM SCREENSHOT CHECKLIST            CREADA / CAPTURAS REALES PENDIENTES
-TFM DEFENSE OUTLINE                 CREADO
-FINAL-01                            PRODUCTO FUNCIONAL / CIERRE ACADÉMICO
-PUBLIC DEPLOYMENT                   NO HACER — derechos dataset real no resueltos
+PRODUCTO FUNCIONAL                    CERRADO / VALIDADO
+GLOBAL END-TO-END QA                  PASS
+REPRODUCIBILIDAD                      PASS
+CI AUTOMÁTICO                         ACTIVO / PASS
+DEMO PÚBLICA SINTÉTICA                PASS / REDISTRIBUIBLE
+MEMORIA ACADÉMICA INTEGRADA           BORRADOR COMPLETO
+MARCO TEÓRICO / BIBLIOGRAFÍA          BORRADOR COMPLETO
+METODOLOGÍA                           BORRADOR COMPLETO
+RESULTADOS                            BORRADOR COMPLETO
+DISCUSIÓN / LIMITACIONES              BORRADOR COMPLETO
+CONCLUSIONES / TRABAJO FUTURO         BORRADOR COMPLETO
+TABLAS ACADÉMICAS                     CREADAS
+FIGURAS TÉCNICAS                      5 SVG CREADOS
+ANEXOS                                BORRADOR CREADO
+GUION DEFENSA                         CREADO
+CAPTURAS REALES PRODUCTO              PENDIENTES
+PLANTILLA / RÚBRICA UNIVERSIDAD       PENDIENTE EXTERNO
+PUBLIC DEPLOYMENT                     NO HACER — licencia dataset real no resuelta
 ```
+
+No añadir nueva funcionalidad deportiva salvo defecto real o nueva evidencia.
 
 ---
 
-# 2. Hipótesis principal
+# HIPÓTESIS PRINCIPAL
 
 > **Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte a la decisión a partir de datos de vídeo y GPS opcional, capaz de transformarlos en información sobre rendimiento, evolución, rol y comportamiento físico de los jugadores y del equipo.**
 
-Estado del contraste:
+Contraste actual:
 
 ```text
-viabilidad técnica / arquitectónica    FAVORABLEMENTE CONTRASTADA
-mejora causal decisiones entrenador    NO DEMOSTRADA
-mejora rendimiento deportivo           NO DEMOSTRADA
-fatiga / readiness / lesión            NO DEMOSTRADO / NO IMPLEMENTADO
-impacto comercial                      NO VALIDADO
+viabilidad técnica / arquitectónica     FAVORABLEMENTE CONTRASTADA
+mejora decisiones entrenador            NO DEMOSTRADA
+mejora rendimiento deportivo            NO DEMOSTRADA
+fatiga / readiness / lesión             NO DEMOSTRADO / NO IMPLEMENTADO
+impacto comercial                       NO VALIDADO
 ```
 
 ---
 
-# 3. Arquitectura vigente
+# ARQUITECTURA VIGENTE
 
 ```text
 VIDEO / COLLECTOR + GPS OPCIONAL
@@ -79,9 +65,9 @@ COACH COPILOT     PDF
 
 Regla global:
 
-> Una capa superior no puede inventar métricas, scores, rankings o recomendaciones que no existan en una capa inferior validada.
+> Una capa superior no inventa métricas, scores, rankings o recomendaciones que no existan en una capa inferior validada.
 
-Arquitectura LLM:
+LLM:
 
 ```text
 DATA
@@ -94,41 +80,33 @@ DATA
 → COACH
 ```
 
-El LLM no calcula Match Rating, Performance Index, features críticas ni decisiones expertas.
+---
+
+# MÓDULOS CERRADOS
+
+```text
+DATA-01/02/03/04                    CERRADO / VALIDADO
+COLLECTOR-01                        CERRADO / V1.1 / FINAL GATE PASS
+GPS NORMALIZATION                   CERRADO / VALIDADO
+GPS SYNTHETIC DEMO                  CERRADO / VALIDADO
+GPS PHYSICAL SUMMARY                CERRADO / REAL > SYNTHETIC
+FEATURE-01/02/03                    CERRADO / VALIDADO
+ANALYTICS-01                        CERRADO / VALIDADO
+EXPERT-01..07 N1000-N13000          CERRADO / VALIDADO
+MATCH RATING V5                     CERRADO / CONGELADO
+PERFORMANCE INDEX                   v0.2 EXPERIMENTAL / OPERATIVO
+DASHBOARD TEAM / PLAYER / MATCH     QA PASS
+DASHBOARD GPS                       QA PASS
+ATTENTION CENTRE                    CERRADO / v0.3
+ACCESS CONTROL                      CONTRACT PASS / AUTH REAL PENDIENTE
+LLM-01                              PASS
+LLM-02 COACH COPILOT                CERRADO / ES / SMOKE 4/4 PASS
+REPORTS V6                          CERRADO / PASS
+```
 
 ---
 
-# 4. Variables aprobadas — Collector V1.1
-
-Unidad principal: jugador-partido.
-
-Identificación/contexto:
-- jugador;
-- dorsal editable;
-- titular/suplente;
-- minutos;
-- partido/equipo/rival/fecha;
-- formación;
-- rol/posición/lado/cambios de rol.
-
-Eventos:
-- pase normal/largo/centro × éxito/fallo;
-- pase clave;
-- asistencia;
-- regate éxito/fallo;
-- pérdida;
-- remate: gol/a puerta/fuera/bloqueado;
-- entrada;
-- intercepción;
-- bloqueo;
-- despeje;
-- falta cometida/recibida con x/y;
-- tarjeta amarilla/roja;
-- segunda amarilla como roja con flag;
-- penal ganado/concedido con resultado;
-- parada;
-- gol encajado;
-- córner a favor/en contra con resultado de ABP.
+# COLLECTOR V1.1
 
 Taxonomía congelada:
 
@@ -137,29 +115,26 @@ collector/event_catalog.json
 catalog_version=0.3.0
 ```
 
-No recoger manualmente:
-- xG;
-- posesión avanzada;
-- PPDA;
-- pressing;
-- heatmaps;
-- fatiga;
-- métricas derivables automáticamente.
+Variables principales:
+- jugador, dorsal, titular/suplente, minutos;
+- partido, equipo, rival, fecha, formación;
+- rol/posición, lado y cambios;
+- pase normal/largo/centro × éxito/fallo;
+- pase clave y asistencia;
+- regate y pérdida;
+- remate: gol/a puerta/fuera/bloqueado;
+- entrada, intercepción, bloqueo, despeje;
+- falta cometida/recibida con x/y;
+- tarjeta amarilla/roja;
+- penal ganado/concedido con resultado;
+- parada y gol encajado;
+- córner a favor/en contra + resultado ABP.
+
+No recoger manualmente xG, PPDA, posesión avanzada, pressing, heatmaps, fatiga ni métricas derivables.
 
 ---
 
-# 5. Data / Feature / Analytics
-
-DuckDB con separación explícita:
-
-```text
-master
-→ raw observations
-→ raw aggregates
-→ derived features
-→ analytics evidence
-→ decision results
-```
+# DATA / FEATURES / ANALYTICS
 
 Caso profesional de desarrollo:
 
@@ -170,42 +145,50 @@ played appearances=590
 ```
 
 FEATURE-01:
-- 28 features base;
-- 23.380 filas;
-- 6.324 non-null;
-- PASS.
+
+```text
+28 features
+23380 rows
+6324 non-null
+PASS
+```
 
 FEATURE-02:
-- 28 × 7 operadores temporales;
-- 163.660 filas;
-- strict-past;
-- PASS.
+
+```text
+28 × 7 temporal operators
+163660 rows
+strict-past PASS
+```
 
 FEATURE-03:
-- 117.735 filas;
-- 43.060 non-null;
-- 590/835 player-match con rol observado;
-- no inventa rol faltante;
-- PASS.
+
+```text
+117735 rows
+43060 non-null
+590/835 player-match con rol observado
+PASS
+```
 
 ANALYTICS-01:
-- 46.760 filas;
-- `SELF_ROLE_PRIOR` + `PEER_ROLE_PRIOR`;
-- strict-past;
-- current-player excluido del peer pool;
-- equal-player weighting;
-- PASS.
+
+```text
+46760 rows
+SELF_ROLE_PRIOR + PEER_ROLE_PRIOR
+strict-past PASS
+current-player exclusion PASS
+equal-player weighting PASS
+```
 
 ---
 
-# 6. Match Rating / Performance Index
+# MATCH RATING / PERFORMANCE INDEX
 
-Match Rating:
+Match Rating activo:
 
 ```text
-version=match_rating_v0.5-candidate
+match_rating_v0.5-candidate
 coverage=590/590
-matches=38
 outfield PERF18_ANCHORED=380
 goalkeeper route=38
 generic role fallback=172
@@ -220,7 +203,7 @@ min=3.206
 max=9.554
 ```
 
-V5 permanece congelada. No modificar fórmula/pesos sin nueva evidencia y validación.
+V5 congelada. No modificar sin nueva evidencia + experimento + validación.
 
 Performance Index:
 
@@ -228,13 +211,11 @@ Performance Index:
 performance_score_v0.2-experimental
 ```
 
-Es capa histórica/posicional complementaria; no sustituye Match Rating.
+Capa histórica/posicional complementaria.
 
 ---
 
-# 7. Expert System
-
-Familias:
+# EXPERT SYSTEM
 
 ```text
 N1000   disponibilidad / actividad
@@ -252,7 +233,7 @@ N12000  player-fit evidence
 N13000  recommendation gate
 ```
 
-Contrato de nodo:
+Contrato:
 
 ```text
 entrada → condición → resultado → confianza → justificación
@@ -269,22 +250,20 @@ POLICY_UNVALIDATED=501
 ROLE_UNKNOWN=245
 ```
 
-N13000 no emite recomendación táctica sin policy validada.
+N13000 no recomienda sin policy validada.
 
-N9000 solo acepta GPS observado no sintético como evidencia física.
-
-Estado actual:
+N9000 solo acepta GPS observado no sintético.
 
 ```text
-observed non-synthetic GPS player-match for expert=0
-Synthetic demo GPS excluded from expert evidence=PASS
+observed non-synthetic GPS player-match=0
+synthetic GPS excluded from expert evidence=PASS
 ```
 
 ---
 
-# 8. GPS
+# GPS
 
-Flujo canónico:
+Flujo:
 
 ```text
 provider file / synthetic demo
@@ -301,24 +280,22 @@ Resumen:
 gps_physical_summary_v0.1-descriptive
 ```
 
-Demo integración:
+Demo técnica:
 
 ```text
-generator_version=gps_synthetic_demo_v1.2.0
+gps_synthetic_demo_v1.2.0
 imports=38
 mappings=590
 observations=38197
-summaries/latest=590
+summaries=590
 REAL_OVER_SYNTHETIC=PASS
 ```
 
-No existen thresholds canónicos de HSR, sprint, workload, fatiga, readiness o riesgo de lesión.
-
-GPS no modifica Match Rating ni Performance Index.
+No existen thresholds canónicos de HSR, sprint, workload, fatiga, readiness o lesión.
 
 ---
 
-# 9. Dashboard / producto
+# PRODUCTO
 
 Modos:
 - Team;
@@ -336,20 +313,18 @@ players → Jugador 01...
 opponents → Rival 01...
 ```
 
-Access control estructural:
+Access roles:
 - SUPERADMIN;
 - CLUB_ADMIN;
 - STAFF.
 
-Autenticación real email/password/session: no implementada.
+Autenticación email/password/session: no implementada.
 
 ---
 
-# 10. LLM-02 Coach Copilot
+# COACH COPILOT
 
-MVP oficial: castellano.
-
-Perfil local validado:
+Perfil validado:
 
 ```text
 model=qwen3:1.7b
@@ -360,13 +335,9 @@ FPS_AGENT_TIMEOUT=18
 keep_alive=30m
 ```
 
-Regla operativa:
-- warm-up y runtime deben usar mismo `num_ctx`;
-- `512 → 1536` provocaba reload y timeout de primera síntesis;
-- `llm/validate_local_agent.py` corregido;
-- reiniciar Ollama si `/api/tags` queda bloqueado es incidencia operativa, no regresión automática del producto.
+Warm-up y runtime deben usar mismo `num_ctx`.
 
-Gate final:
+Gate:
 
 ```text
 router=17/17
@@ -382,15 +353,15 @@ LOCAL AGENT CONTRACT=PASS 4/4
 
 No validados:
 - ranking por rol;
-- player similarity como función final;
+- similarity final;
 - predicción futura;
 - XI ideal;
-- recomendaciones tácticas automáticas;
+- recomendación táctica automática;
 - fatiga/readiness/lesión.
 
 ---
 
-# 11. Reports V6
+# REPORTS V6
 
 ```text
 report_metrics=report_descriptive_v0.2
@@ -401,11 +372,11 @@ Match=3 páginas
 REPORTS ELITE TECHNICAL GATE V6=PASS
 ```
 
-Los PDF consumen analytics materializados y no recalculan lógica crítica.
-
 ---
 
-# 12. QA global
+# QA / REPRODUCIBILIDAD / CI
+
+QA:
 
 ```text
 Fase 1 — Data/Core          PASS
@@ -414,28 +385,6 @@ Fase 3A — Product           PASS
 Fase 3B — Delivery          PASS
 GLOBAL END-TO-END QA        PASS
 ```
-
-Cadena cubierta:
-
-```text
-Collector
-→ DuckDB
-→ Features
-→ Analytics
-→ Match Rating
-→ GPS
-→ Expert
-→ Dashboard
-→ Access Control
-→ Demo Presentation
-→ Coach Copilot
-→ PDF
-→ Publication
-```
-
----
-
-# 13. Reproducibilidad + CI
 
 Demo sintética pública:
 
@@ -460,135 +409,141 @@ report_payloads=PASS
 redistribution_status=REDISTRIBUTABLE_SYNTHETIC_DEMO
 ```
 
-Match Rating y Performance Index de esta demo son fixtures sintéticos de compatibilidad, no revalidación científica.
-
 CI:
 
 ```text
 .github/workflows/tests.yml
-triggers=push + pull_request + workflow_dispatch
-Python=3.13
-pytest=enabled
-synthetic demo rebuild=enabled
+push + pull_request + workflow_dispatch
+Python 3.13
+pytest
+synthetic demo rebuild + validation
 ```
 
-Run de referencia confirmado:
+Run limpio de referencia confirmado:
 
 ```text
-37081464123 → SUCCESS
+37081464123 = SUCCESS
 ```
 
 ---
 
-# 14. Memoria académica — estado real
+# MEMORIA ACADÉMICA — FUENTES CANÓNICAS
 
-Documentos canónicos:
+Manuscrito único:
+- `docs/TFM_MANUSCRIPT_DRAFT.md`.
 
-- `docs/TFM_MANUSCRIPT_ASSEMBLY.md` — estructura final de la memoria;
-- `docs/TFM_MEMORIA_BASE.md` — narrativa inicial;
-- `docs/TFM_MARCO_TEORICO_REFERENCIAS.md` — marco teórico + bibliografía;
-- `docs/TFM_METHODOLOGY_DRAFT.md` — metodología integrada;
-- `docs/TFM_RESULTS_DRAFT.md` — resultados basados en gates;
-- `docs/TFM_DISCUSSION_CONCLUSIONS_DRAFT.md` — discusión, limitaciones y conclusiones;
-- `docs/TFM_EVIDENCE_MATRIX.md` — control de claims;
-- `docs/TFM_TABLES_RESULTS.md` — tablas canónicas;
-- `docs/TFM_FIGURES_TABLES_PLAN.md` — plan visual;
-- `docs/TFM_SCREENSHOT_CHECKLIST.md` — capturas reales pendientes;
-- `docs/TFM_DEFENSE_OUTLINE.md` — guion base de defensa.
+Documentos de soporte:
+- `docs/TFM_MANUSCRIPT_ASSEMBLY.md`;
+- `docs/TFM_MEMORIA_BASE.md`;
+- `docs/TFM_MARCO_TEORICO_REFERENCIAS.md`;
+- `docs/TFM_METHODOLOGY_DRAFT.md`;
+- `docs/TFM_RESULTS_DRAFT.md`;
+- `docs/TFM_DISCUSSION_CONCLUSIONS_DRAFT.md`;
+- `docs/TFM_EVIDENCE_MATRIX.md`;
+- `docs/TFM_TABLES_RESULTS.md`;
+- `docs/TFM_ANNEXES_DRAFT.md`;
+- `docs/TFM_SCREENSHOT_CHECKLIST.md`;
+- `docs/TFM_DEFENSE_OUTLINE.md`;
+- `docs/TFM_SUBMISSION_CHECKLIST.md`.
 
-Figuras reproducibles creadas:
-
+Figuras reproducibles:
 - `docs/figures/tfm_architecture_overview.svg`;
 - `docs/figures/tfm_llm_grounding.svg`;
 - `docs/figures/tfm_strict_past.svg`;
 - `docs/figures/tfm_expert_system.svg`;
-- `docs/figures/tfm_data_model.svg`;
-- `docs/figures/README.md` contiene pies y reglas de uso.
+- `docs/figures/tfm_data_model.svg`.
 
-Estado:
+Índice/pies:
+- `docs/figures/README.md`.
+
+Estado académico:
 
 ```text
-Introducción / hipótesis       BASE DISPONIBLE
-Marco teórico                  BORRADOR COMPLETO
-Metodología                    BORRADOR COMPLETO
-Arquitectura                   DOCUMENTADA + FIGURAS
-Resultados                     BORRADOR COMPLETO
-Discusión                      BORRADOR COMPLETO
-Limitaciones                   BORRADOR COMPLETO
-Conclusiones                   BORRADOR COMPLETO
-Bibliografía                   BASE CURADA
-Tablas de resultados           CREADAS
-Figuras técnicas               5 SVG CREADOS
-Capturas producto              PENDIENTES
-Anexos                         ESTRUCTURA DEFINIDA
-Plantilla universitaria        PENDIENTE
-Maquetación final              PENDIENTE
-Defensa                        GUION BASE CREADO
+manuscrito integrado              CREADO
+marco teórico                     CREADO
+bibliografía base                 CREADA
+metodología                       CREADA
+resultados                        CREADOS
+ discusión / limitaciones         CREADAS
+conclusiones                      CREADAS
+tablas                            CREADAS
+figuras técnicas                  CREADAS
+anexos                            CREADOS
+checklist entrega                 CREADA
+guion defensa                     CREADO
+capturas reales                   PENDIENTES
+plantilla universitaria           PENDIENTE
+maquetación final                 PENDIENTE
+presentación final                PENDIENTE
 ```
 
 ---
 
-# 15. Experimentos / decisiones aprobadas
+# DECISIONES APROBADAS
 
-- Collector V1.1 congelado sobre `event_catalog v0.3.0`;
+- MVP funcional antes de aumentar complejidad;
+- Collector V1.1 congelado;
+- raw / features / analytics / decision / LLM separados;
+- strict-past obligatorio;
 - Match Rating V5 congelado;
-- Performance Index separado del Match Rating;
-- sistema experto jerárquico preferido frente a un único DecisionTreeClassifier;
-- ML solo si supera baseline simple con target defendible;
-- línea ML de posición cerrada como context-only;
+- Performance Index separado;
+- experto jerárquico y auditable;
+- ML solo con target defendible y contra baseline simple;
+- GPS opcional, real > synthetic;
+- synthetic GPS no es evidencia física observada;
+- no inferir rol sin evidencia;
 - LLM downstream y read-only;
-- MVP LLM oficial en castellano;
-- control de acceso separado de autenticación;
-- GPS real > synthetic;
-- GPS synthetic no cuenta como evidencia física observada;
-- no inferir rol específico sin evidencia;
+- MVP LLM castellano;
 - PDF downstream de analytics;
-- demo pública sintética separada del caso profesional;
+- demo pública sintética separada del dataset profesional;
 - CI automático obligatorio;
-- hipótesis principal limitada a viabilidad técnica/auditable.
+- hipótesis limitada a viabilidad técnica/auditable.
 
 ---
 
-# 16. Decisiones descartadas / aplazadas
+# DECISIONES DESCARTADAS / APLAZADAS
 
-- recrear Opta/StatsBomb/tracking profesional;
-- recoger manualmente métricas avanzadas derivables;
-- LLM bilingüe para MVP;
-- optimización indefinida de qwen3:1.7b;
-- confiar solo en pass rate automático;
-- XI ideal / recomendación táctica sin policy validada;
-- fatiga / lesión / readiness sin datos y validación;
-- inferir rol de suplentes sin evidencia;
+- recrear proveedores profesionales;
+- recoger métricas avanzadas manuales sin coste/beneficio claro;
+- LLM como motor analítico;
+- XI ideal o rol óptimo sin policy validada;
+- fatiga/lesión/readiness sin datos y validación;
+- inferir posición de suplentes sin evidencia;
 - publicar dataset profesional sin derechos;
-- login SaaS completo en el MVP;
-- PDF como captura literal de la web;
-- inventar validación con entrenadores/usuarios;
-- añadir ML solo por complejidad académica.
+- autenticación SaaS completa en MVP;
+- añadir ML solo por complejidad;
+- inventar validación con usuarios.
 
 ---
 
-# 17. Problemas abiertos
+# PROBLEMAS ABIERTOS
 
-- adaptar memoria a plantilla/rúbrica oficial cuando esté disponible;
-- realizar capturas reales del producto en modo demo;
-- ensamblar texto académico final en un único manuscrito;
-- revisar formato bibliográfico exigido;
-- producir anexos finales y referencias cruzadas;
-- preparar defensa final y plan B de demo;
-- opcional: validación con entrenadores/analistas reales;
-- opcional: estudio interobservador del Collector;
-- opcional: GPS real;
-- autenticación completa solo si evoluciona a producto comercial;
-- resolver licencia antes de cualquier redistribución del dataset profesional.
+Externos / pendientes:
+- plantilla/rúbrica universitaria;
+- capturas reales del producto local;
+- formato bibliográfico definitivo;
+- maquetación final;
+- presentación/defensa final;
+- licencia antes de redistribuir dataset profesional.
+
+Mejoras opcionales, no inventar:
+- estudio interobservador;
+- validación con entrenadores/analistas;
+- GPS real;
+- validación externa Match Rating;
+- ground truth N13000;
+- Expert vs ML independiente.
 
 ---
 
-# 18. Siguiente paso exacto
+# SIGUIENTE PASO EXACTO
 
-1. producir las capturas reales definidas en `docs/TFM_SCREENSHOT_CHECKLIST.md`;
-2. insertar tablas y figuras ya creadas en el manuscrito académico único;
-3. ensamblar Introducción → Marco teórico → Metodología → Arquitectura → Resultados → Discusión → Limitaciones → Conclusiones;
-4. adaptar estructura, extensión y referencias a la plantilla/rúbrica oficial cuando se disponga de ella;
-5. cerrar anexos;
-6. preparar presentación/defensa utilizando `docs/TFM_DEFENSE_OUTLINE.md`;
-7. no añadir nuevas funcionalidades deportivas salvo defecto real o nueva evidencia.
+**No seguir redactando más texto genérico ni añadir funciones.**
+
+1. ejecutar la app local en modo demo;
+2. producir las 10 capturas reales definidas en `docs/TFM_SCREENSHOT_CHECKLIST.md`;
+3. revisar visualmente esas capturas y seleccionar cuáles van al cuerpo/anexos;
+4. adaptar `docs/TFM_MANUSCRIPT_DRAFT.md` a la plantilla oficial cuando esté disponible;
+5. maquetar tablas/figuras/capturas;
+6. cerrar anexos y bibliografía;
+7. crear presentación final y ensayar defensa.
