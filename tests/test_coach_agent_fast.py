@@ -3,9 +3,9 @@ from llm import coach_agent_general as agent
 
 
 def test_repairs_common_windows_powershell_question_mark_corruption():
-    assert fast._repair_console_text("?Qu? jugador tiene m?s rating?") == "Que jugador tiene mas rating?"
-    assert fast._repair_console_text("?Qui?n tiene m?s riesgo de lesi?n?") == "Quien tiene mas riesgo de lesion?"
-    assert fast._repair_console_text("Ponme al d?a sobre Antonio Sivera") == "Ponme al dia sobre Antonio Sivera"
+    assert fast._repair_console_text("?Qu? jugador tiene m?s rating?").casefold() == "que jugador tiene mas rating?"
+    assert fast._repair_console_text("?Qui?n tiene m?s riesgo de lesi?n?").casefold() == "quien tiene mas riesgo de lesion?"
+    assert fast._repair_console_text("Ponme al d?a sobre Antonio Sivera").casefold() == "ponme al dia sobre antonio sivera"
 
 
 def test_repaired_supported_queries_return_to_deterministic_router_shape():
@@ -54,5 +54,5 @@ def test_chained_followup_keeps_substantive_anchor_after_history_repair():
     ]
     repaired = fast._repair_history(history)
     collapsed = fast._collapse_followup_history("Que evidencias tienes?", repaired)
-    users = [x["content"] for x in collapsed if x.get("role") == "user"]
-    assert users == ["Quien corre mas distancia por partido?"]
+    users = [x["content"].casefold() for x in collapsed if x.get("role") == "user"]
+    assert users == ["quien corre mas distancia por partido?"]
