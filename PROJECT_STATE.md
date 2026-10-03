@@ -15,7 +15,7 @@ REPRODUCIBILIDAD                      PASS
 CI AUTOMÁTICO                         ACTIVO / PASS
 DEMO PÚBLICA SINTÉTICA                PASS / REDISTRIBUIBLE
 UI FINAL PRESENTATION AUDIT           CERRADO / CORREGIDO / CI PASS
-LLM-02 COACH COPILOT                  REABIERTO — GRANITE RUNTIME / LOCAL E2E PENDIENTE
+LLM-02 COACH COPILOT                  CERRADO — GRANITE 4.2 3B / LOCAL E2E 9/9 PASS
 MEMORIA ACADÉMICA INTEGRADA           BORRADOR COMPLETO
 MARCO TEÓRICO / BIBLIOGRAFÍA          BORRADOR COMPLETO
 METODOLOGÍA                           BORRADOR COMPLETO
@@ -26,7 +26,7 @@ TABLAS ACADÉMICAS                     CREADAS
 FIGURAS TÉCNICAS                      5 SVG CREADOS
 ANEXOS                                BORRADOR CREADO
 GUION DEFENSA                         CREADO
-CAPTURAS REALES PRODUCTO              EN CURSO — ESPERAR CIERRE LLM-02
+CAPTURAS REALES PRODUCTO              EN CURSO — REVISIÓN VISUAL FINAL
 PLANTILLA / RÚBRICA UNIVERSIDAD       PENDIENTE EXTERNO
 PUBLIC DEPLOYMENT                     NO HACER — licencia dataset real no resuelta
 ```
@@ -73,11 +73,11 @@ LLM:
 
 ```text
 QUESTION
-→ OLLAMA LOCAL / TOOL SELECTION
+→ OLLAMA GRANITE / STRUCTURED INTENT
 → READ-ONLY TOOLS
 → DATA / ANALYTICS / DECISION ENGINE
 → STRUCTURED EVIDENCE
-→ OLLAMA LOCAL / SYNTHESIS
+→ OLLAMA GRANITE / SYNTHESIS
 → NUMERIC / POLICY GUARD
 → COACH
 ```
@@ -102,7 +102,7 @@ DASHBOARD GPS                       QA PASS
 ATTENTION CENTRE                    CERRADO / v0.3
 ACCESS CONTROL                      CONTRACT PASS / AUTH REAL PENDIENTE
 LLM-01                              PASS
-LLM-02 COACH COPILOT                REABIERTO — GRANITE / LOCAL E2E PENDIENTE
+LLM-02 COACH COPILOT                CERRADO — GRANITE 4.2 3B / LOCAL E2E 9/9 PASS
 REPORTS V6                          CERRADO / PASS
 ```
 
@@ -351,29 +351,26 @@ gemma3:4b
 - tool calling Ollama: HTTP 400 → descartado para esta arquitectura
 
 granite4.2:3b
-- goals / assists tool selection PASS
-- player / GPS selecciona tool correcta pero devuelve alias corto `07`
-- match-detail no seleccionado en benchmark inicial
-- ~8-11 s warm en la mayoría de casos
-- candidato elegido por equilibrio calidad / latencia
+- candidato elegido por equilibrio calidad / latencia / agentic fit
+- benchmark inicial detectó aliases cortos y match-detail irregular
+- esos fallos se resolvieron con clasificación estructurada de intención + normalización Python
 ```
 
-## Runtime candidato actual
+## Runtime final validado
 
 ```text
 model=granite4.2:3b
 scope=SPANISH_ONLY_MVP
 thinking=False
 FPS_AGENT_NUM_CTX=1536
-FPS_AGENT_TIMEOUT=75
 keep_alive=30m
 ```
 
-Arquitectura implementada:
+Arquitectura final:
 
 ```text
 question
-→ Granite tool selection
+→ Granite structured intent classification
 → bounded read-only tools
 → Python/DuckDB + analytics/expert outputs
 → compact structured evidence
@@ -382,21 +379,36 @@ question
 → coach
 ```
 
-Cambios:
-- `llm/coach_agent_granite.py` nuevo runtime;
-- `llm/coach_agent_fast.py` mantiene API y delega a Granite;
+Cambios principales:
+- `llm/coach_agent_granite_v2.py` runtime activo;
+- `llm/coach_agent_fast.py` mantiene API pública y delega al runtime Granite;
 - `query_team_stats` añade rankings descriptivos de goles, asistencias, remates, minutos y apariciones;
-- normalización de argumentos `07 → Jugador 07` y `09 → Rival 09 / match_id`;
+- normalización de argumentos y aliases de jugador/rival;
 - ninguna pregunta desconocida cae por defecto en `get_team_snapshot`;
 - guardrails explícitos para fatiga/cansancio, lesión, XI ideal y recomendación táctica;
-- el LLM redacta la respuesta normal; el guard solo controla grounding numérico y policy;
-- `tests/test_coach_agent_granite.py` cubre modelo, aliases, guardrails, tools y grounding;
+- el LLM interpreta y redacta; Python/DuckDB sigue calculando y validando;
 - `llm/validate_local_agent.py` contiene el gate end-to-end real de 9 casos.
 
-CI estructural del nuevo runtime:
+Gate local real con DuckDB profesional 03/10/2026:
 
 ```text
-run=37150798394
+max_goals          PASS  47.1s
+max_assists        PASS  16.6s
+player_evolution   PASS  51.6s
+player_gps         PASS  51.3s
+match_detail       PASS  51.6s
+team_state         PASS  55.7s
+quality            PASS  35.7s
+fatigue            PASS   0.0s
+unknown            PASS   2.8s
+average_elapsed          34.7s
+LOCAL AGENT CONTRACT: PASS (9/9)
+```
+
+CI del runtime final:
+
+```text
+run=37152519764
 unit + contract tests=PASS
 synthetic public demo rebuild + validation=PASS
 conclusion=SUCCESS
@@ -406,10 +418,15 @@ Estado:
 
 ```text
 código / contratos / CI              PASS
-selección de modelo                  GRANITE 4.2 3B CANDIDATO
-local end-to-end con DuckDB real     PENDIENTE
-cierre LLM-02                        PENDIENTE DEL GATE LOCAL
+modelo principal                     GRANITE 4.2 3B
+local end-to-end con DuckDB real     PASS 9/9
+latencia media PC objetivo           34.7s
+cierre LLM-02                        CERRADO
 ```
+
+Limitación operativa observada:
+- cargar simultáneamente varios modelos Ollama puede agotar la RAM disponible y provocar `DuckDB OutOfMemoryException` antes de iniciar el agente;
+- en uso normal debe mantenerse solo el modelo operativo necesario cargado.
 
 No validados y por tanto no permitidos:
 - ranking por rol como recomendación;
@@ -483,6 +500,7 @@ Runs de referencia:
 37081464123 = SUCCESS — reproducibilidad inicial
 37085564464 = SUCCESS — UI final presentation audit
 37150798394 = SUCCESS — Granite runtime contracts / synthetic demo
+37152519764 = SUCCESS — Granite structured-intent runtime / tests + synthetic demo
 ```
 
 ---
@@ -522,7 +540,7 @@ metodología / resultados          CREADOS
 discusión / conclusiones          CREADAS
 tablas / figuras / anexos         CREADOS
 guion defensa                     CREADO
-capturas reales                   EN CURSO — ESPERAR CIERRE LLM-02
+capturas reales                   EN CURSO — REVISIÓN VISUAL FINAL
 plantilla universitaria           PENDIENTE
 maquetación final                 PENDIENTE
 presentación final                PENDIENTE
@@ -545,7 +563,8 @@ presentación final                PENDIENTE
 - no inferir rol sin evidencia;
 - LLM downstream y read-only;
 - MVP LLM castellano;
-- selección de tool guiada por modelo, no por un listado creciente de `if` semánticos;
+- Granite 4.2 3B como modelo local principal del Coach Copilot;
+- selección semántica mediante clasificación estructurada de intención, no por un listado creciente de `if`;
 - guardrails de policy pueden ser deterministas;
 - pregunta no soportada no cae en un resumen genérico del equipo;
 - PDF downstream de analytics;
@@ -569,6 +588,7 @@ presentación final                PENDIENTE
 - añadir ML solo por complejidad;
 - inventar validación con usuarios;
 - qwen3:1.7b como runtime conversacional final;
+- qwen3.5:4b como runtime principal en el PC objetivo por latencia observada;
 - gemma3:4b como runtime de tool calling con Ollama actual.
 
 ---
@@ -576,10 +596,10 @@ presentación final                PENDIENTE
 # PROBLEMAS ABIERTOS
 
 Prioridad inmediata:
-- ejecutar `llm/validate_local_agent.py` con Granite + DuckDB real;
-- corregir solo fallos observados del gate local;
-- cerrar LLM-02 si el gate real pasa;
-- después recapturar Asistente IA y el resto de capturas definitivas.
+- revisar visualmente el Asistente IA final con Granite en la web;
+- recapturar las pantallas afectadas por el UI audit;
+- completar exactamente las 10 capturas canónicas;
+- continuar maquetación final cuando esté disponible la plantilla universitaria.
 
 Externos / pendientes:
 - plantilla/rúbrica universitaria;
@@ -600,11 +620,11 @@ Mejoras opcionales, no inventar:
 
 # SIGUIENTE PASO EXACTO
 
-**No añadir más funciones antes del gate local del nuevo agente.**
+**No añadir más funcionalidad. Volver al gate visual final.**
 
-1. `git pull --ff-only`;
-2. ejecutar `python llm\validate_local_agent.py` con `FPS_DB_PATH` apuntando a la DuckDB profesional y `granite4.2:3b`;
-3. si falla, corregir únicamente los casos observados;
-4. si pasa, cerrar LLM-02 y revisar visualmente el Asistente IA;
+1. `git pull --ff-only` y arrancar la app con la DuckDB profesional y `granite4.2:3b`;
+2. comprobar visualmente en Asistente IA: `¿Quién es el máximo goleador?`, `¿Cómo ha evolucionado Antonio Sivera?` y `Enséñame los datos GPS de Antonio Sivera.`;
+3. si las respuestas y trazas son correctas, capturar `docs/screenshots/07_coach_copilot.png`;
+4. recapturar Player/Match/GPS/Attention si aún corresponden a las capturas anteriores al UI audit;
 5. producir exactamente las 10 capturas canónicas de `docs/TFM_SCREENSHOT_CHECKLIST.md`: Collector, Team, Player, Match, GPS, Attention, Coach Copilot y los tres PDF;
 6. seleccionar cuerpo/anexos y continuar maquetación final.
