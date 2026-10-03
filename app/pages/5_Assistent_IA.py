@@ -26,6 +26,7 @@ from llm.coach_agent_fast import DEFAULT_MODEL, ollama_status, run_coach_agent_t
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 TOOL_LABELS = {
+    "rank_players": "Ranking estructurado de jugadores",
     "query_team_stats": "Estadísticas observadas del equipo",
     "get_team_snapshot": "Resumen del equipo",
     "get_data_quality": "Calidad de datos",
@@ -77,7 +78,7 @@ if teams.empty:
 page_header(
     "ASISTENTE IA · LOCAL",
     "Asistente IA",
-    "Pregunta de forma natural. El agente interpreta la intención y consulta únicamente datos estructurados de solo lectura antes de responder.",
+    "Pregunta de forma natural. Las consultas claras se resuelven de forma determinista y el modelo local solo interpreta lenguaje ambiguo cuando hace falta.",
     "Ollama · procesamiento local",
 )
 
@@ -152,18 +153,20 @@ with st.expander("¿Qué puede hacer el agente?", expanded=not history):
     with c1:
         st.markdown(
             """
-            - consultar goleadores, asistencias, remates, minutos y apariciones;
+            - crear rankings descriptivos por Match Rating, goles, asistencias, remates, minutos y métricas GPS disponibles;
+            - aplicar agregaciones y ventanas temporales soportadas;
             - resumir equipo y partidos;
             - explicar perfiles y evolución reciente;
             - comparar descriptivamente jugadores;
-            - revisar calidad de datos y GPS.
+            - revisar calidad y cobertura de datos.
             """
         )
     with c2:
         st.markdown(
             """
             **No puede inventar:**
-            - ratings o métricas;
+            - métricas o criterios no definidos;
+            - quién es «el mejor», «el más completo» o «el más determinante» sin una métrica validada;
             - riesgo de lesión o fatiga;
             - alineación ideal;
             - recomendaciones tácticas no validadas.
@@ -171,9 +174,9 @@ with st.expander("¿Qué puede hacer el agente?", expanded=not history):
         )
 
 suggestions = [
-    "¿Quién es el máximo goleador?",
+    "¿Qué jugador tiene más rating?",
+    "¿Quién corre más distancia por partido?",
     "¿Cómo ha evolucionado un jugador en los últimos partidos?",
-    "Resume el último partido y los jugadores más destacados descriptivamente.",
     "¿Qué limitaciones de datos tenemos ahora mismo?",
 ]
 if not history:
@@ -194,7 +197,7 @@ for message in history:
         if role == "assistant" and trace:
             with st.expander("Evidencia consultada"):
                 st.write("Consultas utilizadas: " + tools_label(trace.get("tools_used", [])))
-                st.write(f"Rondas de consulta: {trace.get('tool_rounds', 0)}")
+                st.write(f"Rondas de interpretación semántica: {trace.get('tool_rounds', 0)}")
                 st.write(f"Modelo local: `{trace.get('model', model)}`")
                 if trace.get("error"):
                     st.caption(f"Incidencia: {trace['error']}")
@@ -228,7 +231,7 @@ if question:
         st.markdown(display_answer)
         with st.expander("Evidencia consultada"):
             st.write("Consultas utilizadas: " + tools_label(list(result.tools_used)))
-            st.write(f"Rondas de consulta: {result.tool_rounds}")
+            st.write(f"Rondas de interpretación semántica: {result.tool_rounds}")
             st.write(f"Modelo local: `{result.model}`")
             if result.error:
                 st.caption(f"Incidencia: {result.error}")
@@ -248,8 +251,8 @@ if question:
     st.session_state[key] = history
 
 with st.expander("Arquitectura y límites"):
-    st.write("Flujo: pregunta → modelo local → herramientas Python de solo lectura → DuckDB / Analytics / Expert System → modelo local → validación factual → entrenador.")
-    st.write("El modelo local no tiene acceso directo a DuckDB y no recalcula Match Rating, Performance Index ni decisiones del motor experto.")
-    st.write("Los datos del chat y de las consultas se envían solo a Ollama en `127.0.0.1` por defecto.")
+    st.write("Flujo: pregunta → router determinista de alta confianza → Qwen solo si la intención sigue siendo ambigua → herramientas Python de solo lectura → DuckDB / Analytics / Expert System → respuesta factual determinista → entrenador.")
+    st.write("Qwen no tiene acceso directo a DuckDB, no calcula Match Rating, Performance Index ni decisiones del motor experto y no redacta valores numéricos críticos por su cuenta.")
+    st.write("Los datos enviados al modelo local se procesan solo mediante Ollama en `127.0.0.1` por defecto.")
     if demo_mode():
         st.caption("Modo demo activo: las identidades se sustituyen solo en la capa de presentación; los cálculos internos conservan los IDs originales.")
