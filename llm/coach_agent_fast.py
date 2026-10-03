@@ -1,13 +1,13 @@
 """Compatibility entry point for the local Coach Copilot.
 
-The public API is preserved while the runtime delegates to the Granite structured-
-intent agent. Existing app imports continue to work unchanged.
+The public API is preserved while the runtime delegates to the generic-query
+Granite agent. Existing app imports continue to work unchanged.
 """
 from __future__ import annotations
 
 from typing import Any
 
-from llm.coach_agent_granite_v2 import (
+from llm.coach_agent_general import (
     DEFAULT_MODEL,
     DEFAULT_OLLAMA_URL,
     CoachAgentResult,
@@ -27,7 +27,7 @@ def _canonicalize_first_question(args: tuple[Any, ...], kwargs: dict[str, Any]) 
 
 
 def run_coach_agent_turn(*args: Any, **kwargs: Any) -> CoachAgentResult:
-    from llm.coach_agent_granite_v2 import run_coach_agent_turn as _run
+    from llm.coach_agent_general import run_coach_agent_turn as _run
 
     kwargs.setdefault("model", DEFAULT_MODEL)
     args, kwargs = _canonicalize_first_question(args, kwargs)
@@ -35,7 +35,7 @@ def run_coach_agent_turn(*args: Any, **kwargs: Any) -> CoachAgentResult:
 
 
 def run_coach_agent(*args: Any, **kwargs: Any) -> str:
-    from llm.coach_agent_granite_v2 import run_coach_agent as _run
+    from llm.coach_agent_general import run_coach_agent as _run
 
     kwargs.setdefault("model", DEFAULT_MODEL)
     args, kwargs = _canonicalize_first_question(args, kwargs)
