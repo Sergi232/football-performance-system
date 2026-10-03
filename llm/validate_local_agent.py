@@ -98,10 +98,10 @@ def main() -> None:
     model = os.environ.get("FPS_LOCAL_LLM_MODEL", DEFAULT_MODEL)
     status = _wait_for_ollama()
 
-    print("LOCAL AGENT VALIDATION V2")
+    print("LOCAL AGENT VALIDATION V3")
     print(f"team={team_name}")
     print(f"model={model}")
-    print("runtime=model-driven tools + read-only data + numeric guard")
+    print("runtime=model-driven tools + robust query normalization + read-only data + numeric guard")
 
     if not status.get("available"):
         raise SystemExit("LOCAL AGENT CONTRACT: FAIL (Ollama unavailable)")
@@ -111,6 +111,7 @@ def main() -> None:
     _warmup(model)
     cases = [
         ("max_goals", "¿Quién es el máximo goleador?", {"query_team_stats"}, None),
+        ("max_goals_no_accents", "Quien es el maximo goleador", {"query_team_stats"}, None),
         ("max_assists", "¿Quién lleva más asistencias?", {"query_team_stats"}, None),
         ("player_evolution", f"¿Cómo ha evolucionado {player} últimamente?", {"get_player_profile"}, None),
         ("player_gps", f"Enséñame los datos GPS de {player}.", {"get_player_gps"}, None),
