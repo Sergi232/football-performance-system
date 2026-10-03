@@ -1,4 +1,4 @@
-"""Auditable attention centre: data/evidence/context limitations only."""
+"""Centro de atención auditable: solo limitaciones de datos, evidencia o contexto."""
 from __future__ import annotations
 
 import os
@@ -28,6 +28,26 @@ from app.ui_theme import apply_professional_theme, sidebar_navigation
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 
+GROUP_LABELS = {
+    "CONTEXT_LIMITATION": "Limitación de contexto",
+    "EVIDENCE_LIMITATION": "Limitación de evidencia",
+    "DATA_QUALITY": "Calidad de datos",
+}
+CODE_LABELS = {
+    "ROLE_CONTEXT_UNAVAILABLE": "Rol no disponible",
+    "INSUFFICIENT_RATING_EVIDENCE": "Evidencia insuficiente",
+    "GPS_QUALITY_FLAGS_PRESENT": "Incidencia de calidad GPS",
+}
+SOURCE_LABELS = {
+    "player_match_rating": "Match Rating",
+    "gps_observations": "GPS",
+}
+MESSAGE_BY_CODE = {
+    "ROLE_CONTEXT_UNAVAILABLE": "La fuente no informa de un rol táctico fiable en esta aparición; Match Rating V5 conserva un modelo de respaldo sin imputar ninguna posición.",
+    "INSUFFICIENT_RATING_EVIDENCE": "El Match Rating se mantiene neutral porque la evidencia disponible es insuficiente.",
+    "GPS_QUALITY_FLAGS_PRESENT": "Hay muestras GPS con indicadores de calidad; conviene revisar la importación antes de interpretar el componente físico.",
+}
+
 st.set_page_config(page_title="Calidad y alertas · Football Performance System", page_icon="🚩", layout="wide")
 apply_professional_theme()
 sidebar_navigation()
@@ -55,7 +75,7 @@ raw_team_name = raw_team_labels[team_id]
 team_name = display_team_labels[team_id]
 
 page_header(
-    "ATTENTION CENTRE · DATA QUALITY",
+    "CENTRO DE ATENCIÓN · CALIDAD DE DATOS",
     "Calidad y alertas",
     "Solo limitaciones auditables de datos, contexto o evidencia. No son alertas de rendimiento, fatiga ni riesgo de lesión.",
     ATTENTION_VERSION,
@@ -98,23 +118,34 @@ with cols[0]:
 with cols[1]:
     metric_card("Evidencia insuficiente", str(counts.get("INSUFFICIENT_RATING_EVIDENCE", 0)), "Limitación explícita")
 with cols[2]:
-    metric_card("Incidencias GPS", str(counts.get("GPS_QUALITY_FLAGS_PRESENT", 0)), "Quality flags de importación")
+    metric_card("Incidencias GPS", str(counts.get("GPS_QUALITY_FLAGS_PRESENT", 0)), "Indicadores de calidad de importación")
 
 section_header("Registro de limitaciones", "Filtros por grupo y trazabilidad hasta la fuente")
 if flags.empty:
     st.success("No hay limitaciones auditables registradas para este equipo en esta versión.")
 else:
     group_values = sorted(flags["attention_group"].dropna().astype(str).unique().tolist())
-    selected_label = st.selectbox("Tipo", ["Todas"] + group_values)
+    selected_group = st.selectbox(
+        "Tipo",
+        ["Todas"] + group_values,
+        format_func=lambda x: GROUP_LABELS.get(x, x) if x != "Todas" else x,
+    )
     display = flags.copy()
-    if selected_label != "Todas":
-        display = display.loc[display["attention_group"] == selected_label].copy()
+    if selected_group != "Todas":
+        display = display.loc[display["attention_group"] == selected_group].copy()
     display["match_date"] = pd.to_datetime(display["match_date"], errors="coerce").dt.date
-    display = display[["match_date", "player", "attention_group", "attention_code", "message", "source_layer"]]
-    display.columns = ["Fecha", "Jugador", "Grupo", "Código", "Mensaje", "Fuente"]
+    display["Grupo"] = display["attention_group"].map(lambda x: GROUP_LABELS.get(str(x), "Limitación"))
+    display["Código"] = display["attention_code"].map(lambda x: CODE_LABELS.get(str(x), "Estado auditable"))
+    display["Mensaje"] = display.apply(
+        lambda row: MESSAGE_BY_CODE.get(str(row.get("attention_code")), str(row.get("message") or "")),
+        axis=1,
+    )
+    display["Fuente"] = display["source_layer"].map(lambda x: SOURCE_LABELS.get(str(x), "Sistema"))
+    display = display[["match_date", "player", "Grupo", "Código", "Mensaje", "Fuente"]]
+    display.columns = ["Fecha", "Jugador", "Grupo", "Estado", "Mensaje", "Fuente"]
     st.dataframe(display, hide_index=True, width="stretch", height=560)
 
 with st.expander("Metodología"):
-    st.write(f"Versión: `{ATTENTION_VERSION}`")
-    st.write("Este centro no interpreta un rating bajo como una alerta, no define fatiga/readiness y no estima riesgo de lesión.")
-    st.write("Las alertas de rendimiento futuras requerirán reglas o modelos validados y quedarán separadas de estas limitaciones de datos/evidencia.")
+    st.write(f"Versión técnica: `{ATTENTION_VERSION}`")
+    st.write("Este centro no interpreta un rating bajo como una alerta, no define fatiga ni disponibilidad física y no estima riesgo de lesión.")
+    st.write("Las alertas de rendimiento futuras requerirán reglas o modelos validados y quedarán separadas de estas limitaciones de datos y evidencia.")
