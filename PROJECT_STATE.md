@@ -30,7 +30,9 @@ PUBLIC DEMO SYNTHETIC               CERRADO / PASS / REDISTRIBUIBLE
 REPRODUCIBILITY                     CERRADO / PASS
 CI AUTOMÁTICO                       CERRADO / PASS
 GLOBAL END-TO-END QA                CERRADO / PASS
-FINAL-01                            PRODUCTO FUNCIONAL / MEMORIA Y DEFENSA
+TFM MEMORIA BASE                    BORRADOR TÉCNICO CREADO
+TFM EVIDENCE MATRIX                 CREADA
+FINAL-01                            PRODUCTO FUNCIONAL / REDACCIÓN ACADÉMICA
 PUBLIC DEPLOYMENT                   NO HACER — derechos/licencia del dataset real no resueltos
 ```
 
@@ -524,6 +526,34 @@ Conclusion: SUCCESS
 
 Esto demuestra que el repositorio puede validarse desde un entorno limpio sin depender de la DuckDB privada del desarrollador.
 
+## Memoria académica — EN REDACCIÓN
+
+Se han creado dos documentos base:
+
+- `docs/TFM_MEMORIA_BASE.md`: narrativa técnica inicial de la memoria en castellano;
+- `docs/TFM_EVIDENCE_MATRIX.md`: matriz que vincula claims, gates, archivos y limitaciones.
+
+La memoria base ya contiene:
+- problema y motivación;
+- hipótesis y objetivos;
+- metodología;
+- Collector;
+- modelo de datos;
+- Feature Engine;
+- Analytics;
+- sistema experto N1000-N13000;
+- Match Rating y Performance Index;
+- GPS;
+- dashboard;
+- Coach Copilot;
+- PDF;
+- validación y reproducibilidad;
+- resultados;
+- limitaciones;
+- conclusiones y trabajo futuro.
+
+Regla de redacción: ningún resultado académico importante puede aparecer sin soporte técnico rastreable en la matriz de evidencias.
+
 ## Experimentos / decisiones relevantes
 
 - Collector V1.1 congelado sobre `event_catalog v0.3.0`;
@@ -559,7 +589,9 @@ Esto demuestra que el repositorio puede validarse desde un entorno limpio sin de
 
 ## Problemas abiertos
 
-- memoria académica definitiva del TFM;
+- adaptar `docs/TFM_MEMORIA_BASE.md` a la plantilla/rúbrica formal de la universidad cuando esté disponible;
+- incorporar bibliografía y marco teórico con fuentes académicas verificables;
+- completar tablas/figuras/capturas académicas y anexos;
 - revisión final/archivo de documentación histórica secundaria si aporta claridad al repositorio;
 - defensa y demo final;
 - autenticación real si el producto evoluciona a uso comercial;
@@ -568,8 +600,10 @@ Esto demuestra que el repositorio puede validarse desde un entorno limpio sin de
 
 ## Siguiente paso exacto
 
-1. cerrar la memoria del TFM: problema, hipótesis, objetivos, metodología, arquitectura, diseño de datos, Feature Engine, sistema experto, Match Rating, GPS, LLM, dashboard, validación, resultados, limitaciones y conclusiones;
-2. preparar una tabla de evidencias/gates para que cada claim de la memoria tenga soporte reproducible;
-3. hacer revisión final del repositorio y archivar documentación histórica que pueda confundir sin perder trazabilidad;
-4. preparar defensa y demo final;
-5. Power BI, validación comercial, autenticación completa o nuevos módulos solo como complementos si queda margen.
+1. convertir `docs/TFM_MEMORIA_BASE.md` en memoria académica definitiva adaptada a la plantilla/rúbrica oficial;
+2. construir marco teórico y bibliografía verificable para justificar decisiones, métricas y arquitectura;
+3. completar metodología/resultados utilizando `docs/TFM_EVIDENCE_MATRIX.md` como control de claims;
+4. preparar figuras, tablas, capturas y anexos reproducibles;
+5. hacer revisión final del repositorio y archivar documentación histórica que pueda confundir sin perder trazabilidad;
+6. preparar defensa y demo final;
+7. Power BI, validación comercial, autenticación completa o nuevos módulos solo como complementos si queda margen.
