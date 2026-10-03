@@ -79,7 +79,7 @@ page_header(
     "ASISTENTE IA · LOCAL",
     "Asistente IA",
     "Pregunta de forma natural. Las consultas claras se resuelven de forma determinista y el modelo local solo interpreta lenguaje ambiguo cuando hace falta.",
-    "Ollama · procesamiento local",
+    "Procesamiento local · Ollama opcional para lenguaje ambiguo",
 )
 
 raw_team_labels = {str(r.team_id): str(r.display_name) for r in teams.itertuples(index=False)}
@@ -125,22 +125,20 @@ def to_runtime(text: object) -> str:
 
 status = ollama_status()
 installed = status.get("models") or []
-model_ready = status.get("available") and model in installed
+model_ready = bool(status.get("available") and model in installed)
 
-if not status.get("available"):
-    st.error("Ollama no está activo en este ordenador.")
+if model_ready:
+    st.success(f"Modo híbrido disponible · {model} · consultas claras sin LLM, lenguaje ambiguo con Qwen")
+elif not status.get("available"):
+    st.warning("Modo determinista disponible. Ollama no está activo, por lo que las consultas que requieran interpretación semántica no podrán resolverse.")
     st.code("ollama serve", language="powershell")
     if status.get("error"):
         st.caption(status["error"])
-    st.stop()
-elif not model_ready:
-    st.warning(f"Ollama está activo, pero falta el modelo `{model}`.")
+else:
+    st.warning(f"Modo determinista disponible. Falta `{model}` para interpretar consultas ambiguas.")
     st.code(f"ollama pull {model}", language="powershell")
     if installed:
         st.caption("Modelos disponibles: " + ", ".join(installed))
-    st.stop()
-else:
-    st.success(f"Agente local disponible · {model} · datos procesados en tu PC")
 
 key = history_key(team_id)
 if key not in st.session_state:
@@ -173,10 +171,14 @@ with st.expander("¿Qué puede hacer el agente?", expanded=not history):
             """
         )
 
+if squad.empty:
+    suggested_player = "un jugador"
+else:
+    suggested_player = to_display(str(squad.iloc[0]["player"]))
 suggestions = [
     "¿Qué jugador tiene más rating?",
     "¿Quién corre más distancia por partido?",
-    "¿Cómo ha evolucionado un jugador en los últimos partidos?",
+    f"¿Cómo ha evolucionado {suggested_player}?",
     "¿Qué limitaciones de datos tenemos ahora mismo?",
 ]
 if not history:
@@ -253,6 +255,6 @@ if question:
 with st.expander("Arquitectura y límites"):
     st.write("Flujo: pregunta → router determinista de alta confianza → Qwen solo si la intención sigue siendo ambigua → herramientas Python de solo lectura → DuckDB / Analytics / Expert System → respuesta factual determinista → entrenador.")
     st.write("Qwen no tiene acceso directo a DuckDB, no calcula Match Rating, Performance Index ni decisiones del motor experto y no redacta valores numéricos críticos por su cuenta.")
-    st.write("Los datos enviados al modelo local se procesan solo mediante Ollama en `127.0.0.1` por defecto.")
+    st.write("Las consultas deterministas siguen disponibles aunque Ollama no esté activo; solo el fallback semántico depende del modelo local.")
     if demo_mode():
         st.caption("Modo demo activo: las identidades se sustituyen solo en la capa de presentación; los cálculos internos conservan los IDs originales.")
