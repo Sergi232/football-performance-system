@@ -24,6 +24,14 @@ RAW_SOURCE_TYPE = "opta_player_stats"
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build FEATURE-01 player-match features")
     parser.add_argument("--db", type=Path, default=DEFAULT_DB)
+    parser.add_argument(
+        "--raw-source-type",
+        default=RAW_SOURCE_TYPE,
+        help=(
+            "player_match_raw_stats.source_type to consume. "
+            f"Default remains {RAW_SOURCE_TYPE!r}; reproducible synthetic demos may pass an explicit source."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -40,6 +48,9 @@ def sql_identifier(name: str) -> str:
 def main() -> None:
     args = parse_args()
     db_path = args.db.expanduser().resolve()
+    raw_source_type = str(args.raw_source_type).strip()
+    if not raw_source_type:
+        raise ValueError("--raw-source-type must not be empty")
     if not db_path.exists():
         raise FileNotFoundError(f"Database not found: {db_path}")
 
@@ -90,11 +101,11 @@ def main() -> None:
                 HAVING COUNT(*) > 1
             )
             """,
-            [RAW_SOURCE_TYPE],
+            [raw_source_type],
         ).fetchone()[0]
         if duplicate_raw:
             raise RuntimeError(
-                f"Found {duplicate_raw} duplicate raw player-match rows for {RAW_SOURCE_TYPE}"
+                f"Found {duplicate_raw} duplicate raw player-match rows for {raw_source_type}"
             )
 
         con.execute(
@@ -132,7 +143,7 @@ def main() -> None:
                     ?
                 {base_join}
                 """,
-                [feature["name"], version, RAW_SOURCE_TYPE],
+                [feature["name"], version, raw_source_type],
             )
 
         for feature in per90:
@@ -156,7 +167,7 @@ def main() -> None:
                     ?
                 {base_join}
                 """,
-                [feature["name"], version, RAW_SOURCE_TYPE],
+                [feature["name"], version, raw_source_type],
             )
 
         player_match_rows = con.execute("SELECT COUNT(*) FROM player_match").fetchone()[0]
@@ -188,6 +199,7 @@ def main() -> None:
 
     print("FEATURE-01 deterministic build complete")
     print(f"feature_version: {version}")
+    print(f"raw_source_type: {raw_source_type}")
     print(f"feature definitions: {len(expected_feature_names)}")
     print(f"player_match rows: {player_match_rows}")
     print(f"feature rows written: {feature_rows}")
