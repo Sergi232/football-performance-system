@@ -1,4 +1,4 @@
-"""Historical/positional Performance Index — secondary analytical profile."""
+"""Performance Index histórico y posicional: perfil analítico secundario."""
 from __future__ import annotations
 
 import os
@@ -43,7 +43,7 @@ def evidence_label(value: object) -> str:
     }
     if value is None or pd.isna(value):
         return "Sin evidencia"
-    return labels.get(str(value), str(value))
+    return labels.get(str(value), "Evidencia no clasificada")
 
 
 path = db_path()
@@ -83,14 +83,14 @@ latest = get_latest_player_score(path, team_id, player_id)
 player_name = display_player_name(player_id, raw_player_labels[player_id], player_aliases)
 
 page_header(
-    "ANALYTICS · PERFIL HISTÓRICO",
+    "ANÁLISIS · PERFIL HISTÓRICO",
     f"Performance Index · {player_name}",
     "Capa posicional para observar perfil y evolución. No es la nota de un partido y no sustituye el Match Rating.",
     SCORE_VERSION,
 )
 
 if latest is None:
-    st.warning("Este jugador no tiene ningún Performance Index posicional elegible en esta baseline.")
+    st.warning("Este jugador no tiene ningún Performance Index posicional elegible en la versión actual.")
     st.stop()
 
 scores = history.dropna(subset=["performance_score"]).copy()
@@ -130,7 +130,7 @@ with left:
         insight_card("Sin evidencia suficiente", ", ".join(missing), "Los valores ausentes no se convierten en cero.", "warning")
 
 with right:
-    section_header("Evolución del índice", "Escala 0–100 · perfil histórico/posicional")
+    section_header("Evolución del índice", "Escala 0–100 · perfil histórico y posicional")
     if scores.empty:
         st.info("No hay historial disponible.")
     else:
@@ -158,6 +158,6 @@ with st.expander("Historial y trazabilidad"):
                 details[col] = pd.NA
         details = details[show]
         details["position_group"] = details["position_group"].map(position_label)
-        details.columns = ["Fecha", "Rol fuente", "Perfil", "Índice", "Confianza %", "Dimensiones", "N fallback"]
+        details.columns = ["Fecha", "Rol fuente", "Perfil", "Índice", "Confianza %", "Dimensiones", "Dim. de respaldo"]
         st.dataframe(details, hide_index=True, width="stretch", height=440)
-    st.caption("Este índice es experimental y secundario. Los valores missing se mantienen como missing.")
+    st.caption("Este índice es experimental y secundario. Los valores ausentes se mantienen como ausentes.")
