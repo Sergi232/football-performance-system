@@ -14,6 +14,7 @@ GLOBAL END-TO-END QA                  PASS
 REPRODUCIBILIDAD                      PASS
 CI AUTOMÁTICO                         ACTIVO / PASS
 DEMO PÚBLICA SINTÉTICA                PASS / REDISTRIBUIBLE
+UI FINAL PRESENTATION AUDIT           CERRADO / CORREGIDO / CI PASS
 MEMORIA ACADÉMICA INTEGRADA           BORRADOR COMPLETO
 MARCO TEÓRICO / BIBLIOGRAFÍA          BORRADOR COMPLETO
 METODOLOGÍA                           BORRADOR COMPLETO
@@ -24,7 +25,7 @@ TABLAS ACADÉMICAS                     CREADAS
 FIGURAS TÉCNICAS                      5 SVG CREADOS
 ANEXOS                                BORRADOR CREADO
 GUION DEFENSA                         CREADO
-CAPTURAS REALES PRODUCTO              PENDIENTES
+CAPTURAS REALES PRODUCTO              EN CURSO — RECAPTURAR TRAS UI AUDIT
 PLANTILLA / RÚBRICA UNIVERSIDAD       PENDIENTE EXTERNO
 PUBLIC DEPLOYMENT                     NO HACER — licencia dataset real no resuelta
 ```
@@ -115,7 +116,7 @@ collector/event_catalog.json
 catalog_version=0.3.0
 ```
 
-Variables principales:
+Variables aprobadas:
 - jugador, dorsal, titular/suplente, minutos;
 - partido, equipo, rival, fecha, formación;
 - rol/posición, lado y cambios;
@@ -144,41 +145,14 @@ players context=36
 played appearances=590
 ```
 
-FEATURE-01:
-
 ```text
-28 features
-23380 rows
-6324 non-null
-PASS
+FEATURE-01 = 28 features / 23380 rows / 6324 non-null / PASS
+FEATURE-02 = 28 × 7 temporal operators / 163660 rows / strict-past PASS
+FEATURE-03 = 117735 rows / 43060 non-null / 590/835 con rol observado / PASS
+ANALYTICS-01 = 46760 rows / SELF_ROLE_PRIOR + PEER_ROLE_PRIOR / strict-past PASS
 ```
 
-FEATURE-02:
-
-```text
-28 × 7 temporal operators
-163660 rows
-strict-past PASS
-```
-
-FEATURE-03:
-
-```text
-117735 rows
-43060 non-null
-590/835 player-match con rol observado
-PASS
-```
-
-ANALYTICS-01:
-
-```text
-46760 rows
-SELF_ROLE_PRIOR + PEER_ROLE_PRIOR
-strict-past PASS
-current-player exclusion PASS
-equal-player weighting PASS
-```
+Current-player exclusion y equal-player weighting: PASS.
 
 ---
 
@@ -252,7 +226,7 @@ ROLE_UNKNOWN=245
 
 N13000 no recomienda sin policy validada.
 
-N9000 solo acepta GPS observado no sintético.
+N9000 solo acepta GPS observado no sintético:
 
 ```text
 observed non-synthetic GPS player-match=0
@@ -263,8 +237,6 @@ synthetic GPS excluded from expert evidence=PASS
 
 # GPS
 
-Flujo:
-
 ```text
 provider file / synthetic demo
 → gps_imports
@@ -274,15 +246,8 @@ provider file / synthetic demo
 → dashboard / reports
 ```
 
-Resumen:
-
 ```text
 gps_physical_summary_v0.1-descriptive
-```
-
-Demo técnica:
-
-```text
 gps_synthetic_demo_v1.2.0
 imports=38
 mappings=590
@@ -298,12 +263,12 @@ No existen thresholds canónicos de HSR, sprint, workload, fatiga, readiness o l
 # PRODUCTO
 
 Modos:
-- Team;
-- Player;
-- Match;
+- Equipo;
+- Jugador;
+- Partido;
 - Físico/GPS;
-- Attention Centre;
-- Coach Copilot.
+- Calidad y alertas;
+- Asistente IA.
 
 Demo presentation:
 
@@ -319,6 +284,46 @@ Access roles:
 - STAFF.
 
 Autenticación email/password/session: no implementada.
+
+## UI FINAL PRESENTATION AUDIT — CERRADO 03/10/2026
+
+La revisión visual real de Team/Match/Player/GPS/Alerts detectó inconsistencias que los gates estructurales no cubrían. Se corrigieron sin cambiar analytics ni arquitectura:
+
+- badges técnicos públicos (`match_rating_v0.5-candidate`, `performance_score_v0.2-experimental`, GPS/Attention versions) → labels de producto amigables;
+- `TEAM MODE`, `PLAYER MODE`, `MATCH MODE`, `COACH COPILOT`, `ATTENTION CENTRE · DATA QUALITY` → castellano de presentación;
+- `Coach Brief` → `Resumen técnico`;
+- `GOALKEEPER_SEPARATE_PRO_REFERENCE_SHOT90_DIST10` y paths internos → texto de entrenador;
+- `Shot-stopping` → `Paradas`;
+- advertencia ambigua `rating V2` → `modelo de respaldo de Match Rating V5`;
+- tablas Match Mode con columnas raw → columnas de producto;
+- `H/A` bajo cabecera `L/V` en Player/GPS → `L/V` real;
+- Attention Centre: catalán residual y códigos `CONTEXT_LIMITATION`, `ROLE_CONTEXT_UNAVAILABLE`, source layers → labels castellanos legibles;
+- Assistant trace: nombres internos de tools → nombres de consultas legibles;
+- sugerencia de similitud/rol ambiguo del Assistant → pregunta soportada de evolución;
+- Performance Index: `baseline`, `N fallback` y fallback de evidencia raw → terminología final.
+
+Cambios principales:
+- `app/coach_ui.py` sanitización central de labels;
+- `app/pages/1_Performance_Index.py`;
+- `app/pages/2_Jugador.py`;
+- `app/pages/4_Partit.py`;
+- `app/pages/5_Assistent_IA.py`;
+- `app/pages/6_Fisic_GPS.py`;
+- `app/pages/7_Alertes.py`;
+- `analytics/build_attention_flags.py`;
+- `app/validate_demo_presentation.py`;
+- `tests/test_ui_presentation_contract.py`.
+
+Validación GitHub Actions:
+
+```text
+run=37085564464
+unit + contract tests=PASS
+synthetic public demo rebuild + validation=PASS
+conclusion=SUCCESS
+```
+
+La revisión visual debe repetirse tras `git pull`; no reutilizar las capturas anteriores como figuras finales.
 
 ---
 
@@ -376,8 +381,6 @@ REPORTS ELITE TECHNICAL GATE V6=PASS
 
 # QA / REPRODUCIBILIDAD / CI
 
-QA:
-
 ```text
 Fase 1 — Data/Core          PASS
 Fase 2 — Analytics/Expert   PASS
@@ -409,7 +412,7 @@ report_payloads=PASS
 redistribution_status=REDISTRIBUTABLE_SYNTHETIC_DEMO
 ```
 
-CI:
+CI activo:
 
 ```text
 .github/workflows/tests.yml
@@ -419,10 +422,11 @@ pytest
 synthetic demo rebuild + validation
 ```
 
-Run limpio de referencia confirmado:
+Runs de referencia:
 
 ```text
-37081464123 = SUCCESS
+37081464123 = SUCCESS — reproducibilidad inicial
+37085564464 = SUCCESS — UI final presentation audit
 ```
 
 ---
@@ -432,7 +436,7 @@ Run limpio de referencia confirmado:
 Manuscrito único:
 - `docs/TFM_MANUSCRIPT_DRAFT.md`.
 
-Documentos de soporte:
+Soporte:
 - `docs/TFM_MANUSCRIPT_ASSEMBLY.md`;
 - `docs/TFM_MEMORIA_BASE.md`;
 - `docs/TFM_MARCO_TEORICO_REFERENCIAS.md`;
@@ -453,25 +457,16 @@ Figuras reproducibles:
 - `docs/figures/tfm_expert_system.svg`;
 - `docs/figures/tfm_data_model.svg`.
 
-Índice/pies:
-- `docs/figures/README.md`.
-
-Estado académico:
+Estado:
 
 ```text
 manuscrito integrado              CREADO
-marco teórico                     CREADO
-bibliografía base                 CREADA
-metodología                       CREADA
-resultados                        CREADOS
- discusión / limitaciones         CREADAS
-conclusiones                      CREADAS
-tablas                            CREADAS
-figuras técnicas                  CREADAS
-anexos                            CREADOS
-checklist entrega                 CREADA
+marco teórico / bibliografía      CREADOS
+metodología / resultados          CREADOS
+discusión / conclusiones          CREADAS
+tablas / figuras / anexos         CREADOS
 guion defensa                     CREADO
-capturas reales                   PENDIENTES
+capturas reales                   EN CURSO — RECAPTURAR
 plantilla universitaria           PENDIENTE
 maquetación final                 PENDIENTE
 presentación final                PENDIENTE
@@ -497,7 +492,8 @@ presentación final                PENDIENTE
 - PDF downstream de analytics;
 - demo pública sintética separada del dataset profesional;
 - CI automático obligatorio;
-- hipótesis limitada a viabilidad técnica/auditable.
+- hipótesis limitada a viabilidad técnica/auditable;
+- UI final debe mostrar lenguaje de producto, no tokens internos; trazabilidad técnica queda en expanders/metodología.
 
 ---
 
@@ -520,7 +516,7 @@ presentación final                PENDIENTE
 
 Externos / pendientes:
 - plantilla/rúbrica universitaria;
-- capturas reales del producto local;
+- recaptura visual del producto tras UI audit;
 - formato bibliográfico definitivo;
 - maquetación final;
 - presentación/defensa final;
@@ -538,12 +534,12 @@ Mejoras opcionales, no inventar:
 
 # SIGUIENTE PASO EXACTO
 
-**No seguir redactando más texto genérico ni añadir funciones.**
+**No añadir funciones ni seguir redactando texto genérico.**
 
-1. ejecutar la app local en modo demo;
-2. producir las 10 capturas reales definidas en `docs/TFM_SCREENSHOT_CHECKLIST.md`;
-3. revisar visualmente esas capturas y seleccionar cuáles van al cuerpo/anexos;
-4. adaptar `docs/TFM_MANUSCRIPT_DRAFT.md` a la plantilla oficial cuando esté disponible;
-5. maquetar tablas/figuras/capturas;
-6. cerrar anexos y bibliografía;
-7. crear presentación final y ensayar defensa.
+1. `git pull --ff-only` y reiniciar/refrescar la app local;
+2. comprobar visualmente las pantallas corregidas;
+3. recapturar solo pantallas representativas del producto — no todas las subpestañas;
+4. capturar también Performance Index, Asistente IA con respuesta real y Data Collector;
+5. seleccionar capturas para cuerpo/anexos;
+6. adaptar `docs/TFM_MANUSCRIPT_DRAFT.md` a la plantilla oficial cuando esté disponible;
+7. maquetar y preparar defensa final.
