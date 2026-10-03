@@ -21,6 +21,45 @@ POSITIVE = "#198754"
 NEGATIVE = "#C84630"
 AMBER = "#B7791F"
 
+_DISPLAY_EXACT = {
+    "TEAM MODE": "MODO EQUIPO",
+    "TEAM MODE · CENTRO DE MANDO": "MODO EQUIPO · CENTRO DE MANDO",
+    "MATCH MODE · POSTPARTIDO": "MODO PARTIDO · POSTPARTIDO",
+    "ANALYTICS · PERFIL HISTÓRICO": "ANÁLISIS · PERFIL HISTÓRICO",
+    "COACH COPILOT · LOCAL": "ASISTENTE IA · LOCAL",
+    "ATTENTION CENTRE · DATA QUALITY": "CENTRO DE ATENCIÓN · CALIDAD DE DATOS",
+    "Coach Brief": "Resumen técnico",
+    "match_rating_v0.5-candidate": "Match Rating V5",
+    "performance_score_v0.2-experimental": "Performance Index · experimental",
+    "gps_physical_summary_v0.1-descriptive": "Resumen físico · v0.1",
+    "attention_flags_v0.3-auditable": "Alertas auditables · v0.3",
+    "GOALKEEPER_SEPARATE_PRO_REFERENCE_SHOT90_DIST10": "Modelo específico de portero",
+    "ROLE_UNAVAILABLE_V2_FALLBACK": "Rol no disponible · modelo de respaldo",
+    "OUTFIELD_ROLE_UNAVAILABLE_FALLBACK_V2": "Rol no disponible · modelo de respaldo",
+    "OUTFIELD_PERF18_ANCHORED": "Jugador de campo · contexto posicional",
+    "GOALKEEPER_PERF18_SHOT90_DIST10": "Portero · modelo específico",
+    "Shot-stopping": "Paradas",
+}
+
+
+def display_text(value: object) -> str:
+    """Return a coach-facing label without leaking internal implementation tokens."""
+    text = "" if value is None else str(value)
+    if text in _DISPLAY_EXACT:
+        return _DISPLAY_EXACT[text]
+    if text.startswith("PLAYER MODE"):
+        return text.replace("PLAYER MODE", "MODO JUGADOR", 1)
+    replacements = {
+        "GOALKEEPER_SEPARATE_PRO_REFERENCE_SHOT90_DIST10": "Modelo específico de portero",
+        "ROLE_UNAVAILABLE_V2_FALLBACK": "Rol no disponible · modelo de respaldo",
+        "OUTFIELD_ROLE_UNAVAILABLE_FALLBACK_V2": "Rol no disponible · modelo de respaldo",
+        "OUTFIELD_PERF18_ANCHORED": "Jugador de campo · contexto posicional",
+        "GOALKEEPER_PERF18_SHOT90_DIST10": "Portero · modelo específico",
+    }
+    for source, target in replacements.items():
+        text = text.replace(source, target)
+    return text
+
 
 def safe_number(value: object, digits: int = 1, suffix: str = "") -> str:
     if value is None or pd.isna(value):
@@ -38,7 +77,7 @@ def safe_text(value: object, fallback: str = "—") -> str:
     if value is None or pd.isna(value):
         return fallback
     text = str(value).strip()
-    return text if text else fallback
+    return display_text(text) if text else fallback
 
 
 def result_code(score_for: object, score_against: object) -> tuple[str, str]:
@@ -65,6 +104,10 @@ def recent_record(matches: pd.DataFrame, n: int = 5) -> str:
 
 
 def page_header(kicker: str, title: str, subtitle: str, badge: str | None = None) -> None:
+    kicker = display_text(kicker)
+    title = display_text(title)
+    subtitle = display_text(subtitle)
+    badge = None if not badge else display_text(badge)
     badge_html = "" if not badge else f"<span class='coach-badge'>{html.escape(badge)}</span>"
     st.markdown(
         f"""
@@ -82,6 +125,10 @@ def page_header(kicker: str, title: str, subtitle: str, badge: str | None = None
 
 
 def metric_card(label: str, value: str, sub: str = "", delta: str | None = None, tone: str = "neutral") -> None:
+    label = display_text(label)
+    value = display_text(value)
+    sub = display_text(sub)
+    delta = None if not delta else display_text(delta)
     delta_html = "" if not delta else f"<div class='coach-delta coach-{tone}'>{html.escape(delta)}</div>"
     st.markdown(
         f"""
@@ -97,6 +144,9 @@ def metric_card(label: str, value: str, sub: str = "", delta: str | None = None,
 
 
 def insight_card(title: str, body: str, meta: str = "", tone: str = "neutral") -> None:
+    title = display_text(title)
+    body = display_text(body)
+    meta = display_text(meta)
     st.markdown(
         f"""
         <div class="coach-insight coach-insight-{tone}">
@@ -114,13 +164,13 @@ def scoreboard_card(team: str, opponent: str, score_for: object, score_against: 
     st.markdown(
         f"""
         <div class="coach-scoreboard">
-          <div class="coach-score-meta">{html.escape(date_text)} · {html.escape(venue)}</div>
+          <div class="coach-score-meta">{html.escape(display_text(date_text))} · {html.escape(display_text(venue))}</div>
           <div class="coach-score-row">
-            <div class="coach-score-team">{html.escape(team)}</div>
+            <div class="coach-score-team">{html.escape(display_text(team))}</div>
             <div class="coach-score coach-{tone}">{html.escape(result)}</div>
-            <div class="coach-score-team coach-score-team-right">{html.escape(opponent)}</div>
+            <div class="coach-score-team coach-score-team-right">{html.escape(display_text(opponent))}</div>
           </div>
-          <div class="coach-score-foot">Formación inicial: {html.escape(formation)}</div>
+          <div class="coach-score-foot">Formación inicial: {html.escape(display_text(formation))}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -128,6 +178,8 @@ def scoreboard_card(team: str, opponent: str, score_for: object, score_against: 
 
 
 def section_header(title: str, subtitle: str = "") -> None:
+    title = display_text(title)
+    subtitle = display_text(subtitle)
     st.markdown(
         f"""
         <div class="coach-section-head">
@@ -216,7 +268,7 @@ def squad_matrix_chart(snapshot: pd.DataFrame) -> go.Figure:
         marker=dict(size=12, color=ACCENT, opacity=.82, line=dict(width=1, color="#FFFFFF")),
         text=frame["player"],
         customdata=frame[["latest_match_rating", "latest_confidence"]].to_numpy(),
-        hovertemplate="<b>%{text}</b><br>Media últimos 5: %{x:.2f}<br>Delta 5 vs 5: %{y:+.2f}<br>Último rating: %{customdata[0]:.2f}<br>Confianza: %{customdata[1]:.0f}%<extra></extra>",
+        hovertemplate="<b>%{text}</b><br>Media últimos 5: %{x:.2f}<br>Cambio 5 vs 5: %{y:+.2f}<br>Último rating: %{customdata[0]:.2f}<br>Confianza: %{customdata[1]:.0f}%<extra></extra>",
     ))
     fig.add_hline(y=0, line_width=1, line_dash="dot", line_color="#9AA7B4")
     fig.update_layout(**_base_layout(360))
@@ -243,8 +295,8 @@ def player_trend_chart(history: pd.DataFrame, y_col: str, y_range: tuple[float, 
 
 
 def dimension_chart(values: dict[str, object]) -> go.Figure:
-    labels = list(values.keys())
-    numeric = [pd.to_numeric(pd.Series([values[label]]), errors="coerce").iloc[0] for label in labels]
+    labels = [display_text(label) for label in values.keys()]
+    numeric = [pd.to_numeric(pd.Series([value]), errors="coerce").iloc[0] for value in values.values()]
     frame = pd.DataFrame({"label": labels, "value": numeric}).dropna().sort_values("value", ascending=True)
     fig = go.Figure(go.Bar(
         x=frame["value"], y=frame["label"], orientation="h",
