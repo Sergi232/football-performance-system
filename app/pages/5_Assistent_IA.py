@@ -1,4 +1,4 @@
-"""Open-ended local Coach Copilot powered by Ollama + validated FPS tools."""
+"""Asistente IA local basado en Ollama y herramientas validadas del sistema."""
 from __future__ import annotations
 
 import os
@@ -25,6 +25,16 @@ from app.ui_theme import apply_professional_theme, sidebar_navigation
 from llm.coach_agent_fast import DEFAULT_MODEL, ollama_status, run_coach_agent_turn
 
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
+TOOL_LABELS = {
+    "get_team_snapshot": "Resumen del equipo",
+    "get_data_quality": "Calidad de datos",
+    "get_player_snapshot": "Perfil del jugador",
+    "get_player_history": "Historial del jugador",
+    "get_match_snapshot": "Resumen del partido",
+    "get_match_ratings": "Match Ratings del partido",
+    "get_expert_evidence": "Evidencia del motor experto",
+    "get_gps_summary": "Resumen GPS",
+}
 
 st.set_page_config(page_title="Asistente IA · Football Performance System", page_icon="💬", layout="wide")
 apply_professional_theme()
@@ -48,6 +58,12 @@ def _replace_aliases_with_real(text: str, reverse_map: dict[str, str]) -> str:
     return out
 
 
+def tools_label(values: list[str] | tuple[str, ...]) -> str:
+    if not values:
+        return "ninguna"
+    return ", ".join(TOOL_LABELS.get(str(value), "Consulta estructurada") for value in values)
+
+
 path = db_path()
 if not path.exists():
     st.error(f"No se ha encontrado la base de datos: {path}")
@@ -59,10 +75,10 @@ if teams.empty:
     st.stop()
 
 page_header(
-    "COACH COPILOT · LOCAL",
+    "ASISTENTE IA · LOCAL",
     "Asistente IA",
-    "Pregunta sobre los datos del equipo. El agente decide qué herramientas locales necesita y puede encadenar varias consultas antes de responder.",
-    "Ollama · sin API de pago",
+    "Pregunta sobre los datos del equipo. El agente decide qué consultas locales necesita y puede encadenar varias antes de responder.",
+    "Ollama · procesamiento local",
 )
 
 raw_team_labels = {str(r.team_id): str(r.display_name) for r in teams.itertuples(index=False)}
@@ -139,7 +155,7 @@ with st.expander("¿Qué puede hacer el agente?", expanded=not history):
             - resumir equipo y partidos;
             - explicar Match Ratings;
             - analizar evolución reciente;
-            - comparar descriptivamente jugadores;
+            - comparar descriptivamente jugadores indicados;
             - consultar roles y motor experto;
             - revisar calidad de datos y GPS.
             """
@@ -149,7 +165,7 @@ with st.expander("¿Qué puede hacer el agente?", expanded=not history):
             """
             **No puede inventar:**
             - ratings o métricas;
-            - riesgo de lesión/fatiga;
+            - riesgo de lesión o fatiga;
             - alineación ideal;
             - recomendaciones tácticas no validadas.
             """
@@ -159,7 +175,7 @@ suggestions = [
     "¿Quién presenta el cambio reciente más grande y con qué muestra?",
     "Resume el último partido y los jugadores más destacados descriptivamente.",
     "¿Qué limitaciones de datos tenemos ahora mismo?",
-    "Compara descriptivamente dos jugadores que tengan un rol parecido.",
+    "Explica la evolución reciente de un jugador con datos suficientes.",
 ]
 if not history:
     cols = st.columns(2)
@@ -178,8 +194,8 @@ for message in history:
         trace = message.get("trace")
         if role == "assistant" and trace:
             with st.expander("Evidencia consultada"):
-                st.write("Herramientas: " + (", ".join(trace.get("tools_used", [])) or "ninguna"))
-                st.write(f"Rondas de herramientas: {trace.get('tool_rounds', 0)}")
+                st.write("Consultas utilizadas: " + tools_label(trace.get("tools_used", [])))
+                st.write(f"Rondas de consulta: {trace.get('tool_rounds', 0)}")
                 st.write(f"Modelo local: `{trace.get('model', model)}`")
                 if trace.get("error"):
                     st.caption(f"Incidencia: {trace['error']}")
@@ -212,8 +228,8 @@ if question:
         display_answer = to_display(result.text)
         st.markdown(display_answer)
         with st.expander("Evidencia consultada"):
-            st.write("Herramientas: " + (", ".join(result.tools_used) or "ninguna"))
-            st.write(f"Rondas de herramientas: {result.tool_rounds}")
+            st.write("Consultas utilizadas: " + tools_label(list(result.tools_used)))
+            st.write(f"Rondas de consulta: {result.tool_rounds}")
             st.write(f"Modelo local: `{result.model}`")
             if result.error:
                 st.caption(f"Incidencia: {result.error}")
@@ -233,9 +249,8 @@ if question:
     st.session_state[key] = history
 
 with st.expander("Arquitectura y límites"):
-    st.write("Flujo: DuckDB → Analytics / Expert System → herramientas Python read-only → Ollama local → entrenador.")
+    st.write("Flujo: DuckDB → Analytics / Expert System → consultas Python de solo lectura → Ollama local → entrenador.")
     st.write("El modelo local no tiene acceso directo a DuckDB y no recalcula Match Rating, Performance Index ni decisiones del motor experto.")
-    st.write("Los datos del chat y de las herramientas se envían solo a Ollama en `127.0.0.1` por defecto.")
-    st.write("La capa OpenAI antigua queda desacoplada y no es necesaria para utilizar este agente.")
+    st.write("Los datos del chat y de las consultas se envían solo a Ollama en `127.0.0.1` por defecto.")
     if demo_mode():
         st.caption("Modo demo activo: las identidades se sustituyen solo en la capa de presentación; los cálculos internos conservan los IDs originales.")
