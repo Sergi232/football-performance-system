@@ -103,10 +103,10 @@ Pero **no** se presenta como revalidación científica del Match Rating V5 ni de
 
 ## 4. Construir + validar desde un clone limpio
 
-Desde la raíz del repositorio:
+Desde la raíz del repositorio, ejecutar como módulo para que la raíz del proyecto quede disponible en el import path:
 
 ```powershell
-python publication\validate_synthetic_demo.py --rebuild
+python -m publication.validate_synthetic_demo --rebuild
 ```
 
 El comando crea por defecto:
