@@ -54,7 +54,7 @@ def main() -> None:
                 'ROLE_CONTEXT_UNAVAILABLE',
                 'CONTEXT_LIMITATION',
                 'player_match_rating',
-                'La font no informa del rol tàctic fiable d’aquesta aparició; el Match Rating V5 conserva explícitament el fallback V2 sense imputar cap posició.',
+                'La fuente no informa de un rol táctico fiable en esta aparición; Match Rating V5 conserva un modelo de respaldo sin imputar ninguna posición.',
                 ?
             FROM player_match_rating
             WHERE match_rating_version=?
@@ -74,7 +74,7 @@ def main() -> None:
                 'INSUFFICIENT_RATING_EVIDENCE',
                 'EVIDENCE_LIMITATION',
                 'player_match_rating',
-                'El Match Rating s’ha mantingut neutral perquè l’evidència disponible és insuficient.',
+                'El Match Rating se mantiene neutral porque la evidencia disponible es insuficiente.',
                 ?
             FROM player_match_rating
             WHERE match_rating_version=?
@@ -101,7 +101,7 @@ def main() -> None:
                     'GPS_QUALITY_FLAGS_PRESENT',
                     'DATA_QUALITY',
                     'gps_observations',
-                    'Hi ha mostres GPS amb quality_flags; revisar la qualitat de l’import abans d’interpretar el component físic.',
+                    'Hay muestras GPS con indicadores de calidad; conviene revisar la importación antes de interpretar el componente físico.',
                     ?
                 FROM gps_observations g
                 LEFT JOIN player_match pm
