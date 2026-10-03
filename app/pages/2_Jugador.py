@@ -1,4 +1,4 @@
-"""Player Mode — professional staff profile and recent-form view."""
+"""Modo Jugador: perfil profesional y evolución reciente para el cuerpo técnico."""
 from __future__ import annotations
 
 import os
@@ -43,7 +43,6 @@ from app.presentation import (
     build_opponent_aliases,
     build_player_aliases,
     build_player_name_aliases,
-    demo_mode,
     display_opponent,
     display_player_name,
     display_team_name,
@@ -61,6 +60,12 @@ FEATURE_LABELS = {
     "tackle_success_rate": "Éxito en entradas",
     "interceptions_per90": "Intercepciones / 90",
 }
+GATE_STATUS_LABELS = {
+    "NO_EVIDENCE": "Sin evidencia suficiente",
+    "POLICY_UNVALIDATED": "Política de recomendación no validada",
+    "ROLE_UNKNOWN": "Rol no disponible",
+}
+VENUE_LABELS = {"H": "L", "A": "V", "Home": "L", "Away": "V", "Local": "L", "Visitante": "V"}
 
 st.set_page_config(page_title="Jugador · Football Performance System", page_icon="👤", layout="wide")
 apply_professional_theme()
@@ -86,6 +91,15 @@ def score_string(sf: object, sa: object) -> str:
     if sf is None or sa is None or pd.isna(sf) or pd.isna(sa):
         return "—"
     return f"{int(sf)}-{int(sa)}"
+
+
+def rating_context_label(row: dict) -> str:
+    path_value = str(row.get("rating_path") or "")
+    if path_value == "GOALKEEPER_PERF18_SHOT90_DIST10" or row.get("position_group") == "GK":
+        return "Modelo específico de portero"
+    if path_value == "OUTFIELD_ROLE_UNAVAILABLE_FALLBACK_V2":
+        return "Rol no disponible · modelo de respaldo"
+    return "Contexto posicional disponible"
 
 
 path = db_path()
@@ -148,7 +162,7 @@ elif latest_score is not None:
     profile = position_label(latest_score.get("position_group"))
 
 page_header(
-    f"PLAYER MODE · {display_team_labels[team_id]}",
+    f"MODO JUGADOR · {display_team_labels[team_id]}",
     player_name,
     f"{profile} · {safe_int(player_row.get('minutes'))} minutos · {safe_int(player_row.get('appearances'))} apariciones",
     "Perfil individual",
@@ -185,24 +199,24 @@ with tab_overview:
             score = score_string(latest_rating.get("score_for"), latest_rating.get("score_against"))
             venue = "Local" if latest_rating.get("venue") == "H" else "Visitante"
             insight_card("Contexto", f"{opponent} · {score} · {venue}", f"{safe_number(latest_rating.get('minutes_played'), 0)} minutos", "neutral")
-            insight_card("Rol del partido", position_label(latest_rating.get("position_group")), str(latest_rating.get("match_rating_context") or ""), "neutral")
+            insight_card("Rol del partido", position_label(latest_rating.get("position_group")), rating_context_label(latest_rating), "neutral")
             if latest_score is not None:
-                insight_card("Performance Index", safe_number(latest_score.get("performance_score"), 1, "/100"), "Capa histórica/posicional complementaria", "neutral")
+                insight_card("Performance Index", safe_number(latest_score.get("performance_score"), 1, "/100"), "Capa histórica y posicional complementaria", "neutral")
             if latest_rating.get("rating_path") == "OUTFIELD_ROLE_UNAVAILABLE_FALLBACK_V2":
-                insight_card("Limitación de rol", "La fuente no informa de un rol táctico fiable en esta aparición.", "Se utiliza fallback explícito; no se inventa la posición.", "warning")
+                insight_card("Limitación de rol", "La fuente no informa de un rol táctico fiable en esta aparición.", "Se utiliza un modelo de respaldo explícito; no se inventa la posición.", "warning")
 
     with chart_col:
-        section_header("Dimensiones del último partido", "Scores internos para explicar la nota")
+        section_header("Dimensiones del último partido", "Puntuaciones internas para explicar la nota")
         if latest_rating is None:
             st.info("Sin dimensiones disponibles.")
         elif latest_rating.get("position_group") == "GK":
             values = {
-                "Shot-stopping": latest_rating.get("defensive_contribution"),
+                "Paradas": latest_rating.get("defensive_contribution"),
                 "Distribución": latest_rating.get("creation_progression"),
                 "Disciplina": latest_rating.get("discipline"),
             }
             st.plotly_chart(dimension_chart(values), width="stretch", config={"displayModeBar": False}, key=f"player_dimensions_gk_{player_id}")
-            st.caption("El portero sigue un modelo separado: 90% shot-stopping / 10% distribución en el núcleo estructural.")
+            st.caption("El portero utiliza un modelo separado: 90% paradas / 10% distribución en el núcleo estructural.")
         else:
             values = {
                 "Amenaza ofensiva": latest_rating.get("attacking_threat"),
@@ -260,7 +274,7 @@ with tab_technical:
         technical["match_date"] = pd.to_datetime(technical["match_date"]).dt.date
         technical["opponent"] = technical["opponent"].map(lambda x: display_opponent(x, opponent_aliases))
         technical = technical[["match_date", "opponent", "minutes", "primary_role", "passes_total", "passes_completed", "assists", "shots_total", "goals", "tackles_total", "tackles_won", "interceptions", "turnovers", "dispossessed"]]
-        technical.columns = ["Fecha", "Rival", "Min", "Rol", "Pases", "Completados", "Asist.", "Remates", "Goles", "Entradas", "Ganadas", "Intercepciones", "Pérdidas", "Desposesiones"]
+        technical.columns = ["Fecha", "Rival", "Min", "Rol observado", "Pases", "Completados", "Asist.", "Remates", "Goles", "Entradas", "Ganadas", "Intercepciones", "Pérdidas", "Desposesiones"]
         st.dataframe(technical, hide_index=True, width="stretch", height=560)
 
 with tab_expert:
@@ -270,7 +284,7 @@ with tab_expert:
         st.info("No hay estado experto disponible.")
     else:
         a, b, c, d = st.columns(4)
-        a.metric("Rol observado", gate.get("observed_role") or "—")
+        a.metric("Rol observado", position_label(gate.get("observed_role")) if gate.get("observed_role") else "—")
         b.metric("Historial mismo rol", gate.get("same_role_history") or "—")
         try:
             coverage = float(gate.get("evidence_coverage"))
@@ -278,7 +292,9 @@ with tab_expert:
             coverage = None
         c.metric("Cobertura", "—" if coverage is None else f"{coverage:.0%}")
         d.metric("Señales", gate.get("evaluable_signals") or "—")
-        insight_card("Estado final", str(gate.get("final_status") or "Sin estado").replace("_", " ").title(), "Salida del motor; no es texto generado por LLM", "neutral")
+        raw_status = str(gate.get("final_status") or "")
+        shown_status = GATE_STATUS_LABELS.get(raw_status, raw_status.replace("_", " ").capitalize() if raw_status else "Sin estado")
+        insight_card("Estado final", shown_status, "Salida del motor; no es texto generado por LLM", "neutral")
         with st.expander("Trazabilidad técnica"):
             st.json(gate)
 
@@ -291,7 +307,8 @@ with tab_matches:
         details["Fecha"] = pd.to_datetime(details["match_date"]).dt.date
         details["Resultado"] = details.apply(lambda r: score_string(r.get("score_for"), r.get("score_against")), axis=1)
         details["Perfil"] = details["position_group"].map(position_label)
-        table = details[["Fecha", "opponent", "Resultado", "venue", "minutes_played", "Perfil", "match_rating_10", "match_rating_confidence"]].copy()
+        details["L/V"] = details["venue"].map(lambda x: VENUE_LABELS.get(str(x), str(x)))
+        table = details[["Fecha", "opponent", "Resultado", "L/V", "minutes_played", "Perfil", "match_rating_10", "match_rating_confidence"]].copy()
         table.columns = ["Fecha", "Rival", "Resultado", "L/V", "Min", "Perfil", "Rating", "Confianza %"]
         st.dataframe(
             table,
@@ -305,5 +322,5 @@ with tab_matches:
         )
 
 with st.expander("Metodología y trazabilidad"):
-    st.write(f"Match Rating activo: `{MATCH_RATING_VERSION}`. La nota es jugador-partido y existe desde el primer partido.")
-    st.write(f"Performance Index: `{SCORE_VERSION}`. Es histórico/posicional y no sustituye el Match Rating.")
+    st.write(f"Versión técnica del Match Rating: `{MATCH_RATING_VERSION}`. La nota es jugador-partido y existe desde el primer partido.")
+    st.write(f"Versión técnica del Performance Index: `{SCORE_VERSION}`. Es histórico y posicional y no sustituye el Match Rating.")
