@@ -1,3 +1,4 @@
+from llm import coach_agent_fast as fast
 from llm import coach_agent_general as agent
 
 
@@ -88,6 +89,19 @@ def test_followup_modifies_existing_rank_without_new_model_call():
     out = agent._modify(calls, "y en los últimos 5 partidos?")
     assert out[0][1]["last_n_matches"] == 5
     assert out[0][1]["metric"] == "total_distance_m"
+
+
+def test_chained_evidence_followup_keeps_substantive_anchor():
+    history = [
+        {"role": "user", "content": "que jugador corre más distancia por partido"},
+        {"role": "assistant", "content": "Jugador 01 lidera distancia."},
+        {"role": "user", "content": "y el segundo?"},
+        {"role": "assistant", "content": "2. Jugador 02: 10000 m."},
+    ]
+    trimmed = fast._collapse_followup_history("que evidencias tienes?", history)
+    assert trimmed is not None
+    users = [item["content"] for item in trimmed if item.get("role") == "user"]
+    assert users == ["que jugador corre más distancia por partido"]
 
 
 def test_evidence_answer_exposes_source_and_aggregation():
