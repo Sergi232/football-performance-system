@@ -11,10 +11,16 @@ import sys
 import time
 from pathlib import Path
 
+# When this file is executed directly (python llm/smoke_test_coach_agent.py),
+# Python puts llm/ on sys.path rather than the repository root. Add the root before
+# importing app.* or llm.* so the documented command works on Windows and Linux.
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from app.data_access import get_squad_summary, get_team_matches, list_teams
 from llm.coach_agent_fast import DEFAULT_MODEL, run_coach_agent_turn
 
-ROOT = Path(__file__).resolve().parents[1]
 DB = Path(os.environ.get("FPS_DB_PATH", ROOT / "data" / "football_performance.duckdb")).expanduser().resolve()
 MODEL = os.environ.get("FPS_LOCAL_LLM_MODEL", DEFAULT_MODEL)
 
