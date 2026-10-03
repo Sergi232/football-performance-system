@@ -15,6 +15,7 @@ REPRODUCIBILIDAD                      PASS
 CI AUTOMÁTICO                         ACTIVO / PASS
 DEMO PÚBLICA SINTÉTICA                PASS / REDISTRIBUIBLE
 UI FINAL PRESENTATION AUDIT           CERRADO / CORREGIDO / CI PASS
+LLM-02 COACH COPILOT                  REABIERTO — GRANITE RUNTIME / LOCAL E2E PENDIENTE
 MEMORIA ACADÉMICA INTEGRADA           BORRADOR COMPLETO
 MARCO TEÓRICO / BIBLIOGRAFÍA          BORRADOR COMPLETO
 METODOLOGÍA                           BORRADOR COMPLETO
@@ -25,7 +26,7 @@ TABLAS ACADÉMICAS                     CREADAS
 FIGURAS TÉCNICAS                      5 SVG CREADOS
 ANEXOS                                BORRADOR CREADO
 GUION DEFENSA                         CREADO
-CAPTURAS REALES PRODUCTO              EN CURSO — RECAPTURAR TRAS UI AUDIT
+CAPTURAS REALES PRODUCTO              EN CURSO — ESPERAR CIERRE LLM-02
 PLANTILLA / RÚBRICA UNIVERSIDAD       PENDIENTE EXTERNO
 PUBLIC DEPLOYMENT                     NO HACER — licencia dataset real no resuelta
 ```
@@ -71,13 +72,13 @@ Regla global:
 LLM:
 
 ```text
-DATA
-→ ANALYTICS
-→ DECISION ENGINE
+QUESTION
+→ OLLAMA LOCAL / TOOL SELECTION
 → READ-ONLY TOOLS
-→ ROUTER
-→ OLLAMA LOCAL
-→ SEMANTIC GUARD
+→ DATA / ANALYTICS / DECISION ENGINE
+→ STRUCTURED EVIDENCE
+→ OLLAMA LOCAL / SYNTHESIS
+→ NUMERIC / POLICY GUARD
 → COACH
 ```
 
@@ -101,7 +102,7 @@ DASHBOARD GPS                       QA PASS
 ATTENTION CENTRE                    CERRADO / v0.3
 ACCESS CONTROL                      CONTRACT PASS / AUTH REAL PENDIENTE
 LLM-01                              PASS
-LLM-02 COACH COPILOT                CERRADO / ES / SMOKE 4/4 PASS
+LLM-02 COACH COPILOT                REABIERTO — GRANITE / LOCAL E2E PENDIENTE
 REPORTS V6                          CERRADO / PASS
 ```
 
@@ -329,35 +330,89 @@ La revisión visual debe repetirse tras `git pull`; no reutilizar las capturas a
 
 # COACH COPILOT
 
-Perfil validado:
+## Decisión anterior — SUPERADA COMO RUNTIME FINAL
+
+El perfil previo `qwen3:1.7b + router por patrones + semantic guard determinista` alcanzó sus gates definidos, pero una prueba visual con preguntas espontáneas reveló baja cobertura conversacional. El 97,1% era válido sobre el Golden Set existente, no sobre lenguaje libre de entrenador.
+
+Benchmark local comparativo 03/10/2026:
 
 ```text
-model=qwen3:1.7b
+qwen3:1.7b
+- rápido (~3-12 s warm)
+- FALLA selección semántica compleja de tools
+- FALLA guardrail espontáneo de cansancio
+
+qwen3.5:4b
+- 5/5 tool-selection benchmark PASS
+- guardrail PASS
+- ~55-61 s por selección de tool en el PC objetivo → demasiado lento como runtime principal
+
+gemma3:4b
+- tool calling Ollama: HTTP 400 → descartado para esta arquitectura
+
+granite4.2:3b
+- goals / assists tool selection PASS
+- player / GPS selecciona tool correcta pero devuelve alias corto `07`
+- match-detail no seleccionado en benchmark inicial
+- ~8-11 s warm en la mayoría de casos
+- candidato elegido por equilibrio calidad / latencia
+```
+
+## Runtime candidato actual
+
+```text
+model=granite4.2:3b
 scope=SPANISH_ONLY_MVP
 thinking=False
 FPS_AGENT_NUM_CTX=1536
-FPS_AGENT_TIMEOUT=18
+FPS_AGENT_TIMEOUT=75
 keep_alive=30m
 ```
 
-Warm-up y runtime deben usar mismo `num_ctx`.
-
-Gate:
+Arquitectura implementada:
 
 ```text
-router=17/17
-aggregate=66/68=97.1%
-runtime_errors=0
-safety_failures=0
-numeric_grounding=PASS
-castellano=PASS
-subject_contract=PASS
-average_latency<=12s PASS
-LOCAL AGENT CONTRACT=PASS 4/4
+question
+→ Granite tool selection
+→ bounded read-only tools
+→ Python/DuckDB + analytics/expert outputs
+→ compact structured evidence
+→ Granite synthesis
+→ numeric/policy guard
+→ coach
 ```
 
-No validados:
-- ranking por rol;
+Cambios:
+- `llm/coach_agent_granite.py` nuevo runtime;
+- `llm/coach_agent_fast.py` mantiene API y delega a Granite;
+- `query_team_stats` añade rankings descriptivos de goles, asistencias, remates, minutos y apariciones;
+- normalización de argumentos `07 → Jugador 07` y `09 → Rival 09 / match_id`;
+- ninguna pregunta desconocida cae por defecto en `get_team_snapshot`;
+- guardrails explícitos para fatiga/cansancio, lesión, XI ideal y recomendación táctica;
+- el LLM redacta la respuesta normal; el guard solo controla grounding numérico y policy;
+- `tests/test_coach_agent_granite.py` cubre modelo, aliases, guardrails, tools y grounding;
+- `llm/validate_local_agent.py` contiene el gate end-to-end real de 9 casos.
+
+CI estructural del nuevo runtime:
+
+```text
+run=37150798394
+unit + contract tests=PASS
+synthetic public demo rebuild + validation=PASS
+conclusion=SUCCESS
+```
+
+Estado:
+
+```text
+código / contratos / CI              PASS
+selección de modelo                  GRANITE 4.2 3B CANDIDATO
+local end-to-end con DuckDB real     PENDIENTE
+cierre LLM-02                        PENDIENTE DEL GATE LOCAL
+```
+
+No validados y por tanto no permitidos:
+- ranking por rol como recomendación;
 - similarity final;
 - predicción futura;
 - XI ideal;
@@ -427,6 +482,7 @@ Runs de referencia:
 ```text
 37081464123 = SUCCESS — reproducibilidad inicial
 37085564464 = SUCCESS — UI final presentation audit
+37150798394 = SUCCESS — Granite runtime contracts / synthetic demo
 ```
 
 ---
@@ -466,7 +522,7 @@ metodología / resultados          CREADOS
 discusión / conclusiones          CREADAS
 tablas / figuras / anexos         CREADOS
 guion defensa                     CREADO
-capturas reales                   EN CURSO — RECAPTURAR
+capturas reales                   EN CURSO — ESPERAR CIERRE LLM-02
 plantilla universitaria           PENDIENTE
 maquetación final                 PENDIENTE
 presentación final                PENDIENTE
@@ -489,6 +545,9 @@ presentación final                PENDIENTE
 - no inferir rol sin evidencia;
 - LLM downstream y read-only;
 - MVP LLM castellano;
+- selección de tool guiada por modelo, no por un listado creciente de `if` semánticos;
+- guardrails de policy pueden ser deterministas;
+- pregunta no soportada no cae en un resumen genérico del equipo;
 - PDF downstream de analytics;
 - demo pública sintética separada del dataset profesional;
 - CI automático obligatorio;
@@ -508,15 +567,22 @@ presentación final                PENDIENTE
 - publicar dataset profesional sin derechos;
 - autenticación SaaS completa en MVP;
 - añadir ML solo por complejidad;
-- inventar validación con usuarios.
+- inventar validación con usuarios;
+- qwen3:1.7b como runtime conversacional final;
+- gemma3:4b como runtime de tool calling con Ollama actual.
 
 ---
 
 # PROBLEMAS ABIERTOS
 
+Prioridad inmediata:
+- ejecutar `llm/validate_local_agent.py` con Granite + DuckDB real;
+- corregir solo fallos observados del gate local;
+- cerrar LLM-02 si el gate real pasa;
+- después recapturar Asistente IA y el resto de capturas definitivas.
+
 Externos / pendientes:
 - plantilla/rúbrica universitaria;
-- recaptura visual del producto tras UI audit;
 - formato bibliográfico definitivo;
 - maquetación final;
 - presentación/defensa final;
@@ -534,12 +600,11 @@ Mejoras opcionales, no inventar:
 
 # SIGUIENTE PASO EXACTO
 
-**No añadir funciones ni seguir redactando texto genérico.**
+**No añadir más funciones antes del gate local del nuevo agente.**
 
-1. `git pull --ff-only` y reiniciar/refrescar la app local;
-2. comprobar visualmente las pantallas corregidas;
-3. recapturar solo pantallas representativas del producto — no todas las subpestañas;
-4. capturar también Performance Index, Asistente IA con respuesta real y Data Collector;
-5. seleccionar capturas para cuerpo/anexos;
-6. adaptar `docs/TFM_MANUSCRIPT_DRAFT.md` a la plantilla oficial cuando esté disponible;
-7. maquetar y preparar defensa final.
+1. `git pull --ff-only`;
+2. ejecutar `python llm\validate_local_agent.py` con `FPS_DB_PATH` apuntando a la DuckDB profesional y `granite4.2:3b`;
+3. si falla, corregir únicamente los casos observados;
+4. si pasa, cerrar LLM-02 y revisar visualmente el Asistente IA;
+5. producir exactamente las 10 capturas canónicas de `docs/TFM_SCREENSHOT_CHECKLIST.md`: Collector, Team, Player, Match, GPS, Attention, Coach Copilot y los tres PDF;
+6. seleccionar cuerpo/anexos y continuar maquetación final.
