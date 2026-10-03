@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="900" viewBox="0 0 1500 900">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0,0 L12,6 L0,12 z" fill="#2f3b52"/></marker>
+    <style>
+      .title{font:700 34px Arial,sans-serif;fill:#172033}.sub{font:400 18px Arial,sans-serif;fill:#516074}
+      .box{fill:#f7f9fc;stroke:#2f3b52;stroke-width:2;rx:14}.phys{fill:#eef9f2;stroke:#2d7a4f;stroke-width:2;rx:14}.gate{fill:#fff6e8;stroke:#a96614;stroke-width:2.5;rx:14}
+      .label{font:700 17px Arial,sans-serif;fill:#172033;text-anchor:middle}.small{font:400 13px Arial,sans-serif;fill:#4f5f72;text-anchor:middle}
+      .arrow{stroke:#2f3b52;stroke-width:2.2;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1500" height="900" fill="#fff"/>
+  <text x="70" y="60" class="title">Sistema experto jerárquico N1000–N13000</text>
+  <text x="70" y="94" class="sub">Cada nodo conserva entrada → condición → resultado → confianza → justificación</text>
+
+  <g>
+    <rect x="70" y="150" width="210" height="80" class="box"/><text x="175" y="181" class="label">N1000</text><text x="175" y="207" class="small">disponibilidad / actividad</text>
+    <rect x="330" y="150" width="210" height="80" class="box"/><text x="435" y="181" class="label">N2000</text><text x="435" y="207" class="small">perfil estructural</text>
+    <rect x="590" y="150" width="210" height="80" class="box"/><text x="695" y="181" class="label">N3000</text><text x="695" y="207" class="small">forma / evolución</text>
+
+    <rect x="70" y="310" width="210" height="80" class="box"/><text x="175" y="341" class="label">N4000</text><text x="175" y="367" class="small">amenaza ofensiva</text>
+    <rect x="330" y="310" width="210" height="80" class="box"/><text x="435" y="341" class="label">N5000</text><text x="435" y="367" class="small">creación / progresión</text>
+    <rect x="590" y="310" width="210" height="80" class="box"/><text x="695" y="341" class="label">N6000</text><text x="695" y="367" class="small">contribución defensiva</text>
+    <rect x="850" y="310" width="210" height="80" class="box"/><text x="955" y="341" class="label">N7000</text><text x="955" y="367" class="small">finalización</text>
+
+    <rect x="1110" y="150" width="210" height="80" class="box"/><text x="1215" y="181" class="label">N8000</text><text x="1215" y="207" class="small">contexto equipo</text>
+    <rect x="1110" y="310" width="210" height="80" class="phys"/><text x="1215" y="341" class="label">N9000</text><text x="1215" y="367" class="small">GPS real observado</text>
+
+    <rect x="330" y="500" width="230" height="90" class="box"/><text x="445" y="536" class="label">N10000</text><text x="445" y="565" class="small">rol y contexto</text>
+    <rect x="635" y="500" width="230" height="90" class="box"/><text x="750" y="536" class="label">N11000</text><text x="750" y="565" class="small">consistencia / tendencia</text>
+    <rect x="940" y="500" width="230" height="90" class="box"/><text x="1055" y="536" class="label">N12000</text><text x="1055" y="565" class="small">player-fit evidence</text>
+
+    <rect x="635" y="700" width="230" height="105" class="gate"/><text x="750" y="739" class="label">N13000</text><text x="750" y="767" class="small">recommendation gate</text><text x="750" y="791" class="small">abstiene si policy no validada</text>
+  </g>
+
+  <path d="M280 190 L330 190" class="arrow"/><path d="M540 190 L590 190" class="arrow"/>
+  <path d="M695 230 C610 270,340 270,175 310" class="arrow"/><path d="M695 230 C620 275,520 285,435 310" class="arrow"/><path d="M695 230 L695 310" class="arrow"/><path d="M695 230 C790 275,900 285,955 310" class="arrow"/>
+  <path d="M1215 230 L1215 310" class="arrow"/>
+
+  <path d="M175 390 C210 455,330 470,445 500" class="arrow"/><path d="M435 390 C450 450,450 470,445 500" class="arrow"/><path d="M695 390 C650 450,570 470,445 500" class="arrow"/>
+  <path d="M695 390 C710 450,735 470,750 500" class="arrow"/><path d="M955 390 C900 450,830 470,750 500" class="arrow"/><path d="M1215 390 C1120 450,1080 470,1055 500" class="arrow"/>
+  <path d="M445 590 C520 650,630 670,700 700" class="arrow"/><path d="M750 590 L750 700" class="arrow"/><path d="M1055 590 C980 650,870 670,800 700" class="arrow"/>
+
+  <text x="75" y="860" class="sub">N9000 excluye GPS sintético como evidencia física observada. N13000 conserva evidencia aunque no pueda emitir recomendación.</text>
+</svg>
