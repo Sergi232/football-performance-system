@@ -21,6 +21,7 @@ GLOBAL END-TO-END QA        PASS
 PUBLIC SYNTHETIC DEMO       PASS
 REPRODUCIBILITY             PASS
 CI AUTOMÁTICO               PASS
+COACH COPILOT LOCAL E2E     PASS 9/9
 ```
 
 Cadena validada:
@@ -278,16 +279,16 @@ Extensión futura. El sistema principal no depende de datos del rival.
 
 ## Coach Copilot
 
-Arquitectura:
+Arquitectura vigente:
 
 ```text
-DuckDB local
-→ analytics / expert system materializados
+pregunta natural
+→ Ollama Granite 4.2 3B / clasificación estructurada de intención
 → tools Python read-only
-→ router determinista
-→ compact evidence
-→ Ollama qwen3:1.7b
-→ semantic guard
+→ DuckDB + analytics / expert system materializados
+→ evidencia estructurada compacta
+→ Ollama Granite 4.2 3B / síntesis
+→ guard numérico / policy
 → Coach Copilot
 ```
 
@@ -296,15 +297,18 @@ MVP oficial: castellano.
 Perfil local validado:
 
 ```text
-model=qwen3:1.7b
+model=granite4.2:3b
 thinking=False
 FPS_AGENT_NUM_CTX=1536
-FPS_AGENT_TIMEOUT=18
-keep_alive=30m
-LOCAL AGENT CONTRACT: PASS (4/4)
+LOCAL AGENT CONTRACT: PASS (9/9)
+average_elapsed=34.7s en el PC objetivo
 ```
 
-El LLM no accede directamente a DuckDB y no recalcula Match Rating, Performance Index, features críticas ni decisiones expertas.
+El gate end-to-end real cubre máximo goleador, asistencias, evolución de jugador, GPS, detalle de partido, estado del equipo, calidad de datos, guardrail de cansancio/fatiga y pregunta fuera de alcance.
+
+El modelo interpreta la intención y redacta, pero no accede directamente a DuckDB ni recalcula Match Rating, Performance Index, features críticas o decisiones expertas. Las consultas se ejecutan en herramientas de solo lectura y una pregunta no soportada no cae en un resumen genérico del equipo.
+
+No están validadas y por tanto siguen bloqueadas las inferencias de fatiga/readiness/lesión, XI ideal y recomendaciones tácticas automáticas.
 
 ---
 
@@ -403,7 +407,7 @@ Ubuntu limpio
 Ejecución validada:
 
 ```text
-GitHub Actions run 37081464123
+GitHub Actions run 37152519764
 Unit and contract tests: PASS
 Synthetic public demo: PASS
 Conclusion: SUCCESS
@@ -501,14 +505,12 @@ football-performance-system/
 
 ## Fase actual
 
-El núcleo funcional no se amplía salvo incidencia concreta o nueva evidencia.
-
-Prioridad:
+El núcleo funcional está cerrado. La prioridad inmediata vuelve al cierre visual y académico:
 
 ```text
-1  Memoria académica definitiva
-2  Matriz de evidencias / resultados
-3  Revisión final del repositorio
+1  Revisión visual final del Coach Copilot
+2  Capturas canónicas del producto
+3  Adaptación a plantilla / maquetación final
 4  Defensa y demo final
 ```
 
