@@ -1,6 +1,6 @@
 # TFM — Guion base de defensa
 
-Fecha: 03/10/2026
+Fecha: 04/10/2026
 Estado: guion preliminar; adaptar a la duración oficial cuando se conozca.
 
 Objetivo: explicar el proyecto como producto + metodología, no como una lista de scripts.
@@ -140,21 +140,52 @@ La defensa debe explicar qué decisión ayuda a tomar cada vista.
 
 Usar:
 - `docs/figures/tfm_llm_grounding.svg`;
-- captura real de una pregunta validada.
+- captura real del asistente final.
 
 Mensaje clave:
 
 ```text
-El LLM explica resultados.
-No calcula la verdad del sistema.
+El LLM interpreta lenguaje cuando hace falta.
+Python/DuckDB calcula los resultados.
 ```
 
-Datos de validación útiles:
-- router 17/17;
-- agregado 66/68 = 97,1%;
-- runtime errors 0;
-- safety failures 0;
-- smoke local 4/4 PASS.
+Arquitectura a explicar:
+
+```text
+pregunta clara
+→ router determinista
+→ tool read-only
+→ DuckDB / analytics
+→ respuesta
+
+pregunta ambigua
+→ Qwen local o OpenAI BYOK opcional
+→ tool validada
+→ DuckDB / analytics
+→ evidencia
+→ respuesta grounded
+```
+
+Datos de validación que sí pueden citarse:
+
+```text
+SMOKE CONTRACT = PASS (22/22)
+average_elapsed = 1.4s
+consultas deterministas típicas = 0.1–0.8s
+follow-ups = 0.1–0.2s
+```
+
+Aclaración importante:
+- el fallback Qwen puede tardar decenas de segundos en CPU;
+- el modo OpenAI existe como opción BYOK y pasa contratos/CI, pero no se ha benchmarkeado live con una API key real.
+
+Pregunta recomendada en demo:
+
+```text
+¿Quién corre más distancia por partido?
+```
+
+Abrir `Evidencia consultada` y señalar que las rondas de interpretación semántica son `0` en una pregunta clara.
 
 ---
 
@@ -166,6 +197,7 @@ Mostrar una tabla breve:
 QA global              PASS
 Demo sintética         PASS
 CI entorno limpio      PASS
+Coach Copilot 22/22    PASS
 ```
 
 Explicar la separación:
@@ -196,12 +228,13 @@ No queda demostrado:
 
 ## 12. Limitaciones y futuro
 
-Priorizar solo 3–4:
+Priorizar solo 4–5:
 
 1. validación con entrenadores;
 2. fiabilidad interobservador del Collector;
 3. GPS real;
-4. policy N13000 / validación externa Match Rating.
+4. policy N13000 / validación externa Match Rating;
+5. validación live de proveedores externos si se quiere comercializar ese modo.
 
 Cerrar mostrando que el proyecto ya es funcional y que el futuro consiste en validar mejor, no en añadir complejidad indiscriminadamente.
 
@@ -220,13 +253,19 @@ Team Mode
 
 No navegar por toda la aplicación.
 
-Pregunta del Copilot recomendada:
+Pregunta principal del Copilot:
 
 ```text
-¿Cómo ha evolucionado este jugador?
+¿Quién corre más distancia por partido?
 ```
 
-Tener preparado un plan B con capturas/PDF si Ollama o Streamlit falla durante la defensa.
+Follow-up opcional si hay tiempo:
+
+```text
+¿Y el segundo?
+```
+
+Tener preparado un plan B con capturas/PDF si Ollama o Streamlit falla durante la defensa. Las consultas deterministas principales pueden seguir funcionando aunque Ollama no esté disponible.
 
 ---
 
@@ -237,7 +276,16 @@ Tener preparado un plan B con capturas/PDF si Ollama o Streamlit falla durante l
 Respuesta:
 - porque un LLM no debe ser la fuente de cálculo crítico;
 - las métricas y decisiones se calculan antes;
-- el LLM se limita a consultar y explicar.
+- para preguntas claras ni siquiera hace falta activar el LLM;
+- el LLM se reserva para interpretar lenguaje ambiguo y explicar evidencia estructurada.
+
+## ¿Entonces dónde está la IA generativa?
+
+Respuesta:
+- existe como capa de interacción;
+- Qwen local actúa como fallback semántico;
+- opcionalmente puede usarse OpenAI con API key del usuario;
+- ambas opciones están desacopladas del motor analítico.
 
 ## ¿Por qué sistema experto y no ML?
 
@@ -266,6 +314,14 @@ Respuesta:
 - FEATURE-02/03 y Analytics utilizan strict-past;
 - solo observaciones con fecha anterior a t;
 - existe validación contractual específica.
+
+## ¿Por qué permitir OpenAI si ya existe Qwen?
+
+Respuesta:
+- no es una dependencia del producto;
+- es una opción para usuarios que prefieran un modelo externo más capaz para lenguaje complejo;
+- la misma capa analítica y las mismas tools siguen siendo la fuente de verdad;
+- el usuario aporta su propia API key.
 
 ## ¿Qué demuestra realmente el TFM?
 
