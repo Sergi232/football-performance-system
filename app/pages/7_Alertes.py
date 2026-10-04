@@ -84,9 +84,11 @@ page_header(
 try:
     flags = get_team_attention_flags(path, team_id)
     summary = get_attention_summary(path, team_id)
-except Exception as exc:
-    st.warning("La capa de alertas todavía no está materializada.")
-    st.caption(str(exc))
+except Exception:
+    st.info(
+        "No hay alertas de calidad materializadas en esta base. "
+        "Esta ausencia no implica una alerta deportiva ni impide consultar el resto del sistema."
+    )
     st.stop()
 
 squad = get_squad_summary(path, team_id)

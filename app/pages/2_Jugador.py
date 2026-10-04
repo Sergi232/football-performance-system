@@ -200,9 +200,9 @@ def observed_role_context() -> str:
 
 k1, k2, k3, k4 = st.columns(4)
 with k1:
-    metric_card("Minutos", safe_int(player_row.get("minutes")), "Periodo seleccionado")
+    metric_card("Minutos", safe_int(player_row.get("minutes")), "Historial disponible")
 with k2:
-    metric_card("Titularidades", safe_int(player_row.get("starts")), "Periodo seleccionado")
+    metric_card("Titularidades", safe_int(player_row.get("starts")), "Historial disponible")
 with k3:
     metric_card("Rol observado", observed_role_context(), "Última aparición registrada")
 with k4:
@@ -215,7 +215,7 @@ st.write("")
 tab_overview, tab_trend, tab_technical, tab_expert, tab_matches = st.tabs(["Visión técnica", "Evolución", "Técnico", "Motor experto", "Partidos"])
 
 with tab_overview:
-    section_header("Producción del periodo", "Contadores directos de las acciones registradas")
+    section_header("Producción del historial disponible", "Contadores directos de las acciones registradas")
     attack_a, attack_b, attack_c, attack_d, attack_e = st.columns(5)
     with attack_a:
         metric_card("Goles", str(history_total("goals")), "Ataque")
@@ -235,7 +235,7 @@ with tab_overview:
     with build_a:
         metric_card("Pases", f"{completed_passes} / {total_passes}", "Completados / intentados")
     with build_b:
-        metric_card("% pase", pass_pct, "Periodo seleccionado")
+        metric_card("% pase", pass_pct, "Historial disponible")
     with build_c:
         metric_card("Largos", str(history_total("long_balls_total")), "Intentados")
     with build_d:
@@ -253,18 +253,18 @@ with tab_overview:
     with defence_a:
         metric_card("Entradas", str(history_total("tackles_total")), "Total · ganadas " + str(history_total("tackles_won")))
     with defence_b:
-        metric_card("Intercepciones", str(history_total("interceptions")), "Periodo seleccionado")
+        metric_card("Intercepciones", str(history_total("interceptions")), "Historial disponible")
     with defence_c:
-        metric_card("Bloqueos", str(history_total("blocked_passes")), "Periodo seleccionado")
+        metric_card("Bloqueos", str(history_total("blocked_passes")), "Historial disponible")
     with defence_d:
-        metric_card("Despejes", str(history_total("clearances")), "Periodo seleccionado")
+        metric_card("Despejes", str(history_total("clearances")), "Historial disponible")
     discipline_a, discipline_b, discipline_c, discipline_d = st.columns(4)
     with discipline_a:
         metric_card("Faltas", f"{history_total('fouls_committed')} / {history_total('fouls_received')}", "Cometidas / recibidas")
     with discipline_b:
-        metric_card("Amarillas", str(history_total("yellow_cards")), "Periodo seleccionado")
+        metric_card("Amarillas", str(history_total("yellow_cards")), "Historial disponible")
     with discipline_c:
-        metric_card("Rojas", str(history_total("red_cards")), "Periodo seleccionado")
+        metric_card("Rojas", str(history_total("red_cards")), "Historial disponible")
     with discipline_d:
         metric_card("Penaltis", f"{history_total('penalties_won')} / {history_total('penalties_conceded')}", "Favor / contra")
 
@@ -272,9 +272,9 @@ with tab_overview:
         section_header("Portero", "Visible porque existe evidencia específica de portería")
         keeper_a, keeper_b = st.columns(2)
         with keeper_a:
-            metric_card("Paradas", str(history_total("saves")), "Periodo seleccionado")
+            metric_card("Paradas", str(history_total("saves")), "Historial disponible")
         with keeper_b:
-            metric_card("Goles encajados", str(history_total("goals_conceded")), "Periodo seleccionado")
+            metric_card("Goles encajados", str(history_total("goals_conceded")), "Historial disponible")
 
     context_col, chart_col = st.columns([.8, 1.35], gap="large")
     with context_col:

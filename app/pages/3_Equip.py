@@ -187,10 +187,10 @@ if latest_match is not None:
             "Local" if latest_match.get("venue") == "H" else "Visitante",
             safe_text(latest_match.get("starting_formation"), "No disponible"),
         )
-        section_header("Indicadores del periodo", "Agregados directos de los eventos registrados")
+        section_header("Indicadores de la temporada disponible", "Agregados directos de todos los partidos cargados")
         a, b, c, d = st.columns(4)
         with a:
-            metric_card("Partidos", safe_int(overview.get("matches")), "Periodo seleccionado")
+            metric_card("Partidos", safe_int(overview.get("matches")), "Partidos cargados")
         with b:
             metric_card("V / E / D", record_text, "Resultados registrados")
         with c:
@@ -214,7 +214,7 @@ if latest_match is not None:
         with basic_c:
             metric_card("Pase completado", team_pass_completion(), "Completados / intentados")
 
-        section_header("Disciplina y penaltis", "Eventos registrados durante el periodo")
+        section_header("Disciplina y penaltis", "Eventos registrados en los partidos cargados")
         basic_a, basic_b, basic_c, basic_d = st.columns(4)
         with basic_a:
             metric_card("Amarillas", event_total("yellow_cards"), "Total registrado")
