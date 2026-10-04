@@ -21,6 +21,7 @@ from openai import OpenAI
 from llm import coach_agent_fast as _fast
 from llm import coach_agent_general as _agent
 from llm import coach_agent_granite as _grounding
+from llm import coach_role_analysis as _role_analysis
 
 DEFAULT_OPENAI_MODEL = os.environ.get("FPS_OPENAI_MODEL", "gpt-5.6-luna")
 DEFAULT_OPENAI_TIMEOUT = float(os.environ.get("FPS_OPENAI_TIMEOUT", "45"))
@@ -231,6 +232,25 @@ def run_coach_agent_turn(
     model: str | None = None,
 ) -> CoachAgentResult:
     selected_model = str(model or DEFAULT_OPENAI_MODEL)
+
+    # The same deterministic role analysis must behave identically in local and
+    # external-provider modes. It is a product capability, not an LLM capability.
+    repaired_question = _fast._repair_console_text(question)
+    repaired_history = _fast._repair_history(history)
+    role_result = _role_analysis.try_role_query(
+        repaired_question,
+        db_path=Path(db_path),
+        team_id=str(team_id),
+        history=repaired_history,
+    )
+    if role_result is not None:
+        return CoachAgentResult(
+            str(role_result["text"]),
+            selected_model,
+            0,
+            (str(role_result.get("tool") or "compare_role_players"),),
+            None,
+        )
 
     prepared_args, prepared_kwargs, policy_block = _fast._prepare_call(
         (question,),
