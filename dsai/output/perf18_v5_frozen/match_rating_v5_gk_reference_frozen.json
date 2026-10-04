@@ -1,0 +1,60 @@
+{
+  "artifact_version": "perf18_v5_gk_reference_frozen_v1",
+  "reference_model": {
+    "prior_save_rate": 0.6730022826510567,
+    "prior_strength_shots": 4.0,
+    "distribution": {
+      "features": [
+        "pass_accuracy",
+        "long_ball_accuracy",
+        "passes_completed_p90",
+        "long_balls_completed_p90"
+      ],
+      "medians": {
+        "pass_accuracy": 0.6,
+        "long_ball_accuracy": 0.4074074074074074,
+        "passes_completed_p90": 14.0,
+        "long_balls_completed_p90": 6.0
+      },
+      "scaler_mean": {
+        "pass_accuracy": 0.6017665924420221,
+        "long_ball_accuracy": 0.4333976776588634,
+        "passes_completed_p90": 13.892329804175752,
+        "long_balls_completed_p90": 6.369456438190841
+      },
+      "scaler_scale": {
+        "pass_accuracy": 0.16950482996822056,
+        "long_ball_accuracy": 0.18752694558997993,
+        "passes_completed_p90": 8.928246409465986,
+        "long_balls_completed_p90": 4.342619559170544
+      },
+      "loadings": {
+        "pass_accuracy": 0.5478158547070339,
+        "long_ball_accuracy": 0.5344432729013315,
+        "passes_completed_p90": 0.5115276390764292,
+        "long_balls_completed_p90": 0.390650293540154
+      },
+      "explained_variance_ratio": 0.47673128977696494,
+      "orientation_corr": 0.9959713996906662
+    },
+    "shot_mean": 0.6694936901259537,
+    "shot_sd": 0.1173404369780661,
+    "distribution_mean": 1.1184787228807952e-16,
+    "distribution_sd": 1.3809146096366198,
+    "train_rows": 121973,
+    "train_shot_evidence_rows": 116432
+  },
+  "calibration": {
+    "intercept": 6.376726980561272,
+    "slope": 1.232491833146476
+  },
+  "reference_split": {
+    "train_end": "2022-01-21",
+    "valid_end": "2023-11-07"
+  },
+  "reference_rows": {
+    "train": 121973,
+    "valid": 43516,
+    "test": 47304
+  }
+}

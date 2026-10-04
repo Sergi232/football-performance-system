@@ -1,0 +1,996 @@
+{
+  "artifact_version": "perf18_v4_outfield_reference_frozen_v1",
+  "source_version": "perf18_anchored_prof_reference_pre_local_cutoff",
+  "reference_cutoff_before": "2025-08-16",
+  "reference_rows_by_role": {
+    "CB": 480468,
+    "FB": 336215,
+    "DM": 168211,
+    "CM": 324340,
+    "AM": 160904,
+    "W": 286899,
+    "ST": 361943
+  },
+  "models": {
+    "CB": {
+      "role": "CB",
+      "ratio_priors": {
+        "pass_accuracy_shrunk": {
+          "rate": 0.8254525776643327,
+          "strength": 44.0
+        },
+        "dribble_success_shrunk": {
+          "rate": 0.6990184773743566,
+          "strength": 1.0
+        },
+        "tackle_success_shrunk": {
+          "rate": 0.6604769691648851,
+          "strength": 2.0
+        }
+      },
+      "dimension_refs": {
+        "shooting": {
+          "features": {
+            "shots_on_target_p90": {
+              "sign": 1.0,
+              "mean": 0.1370884793022842,
+              "sd": 0.38849791973300535
+            },
+            "shots_total_p90": {
+              "sign": 1.0,
+              "mean": 0.47238665948621633,
+              "sd": 0.7686704446660385
+            },
+            "shots_blocked_p90": {
+              "sign": 1.0,
+              "mean": 0.09072683727118806,
+              "sd": 0.31945382820593154
+            }
+          }
+        },
+        "passing_creation": {
+          "features": {
+            "passes_completed_p90": {
+              "sign": 1.0,
+              "mean": 35.67772873252279,
+              "sd": 23.36659662307271
+            },
+            "pass_accuracy_shrunk": {
+              "sign": 1.0,
+              "mean": 0.8199261426650354,
+              "sd": 0.04977500766887175
+            },
+            "long_balls_completed_p90": {
+              "sign": 1.0,
+              "mean": 3.195034496493045,
+              "sd": 2.7638778910956954
+            },
+            "crosses_completed_p90": {
+              "sign": 1.0,
+              "mean": 0.05736209770036,
+              "sd": 0.3064336586053859
+            }
+          }
+        },
+        "possession_1v1": {
+          "features": {
+            "dribbles_won_p90": {
+              "sign": 1.0,
+              "mean": 0.21239220835407024,
+              "sd": 0.5403811706224465
+            },
+            "dribble_success_shrunk": {
+              "sign": 1.0,
+              "mean": 0.6991152274318879,
+              "sd": 0.10529269722224714
+            },
+            "turnovers_p90": {
+              "sign": -1.0,
+              "mean": 0.4032160788671124,
+              "sd": 0.7048090033155007
+            },
+            "dispossessed_p90": {
+              "sign": -1.0,
+              "mean": 0.16557292649193567,
+              "sd": 0.44869483289363987
+            }
+          }
+        },
+        "defending": {
+          "features": {
+            "tackles_won_p90": {
+              "sign": 1.0,
+              "mean": 0.8423872356997583,
+              "sd": 1.0598971792411345
+            },
+            "tackle_success_shrunk": {
+              "sign": 1.0,
+              "mean": 0.660811321174646,
+              "sd": 0.12904651413620086
+            },
+            "interceptions_p90": {
+              "sign": 1.0,
+              "mean": 1.396238649764385,
+              "sd": 1.4956629493119702
+            },
+            "blocked_passes_p90": {
+              "sign": 1.0,
+              "mean": 0.6138461535845197,
+              "sd": 0.9108877667689168
+            },
+            "clearances_p90": {
+              "sign": 1.0,
+              "mean": 3.925792842030134,
+              "sd": 3.109496778884302
+            }
+          }
+        },
+        "discipline_context": {
+          "features": {
+            "fouls_received_p90": {
+              "sign": 1.0,
+              "mean": 0.6332914914775251,
+              "sd": 0.894912075758768
+            },
+            "fouls_committed_p90": {
+              "sign": -1.0,
+              "mean": 0.9209427782247116,
+              "sd": 1.0557806271466026
+            }
+          }
+        }
+      },
+      "weights": {
+        "shooting": 0.08,
+        "passing_creation": 0.2,
+        "possession_1v1": 0.1,
+        "defending": 0.47,
+        "discipline_context": 0.15
+      },
+      "calibration": {
+        "intercept": 6.599934701217834,
+        "slope": 1.7468728281416657
+      }
+    },
+    "FB": {
+      "role": "FB",
+      "ratio_priors": {
+        "pass_accuracy_shrunk": {
+          "rate": 0.7761378076988188,
+          "strength": 36.0
+        },
+        "dribble_success_shrunk": {
+          "rate": 0.5406523019207763,
+          "strength": 2.0
+        },
+        "tackle_success_shrunk": {
+          "rate": 0.6721634980409928,
+          "strength": 2.0
+        }
+      },
+      "dimension_refs": {
+        "shooting": {
+          "features": {
+            "shots_on_target_p90": {
+              "sign": 1.0,
+              "mean": 0.14076136848941054,
+              "sd": 0.4007961993760913
+            },
+            "shots_total_p90": {
+              "sign": 1.0,
+              "mean": 0.5125303252932804,
+              "sd": 0.8221939550978797
+            },
+            "shots_blocked_p90": {
+              "sign": 1.0,
+              "mean": 0.13641711906110507,
+              "sd": 0.40188080398191534
+            }
+          }
+        },
+        "passing_creation": {
+          "features": {
+            "passes_completed_p90": {
+              "sign": 1.0,
+              "mean": 27.438807779740046,
+              "sd": 17.12493983113763
+            },
+            "pass_accuracy_shrunk": {
+              "sign": 1.0,
+              "mean": 0.771763964898101,
+              "sd": 0.05185600240552039
+            },
+            "long_balls_completed_p90": {
+              "sign": 1.0,
+              "mean": 1.8535006600228883,
+              "sd": 1.8771402758828313
+            },
+            "crosses_completed_p90": {
+              "sign": 1.0,
+              "mean": 0.6128332419918893,
+              "sd": 1.025842292341774
+            }
+          }
+        },
+        "possession_1v1": {
+          "features": {
+            "dribbles_won_p90": {
+              "sign": 1.0,
+              "mean": 0.6312184970724344,
+              "sd": 1.0016216276078982
+            },
+            "dribble_success_shrunk": {
+              "sign": 1.0,
+              "mean": 0.5395708453030741,
+              "sd": 0.12749877415000352
+            },
+            "turnovers_p90": {
+              "sign": -1.0,
+              "mean": 0.9669815289580928,
+              "sd": 1.1523902112516735
+            },
+            "dispossessed_p90": {
+              "sign": -1.0,
+              "mean": 0.5353701711781351,
+              "sd": 0.8577936516779525
+            }
+          }
+        },
+        "defending": {
+          "features": {
+            "tackles_won_p90": {
+              "sign": 1.0,
+              "mean": 1.238004240020131,
+              "sd": 1.3534232903300587
+            },
+            "tackle_success_shrunk": {
+              "sign": 1.0,
+              "mean": 0.6725491148407584,
+              "sd": 0.13743240518049013
+            },
+            "interceptions_p90": {
+              "sign": 1.0,
+              "mean": 1.3091944988477089,
+              "sd": 1.451956531039018
+            },
+            "blocked_passes_p90": {
+              "sign": 1.0,
+              "mean": 1.3563206713389682,
+              "sd": 1.5085115306209733
+            },
+            "clearances_p90": {
+              "sign": 1.0,
+              "mean": 1.9952364480446427,
+              "sd": 1.9633001946109572
+            }
+          }
+        },
+        "discipline_context": {
+          "features": {
+            "fouls_received_p90": {
+              "sign": 1.0,
+              "mean": 0.9085975360687597,
+              "sd": 1.106051543802512
+            },
+            "fouls_committed_p90": {
+              "sign": -1.0,
+              "mean": 1.0538316983455671,
+              "sd": 1.1666881762431662
+            }
+          }
+        }
+      },
+      "weights": {
+        "shooting": 0.1,
+        "passing_creation": 0.25,
+        "possession_1v1": 0.2,
+        "defending": 0.3,
+        "discipline_context": 0.15
+      },
+      "calibration": {
+        "intercept": 6.548904168652613,
+        "slope": 1.895687009226382
+      }
+    },
+    "DM": {
+      "role": "DM",
+      "ratio_priors": {
+        "pass_accuracy_shrunk": {
+          "rate": 0.8369437286318697,
+          "strength": 43.0
+        },
+        "dribble_success_shrunk": {
+          "rate": 0.6306935783686868,
+          "strength": 1.0
+        },
+        "tackle_success_shrunk": {
+          "rate": 0.6457051035078982,
+          "strength": 2.0
+        }
+      },
+      "dimension_refs": {
+        "shooting": {
+          "features": {
+            "shots_on_target_p90": {
+              "sign": 1.0,
+              "mean": 0.24052492580345053,
+              "sd": 0.5412796550045632
+            },
+            "shots_total_p90": {
+              "sign": 1.0,
+              "mean": 0.871871490378046,
+              "sd": 1.1223148298961914
+            },
+            "shots_blocked_p90": {
+              "sign": 1.0,
+              "mean": 0.24709622137362777,
+              "sd": 0.5548003475800531
+            }
+          }
+        },
+        "passing_creation": {
+          "features": {
+            "passes_completed_p90": {
+              "sign": 1.0,
+              "mean": 37.60847539698851,
+              "sd": 21.556907975994882
+            },
+            "pass_accuracy_shrunk": {
+              "sign": 1.0,
+              "mean": 0.8332679003509037,
+              "sd": 0.04191573327429161
+            },
+            "long_balls_completed_p90": {
+              "sign": 1.0,
+              "mean": 2.755817434716999,
+              "sd": 2.6181743046193873
+            },
+            "crosses_completed_p90": {
+              "sign": 1.0,
+              "mean": 0.2779752919627229,
+              "sd": 0.782424825524685
+            }
+          }
+        },
+        "possession_1v1": {
+          "features": {
+            "dribbles_won_p90": {
+              "sign": 1.0,
+              "mean": 0.6112791180489675,
+              "sd": 0.9995019702283612
+            },
+            "dribble_success_shrunk": {
+              "sign": 1.0,
+              "mean": 0.6294423023162031,
+              "sd": 0.1642721928670572
+            },
+            "turnovers_p90": {
+              "sign": -1.0,
+              "mean": 1.0184626800962826,
+              "sd": 1.2050529586448773
+            },
+            "dispossessed_p90": {
+              "sign": -1.0,
+              "mean": 0.7319982893925591,
+              "sd": 1.021649327955794
+            }
+          }
+        },
+        "defending": {
+          "features": {
+            "tackles_won_p90": {
+              "sign": 1.0,
+              "mean": 1.3191074842959867,
+              "sd": 1.4003644252293628
+            },
+            "tackle_success_shrunk": {
+              "sign": 1.0,
+              "mean": 0.6455628307499701,
+              "sd": 0.14324573145947828
+            },
+            "interceptions_p90": {
+              "sign": 1.0,
+              "mean": 1.3338531311721467,
+              "sd": 1.465467067497537
+            },
+            "blocked_passes_p90": {
+              "sign": 1.0,
+              "mean": 1.2272399020242208,
+              "sd": 1.381863156967425
+            },
+            "clearances_p90": {
+              "sign": 1.0,
+              "mean": 1.1902843992604901,
+              "sd": 1.4584649873930047
+            }
+          }
+        },
+        "discipline_context": {
+          "features": {
+            "fouls_received_p90": {
+              "sign": 1.0,
+              "mean": 1.1372129397485937,
+              "sd": 1.2814612534591763
+            },
+            "fouls_committed_p90": {
+              "sign": -1.0,
+              "mean": 1.4435038335514294,
+              "sd": 1.4014355301080483
+            }
+          }
+        }
+      },
+      "weights": {
+        "shooting": 0.08,
+        "passing_creation": 0.3,
+        "possession_1v1": 0.18,
+        "defending": 0.29,
+        "discipline_context": 0.15
+      },
+      "calibration": {
+        "intercept": 6.781154591458415,
+        "slope": 2.0863601568667947
+      }
+    },
+    "CM": {
+      "role": "CM",
+      "ratio_priors": {
+        "pass_accuracy_shrunk": {
+          "rate": 0.8201348513803933,
+          "strength": 38.0
+        },
+        "dribble_success_shrunk": {
+          "rate": 0.5941911850215141,
+          "strength": 2.0
+        },
+        "tackle_success_shrunk": {
+          "rate": 0.6339600303356401,
+          "strength": 2.0
+        }
+      },
+      "dimension_refs": {
+        "shooting": {
+          "features": {
+            "shots_on_target_p90": {
+              "sign": 1.0,
+              "mean": 0.32264248304912335,
+              "sd": 0.6446505185106809
+            },
+            "shots_total_p90": {
+              "sign": 1.0,
+              "mean": 1.0636889111152519,
+              "sd": 1.275787271515044
+            },
+            "shots_blocked_p90": {
+              "sign": 1.0,
+              "mean": 0.29622286152705385,
+              "sd": 0.6185593665981278
+            }
+          }
+        },
+        "passing_creation": {
+          "features": {
+            "passes_completed_p90": {
+              "sign": 1.0,
+              "mean": 32.11807023289889,
+              "sd": 20.56143661923869
+            },
+            "pass_accuracy_shrunk": {
+              "sign": 1.0,
+              "mean": 0.815927261180604,
+              "sd": 0.04492053562473601
+            },
+            "long_balls_completed_p90": {
+              "sign": 1.0,
+              "mean": 2.261859533132889,
+              "sd": 2.4109785801878454
+            },
+            "crosses_completed_p90": {
+              "sign": 1.0,
+              "mean": 0.4128929402892221,
+              "sd": 0.9756932227336489
+            }
+          }
+        },
+        "possession_1v1": {
+          "features": {
+            "dribbles_won_p90": {
+              "sign": 1.0,
+              "mean": 0.6840190271114135,
+              "sd": 1.0924208994579447
+            },
+            "dribble_success_shrunk": {
+              "sign": 1.0,
+              "mean": 0.5935939492081062,
+              "sd": 0.12366433918756574
+            },
+            "turnovers_p90": {
+              "sign": -1.0,
+              "mean": 1.2140146893832093,
+              "sd": 1.3855329590672436
+            },
+            "dispossessed_p90": {
+              "sign": -1.0,
+              "mean": 0.8549497872273591,
+              "sd": 1.15190836679136
+            }
+          }
+        },
+        "defending": {
+          "features": {
+            "tackles_won_p90": {
+              "sign": 1.0,
+              "mean": 1.1227491632791797,
+              "sd": 1.3058864690169532
+            },
+            "tackle_success_shrunk": {
+              "sign": 1.0,
+              "mean": 0.6340544339590554,
+              "sd": 0.1386825652579595
+            },
+            "interceptions_p90": {
+              "sign": 1.0,
+              "mean": 1.0613096378281637,
+              "sd": 1.3149121280622926
+            },
+            "blocked_passes_p90": {
+              "sign": 1.0,
+              "mean": 1.2488129719817105,
+              "sd": 1.4250602180191436
+            },
+            "clearances_p90": {
+              "sign": 1.0,
+              "mean": 0.9593669929580139,
+              "sd": 1.3213090450307825
+            }
+          }
+        },
+        "discipline_context": {
+          "features": {
+            "fouls_received_p90": {
+              "sign": 1.0,
+              "mean": 1.1977847035134095,
+              "sd": 1.3238250178299424
+            },
+            "fouls_committed_p90": {
+              "sign": -1.0,
+              "mean": 1.3500551237802736,
+              "sd": 1.3577553459815743
+            }
+          }
+        }
+      },
+      "weights": {
+        "shooting": 0.12,
+        "passing_creation": 0.35,
+        "possession_1v1": 0.23,
+        "defending": 0.15,
+        "discipline_context": 0.15
+      },
+      "calibration": {
+        "intercept": 6.646742153731138,
+        "slope": 1.8149890184263766
+      }
+    },
+    "AM": {
+      "role": "AM",
+      "ratio_priors": {
+        "pass_accuracy_shrunk": {
+          "rate": 0.7859934723361439,
+          "strength": 28.0
+        },
+        "dribble_success_shrunk": {
+          "rate": 0.5196058364279658,
+          "strength": 2.0
+        },
+        "tackle_success_shrunk": {
+          "rate": 0.6590772643845094,
+          "strength": 2.0
+        }
+      },
+      "dimension_refs": {
+        "shooting": {
+          "features": {
+            "shots_on_target_p90": {
+              "sign": 1.0,
+              "mean": 0.6558505524701311,
+              "sd": 0.9175454770526865
+            },
+            "shots_total_p90": {
+              "sign": 1.0,
+              "mean": 1.8019643669772312,
+              "sd": 1.6593606014601947
+            },
+            "shots_blocked_p90": {
+              "sign": 1.0,
+              "mean": 0.46161164970865715,
+              "sd": 0.7785113296171935
+            }
+          }
+        },
+        "passing_creation": {
+          "features": {
+            "passes_completed_p90": {
+              "sign": 1.0,
+              "mean": 23.970345443822154,
+              "sd": 14.923838765607934
+            },
+            "pass_accuracy_shrunk": {
+              "sign": 1.0,
+              "mean": 0.7822704088822089,
+              "sd": 0.0483633807997087
+            },
+            "long_balls_completed_p90": {
+              "sign": 1.0,
+              "mean": 1.2983871342643638,
+              "sd": 1.6857637748608778
+            },
+            "crosses_completed_p90": {
+              "sign": 1.0,
+              "mean": 0.700253341334641,
+              "sd": 1.2222710751952042
+            }
+          }
+        },
+        "possession_1v1": {
+          "features": {
+            "dribbles_won_p90": {
+              "sign": 1.0,
+              "mean": 1.1045054697917758,
+              "sd": 1.4712600753587444
+            },
+            "dribble_success_shrunk": {
+              "sign": 1.0,
+              "mean": 0.5167995916420269,
+              "sd": 0.14413933013503805
+            },
+            "turnovers_p90": {
+              "sign": -1.0,
+              "mean": 1.9833170747103555,
+              "sd": 1.8043258208733421
+            },
+            "dispossessed_p90": {
+              "sign": -1.0,
+              "mean": 1.4475230610808838,
+              "sd": 1.564139203755762
+            }
+          }
+        },
+        "defending": {
+          "features": {
+            "tackles_won_p90": {
+              "sign": 1.0,
+              "mean": 0.8082653905511145,
+              "sd": 1.101458075906333
+            },
+            "tackle_success_shrunk": {
+              "sign": 1.0,
+              "mean": 0.6590492514056838,
+              "sd": 0.12404532352809006
+            },
+            "interceptions_p90": {
+              "sign": 1.0,
+              "mean": 0.5701949952311595,
+              "sd": 0.9257888274566642
+            },
+            "blocked_passes_p90": {
+              "sign": 1.0,
+              "mean": 1.3781575663642607,
+              "sd": 1.5466156128382171
+            },
+            "clearances_p90": {
+              "sign": 1.0,
+              "mean": 0.45430791312842056,
+              "sd": 0.86535543898247
+            }
+          }
+        },
+        "discipline_context": {
+          "features": {
+            "fouls_received_p90": {
+              "sign": 1.0,
+              "mean": 1.5122821979411685,
+              "sd": 1.5346641259921798
+            },
+            "fouls_committed_p90": {
+              "sign": -1.0,
+              "mean": 1.1779406073321534,
+              "sd": 1.3202008868711346
+            }
+          }
+        }
+      },
+      "weights": {
+        "shooting": 0.25,
+        "passing_creation": 0.3,
+        "possession_1v1": 0.25,
+        "defending": 0.05,
+        "discipline_context": 0.15
+      },
+      "calibration": {
+        "intercept": 6.5674695270026815,
+        "slope": 1.5570882929490348
+      }
+    },
+    "W": {
+      "role": "W",
+      "ratio_priors": {
+        "pass_accuracy_shrunk": {
+          "rate": 0.7617993133522654,
+          "strength": 25.0
+        },
+        "dribble_success_shrunk": {
+          "rate": 0.49561064267405686,
+          "strength": 2.0
+        },
+        "tackle_success_shrunk": {
+          "rate": 0.6421077064641011,
+          "strength": 2.0
+        }
+      },
+      "dimension_refs": {
+        "shooting": {
+          "features": {
+            "shots_on_target_p90": {
+              "sign": 1.0,
+              "mean": 0.5116186772999356,
+              "sd": 0.8254089103099485
+            },
+            "shots_total_p90": {
+              "sign": 1.0,
+              "mean": 1.4553611719620967,
+              "sd": 1.523171589262629
+            },
+            "shots_blocked_p90": {
+              "sign": 1.0,
+              "mean": 0.3869356837169704,
+              "sd": 0.7180368283004158
+            }
+          }
+        },
+        "passing_creation": {
+          "features": {
+            "passes_completed_p90": {
+              "sign": 1.0,
+              "mean": 20.77966160571724,
+              "sd": 12.941928355560579
+            },
+            "pass_accuracy_shrunk": {
+              "sign": 1.0,
+              "mean": 0.7579674227894867,
+              "sd": 0.05450755043620476
+            },
+            "long_balls_completed_p90": {
+              "sign": 1.0,
+              "mean": 1.0735664990688625,
+              "sd": 1.4279638396858259
+            },
+            "crosses_completed_p90": {
+              "sign": 1.0,
+              "mean": 0.733877256661048,
+              "sd": 1.2283705859368277
+            }
+          }
+        },
+        "possession_1v1": {
+          "features": {
+            "dribbles_won_p90": {
+              "sign": 1.0,
+              "mean": 1.116523961659739,
+              "sd": 1.4791742461512987
+            },
+            "dribble_success_shrunk": {
+              "sign": 1.0,
+              "mean": 0.49233329882614646,
+              "sd": 0.145016289973271
+            },
+            "turnovers_p90": {
+              "sign": -1.0,
+              "mean": 1.8694212448766028,
+              "sd": 1.7703145984846376
+            },
+            "dispossessed_p90": {
+              "sign": -1.0,
+              "mean": 1.1561740846307946,
+              "sd": 1.3956377175028263
+            }
+          }
+        },
+        "defending": {
+          "features": {
+            "tackles_won_p90": {
+              "sign": 1.0,
+              "mean": 0.9124746099111982,
+              "sd": 1.1707394685472126
+            },
+            "tackle_success_shrunk": {
+              "sign": 1.0,
+              "mean": 0.6424107854121611,
+              "sd": 0.13023247898592674
+            },
+            "interceptions_p90": {
+              "sign": 1.0,
+              "mean": 0.714789080685914,
+              "sd": 1.0418430998633352
+            },
+            "blocked_passes_p90": {
+              "sign": 1.0,
+              "mean": 1.4469417425746072,
+              "sd": 1.6141562558777294
+            },
+            "clearances_p90": {
+              "sign": 1.0,
+              "mean": 0.791185389453284,
+              "sd": 1.241287046985237
+            }
+          }
+        },
+        "discipline_context": {
+          "features": {
+            "fouls_received_p90": {
+              "sign": 1.0,
+              "mean": 1.313836411040846,
+              "sd": 1.4095915999354518
+            },
+            "fouls_committed_p90": {
+              "sign": -1.0,
+              "mean": 1.101920932245226,
+              "sd": 1.2511058219060163
+            }
+          }
+        }
+      },
+      "weights": {
+        "shooting": 0.25,
+        "passing_creation": 0.22,
+        "possession_1v1": 0.33,
+        "defending": 0.05,
+        "discipline_context": 0.15
+      },
+      "calibration": {
+        "intercept": 6.455800683625633,
+        "slope": 1.3570439789537485
+      }
+    },
+    "ST": {
+      "role": "ST",
+      "ratio_priors": {
+        "pass_accuracy_shrunk": {
+          "rate": 0.730342478741268,
+          "strength": 19.0
+        },
+        "dribble_success_shrunk": {
+          "rate": 0.48467508425907924,
+          "strength": 2.0
+        },
+        "tackle_success_shrunk": {
+          "rate": 0.6413237395473108,
+          "strength": 1.0
+        }
+      },
+      "dimension_refs": {
+        "shooting": {
+          "features": {
+            "shots_on_target_p90": {
+              "sign": 1.0,
+              "mean": 0.8997282457886026,
+              "sd": 1.0794177679083865
+            },
+            "shots_total_p90": {
+              "sign": 1.0,
+              "mean": 2.222198598220434,
+              "sd": 1.8411648198258268
+            },
+            "shots_blocked_p90": {
+              "sign": 1.0,
+              "mean": 0.4811235804978514,
+              "sd": 0.7910404769584656
+            }
+          }
+        },
+        "passing_creation": {
+          "features": {
+            "passes_completed_p90": {
+              "sign": 1.0,
+              "mean": 15.029986218480712,
+              "sd": 10.233166959048251
+            },
+            "pass_accuracy_shrunk": {
+              "sign": 1.0,
+              "mean": 0.7266594149012575,
+              "sd": 0.061331781059334525
+            },
+            "long_balls_completed_p90": {
+              "sign": 1.0,
+              "mean": 0.5938577048564369,
+              "sd": 1.0534711638341787
+            },
+            "crosses_completed_p90": {
+              "sign": 1.0,
+              "mean": 0.29677388123724696,
+              "sd": 0.7917459294033634
+            }
+          }
+        },
+        "possession_1v1": {
+          "features": {
+            "dribbles_won_p90": {
+              "sign": 1.0,
+              "mean": 0.8658632889714074,
+              "sd": 1.311248387608387
+            },
+            "dribble_success_shrunk": {
+              "sign": 1.0,
+              "mean": 0.4814801373179194,
+              "sd": 0.13719647160787163
+            },
+            "turnovers_p90": {
+              "sign": -1.0,
+              "mean": 2.361308632300049,
+              "sd": 2.017280982325059
+            },
+            "dispossessed_p90": {
+              "sign": -1.0,
+              "mean": 1.3640576166445946,
+              "sd": 1.5080922145276199
+            }
+          }
+        },
+        "defending": {
+          "features": {
+            "tackles_won_p90": {
+              "sign": 1.0,
+              "mean": 0.47454585131251614,
+              "sd": 0.8323424939276629
+            },
+            "tackle_success_shrunk": {
+              "sign": 1.0,
+              "mean": 0.6412472582439869,
+              "sd": 0.15156850548953654
+            },
+            "interceptions_p90": {
+              "sign": 1.0,
+              "mean": 0.2917044911833673,
+              "sd": 0.6448221365670893
+            },
+            "blocked_passes_p90": {
+              "sign": 1.0,
+              "mean": 1.0207080143857843,
+              "sd": 1.3176771035981505
+            },
+            "clearances_p90": {
+              "sign": 1.0,
+              "mean": 0.5561627098704287,
+              "sd": 0.9744872291417622
+            }
+          }
+        },
+        "discipline_context": {
+          "features": {
+            "fouls_received_p90": {
+              "sign": 1.0,
+              "mean": 1.4018099735778076,
+              "sd": 1.4409678429219046
+            },
+            "fouls_committed_p90": {
+              "sign": -1.0,
+              "mean": 1.3124921781379646,
+              "sd": 1.4019187577413839
+            }
+          }
+        }
+      },
+      "weights": {
+        "shooting": 0.45,
+        "passing_creation": 0.15,
+        "possession_1v1": 0.2,
+        "defending": 0.05,
+        "discipline_context": 0.15
+      },
+      "calibration": {
+        "intercept": 6.339299291823302,
+        "slope": 1.3412957151428782
+      }
+    }
+  }
+}
