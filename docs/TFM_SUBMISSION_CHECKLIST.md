@@ -21,7 +21,11 @@ Objetivo: controlar el cierre del TFM sin reabrir funcionalidad ya validada.
 - [x] Player Mode operativo.
 - [x] Match Mode operativo.
 - [x] Attention Centre operativo.
-- [x] Coach Copilot local cerrado con smoke real 22/22 PASS.
+- [x] Coach Copilot local cerrado con smoke real **28/28 PASS · avg 0.4s**.
+- [x] Query-space contract del Coach Copilot validado en CI.
+- [x] Comparaciones por posición validadas con criterio explícito.
+- [x] Preflight/guardrails evitan LLM para ruido, meta-consultas y fuera de dominio obvio.
+- [x] Anonimización del Assistant validada contractualmente para demo.
 - [x] OpenAI BYOK opcional implementado con contract tests + CI PASS.
 - [x] Reports V6 cerrados.
 - [x] Access control contractual validado.
@@ -33,8 +37,9 @@ Objetivo: controlar el cierre del TFM sin reabrir funcionalidad ya validada.
 
 - [x] README actualizado a arquitectura final.
 - [x] PROJECT_STATE actualizado a arquitectura final.
-- [x] ARCHITECTURE / DECISIONS / WORKFLOW sincronizados.
-- [x] Manuscrito, metodología, resultados, discusión y matriz de evidencias sincronizados con Coach Copilot final.
+- [x] Contrato canónico `llm/COACH_COPILOT_CONTRACT.md` creado.
+- [x] Validador automático `llm/validate_coach_contract.py` integrado en CI.
+- [x] Smoke real reproducible `llm/smoke_test_coach_agent.py` validado 28/28.
 - [x] Demo sintética pública desde cero.
 - [x] `professional_source_rows=0`.
 - [x] App read layer sobre demo sintética PASS.
@@ -43,6 +48,7 @@ Objetivo: controlar el cierre del TFM sin reabrir funcionalidad ya validada.
 - [x] CI activo en pull_request.
 - [x] Pytest en CI.
 - [x] Build/validator sintético en CI.
+- [x] Query-space contract en CI.
 - [x] Ejecución limpia de referencia SUCCESS.
 
 ---
@@ -90,7 +96,7 @@ Capturas reales:
 - [ ] Match Mode.
 - [ ] GPS.
 - [ ] Attention Centre.
-- [ ] Coach Copilot final con `Local · Qwen` y evidencia visible.
+- [ ] Coach Copilot final con `Local · Qwen`, identidad demo y evidencia visible.
 - [ ] PDF Team.
 - [ ] PDF Player.
 - [ ] PDF Match.
@@ -148,15 +154,17 @@ No publicar ni redistribuir mientras no exista autorización/licencia explícita
 
 ```text
 1  git pull --ff-only
-2  arrancar app local
-3  revisar Coach Copilot final
+2  reconstruir / abrir demo sintética con FPS_DEMO_MODE=1
+3  comprobar visualmente identidades Equipo Demo / Jugador XX / Rival XX
 4  producir las 10 capturas canónicas
-5  revisar que ningún documento mencione runtimes LLM superados como estado final
-6  adaptar memoria a plantilla disponible
-7  revisión final de bibliografía / idioma / numeración
+5  adaptar memoria a plantilla disponible
+6  revisión final de bibliografía / idioma / numeración
+7  preparar presentación y backup estático
 8  guardar copia final del repo + memoria + capturas
 9  entregar
 ```
+
+No volver a hacer testing manual aleatorio del Coach Copilot. El gate funcional está cerrado con `28/28 PASS`; solo reabrirlo ante un defecto reproducible que invalide el contrato.
 
 ---
 
@@ -166,8 +174,9 @@ El TFM estará listo para entrega cuando se cumpla:
 
 ```text
 producto validado              ✅
+Coach Copilot real 28/28       ✅
 GitHub reproducible            ✅
-memoria académica              ✅ contenido base sincronizado
+memoria académica              ✅ contenido base
 figuras técnicas               ✅
 capturas reales                pendiente
 plantilla/maquetación oficial  pendiente si aplica
