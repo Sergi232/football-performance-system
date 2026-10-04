@@ -1,6 +1,6 @@
 # TFM — Checklist final de entrega
 
-Fecha: 03/10/2026
+Fecha: 04/10/2026
 
 Objetivo: controlar el cierre del TFM sin reabrir funcionalidad ya validada.
 
@@ -21,7 +21,8 @@ Objetivo: controlar el cierre del TFM sin reabrir funcionalidad ya validada.
 - [x] Player Mode operativo.
 - [x] Match Mode operativo.
 - [x] Attention Centre operativo.
-- [x] Coach Copilot MVP cerrado.
+- [x] Coach Copilot local cerrado con smoke real 22/22 PASS.
+- [x] OpenAI BYOK opcional implementado con contract tests + CI PASS.
 - [x] Reports V6 cerrados.
 - [x] Access control contractual validado.
 - [x] QA global end-to-end PASS.
@@ -30,9 +31,10 @@ Objetivo: controlar el cierre del TFM sin reabrir funcionalidad ya validada.
 
 # B. Reproducibilidad / GitHub
 
-- [x] README actualizado.
-- [x] PROJECT_STATE actualizado.
-- [x] Demo anonimizada contractual.
+- [x] README actualizado a arquitectura final.
+- [x] PROJECT_STATE actualizado a arquitectura final.
+- [x] ARCHITECTURE / DECISIONS / WORKFLOW sincronizados.
+- [x] Manuscrito, metodología, resultados, discusión y matriz de evidencias sincronizados con Coach Copilot final.
 - [x] Demo sintética pública desde cero.
 - [x] `professional_source_rows=0`.
 - [x] App read layer sobre demo sintética PASS.
@@ -88,7 +90,7 @@ Capturas reales:
 - [ ] Match Mode.
 - [ ] GPS.
 - [ ] Attention Centre.
-- [ ] Coach Copilot.
+- [ ] Coach Copilot final con `Local · Qwen` y evidencia visible.
 - [ ] PDF Team.
 - [ ] PDF Player.
 - [ ] PDF Match.
@@ -120,6 +122,7 @@ Checklist detallada:
 - [ ] Validación externa del Match Rating.
 - [ ] Ground truth para policy N13000.
 - [ ] Comparación Expert vs ML con target independiente.
+- [ ] Benchmark live del modo OpenAI BYOK con API key real.
 
 Estas tareas son mejoras reales, no requisitos para considerar funcional el prototipo actual.
 
@@ -129,15 +132,31 @@ Estas tareas son mejoras reales, no requisitos para considerar funcional el prot
 
 ## Plantilla/rúbrica universitaria
 
-Pendiente. Sin ella no puede cerrarse la maquetación definitiva.
+Pendiente si no se ha recibido todavía. Sin ella no puede cerrarse la maquetación definitiva conforme a requisitos oficiales.
 
 ## Capturas del producto local
 
-Requieren ejecutar el producto en el PC y capturar pantallas reales.
+Requieren ejecutar el producto en el PC y capturar pantallas reales. Son el principal bloque pendiente controlable antes de la entrega.
 
 ## Derechos del dataset profesional
 
-No publicar ni redistribuir mientras no exista autorización/licencia explícita.
+No publicar ni redistribuir mientras no exista autorización/licencia explícita. La demo sintética separada sí tiene contrato redistribuible.
+
+---
+
+# H. Orden operativo de cierre hoy
+
+```text
+1  git pull --ff-only
+2  arrancar app local
+3  revisar Coach Copilot final
+4  producir las 10 capturas canónicas
+5  revisar que ningún documento mencione runtimes LLM superados como estado final
+6  adaptar memoria a plantilla disponible
+7  revisión final de bibliografía / idioma / numeración
+8  guardar copia final del repo + memoria + capturas
+9  entregar
+```
 
 ---
 
@@ -148,10 +167,10 @@ El TFM estará listo para entrega cuando se cumpla:
 ```text
 producto validado              ✅
 GitHub reproducible            ✅
-memoria académica              ✅ contenido base
+memoria académica              ✅ contenido base sincronizado
 figuras técnicas               ✅
 capturas reales                pendiente
-plantilla/maquetación oficial  pendiente
+plantilla/maquetación oficial  pendiente si aplica
 defensa final                  pendiente
 ```
 
