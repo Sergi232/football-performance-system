@@ -243,7 +243,7 @@ ATTENTION FLAGS CONTRACT: PASS
 MATCH MODE CONTRACT: PASS
 ```
 
-La presentación demo enmascara identidad de equipo, jugadores y rivales sin modificar la lógica interna.
+La presentación demo enmascara identidad de equipo, jugadores y rivales sin modificar la lógica interna. El mismo contrato de identidad se aplica al Coach Copilot, de modo que las respuestas visibles en demo utilizan `Equipo Demo`, `Jugador XX` y `Rival XX`.
 
 El control de acceso estructural distingue:
 - SUPERADMIN;
@@ -257,19 +257,17 @@ Limitación:
 
 # 9. Coach Copilot
 
-La arquitectura final prioriza un router determinista de alta confianza y reserva el LLM para lenguaje ambiguo.
+La arquitectura final prioriza preflight y routing determinista de alta confianza, reservando el LLM para lenguaje ambiguo dentro del dominio.
 
-Validación real sobre la DuckDB profesional:
+Validación real final sobre la DuckDB profesional:
 
 ```text
-SMOKE CONTRACT: PASS (22/22)
-average_elapsed = 1.4s
-consultas deterministas típicas = 0.1–0.8s
-follow-ups encadenados = 0.1–0.2s
-fallback Qwen observado en pregunta fuera de dominio = 25.3s
+SMOKE CONTRACT: PASS (28/28)
+average_elapsed = 0.4s
+all final smoke cases = rounds 0
 ```
 
-La batería incluye:
+La batería final incluye:
 - Match Rating más reciente;
 - Match Rating medio últimos cinco;
 - distancia media por partido;
@@ -277,16 +275,21 @@ La batería incluye:
 - asistencias;
 - evolución y perfil natural de jugador;
 - GPS;
-- comparación;
+- comparación entre jugadores;
+- comparación de delanteros;
+- comparación de centrales con criterio explícito;
 - detalle de partido;
 - estado del equipo;
 - calidad de datos;
 - guardrails de fatiga, lesión y titularidad;
 - criterios globales no validados;
 - pregunta fuera de dominio;
-- follow-ups ordinales, ventana temporal y evidencia.
+- entrada basura;
+- meta-consulta;
+- follow-ups ordinales, ventana temporal y evidencia;
+- follow-up de comparación por posición.
 
-El resultado muestra que las consultas soportadas y claras ya no dependen de un LLM en cada turno. `qwen3.5:4b` queda como fallback semántico cuando el router determinista no puede resolver la intención con suficiente confianza.
+El resultado muestra que toda la batería final pudo resolverse sin invocar Qwen. `qwen3.5:4b` queda como fallback semántico únicamente cuando el router determinista no puede resolver con suficiente confianza una consulta que sigue dentro del dominio soportado.
 
 Los guardrails bloquean explícitamente:
 - fatiga/cansancio;
@@ -296,9 +299,23 @@ Los guardrails bloquean explícitamente:
 - recomendación táctica automática no validada;
 - conceptos como «mejor jugador», «más completo» o «más determinante» sin una definición analítica aprobada.
 
-## 9.1 OpenAI BYOK opcional
+La comparación por posición sí forma parte del alcance validado. Si se pregunta quién ha rendido mejor dentro de una posición, el sistema declara como criterio de ordenación el **Match Rating medio dentro de la muestra de ese rol** y muestra métricas adicionales como evidencia descriptiva; no crea un score nuevo.
 
-La aplicación incorpora una segunda opción de motor de lenguaje:
+## 9.1 Preflight y query-space contract
+
+El contrato del Assistant dejó de basarse en una lista cerrada de frases y pasó a modelarse como composición de:
+
+```text
+entidad + operación + métrica + agregación + rol + filtros + ventana + contexto conversacional
+```
+
+El CI ejecuta un validador específico del espacio de consultas sobre la demo sintética. Este gate cubre rankings, posiciones, ventanas, follow-ups, guardrails, ruido, fuera de dominio y aliases demo.
+
+Casos obvios como `sss`, `no puedes hacer nada` o una pregunta claramente ajena al fútbol se resuelven mediante preflight local sin llamar al LLM.
+
+## 9.2 OpenAI BYOK opcional
+
+La aplicación incorpora una segunda opción de fallback semántico:
 
 ```text
 OpenAI API · clave propia
@@ -320,12 +337,12 @@ synthetic demo CI = PASS
 No se ha ejecutado todavía un benchmark live con una API key real. Por tanto, no se reportan resultados de latencia, coste o calidad live para este modo.
 
 No están validados:
-- ranking por rol como recomendación;
-- player similarity como función final;
+- player similarity como función final de producto;
 - predicción futura;
 - XI ideal;
 - recomendaciones tácticas automáticas;
-- fatiga/readiness/lesión.
+- fatiga/readiness/lesión;
+- un criterio global de `mejor jugador` sin definición analítica explícita.
 
 ---
 
@@ -426,18 +443,17 @@ checkout limpio
 → pytest
 → construcción completa de demo sintética
 → validator end-to-end
+→ Coach Copilot query-space contract
 ```
 
 Runs recientes de referencia:
 
 ```text
-37162911509 = SUCCESS — direct execution smoke fix
-37163349049 = SUCCESS — optional OpenAI Coach Copilot
-37163417219 = SUCCESS — OpenAI BYOK UI + contracts
-37163457928 = SUCCESS — external tool-surface contract tests
+37167083614 = SUCCESS — query-space + preflight contract
+37167157174 = SUCCESS — final code gate before local 28-case smoke
 ```
 
-Esto demuestra reproducibilidad técnica desde un entorno limpio del repositorio.
+El smoke real final 28/28 se ejecutó localmente sobre la DuckDB profesional, mientras que el CI garantiza la regresión reproducible del espacio de consultas sobre la demo sintética.
 
 ---
 
