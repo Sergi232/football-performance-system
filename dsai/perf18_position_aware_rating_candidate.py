@@ -196,6 +196,18 @@ def build_frame(input_dir: Path, min_minutes: float) -> pd.DataFrame:
             f'TRY_CAST(s."{c}" AS DOUBLE) AS "{c}"' for c in sorted(needed_sources)
         )
         q = f'''
+            WITH lineup_one AS (
+                SELECT
+                    CAST(match_id AS VARCHAR) AS match_id,
+                    CAST(team_id AS VARCHAR) AS team_id,
+                    CAST(player_id AS VARCHAR) AS player_id,
+                    position, position_side, formation_place,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY CAST(match_id AS VARCHAR), CAST(team_id AS VARCHAR), CAST(player_id AS VARCHAR)
+                        ORDER BY position, position_side, formation_place
+                    ) AS rn
+                FROM read_parquet('{sql_path(lineups)}')
+            )
             SELECT
                 CAST(s.match_id AS VARCHAR) AS match_id,
                 CAST(s.team_id AS VARCHAR) AS team_id,
@@ -207,15 +219,28 @@ def build_frame(input_dir: Path, min_minutes: float) -> pd.DataFrame:
                 {date_expr} AS match_date,
                 {source_select}
             FROM read_parquet('{sql_path(stats)}') s
-            LEFT JOIN read_parquet('{sql_path(lineups)}') l
-              ON CAST(l.match_id AS VARCHAR)=CAST(s.match_id AS VARCHAR)
-             AND CAST(l.team_id AS VARCHAR)=CAST(s.team_id AS VARCHAR)
-             AND CAST(l.player_id AS VARCHAR)=CAST(s.player_id AS VARCHAR)
+            LEFT JOIN lineup_one l
+              ON l.match_id=CAST(s.match_id AS VARCHAR)
+             AND l.team_id=CAST(s.team_id AS VARCHAR)
+             AND l.player_id=CAST(s.player_id AS VARCHAR)
+             AND l.rn=1
             LEFT JOIN read_parquet('{sql_path(fixtures)}') f
               ON CAST(f.match_id AS VARCHAR)=CAST(s.match_id AS VARCHAR)
             WHERE TRY_CAST(s.minsPlayed AS DOUBLE) >= {float(min_minutes)}
         '''
-        frame = con.execute(q).df()
+        # Preserve the exact query and row order while avoiding a second full-size
+        # in-memory conversion peak on constrained machines.  This is an execution
+        # detail only: subsequent role mapping, reference fitting and calibration
+        # receive the same complete frame.
+        reader = con.execute(q).fetch_record_batch(rows_per_batch=50_000)
+        batches = []
+        while True:
+            try:
+                batch = reader.read_next_batch()
+            except StopIteration:
+                break
+            batches.append(batch.to_pandas())
+        frame = pd.concat(batches, ignore_index=True) if batches else pd.DataFrame()
 
     frame = frame.drop_duplicates(["match_id", "team_id", "player_id"], keep="first")
     frame["match_date"] = pd.to_datetime(frame["match_date"], errors="coerce")
