@@ -52,6 +52,33 @@ def tools_label(values: list[str] | tuple[str, ...]) -> str:
     return ", ".join(TOOL_LABELS.get(str(value), "Consulta estructurada") for value in values)
 
 
+def render_trace(trace: dict, *, fallback_provider: str, fallback_model: str) -> None:
+    """Render evidence without implying that an LLM ran when the route was deterministic."""
+    tools = list(trace.get("tools_used") or [])
+    rounds = int(trace.get("tool_rounds") or 0)
+    provider = str(trace.get("provider_label") or fallback_provider)
+    model = str(trace.get("model") or fallback_model)
+
+    if rounds == 0 and tools:
+        st.write("Ruta: **determinista + herramientas FPS**")
+        st.write("LLM utilizado: **no**")
+        st.write("Cálculo crítico: **Python / DuckDB / analytics materializados**")
+    elif rounds == 0:
+        st.write("Ruta: **preflight / guardrail local**")
+        st.write("LLM utilizado: **no**")
+    else:
+        st.write("Ruta: **interpretación semántica + herramientas FPS**")
+        st.write(f"Rondas de interpretación semántica: **{rounds}**")
+        st.write(f"Proveedor semántico: **{provider}**")
+        st.write(f"Modelo semántico: `{model}`")
+        if tools:
+            st.write("Cálculo crítico: **Python / DuckDB / analytics materializados**")
+
+    st.write("Consultas utilizadas: " + tools_label(tools))
+    if trace.get("error"):
+        st.caption(f"Incidencia: {trace['error']}")
+
+
 path = db_path()
 if not path.exists():
     st.error(f"No se ha encontrado la base de datos: {path}")
@@ -65,8 +92,8 @@ if teams.empty:
 page_header(
     "ASISTENTE IA",
     "Asistente IA",
-    "Pregunta de forma natural. Las consultas claras se resuelven de forma determinista; para lenguaje ambiguo puedes usar el modelo local o, opcionalmente, OpenAI con tu propia API key.",
-    "Datos y métricas calculados por Football Performance System",
+    "Pregunta de forma natural. Las consultas claras se resuelven de forma determinista; el modelo de lenguaje solo interviene cuando hace falta interpretar una consulta ambigua dentro del dominio.",
+    "Los cálculos y métricas proceden de Football Performance System",
 )
 
 raw_team_labels = {str(r.team_id): str(r.display_name) for r in teams.itertuples(index=False)}
@@ -78,16 +105,17 @@ with selector:
     team_id = st.selectbox("Equipo", team_ids, format_func=lambda x: display_team_labels[x])
 with provider_col:
     provider_label = st.selectbox(
-        "Motor de lenguaje",
+        "Fallback semántico",
         ["Local · Qwen", "OpenAI API · clave propia"],
         index=0,
+        help="Las consultas claras no usan este modelo: se resuelven con routing determinista y herramientas FPS.",
     )
 provider = "openai" if provider_label.startswith("OpenAI") else "local"
 with model_col:
     if provider == "local":
-        model = st.text_input("Modelo", value=os.environ.get("FPS_LOCAL_LLM_MODEL", DEFAULT_MODEL))
+        model = st.text_input("Modelo de fallback", value=os.environ.get("FPS_LOCAL_LLM_MODEL", DEFAULT_MODEL))
     else:
-        model = st.text_input("Modelo", value=os.environ.get("FPS_OPENAI_MODEL", DEFAULT_OPENAI_MODEL))
+        model = st.text_input("Modelo de fallback", value=os.environ.get("FPS_OPENAI_MODEL", DEFAULT_OPENAI_MODEL))
 with action:
     st.write("")
     st.write("")
@@ -131,24 +159,24 @@ if provider == "local":
     model_ready = bool(status.get("available") and model in installed)
 
     if model_ready:
-        st.success(f"Modo híbrido local disponible · {model} · consultas claras sin LLM, lenguaje ambiguo con Qwen")
+        st.success(f"Ruta determinista activa · {model} disponible solo como fallback semántico")
     elif not status.get("available"):
-        st.warning("Modo determinista disponible. Ollama no está activo, por lo que las consultas que requieran interpretación semántica no podrán resolverse.")
+        st.warning("La ruta determinista está disponible. Ollama no está activo, por lo que solo fallarán las consultas ambiguas que requieran interpretación semántica.")
         st.code("ollama serve", language="powershell")
         if status.get("error"):
             st.caption(status["error"])
     else:
-        st.warning(f"Modo determinista disponible. Falta `{model}` para interpretar consultas ambiguas.")
+        st.warning(f"La ruta determinista está disponible. Falta `{model}` únicamente para interpretar consultas ambiguas.")
         st.code(f"ollama pull {model}", language="powershell")
         if installed:
             st.caption("Modelos disponibles: " + ", ".join(installed))
 else:
     if api_key.strip():
         st.success(
-            f"Modo OpenAI preparado · {model} · las consultas claras siguen siendo locales y la API se usa solo cuando hace falta interpretación semántica."
+            f"Ruta determinista activa · {model} disponible como fallback externo cuando haga falta interpretación semántica."
         )
     else:
-        st.info("Introduce tu propia OpenAI API key para activar el modo externo. El modo local sigue disponible sin coste por consulta.")
+        st.info("Introduce tu propia OpenAI API key para activar el fallback externo. Las consultas deterministas no necesitan API.")
 
 key = history_key(team_id, provider)
 if key not in st.session_state:
@@ -209,12 +237,7 @@ for message in history:
         trace = message.get("trace")
         if role == "assistant" and trace:
             with st.expander("Evidencia consultada"):
-                st.write("Consultas utilizadas: " + tools_label(trace.get("tools_used", [])))
-                st.write(f"Rondas de interpretación semántica: {trace.get('tool_rounds', 0)}")
-                st.write(f"Motor: {trace.get('provider_label', provider_label)}")
-                st.write(f"Modelo: `{trace.get('model', model)}`")
-                if trace.get("error"):
-                    st.caption(f"Incidencia: {trace['error']}")
+                render_trace(trace, fallback_provider=provider_label, fallback_model=model)
 
 pending = st.session_state.pop(f"fps_agent_pending::{provider}", None)
 question = st.chat_input("Pregunta sobre el equipo, jugadores, partidos, evolución, estadísticas, posiciones o GPS...")
@@ -264,38 +287,34 @@ if question:
                 st.error("Se ha bloqueado una respuesta por una incidencia de anonimización en la capa de presentación.")
             else:
                 st.markdown(display_answer)
+                trace = {
+                    "tools_used": list(result.tools_used),
+                    "tool_rounds": result.tool_rounds,
+                    "model": result.model,
+                    "provider_label": provider_label,
+                    "error": result.error,
+                }
                 with st.expander("Evidencia consultada"):
-                    st.write("Consultas utilizadas: " + tools_label(list(result.tools_used)))
-                    st.write(f"Rondas de interpretación semántica: {result.tool_rounds}")
-                    st.write(f"Motor: {provider_label}")
-                    st.write(f"Modelo: `{result.model}`")
-                    if result.error:
-                        st.caption(f"Incidencia: {result.error}")
+                    render_trace(trace, fallback_provider=provider_label, fallback_model=model)
 
                 history.append(
                     {
                         "role": "assistant",
                         "content": display_answer,
-                        "trace": {
-                            "tools_used": list(result.tools_used),
-                            "tool_rounds": result.tool_rounds,
-                            "model": result.model,
-                            "provider_label": provider_label,
-                            "error": result.error,
-                        },
+                        "trace": trace,
                     }
                 )
                 st.session_state[key] = history
 
 with st.expander("Arquitectura y límites"):
     st.write(
-        "Flujo: pregunta → router determinista de alta confianza → modelo de lenguaje solo si la intención sigue siendo ambigua → herramientas Python de solo lectura → DuckDB / Analytics / Expert System → evidencia estructurada → respuesta → entrenador."
+        "Flujo: pregunta → preflight/guardrails → router determinista de alta confianza → modelo de lenguaje solo si la intención sigue siendo ambigua dentro del dominio → herramientas Python de solo lectura → DuckDB / Analytics / Expert System → evidencia estructurada → respuesta → entrenador."
     )
     st.write(
         "Ni Qwen ni OpenAI tienen acceso directo a DuckDB. Match Rating, Performance Index, rankings y decisiones críticas se calculan fuera del LLM."
     )
     if provider == "local":
-        st.write("En modo local, la interpretación semántica se procesa mediante Ollama en `127.0.0.1` cuando hace falta.")
+        st.write("En modo local, la interpretación semántica se procesa mediante Ollama en `127.0.0.1` únicamente cuando hace falta.")
     else:
         st.write(
             "En modo OpenAI, solo la pregunta/contexto necesario y la evidencia estructurada requerida se envían al proveedor externo; la API key pertenece al usuario y no se persiste en DuckDB."
