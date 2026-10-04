@@ -1,10 +1,10 @@
 # Coach Copilot — Self-Improve QA
 
-Estado: implementado para ejecución local no supervisada.
+Estado: **herramienta experimental de QA local; no forma parte del gate obligatorio de entrega**.
 
 ## Objetivo
 
-Mejorar la robustez del Coach Copilot sobre casos de uso reales de entrenador sin permitir que el proceso modifique automáticamente analytics, Match Rating, Performance Index, sistema experto, reglas de decisión ni pesos del modelo.
+Mejorar la robustez lingüística del Coach Copilot sobre casos de uso reales de entrenador sin permitir que el proceso modifique automáticamente analytics, Match Rating, Performance Index, sistema experto, reglas de decisión ni pesos del modelo.
 
 No es fine-tuning. La mejora automática se limita a:
 
@@ -14,6 +14,25 @@ No es fine-tuning. La mejora automática se limita a:
 - búsqueda controlada del mejor perfil de síntesis Ollama;
 - detección de causa raíz de routing mediante A/B;
 - generación de un perfil runtime recomendado.
+
+La arquitectura final del producto ya no depende de este runner para validar el Coach Copilot. El contrato canónico es:
+
+```text
+llm/COACH_COPILOT_CONTRACT.md
+```
+
+y el gate reproducible principal es:
+
+```text
+python -m llm.validate_coach_contract --db data/football_performance_synthetic_demo.duckdb
+```
+
+El smoke real final sobre la DuckDB profesional cerró con:
+
+```text
+SMOKE CONTRACT: PASS (28/28)
+average_elapsed=0.4s
+```
 
 ## Golden Set funcional
 
@@ -42,7 +61,7 @@ Cada caso existe en castellano y catalán.
 
 El antiguo QA validaba principalmente que las tools necesarias estuvieran presentes. Eso podía dar PASS aunque hubiera tools sobrantes.
 
-El nuevo contrato valida simultáneamente:
+El contrato correcto valida simultáneamente:
 
 ```text
 required_tools ⊆ actual_tools
@@ -54,6 +73,8 @@ Por tanto distingue:
 - `ROUTER_MISSING_TOOL`;
 - `ROUTER_EXTRA_TOOL`;
 - `ROUTER_WRONG_GUARDRAIL`.
+
+El producto final añade además preflight determinista para evitar invocar un LLM ante ruido, meta-consultas o preguntas claramente fuera de dominio.
 
 ## A/B de causa raíz
 
@@ -79,7 +100,7 @@ Sobre los casos sintetizados se comprueba de forma determinista:
 - máximo de seis frases;
 - presencia del sujeto/jugador/rival cuando aplica.
 
-No se afirma evaluar completamente utilidad técnica para entrenador ni corrección semántica total. Sigue siendo necesaria una revisión humana final de una muestra de respuestas.
+No se afirma evaluar completamente utilidad técnica para entrenador ni corrección semántica total. Sigue siendo necesaria una revisión humana final de una muestra de respuestas cuando se modifica la arquitectura semántica.
 
 ## Búsqueda automática de perfil Ollama
 
@@ -104,17 +125,37 @@ Con una pequeña exploración aleatoria para no quedar bloqueado por resultados 
 
 Al finalizar guarda `recommended_profile.json` y `recommended_profile.env`.
 
+## Capacidades actualmente soportadas fuera del runner
+
+El runtime final ya incorpora de forma determinista:
+
+- rankings por métricas queryables aprobadas;
+- comparación entre jugadores;
+- comparación por rol/posición;
+- ventanas temporales;
+- follow-ups ordinales y de evidencia;
+- perfiles/evolución;
+- partido/equipo;
+- GPS descriptivo;
+- calidad de datos;
+- guardrails.
+
+Para una pregunta como `¿Quién ha rendido mejor en la posición de central?`, el criterio de ordenación se declara explícitamente como **Match Rating medio dentro de la muestra del rol** y las demás métricas son evidencia descriptiva. No se crea un score nuevo.
+
 ## Capacidades que NO deben aprobarse todavía
 
-El proceso registra como gaps de producto, no como fallos del LLM:
+Siguen siendo gaps reales de producto o investigación:
 
-1. ranking condicionado por rol, por ejemplo `¿Quién rinde mejor como interior?`;
-2. similitud de perfiles entre jugadores;
-3. predicción de rendimiento futuro.
+1. similitud de perfiles como capacidad de producto estable;
+2. predicción de rendimiento futuro;
+3. fatiga/readiness/riesgo de lesión;
+4. XI ideal o selección automática;
+5. recomendación táctica automática;
+6. `mejor jugador`, `más completo` o `más determinante` sin criterio analítico explícito y validado.
 
-Estas funciones necesitan primero analytics/modelos validados downstream de DATA/ANALYTICS y no deben ser inventadas por el LLM.
+Estas funciones necesitan primero analytics/modelos/policies validados downstream de DATA/ANALYTICS y no deben ser inventadas por el LLM.
 
-## Ejecución
+## Ejecución opcional
 
 Launcher Windows:
 
@@ -125,12 +166,14 @@ powershell -ExecutionPolicy Bypass -File .\llm\start_agent_self_improve.ps1 -Hou
 El launcher:
 
 - usa `FPS_DB_PATH` si ya está definido;
-- en el PC actual reconoce también `D:\Data\Sergi\Desktop\football-performance-system\data\football_performance.duckdb`;
+- en el PC de desarrollo reconoce también la ruta local configurada;
 - comprueba sintaxis Python antes de empezar;
 - arranca Ollama si no está activo;
 - verifica que el modelo exista;
-- guarda transcript en el Escritorio;
+- guarda transcript local;
 - ejecuta el proceso con salida incremental.
+
+No es necesario ejecutar este proceso para la entrega final mientras los contratos, CI y smoke real permanezcan en PASS.
 
 ## Artefactos
 
@@ -157,4 +200,4 @@ recommended_profile.env
 
 El runner no hace push, merge ni reescribe source code durante la ejecución. Tampoco cambia datos, features, ratings, thresholds, expert system ni modelos.
 
-La salida del proceso sirve para la siguiente iteración humana de código y para decidir el runtime profile final del Coach Copilot.
+La salida del proceso sirve para una iteración humana posterior y para estudiar robustez lingüística; no sustituye los contratos reproducibles ni autoriza cambios automáticos en la lógica deportiva.
