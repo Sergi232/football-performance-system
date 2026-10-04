@@ -5,9 +5,11 @@ Alcance: código y documentación de `main`, CI, demo sintética, material de de
 
 ## Diagnóstico ejecutivo
 
-El proyecto ya tiene una base técnica poco habitual para un TFM: arquitectura separada por capas, controles de leakage, contratos de consulta, demo pública sintética, PDF y una UI coherente. El mayor margen de mejora de la nota no está en añadir otra métrica o modelo. Está en hacer más explícita la relación entre objetivo, evidencia, limitación y evaluación con usuarios.
+El objetivo del TFM es de Ciencia de Datos e Inteligencia Artificial: demostrar que datos observacionales de vídeo y GPS opcional pueden recorrer una cadena reproducible de datos, features, analytics, decisión explicable y lenguaje natural grounded sin trasladar el cálculo crítico a un LLM. La aplicación web y la futura empresa son vehículos de demostración, no el objeto académico principal.
 
-Como futuro servicio, la propuesta tiene una diferenciación defendible: llevar datos observables de vídeo y GPS opcional a una explicación auditable sin delegar el cálculo crítico a un LLM. Aún no tiene los componentes de operación, privacidad, validación de mercado y seguridad necesarios para venderse como SaaS a clubes.
+El proyecto ya tiene una base poco habitual para ese objetivo: arquitectura separada por capas, control de leakage, features strict-past, sistema experto auditable, contrato composicional para el Coach, demo sintética y validación automática. El mayor margen de mejora de la nota está en hacer explícita la pregunta científica, el método de evaluación y las amenazas a la validez de cada resultado. No está en añadir otra métrica, otra pantalla ni un modelo sin target independiente.
+
+La sección de servicio comercial se mantiene como una consecuencia posterior: indica qué tendría que cambiar para convertir el prototipo validado técnicamente en un producto de clientes, sin convertir esas necesidades en requisitos del TFM.
 
 ## Hallazgos prioritarios
 
@@ -24,7 +26,7 @@ Como futuro servicio, la propuesta tiene una diferenciación defendible: llevar 
 | P1 | No existe estudio con entrenadores/analistas ni fiabilidad interobservador del Collector. El propio manuscrito lo reconoce. | Es el límite principal de validez externa y de utilidad operativa. | Preparar un protocolo de piloto y explicarlo como trabajo futuro listo para ejecutar, sin presentar resultados inexistentes. |
 | P2 | El fallback Qwen y OpenAI BYOK tienen contratos, pero no benchmark live de calidad, coste y latencia para ambigüedad real. | La propuesta de IA es técnicamente sólida, aunque no hay evidencia de valor adicional del LLM para usuarios. | Medirlo solo después de definir tareas de usuario y una muestra de preguntas ambiguas reales. |
 
-## Mejoras que elevarían la nota del TFM
+## Mejoras que elevarían la nota del TFM de Ciencia de Datos e IA
 
 ### 1. Hacer evaluable la contribución académica
 
@@ -38,16 +40,16 @@ Añadir tres preguntas de investigación explícitas y responderlas con evidenci
 
 La memoria debe presentar cada respuesta como una **validación técnica**. La evaluación con entrenadores, la fiabilidad interobservador y la validez externa del Match Rating deben aparecer en una tabla de amenazas a la validez, no como notas dispersas.
 
-### 2. Reducir la apariencia de "repositorio narrado"
+### 2. Poner la contribución de Ciencia de Datos e IA en primer plano
 
-El manuscrito explica muchas capas con precisión. Para una defensa y una memoria más fuertes, conviene priorizar cuatro artefactos visuales que conecten problema, método y resultado:
+El manuscrito explica muchas capas con precisión. Para una defensa y una memoria más fuertes, conviene priorizar cuatro artefactos visuales que conecten problema, método y resultado científico:
 
 1. arquitectura completa;
 2. strict-past;
 3. trazabilidad de una pregunta del Coach hasta DuckDB;
 4. matriz de validación con qué demuestra y qué no demuestra cada gate.
 
-La enumeración exhaustiva de módulos, nombres internos y estados `PASS` debe pasar a anexos cuando no cambie la interpretación metodológica.
+La enumeración exhaustiva de módulos, nombres internos y estados `PASS` debe pasar a anexos cuando no cambie la interpretación metodológica. En el cuerpo deben quedar claros: unidad jugador-partido, preservación de valores ausentes, strict-past, separación entre analytics y decisión, criterios de abstención del sistema experto, y grounding del Coach.
 
 ### 3. Convertir limitaciones en un plan de evaluación serio
 
@@ -62,7 +64,7 @@ Esto mejora el rigor del trabajo futuro y permite responder a la pregunta del tr
 
 Antes de la defensa, el repositorio debe publicar los dos commits locales y el CI debe comprobar el paquete de entrega completo, incluidas las capturas. Después se recomienda crear una etiqueta de versión y conservar el hash de la demo sintética utilizada en la defensa.
 
-## Valor como producto o servicio
+## Evolución a producto o servicio después del TFM
 
 ### Propuesta de valor defendible
 
@@ -121,12 +123,13 @@ Antes de un piloto comercial se deben acordar, con asesoramiento jurídico espec
 
 ## Orden de ejecución recomendado
 
-1. Publicar los commits locales, ejecutar y registrar CI de la versión final.
-2. Añadir preguntas de investigación, matriz objetivo-evidencia-límite y amenazas a la validez a la memoria.
-3. Crear los protocolos de fiabilidad del Collector y piloto de staff como anexos, sin resultados simulados.
-4. Adaptar formato, bibliografía y referencias cruzadas a la plantilla universitaria.
-5. Para la empresa, definir ICP, flujo semanal, criterios de piloto y métricas antes de ampliar funcionalidades.
-6. Antes de procesar datos de clientes, completar identidad, multi-tenancy, observabilidad, seguridad y gobierno de datos.
+1. Añadir preguntas de investigación, matriz objetivo-evidencia-límite y amenazas a la validez a la memoria.
+2. Crear los protocolos de fiabilidad del Collector y piloto de staff como anexos, sin resultados simulados.
+3. Adaptar formato, bibliografía y referencias cruzadas a la plantilla universitaria.
+4. Publicar los commits locales, ejecutar y registrar CI de la versión final.
+5. Preparar la defensa alrededor de la cadena de Ciencia de Datos e IA: datos observados, strict-past, analytics, sistema experto, Coach grounded y límites.
+6. Tras la entrega, definir ICP, flujo semanal y métricas de piloto antes de ampliar funcionalidades comerciales.
+7. Antes de procesar datos de clientes, completar identidad, multi-tenancy, observabilidad, seguridad y gobierno de datos.
 
 ## Lo que no conviene hacer ahora
 
@@ -134,4 +137,5 @@ Antes de un piloto comercial se deben acordar, con asesoramiento jurídico espec
 - presentar 28/28 como validación de usuarios o de valor comercial;
 - vender GPS descriptivo como prevención de fatiga o lesión;
 - desplegar el MVP con datos de clientes solo porque la demo sintética pase CI;
-- ampliar el uso de LLM antes de demostrar que resuelve una necesidad de usuario mejor que la ruta determinista.
+- ampliar el uso de LLM antes de demostrar que resuelve una necesidad de usuario mejor que la ruta determinista;
+- confundir la preparación comercial con evidencia de Ciencia de Datos e IA.
