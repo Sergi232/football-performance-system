@@ -146,3 +146,10 @@ publication/output/
 dsai/output/
 outputs/agent_eval/
 outputs/product_spiral/
+data/incoming/*
+!data/incoming/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/rejected/*
+!data/rejected/.gitkeep
+data/ingestion_log.jsonl
