@@ -1,6 +1,6 @@
 # Football Performance System
 
-## Diseño y validación técnico-funcional de un sistema auditable de análisis del rendimiento futbolístico mediante datos observables, analítica reproducible, motor experto e inteligencia artificial grounded
+## Diseño y validación técnico-funcional de un sistema auditable de análisis del rendimiento futbolístico mediante datos observables, analítica reproducible, motor experto e inteligencia artificial con grounding
 
 **Estado:** borrador integrado de memoria.  
 **Idioma:** castellano.  
@@ -15,9 +15,9 @@
 
 Este Trabajo Final de Máster presenta el diseño, implementación y validación técnico-funcional de un sistema integral de análisis de rendimiento orientado a equipos de fútbol amateur y semiprofesionales sin departamento propio de análisis. El objetivo no es reproducir plataformas profesionales de tracking o proveedores comerciales de eventos, sino evaluar si un conjunto reducido de datos observables de vídeo puede transformarse en información estructurada, auditable y consultable; el GPS se incorpora como fuente opcional de variables físicas descriptivas cuando existe una observación válida.
 
-La solución se organiza mediante una arquitectura por capas que separa datos brutos, variables derivadas, evidencia analítica, lógica de decisión y generación de lenguaje natural. El flujo parte de un Data Collector HTML y de una capa opcional de normalización GPS, almacena la información en DuckDB, construye features deterministas con control temporal `strict-past`, genera evidencia analítica, aplica un motor experto de evaluación y evidencia con gate de recomendación N1000-N13000, presenta los resultados mediante una aplicación Streamlit e incorpora un Coach Copilot grounded. El cierre operativo admite tanto la ingesta idempotente desde carpeta como el envío local mediante **FINALIZAR PARTIDO**: el mismo JSON V1.1 pasa por importación, Features, Analytics, V5 frozen y N1000–N13000 antes de quedar disponible en dashboard, Coach y PDF. El asistente resuelve consultas claras mediante preflight, routing determinista y herramientas de solo lectura, y reserva un modelo local Qwen para lenguaje ambiguo dentro del dominio; adicionalmente existe un modo OpenAI opcional con clave propia del usuario. Los informes PDF consumen resultados estructurados ya calculados y no recalculan lógica crítica.
+La solución se organiza mediante una arquitectura por capas que separa datos brutos, variables derivadas, evidencia analítica, lógica de decisión y generación de lenguaje natural. El flujo parte de un Data Collector HTML y de una capa opcional de normalización GPS, almacena la información en DuckDB, construye features deterministas con control temporal `strict-past`, genera evidencia analítica, aplica un motor experto de evaluación y evidencia con gate de recomendación N1000–N13000, presenta los resultados mediante una aplicación Streamlit e incorpora un Coach Copilot con grounding. El cierre operativo admite tanto la ingesta idempotente desde carpeta como el envío local mediante **FINALIZAR PARTIDO**: el mismo JSON V1.1 pasa por importación, Features, Analytics, Match Rating V5 con artefactos frozen y N1000–N13000 antes de quedar disponible en dashboard, Coach Copilot y PDF. El asistente resuelve consultas claras mediante preflight, enrutamiento determinista y herramientas de solo lectura, y reserva un modelo local Qwen para lenguaje ambiguo dentro del dominio; adicionalmente existe un modo OpenAI opcional con clave propia del usuario. Los informes PDF consumen resultados estructurados ya calculados y no recalculan lógica crítica.
 
-El prototipo se ha validado mediante contratos de datos, tests unitarios, validadores por capa, pruebas end-to-end y un pipeline de integración continua. El sistema principal supera el QA global y dispone de una demo pública sintética reproducible que puede generarse desde un entorno limpio sin depender de la base profesional utilizada durante el desarrollo. El Coach Copilot cerró su smoke real final sobre la DuckDB profesional con 28/28 casos correctos y 0,4 s de latencia media en esa batería concreta; todos esos casos siguieron la ruta determinista o de preflight sin activar el fallback semántico. Junto con la traza end-to-end, las seis preguntas funcionales y los casos de abstención, los resultados respaldan favorablemente la hipótesis en su alcance técnico-funcional y arquitectónico. No se demuestra, sin embargo, un efecto causal sobre las decisiones de entrenadores, el rendimiento deportivo, la fatiga o la prevención de lesiones.
+El prototipo se ha validado mediante contratos de datos, pruebas unitarias, validadores por capa, pruebas end-to-end y un pipeline de integración continua. El sistema principal supera el QA global y dispone de una demo pública sintética reproducible que puede generarse desde un entorno limpio sin depender de la base profesional utilizada durante el desarrollo. El Coach Copilot cerró su smoke real final sobre la DuckDB profesional con 28/28 casos correctos y 0,4 s de latencia media en esa batería concreta; todos esos casos siguieron la ruta determinista o de preflight sin activar el respaldo semántico. Junto con la traza end-to-end, las seis preguntas funcionales y los casos de abstención, los resultados respaldan favorablemente la hipótesis en su alcance técnico-funcional y arquitectónico. No se demuestra, sin embargo, un efecto causal sobre las decisiones de entrenadores, el rendimiento deportivo, la fatiga o la prevención de lesiones.
 
 **Palabras clave:** football analytics; performance analysis; expert systems; data engineering; GPS; large language models; reproducibility.
 
@@ -33,7 +33,7 @@ Este TFM aborda ese problema como una cuestión de accesibilidad analítica. La 
 
 La literatura de performance analysis señala que el rendimiento futbolístico es multidimensional y contextual. Mackenzie y Cushion (2013), Sarmento et al. (2014) y Sarmento et al. (2022) destacan la importancia de interpretar los indicadores teniendo en cuenta el contexto y evitando reducir el rendimiento a una única variable. Esta idea se traduce en una arquitectura que separa datos brutos, features, evidencia analítica y decisión.
 
-El producto final es una aplicación web con Team Mode, Player Mode y Match Mode, complementada por una capa física GPS, un sistema experto, un asistente IA grounded y exportación PDF.
+El producto final es una aplicación web con Team Mode, Player Mode y Match Mode, complementada por una capa física GPS, un sistema experto, Coach Copilot con grounding y exportación PDF.
 
 ---
 
@@ -75,13 +75,13 @@ El sistema implementa una política `strict-past`: para una fila en fecha `t`, s
 
 Liu, Gegov y Cocea (2016) describen los sistemas basados en reglas como una forma de sistema experto construida mediante condiciones explícitas. Rudin (2019) defiende modelos intrínsecamente interpretables cuando la trazabilidad es importante.
 
-El sistema experto del proyecto sigue este principio mediante una jerarquía N1000-N13000. Cada nodo conserva entrada, condición, resultado, confianza y justificación.
+El sistema experto del proyecto sigue este principio mediante una jerarquía N1000–N13000. Cada nodo conserva entrada, condición, resultado, confianza y justificación.
 
 ## 2.7 LLM, grounding y herramientas
 
 Los modelos de lenguaje pueden producir respuestas plausibles pero incorrectas. Huang et al. (2025) revisan el problema de hallucination y factualidad. Lewis et al. (2020) muestran el valor de combinar generación con memoria externa, mientras que Schick et al. (2023) muestran la utilidad de conectar modelos de lenguaje a herramientas especializadas.
 
-El Coach Copilot adopta el mismo principio general: el LLM no accede directamente a la base ni calcula métricas críticas, sino que consulta resultados estructurados mediante herramientas de solo lectura. Además, el sistema prioriza routing determinista para consultas claras, reduciendo tanto la latencia como la superficie de error del modelo generativo.
+El Coach Copilot adopta el mismo principio general: el LLM no accede directamente a la base ni calcula métricas críticas, sino que consulta resultados estructurados mediante herramientas de solo lectura. Además, el sistema prioriza enrutamiento determinista para consultas claras, reduciendo tanto la latencia como la superficie de error del modelo generativo.
 
 ## 2.8 Reproducibilidad computacional
 
@@ -115,7 +115,7 @@ Diseñar, implementar y validar técnicamente un sistema reproducible que transf
 - implementar un sistema experto jerárquico y auditable;
 - desarrollar un Match Rating inmediato y una capa histórica complementaria;
 - construir una aplicación Streamlit Team/Player/Match;
-- integrar un asistente grounded que no recalcule métricas críticas;
+- integrar Coach Copilot con grounding que no recalcule métricas críticas;
 - permitir opcionalmente un proveedor LLM externo mediante clave del propio usuario sin darle acceso directo a DuckDB;
 - generar informes PDF a partir de resultados estructurados;
 - validar el sistema por capas y end-to-end;
@@ -127,9 +127,9 @@ Las preguntas se formulan para evaluar la contribución de Ciencia de Datos e IA
 
 | Pregunta | Evidencia evaluada | Alcance de la respuesta |
 |---|---|---|
-| **Pregunta principal.** ¿Hasta qué punto pueden transformarse datos sencillos y observables de fútbol amateur o semiprofesional en información útil sobre rendimiento y evolución mediante Data Science, un sistema experto y una interfaz de IA? | Collector, Feature Engine, Analytics, motor experto, Match Rating/Performance Index, dashboard, Coach, PDF y QA end-to-end. | Viabilidad técnico-funcional y arquitectónica de la transformación y de la presentación de información estructurada; no utilidad causal demostrada para decisiones o resultados deportivos. |
+| **Pregunta principal.** ¿Hasta qué punto pueden transformarse datos sencillos y observables de fútbol amateur o semiprofesional en información útil sobre rendimiento y evolución mediante Data Science, un sistema experto y una interfaz de IA? | Collector, Feature Engine, Analytics, motor experto, Match Rating V5 / Performance Index experimental, dashboard, Coach Copilot, PDF y QA end-to-end. | Viabilidad técnico-funcional y arquitectónica de la transformación y de la presentación de información estructurada; no utilidad causal demostrada para decisiones o resultados deportivos. |
 | **Subpregunta 1.** ¿Cómo puede un sistema experto transformar esas variables en información interpretable y auditable para el cuerpo técnico? | N1000–N13000, evidencia por nodo, estados de abstención, validadores y vistas de producto. | Que la implementación conserva entrada, condición, resultado, confianza y justificación, y puede abstenerse; no que sus interpretaciones sean externamente válidas o recomendadas por staff. |
-| **Subpregunta 2.** ¿Cómo puede una capa de IA conversacional facilitar la consulta e interpretación de los resultados del sistema? | Contrato composicional, herramientas read-only, evidencia estructurada, CI y smoke final del Coach. | Que las consultas soportadas acceden a resultados estructurados y explicables; no calidad universal del lenguaje, satisfacción de usuarios ni valor añadido empírico del fallback LLM. |
+| **Subpregunta 2.** ¿Cómo puede una capa de IA conversacional facilitar la consulta e interpretación de los resultados del sistema? | Contrato composicional, herramientas read-only, evidencia estructurada, CI y smoke final del Coach Copilot. | Que las consultas soportadas acceden a resultados estructurados y explicables; no calidad universal del lenguaje, satisfacción de usuarios ni valor añadido empírico del respaldo semántico. |
 
 La relación completa entre preguntas, evidencia y limitaciones se mantiene en `docs/TFM_EVIDENCE_MATRIX.md`. La evaluación es una verificación técnica basada en contratos y pruebas de integración: cada `PASS` expresa conformidad con un contrato explícito, no una estimación estadística ni una validación con usuarios. Los protocolos para evaluar fiabilidad interobservador y utilidad con staff se preparan en `docs/TFM_EVALUATION_PROTOCOLS.md`, pero no se presentan como resultados ejecutados.
 
@@ -159,7 +159,7 @@ La regla global fue impedir que una capa superior inventara resultados no soport
 
 El flujo first-party se cerró de forma reproducible como `Collector HTML → JSON oficial → importer → DuckDB → Feature Engine → Analytics → motor experto / App`. JSON V1.1 se eligió como intercambio oficial porque preserva semántica de partido, plantilla, minutos, rol inicial, lado, cambios de rol y eventos; los stints se derivan solo de ese contexto declarado. Si el rol no se informa, permanece nulo: no se infiere desde eventos. CSV queda para revisión humana.
 
-La validación cubrió dos entradas operativas. La Fase 3 procesa lotes de `data/incoming/` en orden temporal, valida contrato, registra duplicados y deriva los válidos a `processed/` y los inválidos a `rejected/` con motivo persistente. La Fase 4 reutiliza esa misma ruta a través de un servicio únicamente localhost: **FINALIZAR PARTIDO** envía el JSON V1.1, guarda una copia raw auditable y ejecuta importación idempotente → Features → Analytics → V5 frozen → N1000–N13000. La prueba aislada verificó fidelidad evento→raw→feature e idempotencia del import, sin calcular métricas avanzadas durante la carga.
+La validación cubrió dos entradas operativas. La Fase 3 procesa lotes de `data/incoming/` en orden temporal, valida contrato, registra duplicados y deriva los válidos a `processed/` y los inválidos a `rejected/` con motivo persistente. La Fase 4 reutiliza esa misma ruta a través de un servicio únicamente localhost: **FINALIZAR PARTIDO** envía el JSON V1.1, guarda una copia raw auditable y ejecuta importación idempotente → Features → Analytics → Match Rating V5 con artefactos frozen → N1000–N13000. La prueba aislada verificó fidelidad evento→raw→feature e idempotencia del import, sin calcular métricas avanzadas durante la carga.
 
 Las variables candidatas se filtraron por cinco criterios: observabilidad, consistencia de captura, información diferencial, utilidad posterior y coste de recogida.
 
@@ -205,11 +205,11 @@ PEER_ROLE_PRIOR
 
 El jugador actual se excluye del pool de peers y cada peer recibe el mismo peso. Analytics no emite recomendaciones.
 
-## 4.6 Match Rating y Performance Index
+## 4.6 Match Rating V5 y Performance Index experimental
 
-El Match Rating V5 ofrece una valoración inmediata jugador-partido desde el primer partido. La versión activa es `match_rating_v0.5-candidate`: está congelada como especificación técnica de producto, pero no se presenta como constructo externamente validado. Para toda aparición con `minutes_played > 0`, el routing cierra la cobertura en exactamente una ruta: GK cuando existe rol observado fiable de portero; V4/V4.1 cuando existe rol outfield fiable; o fallback V2 en cualquier otro caso. El fallback no infiere portería ni posición desde las estadísticas.
+El Match Rating V5 ofrece una valoración inmediata jugador-partido desde el primer partido. La versión activa es `match_rating_v0.5-candidate`: está congelada como especificación técnica de producto, pero no se presenta como constructo externamente validado. Para toda aparición con `minutes_played > 0`, el enrutamiento cierra la cobertura en exactamente una ruta: GK cuando existe rol observado fiable de portero; V4/V4.1 cuando existe un rol fiable de jugador de campo; o fallback V2 en cualquier otro caso. El fallback V2 no infiere portería ni posición desde las estadísticas.
 
-El Performance Index `performance_score_v0.2-experimental` se mantiene como capa histórica y posicional complementaria.
+El Performance Index experimental (`performance_score_v0.2-experimental`) se mantiene como capa histórica y posicional complementaria.
 
 ## 4.7 Sistema experto
 
@@ -243,17 +243,17 @@ El GPS es opcional. Los ficheros de proveedor se normalizan a un esquema común 
 
 Posteriormente se materializa `gps_physical_summary_v0.1-descriptive`.
 
-GPS real tiene prioridad sobre synthetic y el GPS sintético no cuenta como evidencia física observada en N9000.
+El GPS real tiene prioridad sobre el sintético y el GPS sintético no cuenta como evidencia física observada en N9000.
 
 ## 4.10 Aplicación web
 
-La aplicación Streamlit ofrece Team Mode, Player Mode, Match Mode, Físico/GPS, Attention Centre y Coach Copilot. Team y Match muestran primero marcador y KPI disponibles; Player conserva minutos, titularidad, rol observado, lado y cambios de rol como contexto de sus métricas. Cada evento manual del Collector se expone al menos en Team, Player, Match, Coach, PDF o evidencia experta. Cuando una fuente histórica no contiene una variable, la interfaz utiliza `N/D` en lugar de un cero inferido.
+La aplicación Streamlit ofrece Team Mode, Player Mode, Match Mode, Físico/GPS, Attention Centre y Coach Copilot. Team y Match muestran primero marcador y KPI disponibles; Player conserva minutos, titularidad, rol observado, lado y cambios de rol como contexto de sus métricas. Cada evento manual del Collector se expone al menos en Team, Player, Match, Coach Copilot y PDF o evidencia experta. Cuando una fuente histórica no contiene una variable, la interfaz utiliza `N/D` en lugar de un cero inferido.
 
 Existe control de acceso estructural SUPERADMIN/CLUB_ADMIN/STAFF, pero no autenticación completa.
 
 ## 4.11 Coach Copilot
 
-La arquitectura final prioriza consultas deterministas y añade un preflight explícito antes del routing:
+La arquitectura final prioriza consultas deterministas y añade un preflight explícito antes del enrutamiento:
 
 ```text
 QUESTION
@@ -268,7 +268,7 @@ QUESTION
 
 El espacio de consulta se modela como composición de `entidad + operación + métrica + agregación + rol + filtros + ventana + contexto conversacional`, en lugar de una lista de frases cerrada. El preflight resuelve localmente entradas basura, meta-consultas y preguntas claramente fuera de dominio.
 
-Cuando la intención sigue siendo ambigua y permanece dentro del dominio, se activa un fallback semántico local:
+Cuando la intención sigue siendo ambigua y permanece dentro del dominio, se activa un respaldo semántico local:
 
 ```text
 QUESTION AMBIGUA
@@ -289,13 +289,13 @@ Los guardrails bloquean inferencias no validadas como fatiga, riesgo de lesión,
 
 ## 4.12 Informes PDF
 
-Los PDF Team/Player/Match consumen resultados materializados. No recalculan Match Rating, Performance Index ni decisiones expertas. Su revisión visual final se realizó página a página sobre la Showcase histórica privada.
+Los PDF Team/Player/Match consumen resultados materializados. No recalculan Match Rating V5, Performance Index experimental ni decisiones expertas. Su revisión visual final se realizó página a página sobre la Showcase histórica privada.
 
 ## 4.13 Validación
 
 La estrategia se organizó en seis bloques complementarios: **pipeline y trazabilidad**, **Match Rating**, **motor experto**, **validación funcional**, **robustez y abstención**, y **privacidad y reproducibilidad**. El primero verifica la cadena desde dato bruto hasta las superficies visibles; el segundo combina cobertura, sensibilidad controlada, rutas por rol observado y estabilidad descriptiva; el tercero inspecciona evidencia, reglas y abstención; el cuarto contrasta preguntas representativas con materializaciones de referencia; el quinto fuerza condiciones incompletas; y el sexto separa la fuente privada de una demo anónima y reproducible.
 
-Cada bloque usa contratos y validators reproducibles; el QA end-to-end integra Data/Core, Analytics/Expert, Product y Delivery. El Coach Copilot se evalúa además mediante un contrato de espacio de consultas en CI y un smoke real sobre la DuckDB de desarrollo. Una fixture controlada de Collector verificó de extremo a extremo el resultado `2–1` y los agregados `GF=2`, `GC=1`, `CF=3`, `CC=2`, `FR=4` y `FC=5`, comparando HTML, JSON, raw DuckDB, Team, Match, Coach y PDF. Los resultados detallados y los logs de cada validador se reservan para los anexos.
+Cada bloque usa contratos y validadores reproducibles; el QA end-to-end integra Data/Core, Analytics/Expert, Product y Delivery. El Coach Copilot se evalúa además mediante un contrato de espacio de consultas en CI y un smoke real sobre la DuckDB de desarrollo. Una fixture controlada de Collector verificó de extremo a extremo el resultado `2–1` y los agregados `GF=2`, `GC=1`, `CF=3`, `CC=2`, `FR=4` y `FC=5`, comparando HTML, JSON, raw DuckDB, Team, Match, Coach Copilot y PDF. Los resultados detallados y los logs de cada validador se reservan para los anexos.
 
 Estas pruebas responden a la pregunta principal y a sus dos subpreguntas como evidencia técnico-funcional del artefacto. Un `PASS` expresa conformidad con un contrato explícito, no una prueba de hipótesis estadística ni una evaluación con observadores o staff.
 
@@ -484,11 +484,11 @@ La batería cubre:
 - entrada basura y meta-consulta;
 - follow-ups ordinales, ventana temporal, evidencia y comparación por posición.
 
-Los 28 casos finales pudieron resolverse sin activar el fallback Qwen. La media de 0,4 s corresponde únicamente a esta batería en el PC de desarrollo; no constituye un SLA universal ni mide la latencia de consultas ambiguas que sí requieran inferencia semántica. El modelo `qwen3.5:4b` se conserva como fallback para ese caso residual.
+Los 28 casos finales pudieron resolverse sin activar el respaldo Qwen. La media de 0,4 s corresponde únicamente a esta batería en el PC de desarrollo; no constituye un SLA universal ni mide la latencia de consultas ambiguas que sí requieran inferencia semántica. El modelo `qwen3.5:4b` se conserva como fallback para ese caso residual.
 
 En consecuencia, el resultado respalda la seguridad y cobertura de la ruta determinista/preflight para la batería definida. No permite atribuir al LLM una tasa de acierto, robustez lingüística o valor añadido empírico, porque el fallback no se activó en esos 28 casos.
 
-El modo OpenAI con clave propia del usuario también dispone de tests contractuales y CI: la superficie de herramientas externas coincide con las tools FPS permitidas, los argumentos se revalidan localmente y una tool desconocida se descarta. No se ha realizado todavía una validación live con una API key real, por lo que no se reporta latencia ni calidad live de ese modo.
+El modo OpenAI con clave propia del usuario también dispone de tests contractuales y CI: la superficie de herramientas externas coincide con las tools FPS permitidas, los argumentos se revalidan localmente y una tool desconocida se descarta. No se ha realizado todavía una validación en vivo con una clave de API real, por lo que no se reporta latencia ni calidad de uso en vivo de ese modo.
 
 ## 6.9 Informes PDF
 
@@ -551,7 +551,7 @@ Las validaciones nuevas se integran en seis bloques, sin interpretar un `PASS` a
 
 | Bloque | Evidencia resumida | Resultado y alcance |
 |---|---|---|
-| Pipeline y trazabilidad | Caso jugador-partido: raw → feature → analytics → Match Rating / motor experto → dashboard → Coach / PDF; fixture Collector `2–1`, `GF=2`, `GC=1`, `CF=3`, `CC=2`, `FR=4`, `FC=5`. | PASS; demuestra continuidad, fidelidad de agregados y provenance de una salida visible. |
+| Pipeline y trazabilidad | Caso jugador-partido: raw → feature → analytics → Match Rating V5 / motor experto N1000–N13000 → dashboard → Coach Copilot / PDF; fixture Collector `2–1`, `GF=2`, `GC=1`, `CF=3`, `CC=2`, `FR=4`, `FC=5`. | PASS; demuestra continuidad, fidelidad de agregados y provenance de una salida visible. |
 | Match Rating | 590/590 apariciones jugadas; sensibilidad controlada; 38 rutas GK, 380 rutas posicionales y 172 fallbacks explícitos; distribución y variabilidad temporal descriptivas. | PASS; demuestra coherencia interna y trazabilidad, no validez externa. |
 | Motor experto | 835 registros de plantilla/alineación, 154.475 filas de decisión y una traza `input → condición → resultado → evidencia/confianza → justificación`. | PASS; N13000 se abstiene en 501 casos por policy no validada, 245 por rol desconocido y 89 por falta de evidencia. |
 | Validación funcional | Seis preguntas representativas sobre rating, posición, evolución, asistencias y GPS contrastadas contra materializaciones. | 6/6 PASS; demuestra utilidad funcional para el espacio de consultas soportado, no satisfacción de usuarios. |
@@ -568,7 +568,7 @@ El rendimiento por posición se presenta solo como descripción del historial de
 | Transformar datos en features y analytics temporales | FEATURE-01/02/03, `strict-past` y evidencia analítica materializada. | Cumplido técnicamente; no prueba relevancia deportiva universal de cada variable. |
 | Contextualizar por rol observado y valorar rendimiento | Rutas GK/posicional/fallback, sensibilidad y estabilidad descriptiva del Match Rating. | Cumplido como coherencia y trazabilidad interna; no como validación externa del constructo. |
 | Estructurar evidencia experta auditable | N1000–N12000, traza y N13000 con abstención. | Cumplido; no genera recomendaciones tácticas finales. |
-| Hacer consultable y visible la información | Dashboard, PDF, seis consultas funcionales y Coach grounded. | Cumplido para el espacio soportado; no mide satisfacción de usuarios. |
+| Hacer consultable y visible la información | Dashboard, PDF, seis consultas funcionales y Coach Copilot con grounding. | Cumplido para el espacio soportado; no mide satisfacción de usuarios. |
 | Mantener GPS opcional, privacidad y reproducibilidad | Robustez sin GPS, exclusión de GPS sintético como evidencia fisiológica, privacy gate, demo y CI. | Cumplido como integración y reproducibilidad; no valida fisiología ni licencia de la fuente privada. |
 
 ---
@@ -613,7 +613,7 @@ El sistema demuestra integración GPS, no validación fisiológica. La decisión
 
 El asistente demuestra que una interfaz de lenguaje natural puede mantenerse downstream de un motor analítico sin trasladar cálculos críticos al LLM. La evolución del prototipo también mostró que depender de un modelo local para cada consulta penalizaba latencia y robustez. La arquitectura final resuelve primero el espacio de consultas mediante reglas composicionales —entidad, operación, métrica, agregación, rol, filtros, ventana y follow-up—, incorpora preflight determinista y reserva el LLM para interpretación semántica cuando es realmente necesario.
 
-Este enfoque produjo 28/28 casos correctos en el smoke real final y una latencia media de 0,4 segundos en esa batería concreta. Todos los casos finales utilizaron `rounds=0`, de modo que el resultado cuantifica la ruta determinista/preflight y no la latencia del fallback Qwen. Las consultas ambiguas que sí requieran un modelo local pueden seguir siendo considerablemente más lentas en CPU.
+Este enfoque produjo 28/28 casos correctos en el smoke real final y una latencia media de 0,4 segundos en esa batería concreta. Todos los casos finales utilizaron `rounds=0`, de modo que el resultado cuantifica la ruta determinista/preflight y no la latencia del respaldo Qwen. Las consultas ambiguas que sí requieran un modelo local pueden seguir siendo considerablemente más lentas en CPU.
 
 La integración OpenAI BYOK amplía opcionalmente la interfaz sin cambiar la arquitectura de grounding: el proveedor externo no recibe acceso directo a DuckDB y las tool calls se revalidan localmente. Al no existir todavía prueba live con una clave real, esta extensión se presenta como implementación técnicamente integrada pero no como benchmark empírico de latencia o calidad externa.
 
@@ -631,14 +631,14 @@ La hipótesis queda **respaldada favorablemente en su alcance técnico-funcional
 | Información visible sobre rendimiento y evolución | **DEMOSTRADA técnicamente** | Match Rating 590/590 en el caso de desarrollo, historial y gráficas en Player/Team Mode, Performance Index experimental y capturas reales. | Se demuestra disponibilidad y trazabilidad de outputs; no validez externa universal del rating o del índice. |
 | Información experta interpretable y auditable | **DEMOSTRADA técnicamente** | `expert_0.7.0`, 154.475 filas de decisión, N12000/N13000, salida visible en la pestaña «Motor experto» y trazabilidad JSON. | La salida comunica rol, evidencia, cobertura y estado final; no emite una recomendación táctica sin policy validada. |
 | Rol y contexto de jugador | **DEMOSTRADA técnicamente** | Rol observado, contexto temporal por rol, rutas específicas o fallback explícito y estado experto mostrado. | No demuestra cuál es el rol táctico óptimo ni permite recomendar alineaciones. |
-| Consulta e interpretación mediante Coach Copilot | **DEMOSTRADA técnicamente para el espacio soportado** | Tools read-only, evidencia estructurada, contrato reproducible y smoke local 28/28. | Demuestra acceso conversacional grounded a resultados existentes; no satisfacción de usuarios ni calidad empírica del fallback LLM. |
+| Consulta e interpretación mediante Coach Copilot | **DEMOSTRADA técnicamente para el espacio soportado** | Tools read-only, evidencia estructurada, contrato reproducible y smoke local 28/28. | Demuestra acceso conversacional con grounding a resultados existentes; no satisfacción de usuarios ni calidad empírica del respaldo semántico. |
 | GPS y componente físico | **DEMOSTRADA como integración descriptiva** | Normalización, resumen jugador-partido, precedencia real/sintético y vistas GPS. | No hay GPS real usado como evidencia N9000; no se demuestra fatiga, readiness, lesión ni comportamiento fisiológico. |
 | Utilidad práctica para el cuerpo técnico | **NO DEMOSTRABLE HOY** | No existe estudio de uso con staff ni comparación con el proceso previo. | Debe permanecer como validación externa pendiente. |
-| Validez externa de Match Rating, Performance Index y reglas expertas | **NO DEMOSTRABLE HOY** | No hay ground truth independiente ni evaluación convergente disponible. | Debe permanecer como limitación y trabajo posterior. |
+| Validez externa de Match Rating V5, Performance Index experimental y reglas expertas | **NO DEMOSTRABLE HOY** | No hay ground truth independiente ni evaluación convergente disponible. | Debe permanecer como limitación y trabajo posterior. |
 
 No quedan huecos críticos que requieran un cambio pequeño de producto para responder la hipótesis en su dimensión técnica. Las partes no demostrables hoy requieren datos externos, usuarios o ground truth independiente y se mantienen como limitaciones.
 
-En términos de preguntas de investigación, la pregunta principal queda respaldada por el flujo integrado desde Collector hasta dashboard, PDF y demo reproducible. La primera subpregunta queda respaldada por la evidencia auditable del sistema experto y sus estados de abstención; la segunda, por el contrato composicional, las herramientas de solo lectura y la batería del Coach. Los controles temporales y de grounding sostienen la fiabilidad metodológica de esas respuestas, pero no son el objetivo que se contrasta. Ninguna de estas respuestas sustituye un estudio de uso con staff, un benchmark empírico del fallback LLM ni una validación externa del Match Rating.
+En términos de preguntas de investigación, la pregunta principal queda respaldada por el flujo integrado desde Collector hasta dashboard, PDF y demo reproducible. La primera subpregunta queda respaldada por la evidencia auditable del sistema experto y sus estados de abstención; la segunda, por el contrato composicional, las herramientas de solo lectura y la batería del Coach Copilot. Los controles temporales y de grounding sostienen la fiabilidad metodológica de esas respuestas, pero no son el objetivo que se contrasta. Ninguna de estas respuestas sustituye un estudio de uso con staff, un benchmark empírico del respaldo semántico ni una validación externa del Match Rating V5.
 
 ---
 
@@ -654,8 +654,8 @@ Las principales limitaciones son:
 6. autenticación real no implementada;
 7. la Showcase y el dataset profesional son privados y no redistribuibles;
 8. demo sintética válida para integración, no para validación fisiológica o deportiva;
-9. fallback Qwen potencialmente lento en consultas realmente ambiguas sobre CPU;
-10. modo OpenAI BYOK con validación contractual y CI, pero sin benchmark live con una API key real.
+9. respaldo Qwen potencialmente lento en consultas realmente ambiguas sobre CPU;
+10. modo OpenAI BYOK con validación contractual y CI, pero sin benchmark live con una clave de API real.
 
 ## 8.1 Amenazas a la validez
 
@@ -663,9 +663,9 @@ Las principales limitaciones son:
 |---|---|---|---|
 | Medición | La taxonomía puede ser interpretada de forma distinta por observadores. | Categorías operacionales, contratos y validación funcional. | No hay estudio interobservador ejecutado. |
 | Temporal | Un agregado histórico podría contaminarse con información posterior. | `strict-past` excluye misma fecha y futuro. | El contrato se basa en fecha y no demuestra relevancia deportiva de cada feature. |
-| Constructo | Rating, Performance Index y reglas expertas pueden no representar el rendimiento que juzgaría un experto externo. | Separación de capas, versión explícita, abstención y estado experimental. | Falta ground truth independiente y validación convergente. |
+| Constructo | Match Rating V5, Performance Index experimental y reglas expertas pueden no representar el rendimiento que juzgaría un experto externo. | Separación de capas, versión explícita, abstención y estado experimental. | Falta ground truth independiente y validación convergente. |
 | Externa | El caso profesional de desarrollo representa un único contexto. | Demo sintética reproducible y límites documentados. | No hay replicación en otros clubes, ligas, observadores o proveedores GPS. |
-| Interacción IA | El fallback semántico puede fallar de forma distinta a la ruta determinista. | Tools bounded/read-only, revalidación y guardrails. | El smoke final no activó el fallback; no hay benchmark lingüístico empírico. |
+| Interacción IA | El respaldo semántico puede fallar de forma distinta a la ruta determinista. | Tools bounded/read-only, revalidación y guardrails. | El smoke final no activó el fallback; no hay benchmark lingüístico empírico. |
 
 La demo sintética verifica que el software y los contratos pueden reconstruirse desde cero. No replica el contenido ni permite reproducir los resultados deportivos del caso profesional, que no se redistribuye.
 
@@ -681,12 +681,12 @@ Las principales contribuciones son:
 - modelo de datos jugador-partido;
 - Feature Engine temporalmente seguro;
 - Analytics independiente de decisión;
-- sistema experto N1000-N13000;
-- Match Rating inmediato;
-- Performance Index separado y experimental;
+- motor experto N1000–N13000;
+- Match Rating V5 inmediato;
+- Performance Index experimental, separado del Match Rating V5;
 - GPS descriptivo opcional;
 - aplicación Team/Player/Match;
-- Coach Copilot grounded con preflight, router determinista y fallback semántico local;
+- Coach Copilot con grounding, preflight, router determinista y respaldo semántico local;
 - comparaciones por posición con criterio explícito y sin score nuevo;
 - integración OpenAI BYOK opcional sin acceso directo a DuckDB;
 - informes PDF revisados visualmente;
@@ -697,7 +697,7 @@ Las principales contribuciones son:
 
 La conclusión central es:
 
-> **La hipótesis queda respaldada favorablemente en su alcance técnico-funcional y arquitectónico: el sistema transforma datos observables en información estructurada sobre rendimiento y evolución, la hace trazable desde Collector hasta DuckDB, Match Rating y motor experto, y permite consultarla mediante dashboard, Coach y PDF. Quedan pendientes la validez externa de los constructos, la utilidad percibida por staff y cualquier impacto causal sobre decisiones o rendimiento deportivo.**
+> **La hipótesis queda respaldada favorablemente en su alcance técnico-funcional y arquitectónico: el sistema transforma datos observables en información estructurada sobre rendimiento y evolución, la hace trazable desde Collector hasta DuckDB, Match Rating y motor experto, y permite consultarla mediante dashboard, Coach Copilot y PDF. Quedan pendientes la validez externa de los constructos, la utilidad percibida por staff y cualquier impacto causal sobre decisiones o rendimiento deportivo.**
 
 ---
 
@@ -752,13 +752,53 @@ Scott, M. T. U., Scott, T. J., & Kelly, V. G. (2016). The Validity and Reliabili
 
 ---
 
-# Material pendiente para versión final
+# Guía editorial para la maquetación final
 
-- adaptar portada, índice y extensión a la plantilla oficial;
-- convertir figuras SVG al formato exigido si es necesario;
-- integrar en la maquetación las capturas reales ya disponibles en `docs/screenshots/`;
-- seleccionar qué tablas quedan en cuerpo y cuáles pasan a anexos;
-- revisar estilo bibliográfico final;
-- añadir numeración cruzada de figuras/tablas;
-- maquetar anexos;
-- revisión lingüística final.
+Esta sección es una guía de producción y debe retirarse de la versión entregable una vez aplicada la plantilla universitaria.
+
+## Elementos para el cuerpo principal
+
+El cuerpo debe priorizar las evidencias que permiten comprender y evaluar el problema, el método y el resultado, evitando reproducir manuales de uso o salidas extensas de validadores.
+
+**Figuras propuestas:**
+
+1. Arquitectura general del sistema: `docs/figures/tfm_architecture_overview.svg`.
+2. Flujo del Data Collector y la trazabilidad `evento observable → dato raw → feature`.
+3. Modelo de datos simplificado: `docs/figures/tfm_data_model.svg`.
+4. Control temporal `strict-past`: `docs/figures/tfm_strict_past.svg`.
+5. Motor experto N1000–N13000 y su traza auditable.
+6. Comparación conceptual entre Match Rating V5 y Performance Index experimental.
+7. Una captura representativa y anonimizada de Team, Player o Match Mode; las restantes deben pasar a anexos.
+
+**Tablas propuestas:**
+
+1. Preguntas de investigación, evidencia y alcance de la respuesta (Sección 3.4).
+2. Universos de análisis: 38 partidos, 835 registros de plantilla/alineación y 590 apariciones jugadas.
+3. Cobertura y rutas del Match Rating V5: 590/590, 380 jugador de campo, 38 portero y 172 fallbacks V2.
+4. Síntesis de la validación técnico-funcional (Sección 6.13).
+5. Contraste de la hipótesis (Sección 7.11).
+6. Amenazas a la validez y mitigaciones (Sección 8.1).
+
+Las tablas de taxonomía completa, versiones de componentes, nodos del motor experto, salidas de validación y contratos del Coach Copilot deben quedar en anexos.
+
+## Estructura final de anexos
+
+- **Anexo A. Arquitectura y flujo de ejecución.** Capas, dependencias y separación entre calibración offline e inferencia.
+- **Anexo B. Modelo de datos y diccionario de variables.** Esquema DuckDB, granularidades y separación entre datos raw, features, evidencia y decisión.
+- **Anexo C. Data Collector.** Taxonomía V1.1, variables, roles, lados, cambios de rol y contrato JSON.
+- **Anexo D. Feature Engine y control temporal.** Catálogos, definiciones y contrato `strict-past`.
+- **Anexo E. Match Rating V5 y Performance Index experimental.** Rutas, artefactos frozen, cobertura, equivalencia y límites de interpretación.
+- **Anexo F. Motor experto N1000–N13000.** Familias de nodos, formato de traza, cobertura y gate N13000.
+- **Anexo G. Coach Copilot.** Arquitectura con grounding, herramientas de solo lectura, preflight y límites de la capa conversacional.
+- **Anexo H. Validación técnico-funcional.** Trazas end-to-end, preguntas funcionales, casos límite, abstención y resultados de los gates.
+- **Anexo I. Privacidad y reproducibilidad.** Anonimización, privacy gate, demo sintética, CI y límites de redistribución de la Showcase privada.
+- **Anexo J. Capturas y reportes.** Capturas anonimizadas de dashboard y los PDF Team, Player y Match.
+
+## Puntos pendientes de la plantilla oficial
+
+- portada, resumen institucional, índice y extensión permitida;
+- norma de citación y estilo bibliográfico;
+- formato obligatorio de títulos, figuras, tablas, notas y anexos;
+- requisitos de idioma para el abstract y las palabras clave;
+- resolución, formato y ubicación exigidos para las figuras SVG y las capturas;
+- declaración de uso de IA, derechos de datos o anexos electrónicos, si la universidad la exige.
