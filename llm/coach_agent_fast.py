@@ -7,6 +7,7 @@ deterministic; only genuinely ambiguous supported language falls back to Qwen.
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Any
 
 from llm.coach_agent_general import (
@@ -156,6 +157,33 @@ def _collapse_followup_history(question: str, history: list[dict[str, Any]] | No
     return trimmed
 
 
+def _try_role_pre_route(
+    question: str,
+    *,
+    db_path: Path,
+    team_id: str,
+    history: list[dict[str, Any]] | None = None,
+) -> dict[str, Any] | None:
+    """Route a generic role/group query without stealing concrete player queries.
+
+    Entity precedence is deliberate: a concrete player mention is more specific than
+    a role word that happens to occur inside that player's display name (for example
+    ``Portero Demo`` or ``Central Demo A`` in the synthetic dataset).
+    """
+    from llm import coach_agent_general as agent
+    from llm import coach_role_analysis as role_analysis
+
+    runtime = agent._core.CoachAgentRuntime(Path(db_path).expanduser().resolve(), str(team_id))
+    if agent._player_mentions(runtime, question):
+        return None
+    return role_analysis.try_role_query(
+        question,
+        db_path=Path(db_path),
+        team_id=str(team_id),
+        history=history,
+    )
+
+
 def _prepare_call(args: tuple[Any, ...], kwargs: dict[str, Any]) -> tuple[tuple[Any, ...], dict[str, Any], str | None]:
     prepared_args = list(args)
     prepared_kwargs = dict(kwargs)
@@ -179,16 +207,13 @@ def _prepare_call(args: tuple[Any, ...], kwargs: dict[str, Any]) -> tuple[tuple[
 
 
 def run_coach_agent_turn(*args: Any, **kwargs: Any) -> CoachAgentResult:
-    from llm import coach_role_analysis as role_analysis
     from llm.coach_agent_general import run_coach_agent_turn as _run
 
-    # Role comparisons are a common coaching query and should not depend on an LLM.
-    # Run this bounded descriptive route before the broad "best player" policy guard.
     raw_question = str(args[0]) if args else str(kwargs.get("question") or "")
     repaired_question = _repair_console_text(raw_question)
     repaired_history = _repair_history(kwargs.get("history"))
     if kwargs.get("db_path") is not None and kwargs.get("team_id") is not None:
-        role_result = role_analysis.try_role_query(
+        role_result = _try_role_pre_route(
             repaired_question,
             db_path=kwargs["db_path"],
             team_id=str(kwargs["team_id"]),
