@@ -1,6 +1,6 @@
 # Registro de decisiones estructurales
 
-Fecha: 30/09/2026
+Fecha: 04/10/2026
 
 Este archivo contiene únicamente decisiones que pueden cambiar arquitectura, metodología, producto, privacidad o publicación. No se usa para detalles técnicos rutinarios.
 
@@ -31,7 +31,7 @@ Estado: `APPROVED`
 Arquitectura obligatoria:
 
 ```text
-DATA → ANALYTICS → DECISION ENGINE → TOOLS READ-ONLY → LLM → COACH
+DATA → ANALYTICS → DECISION ENGINE → TOOLS READ-ONLY → LLM/ROUTER → COACH
 ```
 
 El LLM no crea métricas críticas, no recalcula ratings ni sustituye decisiones del motor.
@@ -181,19 +181,61 @@ Home, Team, Player y Match deben responder primero qué necesita entender el ent
 ### DG-LLM-01 — Arquitectura final del asistente
 Estado: `APPROVED`
 
-Decisión: **C — local-first + provider opcional desacoplado**.
+Decisión: **C — deterministic-first + fallback local + provider opcional desacoplado**.
 
-Implementación actual:
+Runtime local final:
 
 ```text
-DuckDB local
-→ analytics / expert outputs materializados
+pregunta
+→ router determinista de alta confianza
 → Python tools read-only
-→ Ollama localhost
-→ Coach Copilot
+→ DuckDB / analytics / expert outputs
+→ respuesta factual determinista
 ```
 
-OpenAI no es necesario para el producto actual. Cualquier provider cloud futuro debe seguir siendo intercambiable y no puede alterar Analytics/Decision Engine.
+Solo si la intención sigue siendo ambigua:
+
+```text
+pregunta ambigua
+→ qwen3.5:4b como router semántico
+→ tool revalidada
+→ Python / DuckDB
+→ evidencia estructurada
+→ respuesta factual
+```
+
+Reglas aprobadas:
+
+- el LLM no accede directamente a DuckDB;
+- el LLM no recalcula Match Rating, Performance Index ni decisiones críticas;
+- las consultas claras no deben pagar latencia LLM innecesaria;
+- el espacio de consulta se modela como `entidad + operación + métrica + agregación + filtros + ventana + follow-up`;
+- guardrails deterministas son válidos para policies no aprobadas;
+- preguntas fuera de cobertura deben declarar la limitación;
+- `mejor jugador`, `más completo` o `más determinante` no se resuelven sin definición analítica aprobada.
+
+Validación local real:
+
+```text
+SMOKE CONTRACT: PASS (22/22)
+average_elapsed=1.4s
+```
+
+Proveedor opcional implementado:
+
+```text
+OpenAI API · clave propia
+```
+
+Condiciones:
+- las consultas claras siguen la ruta determinista y no requieren llamada API;
+- OpenAI solo puede seleccionar tools FPS bounded/read-only;
+- toda tool call externa se revalida localmente;
+- la API key pertenece al usuario y no se persiste en DuckDB ni archivos del proyecto;
+- el proveedor cloud no altera Analytics/Decision Engine;
+- el modo OpenAI está validado por contrato/CI, pero no se afirma benchmark live sin una prueba real con API key.
+
+No se implementa en el MVP la conexión inversa `ChatGPT → FPS` mediante MCP.
 
 ### DG-REP-01 — Estructura final de informes
 Estado: `APPROVED`
@@ -221,7 +263,7 @@ Opciones:
 
 Regla: anonimizar técnicamente nombres e identificadores no concede derechos de redistribución.
 
-Mientras no exista permiso explícito, no se publica la base profesional.
+Mientras no exista permiso explícito, no se publica la base profesional. La demo sintética separada sí es redistribuible según su contrato actual.
 
 ## Decisiones operativas derivadas
 
@@ -232,7 +274,7 @@ Estas reglas no requieren un nuevo gate mientras no cambie su significado estruc
 - el gate visual humano es obligatorio para dashboard y PDF;
 - las capas superiores no pueden inventar métricas o recomendaciones no existentes en capas inferiores;
 - no reabrir DATA / FEATURES / EXPERT / MATCH RATING sin incidencia concreta o evidencia nueva;
-- despliegue público continúa bloqueado mientras no se decida expresamente lo contrario.
+- despliegue público del dataset profesional continúa bloqueado mientras no se decida expresamente lo contrario.
 
 ## Regla de uso
 
