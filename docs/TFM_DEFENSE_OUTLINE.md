@@ -41,15 +41,15 @@ Aclarar inmediatamente:
 - no se pretende demostrar que el sistema aumente victorias;
 - se pretende demostrar que la arquitectura integral es viable, auditable y reproducible.
 
-Presentar las tres preguntas que organizan la evaluación:
+Presentar una pregunta principal y dos subpreguntas que organizan la evaluación:
 
 ```text
-PI1  ¿el pipeline histórico es reproducible y evita información de misma fecha o futuro?
-PI2  ¿la interfaz se mantiene grounded cuando el cálculo crítico queda fuera del LLM?
-PI3  ¿la trazabilidad se conserva desde Collector hasta la presentación de evidencia?
+Pregunta principal  ¿hasta qué punto los datos observables pueden transformarse en información útil sobre rendimiento y evolución?
+Subpregunta 1      ¿cómo transforma el sistema experto esas variables en información interpretable y auditable?
+Subpregunta 2      ¿cómo facilita la IA conversacional la consulta e interpretación de los resultados?
 ```
 
-Anticipar el alcance: las tres preguntas se responden con evidencia técnica; la utilidad con staff y la fiabilidad interobservador requieren evaluación posterior.
+Anticipar el alcance: la pregunta principal y las dos subpreguntas se responden con evidencia técnica; la utilidad con staff y la fiabilidad interobservador requieren evaluación posterior. `strict-past`, grounding y guardrails deben explicarse como garantías metodológicas, no como objetivos del TFM.
 
 ---
 

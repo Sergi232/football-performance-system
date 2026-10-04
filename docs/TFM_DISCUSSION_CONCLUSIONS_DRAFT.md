@@ -225,7 +225,7 @@ Hipótesis principal:
 
 Los resultados permiten contrastarla favorablemente en su dimensión técnica y arquitectónica.
 
-Esta conclusión responde a las preguntas de investigación técnicas del trabajo: PI1 sobre reproducibilidad y control temporal de las capas históricas, PI2 sobre grounding de la ruta determinista del Coach y el contrato de su fallback, y PI3 sobre trazabilidad e integración entre capas. La matriz de evidencias identifica los gates concretos y evita extender esas respuestas a utilidad percibida, calidad empírica del fallback, impacto deportivo o validación externa.
+Esta conclusión responde a la pregunta principal sobre la transformación de datos observables en información de rendimiento y evolución, y a las dos subpreguntas sobre sistema experto e interfaz conversacional. Los controles temporales, la separación entre capas, el grounding y la abstención sostienen metodológicamente esas respuestas. La matriz de evidencias identifica los gates concretos y evita extenderlas a utilidad percibida, calidad empírica del fallback, impacto deportivo o validación externa.
 
 Existe evidencia de que:
 

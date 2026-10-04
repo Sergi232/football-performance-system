@@ -555,7 +555,7 @@ Esta separación delimita el alcance de la hipótesis y evita sobreinterpretar e
 
 ## 15.1 Preguntas de investigación y trazabilidad de la evaluación
 
-La evaluación técnica se organiza en torno a tres preguntas: PI1, reproducibilidad y control temporal del pipeline histórico; PI2, grounding de la ruta determinista del Coach y contrato de su fallback sin cálculo crítico en el LLM; y PI3, trazabilidad e integración del flujo Collector–features–analytics–dashboard–PDF. La matriz `docs/TFM_EVIDENCE_MATRIX.md` relaciona cada pregunta con sus gates y limita la inferencia permitida.
+La evaluación técnica se organiza en torno a una pregunta principal sobre la transformación de datos observables en información útil sobre rendimiento y evolución, y dos subpreguntas sobre el sistema experto y la capa conversacional. La matriz `docs/TFM_EVIDENCE_MATRIX.md` relaciona cada una con sus evidencias y limita la inferencia permitida. El control temporal, la separación raw/features/analytics/decision, el grounding y los guardrails son garantías metodológicas usadas para sostener la calidad de la evaluación, no preguntas de investigación independientes.
 
 La fiabilidad interobservador del Collector y la utilidad con staff requieren datos que no se recogieron durante el cierre técnico. Sus diseños de evaluación se documentan en `docs/TFM_EVALUATION_PROTOCOLS.md`; son protocolos futuros, no evidencia empírica del presente TFM.
 

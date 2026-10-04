@@ -472,7 +472,7 @@ Los resultados permiten defender favorablemente la **viabilidad técnica y arqui
 5. el LLM no es responsable del cálculo crítico;
 6. la solución se reproduce desde un entorno limpio mediante datos sintéticos.
 
-En relación con las preguntas de investigación, PI1 queda respaldada por el pipeline de features, los contratos strict-past y la reconstrucción de la demo; PI2 por el contrato composicional, preflight y las validaciones de la ruta determinista del Coach, junto con los contratos del fallback; y PI3 por los gates de trazabilidad e integración desde Collector hasta dashboard y PDF. Estas evidencias no sustituyen una evaluación con staff, una evaluación empírica del fallback LLM ni validación externa del Match Rating.
+En relación con las preguntas de investigación, la pregunta principal queda respaldada por el flujo integrado desde Collector hasta dashboard, PDF y demo reproducible. La primera subpregunta queda respaldada por la evidencia auditable del sistema experto y sus estados de abstención; la segunda, por el contrato conversacional, las herramientas de solo lectura y la batería del Coach. Los controles temporales y de grounding sustentan la calidad metodológica de esas respuestas, sin convertirse en su objetivo. Estas evidencias no sustituyen una evaluación con staff, una evaluación empírica del fallback LLM ni validación externa del Match Rating.
 
 La hipótesis no debe reinterpretarse como demostración de que el sistema:
 - mejora causalmente las decisiones del entrenador;

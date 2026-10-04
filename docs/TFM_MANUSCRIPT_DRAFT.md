@@ -123,13 +123,13 @@ Diseñar, implementar y validar técnicamente un sistema reproducible que transf
 
 ## 3.4 Preguntas de investigación y alcance de la evaluación
 
-Las preguntas se formulan para evaluar la contribución de Ciencia de Datos e IA del prototipo, no para inferir eficacia deportiva causal.
+Las preguntas se formulan para evaluar la contribución de Ciencia de Datos e IA del prototipo, no para inferir eficacia deportiva causal. Las garantías de implementación —como el control temporal, la separación de capas, los guardrails y el grounding— forman parte del método y de la validación, no constituyen por sí mismas el objetivo de investigación.
 
 | Pregunta | Evidencia evaluada | Alcance de la respuesta |
 |---|---|---|
-| **PI1.** ¿Puede un pipeline basado en hechos observables generar features y evidencia histórica reproducibles sin usar información de la misma fecha o del futuro? | FEATURE-01/02/03, validadores strict-past, contracts de datos y demo sintética. | Viabilidad técnica y reproducibilidad del pipeline histórico; no validez deportiva externa de las features. |
-| **PI2.** ¿Puede una interfaz de consulta en lenguaje natural mantenerse grounded y trazable cuando el cálculo crítico queda fuera del LLM? | Contrato composicional, preflight, tools read-only, CI y smoke final del Coach. | Grounding técnico de las consultas cubiertas por la ruta determinista y de los contratos del fallback; no calidad empírica del fallback ni satisfacción de usuarios. |
-| **PI3.** ¿Puede conservarse la trazabilidad de los datos y su evidencia analítica a través del flujo Collector–features–analytics–dashboard–PDF? | Collector, contracts de capas, dashboard, PDF, capturas y QA end-to-end. | Integración y trazabilidad funcional del prototipo; no utilidad causal para decisiones o resultados deportivos. |
+| **Pregunta principal.** ¿Hasta qué punto pueden transformarse datos sencillos y observables de fútbol amateur o semiprofesional en información útil sobre rendimiento y evolución mediante Data Science, un sistema experto y una interfaz de IA? | Collector, Feature Engine, Analytics, sistema experto, Match Rating/Performance Index, dashboard, Coach, PDF y QA end-to-end. | Viabilidad técnica y arquitectónica de la transformación y de la presentación de información estructurada; no utilidad causal demostrada para decisiones o resultados deportivos. |
+| **Subpregunta 1.** ¿Cómo puede un sistema experto transformar esas variables en información interpretable y auditable para el cuerpo técnico? | N1000–N13000, evidencia por nodo, estados de abstención, validadores y vistas de producto. | Que la implementación conserva entrada, condición, resultado, confianza y justificación, y puede abstenerse; no que sus interpretaciones sean externamente válidas o recomendadas por staff. |
+| **Subpregunta 2.** ¿Cómo puede una capa de IA conversacional facilitar la consulta e interpretación de los resultados del sistema? | Contrato composicional, herramientas read-only, evidencia estructurada, CI y smoke final del Coach. | Que las consultas soportadas acceden a resultados estructurados y explicables; no calidad universal del lenguaje, satisfacción de usuarios ni valor añadido empírico del fallback LLM. |
 
 La relación completa entre preguntas, evidencia y limitaciones se mantiene en `docs/TFM_EVIDENCE_MATRIX.md`. La evaluación es una verificación técnica basada en contratos y pruebas de integración: cada `PASS` expresa conformidad con un contrato explícito, no una estimación estadística ni una validación con usuarios. Los protocolos para evaluar fiabilidad interobservador y utilidad con staff se preparan en `docs/TFM_EVALUATION_PROTOCOLS.md`, pero no se presentan como resultados ejecutados.
 
@@ -293,7 +293,7 @@ Cada capa dispone de tests y validators específicos. Posteriormente se ejecutó
 
 El Coach Copilot se valida en dos niveles complementarios: un query-space contract reproducible en CI sobre la demo sintética y un smoke real sobre la DuckDB profesional. El smoke final contiene 28 casos que cubren rankings, perfiles, GPS, comparación entre jugadores, comparación por posición, partido, calidad, guardrails, ruido/fuera de dominio y follow-ups encadenados.
 
-La validación técnica responde directamente a PI1, PI2 y PI3. Los resultados de los gates son pruebas de conformidad de implementación y reproducibilidad; no son pruebas de hipótesis estadísticas. Se distinguen de forma explícita de la validación empírica con observadores o staff: esta última requeriría recogida de datos adicional y queda definida como protocolo, no como resultado del presente trabajo.
+La validación técnica responde a la pregunta principal y a sus dos subpreguntas. Los resultados de los gates son pruebas de conformidad de implementación y reproducibilidad; no son pruebas de hipótesis estadísticas. Se distinguen de forma explícita de la validación empírica con observadores o staff: esta última requeriría recogida de datos adicional y queda definida como protocolo, no como resultado del presente trabajo.
 
 ## 4.14 Reproducibilidad
 
@@ -595,7 +595,7 @@ La hipótesis queda contrastada favorablemente en su dimensión técnica y arqui
 
 No queda demostrado un impacto causal sobre decisiones de entrenadores, resultados deportivos o prevención de lesiones.
 
-En términos de preguntas de investigación, PI1 queda respaldada por los contratos de datos, los validadores strict-past y la reconstrucción de la demo; PI2 por el contrato composicional, el preflight y la batería de la ruta determinista del Coach, junto con los contratos del fallback; y PI3 por la trazabilidad integrada Collector–features–analytics–dashboard–PDF y sus gates end-to-end. Ninguna de estas respuestas sustituye un estudio de uso con staff, un benchmark empírico del fallback LLM ni una validación externa del Match Rating.
+En términos de preguntas de investigación, la pregunta principal queda respaldada por el flujo integrado desde Collector hasta dashboard, PDF y demo reproducible. La primera subpregunta queda respaldada por la evidencia auditable del sistema experto y sus estados de abstención; la segunda, por el contrato composicional, las herramientas de solo lectura y la batería del Coach. Los controles temporales y de grounding sostienen la fiabilidad metodológica de esas respuestas, pero no son el objetivo que se contrasta. Ninguna de estas respuestas sustituye un estudio de uso con staff, un benchmark empírico del fallback LLM ni una validación externa del Match Rating.
 
 ---
 
