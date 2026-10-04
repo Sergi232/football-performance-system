@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import duckdb
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -18,6 +20,8 @@ def main() -> None:
     parser.add_argument("--db", type=Path, required=True)
     parser.add_argument("--input-dir", type=Path, default=None)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--v4-frozen-artifact", type=Path, default=None)
+    parser.add_argument("--gk-frozen-artifact", type=Path, default=None)
     args = parser.parse_args()
     db = args.db.expanduser().resolve()
     output = args.output_dir.expanduser().resolve()
@@ -28,10 +32,17 @@ def main() -> None:
     run("analytics/build_match_rating.py", *common)
     run("analytics/build_match_rating_v2.py", *common)
     reference = [] if args.input_dir is None else ["--input-dir", str(args.input_dir.expanduser().resolve())]
-    run("analytics/build_match_rating_v4_experimental.py", *common, *reference, "--output-dir", str(output / "v4"))
-    run("analytics/build_on_pitch_goal_context_collector.py", *common)
+    v4 = [] if args.v4_frozen_artifact is None else ["--frozen-artifact", str(args.v4_frozen_artifact.expanduser().resolve())]
+    gk = [] if args.gk_frozen_artifact is None else ["--gk-frozen-artifact", str(args.gk_frozen_artifact.expanduser().resolve())]
+    run("analytics/build_match_rating_v4_experimental.py", *common, *reference, *v4, "--output-dir", str(output / "v4"))
+    with duckdb.connect(str(db), read_only=True) as con:
+        collector_rows = int(con.execute(
+            "SELECT COUNT(*) FROM matches WHERE source_type='collector_html_v1.1'"
+        ).fetchone()[0])
+    if collector_rows:
+        run("analytics/build_on_pitch_goal_context_collector.py", *common)
     run("analytics/build_match_rating_v4_onpitch_experimental.py", *common)
-    run("analytics/build_match_rating_v5_candidate.py", *common, *reference, "--output-dir", str(output / "v5"))
+    run("analytics/build_match_rating_v5_candidate.py", *common, *reference, *gk, "--output-dir", str(output / "v5"))
     print("MATCH RATING V5 INCREMENTAL RUN: PASS")
 
 

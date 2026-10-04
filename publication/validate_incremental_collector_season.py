@@ -51,7 +51,9 @@ def main():
             with duckdb.connect(str(db),read_only=True) as con:
                 pm=con.execute('select count(*) from player_match').fetchone()[0];f=con.execute("select count(*) from player_match_features where feature_version='0.1.0'").fetchone()[0];hist=con.execute("select count(*) from player_match_features where feature_version='0.2.0' and feature_value is not null").fetchone()[0];a=con.execute('select count(*) from analytics_evidence').fetchone()[0]
             rows.append((n,pm,f,hist,a))
-        run('analytics/run_match_rating_v5_incremental.py','--db',db,'--output-dir',Path(tmp)/'rating_output')
+        run('analytics/run_match_rating_v5_incremental.py','--db',db,'--output-dir',Path(tmp)/'rating_output',
+            '--v4-frozen-artifact',ROOT/'dsai'/'output'/'perf18_v4_frozen'/'match_rating_v4_reference_frozen.json',
+            '--gk-frozen-artifact',ROOT/'dsai'/'output'/'perf18_v5_frozen'/'match_rating_v5_gk_reference_frozen.json')
         run('decision_tree/run_incremental.py','--db',db)
         teams=list_teams(db); tid=str(teams.iloc[0].team_id); pid=str(__import__('duckdb').connect(str(db),read_only=True).execute("select player_id from players where display_name='Jugador B01'").fetchone()[0])
         assert len(get_team_matches(db,tid))==12 and len(get_player_match_history(db,tid,pid))==12 and get_team_overview(db,tid)['players']==22
