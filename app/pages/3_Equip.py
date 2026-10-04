@@ -360,7 +360,7 @@ with tab_matches:
         display["Penaltis F/C"] = display.apply(lambda r: "N/D" if pd.isna(r.penalties_won) else f"{int(r.penalties_won)} · {int(r.penalties_conceded)}", axis=1)
         display = display[["Fecha", "L/V", "opponent", "Resultado", "Formación", "Córners F/C", "Faltas R/C", "Tarjetas A/R", "Penaltis F/C", "median_match_rating", "median_confidence"]]
         display.columns = ["Fecha", "L/V", "Rival", "Resultado", "Formación", "Córners F/C", "Faltas R/C", "Tarjetas A/R", "Penaltis F/C", "Rating mediano", "Confianza mediana %"]
-        st.dataframe(display, hide_index=True, width="stretch", height=600, alt="Historial del equipo con resultados y eventos básicos registrados")
+        st.dataframe(display, hide_index=True, width="stretch", height=600)
 
 with tab_index:
     section_header("Performance Index", "Perfil histórico/posicional complementario al Match Rating")

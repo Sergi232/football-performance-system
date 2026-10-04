@@ -285,7 +285,7 @@ with tab_players:
             "yellow_cards": "Amarillas", "red_cards": "Rojas", "penalties_won": "Penaltis favor",
             "penalties_conceded": "Penaltis contra", "saves": "Paradas", "goals_conceded": "Goles encajados",
         })
-        st.dataframe(details, hide_index=True, width="stretch", height=440, alt="Acciones registradas por jugador en el partido seleccionado")
+        st.dataframe(details, hide_index=True, width="stretch", height=440)
 
     with st.expander("Registro raw del Collector", expanded=False):
         st.caption("Cada fila conserva tipo, subtipo, resultado, instante, coordenadas y qualifiers exportados por el Collector.")
@@ -298,7 +298,7 @@ with tab_players:
                 "player": "Jugador", "action_type": "Acción", "subtype": "Subtipo", "outcome": "Resultado",
                 "x": "X", "y": "Y", "qualifiers": "Qualifiers",
             })
-            st.dataframe(raw[["Jugador", "period", "Minuto", "Acción", "Subtipo", "Resultado", "X", "Y", "Qualifiers"]], hide_index=True, width="stretch", height=360, alt="Registro raw de eventos exportados por el Collector")
+            st.dataframe(raw[["Jugador", "period", "Minuto", "Acción", "Subtipo", "Resultado", "X", "Y", "Qualifiers"]], hide_index=True, width="stretch", height=360)
 
 with tab_dimensions:
     section_header("Dimensiones", "Explicación del rendimiento por jugador")

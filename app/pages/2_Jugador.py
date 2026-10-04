@@ -403,7 +403,7 @@ with tab_technical:
         technical["Titular"] = technical["Titular"].map({True: "Sí", False: "No", 1: "Sí", 0: "No"}).fillna("—")
         technical["Rol inicial"] = technical["Rol inicial"].fillna("Sin rol observado")
         technical["Rol/lado y cambios"] = technical["Rol/lado y cambios"].fillna("No disponible")
-        st.dataframe(technical, hide_index=True, width="stretch", height=560, alt="Acciones técnicas observadas por partido del jugador")
+        st.dataframe(technical, hide_index=True, width="stretch", height=560)
 
 with tab_expert:
     section_header("Motor experto", "Estado auditable del sistema jerárquico")
