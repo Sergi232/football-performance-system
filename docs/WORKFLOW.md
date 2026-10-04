@@ -16,6 +16,15 @@ Regla principal:
 
 Un test aislado que falla se interpreta primero dentro de su contrato y del estado documentado; no reabre automáticamente una arquitectura validada.
 
+Para el Coach Copilot queda explícitamente prohibido volver al patrón:
+
+```text
+usuario prueba una frase al azar
+→ se añade una regla ad hoc
+```
+
+Su cobertura se gobierna mediante `COACH_COPILOT_CONTRACT.md` + tests paramétricos + CI + smoke reproducible.
+
 ## 2. Estado de fases
 
 ```text
@@ -133,19 +142,21 @@ Consume resultados calculados; no crea nueva lógica analítica.
 
 ### A8 — AI Assistant
 
-Propietario de lenguaje natural, query grammar, routing determinista, tools read-only, fallback semántico, grounding y guardrails.
+Propietario de lenguaje natural, query-space contract, preflight, routing determinista, tools read-only, fallback semántico, grounding, identidad demo y guardrails.
 
 Runtime local:
 
 ```text
-analytics / expert outputs materializados
+pregunta
+→ preflight / guardrails
 → router determinista de alta confianza
 → Python tools read-only
-→ DuckDB
+→ DuckDB / analytics / expert
+→ evidencia estructurada
 → respuesta factual
 ```
 
-Fallback solo cuando hace falta:
+Fallback solo cuando persiste ambigüedad dentro del dominio:
 
 ```text
 pregunta ambigua
@@ -157,9 +168,22 @@ pregunta ambigua
 → respuesta factual
 ```
 
-Estado local: **cerrado MVP / castellano / real smoke 22/22 PASS / avg 1.4s**.
+Estado local final:
 
-La mayoría de consultas soportadas no activa Qwen y responde en ~0.1–0.8s. El fallback semántico puede tardar ~20–30s en CPU.
+```text
+SMOKE CONTRACT: PASS (28/28)
+average_elapsed=0.4s
+semantic fallback used=0/28
+query-space CI=PASS
+```
+
+La media de 0,4 s corresponde a esa batería concreta y no es un SLA universal. El fallback semántico local puede ser sensiblemente más lento en CPU, pero no forma parte de la ruta obligatoria de consultas claras.
+
+Comparaciones por posición:
+- GK / CB / FB / DM / CM / AM / W / ST;
+- si se pregunta quién ha rendido mejor, se usa Match Rating medio como criterio explícito dentro de la muestra del rol;
+- las métricas adicionales son descriptivas;
+- no se crea un score nuevo.
 
 Proveedor opcional:
 
@@ -184,7 +208,7 @@ Propietario de tests, regressions, privacidad, anonimización, demo, instalació
 
 Estado: **Global end-to-end QA PASS / synthetic demo PASS / CI PASS**.
 
-Trabajo activo: cierre de entrega y capturas finales.
+Trabajo activo: cierre visual, capturas y entrega.
 
 ## 5. Cómo se interpreta un fallo nuevo
 
@@ -195,8 +219,9 @@ nuevo FAIL
 → consultar PROJECT_STATE + contrato vigente
 → localizar la capa propietaria
 → decidir si es runtime/entorno, validator o producto
-→ corregir el fallo mínimo demostrado
-→ revalidar solo lo necesario
+→ reproducir el fallo contra el contrato
+→ corregir solo si invalida una capacidad aprobada
+→ revalidar lo necesario
 → actualizar estado si cambia una decisión o gate
 ```
 
