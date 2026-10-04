@@ -1,6 +1,6 @@
 # Estrategia Data Science + IA del TFM
 
-Fecha de sincronización: 03/10/2026
+Fecha de sincronización: 04/10/2026
 
 ## 1. Prioridad académica
 
@@ -217,28 +217,51 @@ Cuando no exista muestra, target o criterio suficiente, **no desplegar** es un r
 
 ## 10. Papel de la IA generativa
 
-El LLM es una capa de interacción y explicación, no el núcleo científico.
+La IA generativa es una capa de interacción e interpretación, no el núcleo científico.
+
+Runtime local final:
 
 ```text
-DATA
-→ ANALYTICS
-→ DECISION ENGINE
-→ STRUCTURED CONTEXT / READ-ONLY TOOLS
-→ LOCAL LLM
-→ SEMANTIC GUARD
+DATA / ANALYTICS / DECISION ENGINE
+→ DETERMINISTIC QUERY ROUTER
+→ READ-ONLY TOOLS
+→ PYTHON / DUCKDB
+→ STRUCTURED EVIDENCE
 → COACH
 ```
 
-MVP vigente:
-- castellano;
-- Ollama local;
-- `qwen3:1.7b`;
-- router determinista;
-- tools Python read-only;
-- semantic guard;
-- sin acceso directo del LLM a DuckDB.
+Solo si una consulta no se puede resolver con suficiente confianza:
 
-El LLM no crea Match Rating, Performance Index, features críticas ni decisiones expertas.
+```text
+QUESTION AMBIGUA
+→ qwen3.5:4b
+→ TOOL SELECTION
+→ LOCAL TOOL VALIDATION
+→ PYTHON / DUCKDB
+→ STRUCTURED EVIDENCE
+→ COACH
+```
+
+Principios:
+- MVP en castellano;
+- consultas claras sin dependencia de LLM;
+- `qwen3.5:4b` únicamente como fallback semántico local;
+- tools Python read-only;
+- sin acceso directo del LLM a DuckDB;
+- el LLM no crea Match Rating, Performance Index, features críticas ni decisiones expertas;
+- guardrails deterministas para inferencias no validadas;
+- follow-ups anclados a la última consulta sustantiva.
+
+Validación local real:
+
+```text
+SMOKE CONTRACT: PASS (22/22)
+average_elapsed=1.4s
+```
+
+La aplicación incorpora además un proveedor opcional `OpenAI API · clave propia`. Este modo reutiliza la misma capa de tools y no modifica Analytics/Decision Engine. Las tool calls externas se revalidan localmente y la API key del usuario no se persiste en DuckDB ni archivos del proyecto. La integración pasa contract tests y CI, pero no dispone todavía de benchmark live con una API key real.
+
+La decisión metodológica importante es que el valor de IA no se mide por cuántas consultas pasan por un LLM, sino por si la interfaz mejora la accesibilidad sin comprometer grounding, trazabilidad y límites de inferencia.
 
 ## 11. Orden académico actual
 
@@ -248,27 +271,15 @@ EXPERT BASELINE                     ✓
 MATCH RATING V5                     ✓
 PERFORMANCE INDEX EXPERIMENTAL      ✓
 DS/ML EXPERIMENTS + NO-DEPLOY       ✓
-COACH COPILOT                       ✓
+COACH COPILOT FINAL                 ✓
+OPENAI BYOK CONTRACT                ✓
 REPORTS / PRODUCT                   ✓
 GLOBAL END-TO-END QA                ✓
+DOCUMENTATION SYNC                  ✓
         ↓
-DOCUMENTATION / REPRODUCIBILITY     ← ACTUAL
+CAPTURAS / MAQUETACIÓN              ← ACTUAL
         ↓
-MEMORIA TFM
+ENTREGA
         ↓
 DEFENSA / DEMO
 ```
-
-## 12. Criterio académico de éxito
-
-El TFM debe poder defender:
-1. cómo se capturan y estructuran los datos;
-2. cómo se crean features leakage-safe;
-3. qué evidencia estadística se deriva;
-4. cómo funciona el sistema experto;
-5. cómo se construye y valida Match Rating;
-6. por qué Performance Index se mantiene separado y experimental;
-7. qué tareas DS/ML se probaron y por qué algunas no se despliegan;
-8. cómo se controlan estabilidad, error, contexto y leakage;
-9. qué aporta la IA generativa y cuáles son sus límites;
-10. cómo todo ello llega a un producto usable y auditable.
