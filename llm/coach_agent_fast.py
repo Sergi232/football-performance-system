@@ -70,6 +70,9 @@ def _policy_block(question: str) -> str | None:
     from llm import coach_role_analysis as role_analysis
 
     q = agent._norm(question)
+    # A descriptive metric/role does not license an undefined global judgement.
+    if any(token in q for token in ("mas completo", "mas determinante", "mejor en general", "mas importante")):
+        return _UNVALIDATED_CRITERION_MESSAGE
     if agent._metric_in_text(question) is not None:
         return None
     if role_analysis.role_from_text(question) is not None:
@@ -115,6 +118,7 @@ def _collapse_followup_history(question: str, history: list[dict[str, Any]] | No
     if not agent._followup(question):
         return history
     trimmed = list(history)
+    modifiers = []
     while trimmed:
         last_user_idx = None
         for idx in range(len(trimmed) - 1, -1, -1):
@@ -127,7 +131,22 @@ def _collapse_followup_history(question: str, history: list[dict[str, Any]] | No
         last_user_text = str(trimmed[last_user_idx].get("content") or "").strip()
         if not agent._followup(last_user_text):
             break
+        if agent._window(last_user_text) or agent._metric_in_text(last_user_text):
+            modifiers.append(last_user_text)
         trimmed = trimmed[:last_user_idx]
+    if modifiers and trimmed:
+        # Preserve substantive filters across ordinal/evidence follow-ups.
+        for idx in range(len(trimmed) - 1, -1, -1):
+            if trimmed[idx].get("role") == "user":
+                current = dict(trimmed[idx])
+                anchor = str(current.get("content") or "")
+                for modifier in reversed(modifiers):
+                    if agent._window(modifier):
+                        anchor = re.sub(r"[uú]ltim\w*\s+\d{1,2}\s+partidos", "periodo disponible", anchor, flags=re.I)
+                    anchor += " " + modifier
+                current["content"] = anchor
+                trimmed[idx] = current
+                break
     return trimmed
 
 
@@ -239,6 +258,10 @@ def run_coach_agent_turn(*args: Any, **kwargs: Any) -> CoachAgentResult:
     repaired_question = _repair_console_text(raw_question)
     repaired_history = _repair_history(kwargs.get("history"))
     selected_model = str(kwargs.get("model") or DEFAULT_MODEL)
+    from llm import coach_agent_general as agent
+    blocked = agent._base._guardrail(repaired_question) or _policy_block(repaired_question)
+    if blocked:
+        return CoachAgentResult(blocked, selected_model, 0, (), None)
 
     if kwargs.get("db_path") is not None and kwargs.get("team_id") is not None:
         role_result = _try_role_pre_route(

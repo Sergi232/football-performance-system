@@ -86,7 +86,7 @@ def _compact_table(rows: list[list[Any]], widths: list[float], styles, header: b
 
 def _profile_table(profile: list[dict[str, Any]], styles, mode: str) -> Table:
     if mode == "match":
-        rows = [["Indicador", "Partido", "Media 5 prev.", "Δ"]]
+        rows = [["Indicador", "Partido", "Media 5 prev.", "Cambio"]]
         for item in profile:
             rows.append([
                 item.get("label"),
@@ -96,7 +96,7 @@ def _profile_table(profile: list[dict[str, Any]], styles, mode: str) -> Table:
             ])
         widths = [72 * mm, 31 * mm, 39 * mm, 29 * mm]
     else:
-        rows = [["Indicador", "Último", "Últimos 5", "5 anteriores", "Δ 5v5"]]
+        rows = [["Indicador", "Último", "Últimos 5", "5 anteriores", "Cambio 5v5"]]
         for item in profile:
             rows.append([
                 item.get("label"),
@@ -238,7 +238,7 @@ def _team_story(payload: dict[str, Any], styles, width: float) -> list[Any]:
     story.append(PageBreak())
     story += _section("05 · Seguimiento de plantilla", "Ordenado por minutos acumulados. El detalle sirve para decidir qué revisar, no para clasificar calidad.", width, styles)
     snap_by_player = {str(row.get("player")): row for row in snapshot}
-    rows = [["Jugador", "Perfil", "Min", "Último", "Media L5", "Δ 5v5", "Conf. %"]]
+    rows = [["Jugador", "Perfil", "Min", "Último", "Media L5", "Cambio 5v5", "Conf. %"]]
     for row in sorted(squad, key=lambda item: _num(item.get("minutes")) or 0, reverse=True):
         if (_num(row.get("minutes")) or 0) <= 0:
             continue
@@ -294,7 +294,7 @@ def _player_story(payload: dict[str, Any], styles, width: float) -> list[Any]:
     story.append(_insight_grid([
         ("Último partido", f"{_safe(latest.get('opponent'))} · {score}", f"{_date(latest.get('match_date'))} · {_count(latest.get('minutes_played'))} min", TEAL),
         ("Perfil observado", profile, f"{_count(summary.get('appearances'))} apariciones · {_count(summary.get('minutes'))} min", NAVY_2),
-        ("Performance Index", performance_text, "Capa histórica/posicional complementaria", AMBER),
+        ("Performance Index", performance_text, "Capa histórica experimental v0.2", AMBER),
         ("Motor experto", _expert_status(gate.get("final_status")), f"Cobertura: {_fmt(coverage_pct, 0, '%')}", RED if "Sin recomendación" in _expert_status(gate.get("final_status")) else TEAL),
     ], width, styles))
     story += _section("02 · Trayectoria", "Evolución del Match Rating partido a partido; escala fija 3-10.", width, styles)
@@ -425,7 +425,7 @@ def _match_story(payload: dict[str, Any], styles, width: float) -> list[Any]:
         story.append(_compact_table(rows, [42*mm, 24*mm, 24*mm, 24*mm, 27*mm, 24*mm], styles))
 
     confidence = [value for value in [_num(row.get("match_rating_confidence")) for row in ratings] if value is not None]
-    story += _section("06 · Calidad de evidencia", "Límites antes de convertir los datos en una decisión técnica.", width, styles)
+    story += _section(f"{6 if outfield else 5:02} · Calidad de evidencia", "Límites antes de convertir los datos en una decisión técnica.", width, styles)
     story.append(_evidence_strip([
         ("Jugadores utilizados", str(len(ratings))),
         ("Rol analítico no disponible", str(fallback)),

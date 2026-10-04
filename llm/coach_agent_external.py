@@ -165,6 +165,9 @@ def run_coach_agent_turn(
     selected_model = str(model or DEFAULT_OPENAI_MODEL)
     repaired_question = _fast._repair_console_text(question)
     repaired_history = _fast._repair_history(history)
+    blocked = _agent._base._guardrail(repaired_question) or _fast._policy_block(repaired_question)
+    if blocked:
+        return CoachAgentResult(blocked, selected_model, 0, (), None)
 
     # Provider-independent deterministic layer. Named players have precedence over
     # role words, and obvious noise/out-of-domain/meta prompts never consume API.

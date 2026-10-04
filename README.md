@@ -333,7 +333,7 @@ redistribution_status=REDISTRIBUTABLE_SYNTHETIC_DEMO
 ## Ejecutar la demo pública desde un clone limpio
 
 ```powershell
-git clone <URL_DEL_REPOSITORIO>
+git clone https://github.com/Sergi232/football-performance-system.git
 cd football-performance-system
 python -m pip install -r requirements.txt
 python -m publication.validate_synthetic_demo --rebuild
@@ -350,7 +350,7 @@ No se necesita la DuckDB profesional para esta demo.
 ## Ejecutar el caso local de desarrollo
 
 ```powershell
-$env:FPS_DB_PATH="D:\Data\Sergi\Desktop\football-performance-system\data\football_performance.duckdb"
+$env:FPS_DB_PATH="$PWD\data\football_performance.duckdb"
 $env:FPS_LOCAL_LLM_MODEL="qwen3.5:4b"
 streamlit run app\streamlit_app.py
 ```

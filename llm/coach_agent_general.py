@@ -274,7 +274,11 @@ def _metric_in_text(question: str) -> str | None:
 
 def _followup(question: str) -> bool:
     q = _norm(question)
-    return _is_evidence(question) or _ordinal(question) is not None or _window(question) is not None or (len(q.split()) <= 8 and q.startswith(("y ", "i ")))
+    # A temporal filter inside a complete question is not a follow-up.
+    continuation = re.sub(r"^[¿?¡!\s]+", "", q)
+    return _is_evidence(question) or _ordinal(question) is not None or (
+        continuation.startswith(("y ", "i ", "en los ultimos ")) and len(q.split()) <= 12
+    )
 
 
 def _rank_aggregation(metric: str, question: str) -> str:
@@ -285,8 +289,18 @@ def _rank_aggregation(metric: str, question: str) -> str:
         return "mean"
     if "acumulad" in q or re.search(r"\btotal\b", q):
         return "sum"
-    if "pico" in q:
+    # Remove metric names first: "velocidad máxima" names a metric, not
+    # an instruction to override an explicit aggregation of that metric.
+    modifiers = q
+    for alias in sorted(ALIASES, key=len, reverse=True):
+        if ALIASES[alias] == metric:
+            modifiers = re.sub(rf"(?<!\w){re.escape(alias)}(?!\w)", " ", modifiers)
+    if re.search(r"\b(minimo|minima)\b", modifiers):
+        return "min"
+    if re.search(r"\b(maximo|maxima|pico)\b", modifiers):
         return "max"
+    if re.search(r"\b(ultimo valor|actual)\b", modifiers):
+        return "latest"
     return METRICS[metric]["agg"]
 
 
@@ -353,10 +367,6 @@ def _match_mention(runtime: _core.CoachAgentRuntime, question: str) -> str | Non
 
 
 def _deterministic_route(runtime: _core.CoachAgentRuntime, question: str) -> list[tuple[str, dict[str, Any]]]:
-    rank = _deterministic_rank_calls(question)
-    if rank:
-        return rank
-
     q = _norm(question)
     players = _player_mentions(runtime, question)
     if len(players) >= 2 and any(x in q for x in ("compara", "comparar", "comparacion", " versus ", " vs ")):
@@ -370,6 +380,13 @@ def _deterministic_route(runtime: _core.CoachAgentRuntime, question: str) -> lis
             return [("get_player_profile", {"player": player})]
         if any(x in q for x in ("ultimos partidos", "estadisticas", "acciones", "que hizo", "partido a partido")):
             return [("get_player_match_stats", {"player": player, "last_n": _window(question) or 10})]
+
+        if _metric_in_text(question):
+            return [("get_player_match_stats", {"player": player, "last_n": _window(question) or 10})]
+
+    rank = _deterministic_rank_calls(question)
+    if rank and not players:
+        return rank
 
     opponent = _match_mention(runtime, question)
     if opponent and any(x in q for x in ("contra", "partido", "resultado", "paso", "rival")):
@@ -458,7 +475,7 @@ def _rank_sql(runtime: _core.CoachAgentRuntime, args: dict[str, Any], gps: bool)
                   AND pm.minutes_played > 0
                   AND (? IS NULL OR LOWER(COALESCE(pm.primary_role,'')) LIKE '%' || LOWER(?) || '%')
             ), ranked AS (
-                SELECT player_id, player, COUNT(DISTINCT match_id) AS sample_matches,
+                SELECT player_id, player, COUNT(DISTINCT match_id) FILTER (WHERE metric_value IS NOT NULL) AS sample_matches,
                        SUM(minutes) AS minutes,
                        string_agg(DISTINCT primary_role, ', ' ORDER BY primary_role)
                          FILTER (WHERE primary_role IS NOT NULL) AS observed_roles,
@@ -492,7 +509,7 @@ def _rank(runtime: _core.CoachAgentRuntime, args: dict[str, Any]) -> dict[str, A
                 rows = [{
                     "player": row.get("player"),
                     "value": row.get(col),
-                    "sample_matches": row.get("rated_matches") or row.get("n_last5"),
+                    "sample_matches": (row.get("n_last5") if col == "avg_last5" else (1 if col == "latest_match_rating" else (row.get("n_last5", 0) + row.get("n_previous5", 0)))),
                     "observed_roles": row.get("latest_position_group"),
                 } for row in frame.to_dict("records")]
             source = "materialized Match Rating analytics"
@@ -506,6 +523,7 @@ def _rank(runtime: _core.CoachAgentRuntime, args: dict[str, Any]) -> dict[str, A
             "unit": spec["unit"],
             "aggregation": args["aggregation"],
             "last_n_matches": args.get("last_n_matches"),
+            "order": args.get("order", "desc"),
             "source": source,
             "rows": rows,
             "definition": "Ranking descriptivo calculado por Python/DuckDB; el LLM no calcula el resultado.",
@@ -526,6 +544,7 @@ def _compact_rank(payload: dict[str, Any]) -> dict[str, Any]:
         "unit": payload.get("unit"),
         "aggregation": payload.get("aggregation"),
         "last_n_matches": payload.get("last_n_matches"),
+        "order": payload.get("order", "desc"),
         "source": payload.get("source"),
         "definition": payload.get("definition"),
         "rows": (payload.get("rows") or [])[:10],
@@ -600,16 +619,26 @@ def _rank_answer(question: str, evidence: dict[str, Any]) -> str:
         return "No hay registros suficientes para construir ese ranking."
     q = _norm(question)
     show_list = any(x in q for x in ("ranking", "top ", "quienes", "lista"))
-    count = min(len(rows), 5 if show_list else 1)
+    count = min(len(rows), _rank_limit(question) if show_list else 1)
     agg = _aggregation_label(block.get("aggregation"))
     lines = []
     for idx, row in enumerate(rows[:count], start=1):
         sample = row.get("sample_matches")
         sample_text = f", {sample} partidos con dato" if sample is not None else ""
         lines.append(f"{idx}. {row.get('player')}: {_value(row.get('value'), block.get('unit'))} ({agg}{sample_text})")
+    ascending = block.get("order") == "asc"
+    direction = "menor a mayor" if ascending else "mayor a menor"
+    window = block.get("last_n_matches")
+    scope = f"en los últimos {window} partidos del equipo" if window else "en el periodo disponible"
+    if block.get("metric") in {"latest_match_rating", "avg_last5", "trend_delta_5v5"}:
+        scope = "según el campo materializado indicado; su ventana es fija"
+    context = f"Criterio: {agg}, de {direction}, {scope}."
     if count == 1:
-        return f"{rows[0].get('player')} lidera {block.get('metric_label')}: {_value(rows[0].get('value'), block.get('unit'))} ({agg})."
-    return f"Ranking de {block.get('metric_label')}: " + "; ".join(lines) + "."
+        verb = "presenta el menor valor de" if ascending else "presenta el mayor valor de"
+        sample = rows[0].get("sample_matches")
+        sample_text = f" La muestra indicada contiene {sample} {'partido' if sample == 1 else 'partidos'} con dato." if sample is not None else ""
+        return f"{rows[0].get('player')} {verb} {block.get('metric_label')}: {_value(rows[0].get('value'), block.get('unit'))}. {context}{sample_text}"
+    return f"Ranking de {block.get('metric_label')}. {context}\n\n" + "\n".join(lines)
 
 
 def _answer_from_evidence(question: str, evidence: dict[str, Any]) -> str:
@@ -635,7 +664,11 @@ def _answer_from_evidence(question: str, evidence: dict[str, Any]) -> str:
         latest = ratings[-1] if ratings else {}
         rating = latest.get("match_rating_10")
         rating_text = f" Último Match Rating disponible: {_value(rating, '/10')}." if rating is not None else ""
-        return f"{player}: " + (", ".join(parts) if parts else "perfil disponible") + "." + rating_text
+        evolution = ""
+        if len(ratings) > 1 and any(token in _norm(question) for token in ("evolu", "forma", "rendimiento")):
+            observations = [f"{str(row.get('match_date') or '')[:10]}: {_value(row.get('match_rating_10'), '/10')}" for row in ratings if row.get('match_rating_10') is not None]
+            evolution = " Registros recientes, de más antiguo a más reciente: " + "; ".join(observations) + ". Esta secuencia describe las notas observadas y no demuestra una causa del cambio."
+        return f"{player}: " + (", ".join(parts) if parts else "perfil disponible") + "." + rating_text + evolution
 
     gps = evidence.get("get_player_gps")
     if gps:
@@ -715,7 +748,15 @@ def _answer_from_evidence(question: str, evidence: dict[str, Any]) -> str:
             if avg is not None:
                 detail.append(f"media últimos 5 {_value(avg, '/10')}")
             parts.append(player + (": " + ", ".join(detail) if detail else ""))
-        return "Comparación descriptiva: " + "; ".join(parts) + "."
+        interpretation = ""
+        valid = [row for row in rows if row.get("avg_last5") is not None]
+        if len(valid) >= 2:
+            best_value = max(float(row["avg_last5"]) for row in valid)
+            leaders = [str(row.get("player")) for row in valid if float(row["avg_last5"]) == best_value]
+            subject = " y ".join(leaders)
+            verb = "presenta" if len(leaders) == 1 else "comparten"
+            interpretation = f" {subject} {verb} la mayor media de Match Rating de los últimos 5 entre los jugadores con dato. Es una comparación de esa métrica y ventana, no una valoración global."
+        return "Comparación descriptiva:\n\n" + "\n".join("- " + part for part in parts) + "\n\n" + interpretation.strip()
 
     stats = evidence.get("get_player_match_stats")
     if stats:
@@ -723,7 +764,18 @@ def _answer_from_evidence(question: str, evidence: dict[str, Any]) -> str:
         player = stats.get("player") or "El jugador"
         if not rows:
             return f"No hay historial jugador-partido disponible para {player}."
-        return f"Hay {len(rows)} partidos recientes observados disponibles para {player}; abre la evidencia para revisar las acciones registradas."
+        metric = _metric_in_text(question)
+        fields = [(METRICS[metric]["column"], METRICS[metric]["label"])] if metric and METRICS[metric]["source"] == "raw" else [("minutes_played", "minutos"), ("goals", "goles"), ("assists", "asistencias")]
+        if metric == "minutes":
+            fields = [("minutes_played", "minutos")]
+        details = []
+        for row in rows:
+            values = [f"{label}: {_value(row.get(key), None)}" for key, label in fields if row.get(key) is not None]
+            context = str(row.get("match_date") or "Partido")
+            if row.get("opponent"):
+                context += f" contra {row['opponent']}"
+            details.append(f"- {context}: " + (", ".join(values) if values else "sin dato para la métrica solicitada"))
+        return f"Historial observado de {player} ({len(rows)} partidos disponibles en la consulta):\n\n" + "\n".join(details)
 
     return _base._fallback(evidence)
 

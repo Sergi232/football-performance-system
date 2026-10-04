@@ -74,7 +74,7 @@ def _team_phase_cards(profile: list[dict[str, Any]], width: float, styles) -> An
 
 
 def _team_profile_table(profile: list[dict[str, Any]], styles) -> Any:
-    rows = [["Indicador", "Último", "Últimos 10", "Todos", "Δ 10 vs todos"]]
+    rows = [["Indicador", "Último", "Últimos 10", "Todos", "Cambio 10 vs todos"]]
     for item in profile:
         rows.append([
             item.get("label"),
@@ -186,7 +186,7 @@ def _team_story(payload: dict[str, Any], styles, width: float) -> list[Any]:
         styles,
     )
     snap_by_player = {str(row.get("player")): row for row in snapshot}
-    rows = [["Jugador", "Perfil", "Min", "Último", "Media L5", "Δ 5v5", "Conf. %"]]
+    rows = [["Jugador", "Perfil", "Min", "Último", "Media L5", "Cambio 5v5", "Conf. %"]]
     for row in sorted(squad, key=lambda item: base_v2._num(item.get("minutes")) or 0, reverse=True):
         if (base_v2._num(row.get("minutes")) or 0) <= 0:
             continue

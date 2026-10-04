@@ -23,11 +23,11 @@ COACH COPILOT QUERY-SPACE CONTRACT     PASS EN CI
 COACH COPILOT LOCAL REAL               PASS 28/28 · avg 0.4s
 COACH COPILOT OPENAI BYOK              IMPLEMENTADO / CONTRACT PASS / LIVE API NO VALIDADA
 ANONIMIZACIÓN DEMO ASSISTANT           CONTRACT PASS
-CAPTURAS FINALES                       PENDIENTE ÚLTIMO GATE VISUAL
+CAPTURAS FINALES                       PASS · 10/10 DEMO SINTÉTICA
 PUBLIC DEPLOYMENT                      NO HACER CON DATASET REAL POR LICENCIA
 ```
 
-No añadir nueva funcionalidad deportiva salvo defecto real. Coach Copilot queda congelado para entrega; prioridad inmediata: revisión visual, capturas y cierre documental.
+No añadir nueva funcionalidad deportiva salvo defecto real. Coach Copilot queda congelado para entrega; el cierre documental continúa sujeto a plantilla universitaria y presentación final.
 
 ---
 

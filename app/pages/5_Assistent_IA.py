@@ -60,14 +60,13 @@ def render_trace(trace: dict, *, fallback_provider: str, fallback_model: str) ->
     model = str(trace.get("model") or fallback_model)
 
     if rounds == 0 and tools:
-        st.write("Ruta: **determinista + herramientas FPS**")
-        st.write("LLM utilizado: **no**")
+        st.write("**Resuelta directamente con herramientas FPS**")
+        st.caption("La consulta era clara y no necesitó interpretación semántica adicional.")
         st.write("Cálculo crítico: **Python / DuckDB / analytics materializados**")
     elif rounds == 0:
-        st.write("Ruta: **preflight / guardrail local**")
-        st.write("LLM utilizado: **no**")
+        st.write("**Resuelta mediante las reglas de alcance y seguridad de FPS**")
     else:
-        st.write("Ruta: **interpretación semántica + herramientas FPS**")
+        st.write(f"**Interpretación semántica mediante {provider} + herramientas FPS**")
         st.write(f"Rondas de interpretación semántica: **{rounds}**")
         st.write(f"Proveedor semántico: **{provider}**")
         st.write(f"Modelo semántico: `{model}`")

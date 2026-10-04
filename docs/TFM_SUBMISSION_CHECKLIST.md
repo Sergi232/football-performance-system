@@ -90,16 +90,16 @@ Figuras técnicas:
 
 Capturas reales:
 
-- [ ] Collector.
-- [ ] Team Mode.
-- [ ] Player Mode.
-- [ ] Match Mode.
-- [ ] GPS.
-- [ ] Attention Centre.
-- [ ] Coach Copilot final con `Local · Qwen`, identidad demo y evidencia visible.
-- [ ] PDF Team.
-- [ ] PDF Player.
-- [ ] PDF Match.
+- [x] Collector.
+- [x] Team Mode.
+- [x] Player Mode.
+- [x] Match Mode.
+- [x] GPS.
+- [x] Attention Centre.
+- [x] Coach Copilot final con `Local · Qwen`, identidad demo y evidencia visible.
+- [x] PDF Team.
+- [x] PDF Player.
+- [x] PDF Match.
 
 Checklist detallada:
 - `docs/TFM_SCREENSHOT_CHECKLIST.md`.
@@ -114,8 +114,8 @@ Checklist detallada:
 - [x] Mensaje central definido.
 - [ ] Adaptar a duración oficial.
 - [ ] Crear presentación final.
-- [ ] Insertar capturas reales.
-- [ ] Preparar backup PDF/capturas por si falla la demo.
+- [x] Capturas reales preparadas en `docs/screenshots/`.
+- [x] Backup PDF/capturas preparado.
 - [ ] Ensayar defensa.
 
 ---
@@ -142,7 +142,7 @@ Pendiente si no se ha recibido todavía. Sin ella no puede cerrarse la maquetaci
 
 ## Capturas del producto local
 
-Requieren ejecutar el producto en el PC y capturar pantallas reales. Son el principal bloque pendiente controlable antes de la entrega.
+Completadas: las diez capturas canónicas se han generado desde la demo sintética y están disponibles en `docs/screenshots/`.
 
 ## Derechos del dataset profesional
 
@@ -156,7 +156,7 @@ No publicar ni redistribuir mientras no exista autorización/licencia explícita
 1  git pull --ff-only
 2  reconstruir / abrir demo sintética con FPS_DEMO_MODE=1
 3  comprobar visualmente identidades Equipo Demo / Jugador XX / Rival XX
-4  producir las 10 capturas canónicas
+4  capturas canónicas completadas
 5  adaptar memoria a plantilla disponible
 6  revisión final de bibliografía / idioma / numeración
 7  preparar presentación y backup estático
@@ -178,7 +178,7 @@ Coach Copilot real 28/28       ✅
 GitHub reproducible            ✅
 memoria académica              ✅ contenido base
 figuras técnicas               ✅
-capturas reales                pendiente
+capturas reales                ✅ 10/10 demo sintética
 plantilla/maquetación oficial  pendiente si aplica
 defensa final                  pendiente
 ```

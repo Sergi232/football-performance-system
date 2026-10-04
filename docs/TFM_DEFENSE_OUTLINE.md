@@ -190,8 +190,8 @@ Pregunta recomendada en demo:
 Abrir `Evidencia consultada` y señalar:
 
 ```text
-Ruta: determinista + herramientas FPS
-LLM utilizado: no
+Resuelta directamente con herramientas FPS
+La consulta era clara y no necesitó interpretación semántica adicional.
 Cálculo crítico: Python / DuckDB / analytics materializados
 ```
 

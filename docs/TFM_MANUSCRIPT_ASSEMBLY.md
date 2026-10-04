@@ -353,11 +353,11 @@ Bibliografía                    BASE CURADA
 Plan de figuras/tablas          DEFINIDO
 Anexos                          SINCRONIZADOS
 Plantilla universitaria         PENDIENTE SI NO DISPONIBLE
-Capturas finales                PENDIENTE
+Capturas finales                COMPLETADAS · 10/10 DEMO SINTÉTICA
 Maquetación final               PENDIENTE
 Defensa                         GUION ACTUALIZADO
 ```
 
 ## Próximo paso
 
-La siguiente fase no es redactar más texto genérico. Es producir las **10 capturas reales canónicas**, aplicar la plantilla/maquetación final y ejecutar el checklist de entrega.
+La siguiente fase es aplicar la plantilla/maquetación final y ejecutar el checklist de entrega; las **10 capturas reales canónicas** ya están disponibles en `docs/screenshots/`.

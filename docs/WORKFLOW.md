@@ -331,12 +331,10 @@ Indicar de forma breve:
 ## 10. Prioridad actual
 
 ```text
-1  Último gate visual del Asistente IA
-2  10 capturas canónicas
-3  Revisión final de documentación/manuscrito
-4  Submission checklist
-5  Maquetación / entrega
-6  Defensa / demo final
+1  Revisión final de documentación/manuscrito
+2  Submission checklist
+3  Maquetación / entrega
+4  Defensa / demo final
 ```
 
 Criterio de cierre:

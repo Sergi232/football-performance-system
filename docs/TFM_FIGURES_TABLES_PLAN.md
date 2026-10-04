@@ -263,7 +263,7 @@ Requisitos:
 - no exponer datos profesionales identificables;
 - usar la misma resolución/aspecto cuando sea posible;
 - para Coach Copilot, mostrar `Fallback semántico = Local · Qwen`, una pregunta determinista y `Evidencia consultada`;
-- en esa evidencia, mostrar `Ruta: determinista + herramientas FPS`, `LLM utilizado: no` y el cálculo crítico en Python/DuckDB.
+- en esa evidencia, mostrar `Resuelta directamente con herramientas FPS`, `La consulta era clara y no necesitó interpretación semántica adicional` y el cálculo crítico en Python/DuckDB.
 
 ---
 

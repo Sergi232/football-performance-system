@@ -1,7 +1,7 @@
 # TFM — Checklist de capturas reales del producto
 
 Fecha: 04/10/2026
-Estado: pendiente de ejecución visual sobre el producto real.
+Estado: completado el 04/10/2026 sobre el producto real en modo demo sintético.
 
 Objetivo: definir exactamente qué capturas deben producirse para la memoria y la defensa. Estas capturas deben salir de la aplicación real ejecutada; no deben sustituirse por mockups.
 
@@ -132,12 +132,12 @@ Mostrar:
 - respuesta en castellano;
 - identidades demo (`Equipo Demo`, `Jugador XX`, `Rival XX`) cuando corresponda;
 - expander `Evidencia consultada` abierto;
-- `Ruta: determinista + herramientas FPS` cuando la consulta sea clara;
-- `LLM utilizado: no` en la captura determinista;
+- `Resuelta directamente con herramientas FPS` cuando la consulta sea clara;
+- explicación de que la consulta clara no necesitó interpretación semántica adicional;
 - tool/consulta estructurada legible;
 - referencia a Python / DuckDB / analytics materializados.
 
-La captura canónica debe mostrar una consulta con `rounds=0` internamente, presentada al usuario como **ruta determinista sin uso de LLM**. Esto evidencia que el modelo de lenguaje es un fallback de interpretación y no el motor que calcula la respuesta.
+La captura canónica debe mostrar una consulta con `rounds=0` internamente, presentada al usuario como **resolución directa con herramientas FPS**. Esto evidencia que el modelo de lenguaje es un fallback de interpretación y no el motor que calcula la respuesta.
 
 Uso:
 - demostrar la capa conversacional downstream de analytics y la arquitectura deterministic-first.
