@@ -78,12 +78,34 @@ def get_team_matches(db_path: Path, team_id: str) -> pd.DataFrame:
                 m.match_date,
                 CASE WHEN tm.is_home THEN 'H' ELSE 'A' END AS venue,
                 opp.display_name AS opponent,
-                tm.score_for,
-                tm.score_against,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.goals_for ELSE tm.score_for END AS score_for,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.goals_against ELSE tm.score_against END AS score_against,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.corners_for END AS corners_for,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.corners_against END AS corners_against,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.fouls_received END AS fouls_received,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.fouls_committed END AS fouls_committed,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.yellow_cards END AS yellow_cards,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.red_cards END AS red_cards,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.penalties_won END AS penalties_won,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.penalties_conceded END AS penalties_conceded,
                 tm.starting_formation
             FROM team_match tm
             JOIN matches m ON m.match_id = tm.match_id
             LEFT JOIN teams opp ON opp.team_id = tm.opponent_team_id
+            LEFT JOIN (
+                SELECT match_id, team_id,
+                  COUNT(*) FILTER (WHERE action_type='SHOT' AND outcome='GOAL') AS goals_for,
+                  COUNT(*) FILTER (WHERE action_type='GK' AND subtype='GOAL_CONCEDED') AS goals_against,
+                  COUNT(*) FILTER (WHERE action_type='CORNER' AND subtype='FOR') AS corners_for,
+                  COUNT(*) FILTER (WHERE action_type='CORNER' AND subtype='AGAINST') AS corners_against,
+                  COUNT(*) FILTER (WHERE action_type='FOUL' AND subtype='RECEIVED') AS fouls_received,
+                  COUNT(*) FILTER (WHERE action_type='FOUL' AND subtype='COMMITTED') AS fouls_committed,
+                  COUNT(*) FILTER (WHERE action_type='CARD' AND subtype='YELLOW') AS yellow_cards,
+                  COUNT(*) FILTER (WHERE action_type='CARD' AND subtype='RED') AS red_cards,
+                  COUNT(*) FILTER (WHERE action_type='PENALTY' AND subtype='WON') AS penalties_won,
+                  COUNT(*) FILTER (WHERE action_type='PENALTY' AND subtype='CONCEDED') AS penalties_conceded
+                FROM match_events GROUP BY match_id, team_id
+            ) ev ON ev.match_id=tm.match_id AND ev.team_id=tm.team_id
             WHERE tm.team_id = ?
             ORDER BY m.match_date DESC, m.match_id
             """,
@@ -133,16 +155,47 @@ def get_player_match_history(db_path: Path, team_id: str, player_id: str) -> pd.
                 pm.started,
                 pm.minutes_played AS minutes,
                 pm.primary_role,
+                (
+                    SELECT string_agg(
+                        concat_ws(' · ', prs.role, prs.side, concat(CAST(prs.start_second / 60 AS INTEGER), '''')),
+                        ' → ' ORDER BY prs.start_second
+                    )
+                    FROM player_role_stints prs
+                    WHERE prs.match_id=pm.match_id AND prs.team_id=pm.team_id AND prs.player_id=pm.player_id
+                ) AS observed_role_stints,
                 rs.passes_total,
                 rs.passes_completed,
+                (
+                    SELECT COUNT(*) FROM match_events me
+                    WHERE me.match_id=pm.match_id AND me.team_id=pm.team_id AND me.player_id=pm.player_id
+                      AND me.action_type='PASS' AND CAST(me.qualifiers AS VARCHAR) LIKE '%"key_pass":true%'
+                ) AS key_passes,
+                rs.long_balls_total,
+                rs.long_balls_completed,
+                rs.crosses_total,
+                rs.crosses_completed,
                 rs.assists,
+                rs.dribbles_total,
+                rs.dribbles_won,
                 rs.shots_total,
+                rs.shots_on_target,
+                rs.shots_blocked,
                 rs.goals,
                 rs.tackles_total,
                 rs.tackles_won,
                 rs.interceptions,
+                rs.blocked_passes,
+                rs.clearances,
                 rs.turnovers,
-                rs.dispossessed
+                rs.dispossessed,
+                rs.fouls_committed,
+                rs.fouls_received,
+                rs.yellow_cards,
+                rs.red_cards,
+                rs.penalties_won,
+                rs.penalties_conceded,
+                rs.saves,
+                rs.goals_conceded
             FROM player_match pm
             JOIN matches m ON m.match_id = pm.match_id
             JOIN team_match tm ON tm.match_id = pm.match_id AND tm.team_id = pm.team_id
@@ -327,16 +380,47 @@ def get_match_lineup(db_path: Path, team_id: str, match_id: str) -> pd.DataFrame
                 pm.started,
                 pm.minutes_played AS minutes,
                 pm.primary_role,
+                (
+                    SELECT string_agg(
+                        concat_ws(' · ', prs.role, prs.side, concat(CAST(prs.start_second / 60 AS INTEGER), '''')),
+                        ' → ' ORDER BY prs.start_second
+                    )
+                    FROM player_role_stints prs
+                    WHERE prs.match_id=pm.match_id AND prs.team_id=pm.team_id AND prs.player_id=pm.player_id
+                ) AS observed_role_stints,
                 rs.passes_total,
                 rs.passes_completed,
+                (
+                    SELECT COUNT(*) FROM match_events me
+                    WHERE me.match_id=pm.match_id AND me.team_id=pm.team_id AND me.player_id=pm.player_id
+                      AND me.action_type='PASS' AND CAST(me.qualifiers AS VARCHAR) LIKE '%"key_pass":true%'
+                ) AS key_passes,
+                rs.long_balls_total,
+                rs.long_balls_completed,
+                rs.crosses_total,
+                rs.crosses_completed,
                 rs.assists,
+                rs.dribbles_total,
+                rs.dribbles_won,
                 rs.shots_total,
+                rs.shots_on_target,
+                rs.shots_blocked,
                 rs.goals,
                 rs.tackles_total,
                 rs.tackles_won,
                 rs.interceptions,
+                rs.blocked_passes,
+                rs.clearances,
                 rs.turnovers,
-                rs.dispossessed
+                rs.dispossessed,
+                rs.fouls_committed,
+                rs.fouls_received,
+                rs.yellow_cards,
+                rs.red_cards,
+                rs.penalties_won,
+                rs.penalties_conceded,
+                rs.saves,
+                rs.goals_conceded
             FROM player_match pm
             JOIN players p ON p.player_id = pm.player_id
             LEFT JOIN player_match_raw_stats rs
@@ -347,6 +431,32 @@ def get_match_lineup(db_path: Path, team_id: str, match_id: str) -> pd.DataFrame
             ORDER BY pm.started DESC, pm.minutes_played DESC NULLS LAST, pm.shirt_number NULLS LAST, p.display_name
             """,
             [team_id, match_id],
+        ).df()
+
+
+def get_match_event_log(db_path: Path, team_id: str, match_id: str) -> pd.DataFrame:
+    """Expose Collector raw events as imported, without producing new metrics."""
+    assert_team_access(team_id)
+    with connect_read_only(db_path) as con:
+        return con.execute(
+            """
+            SELECT
+                me.event_id,
+                p.display_name AS player,
+                me.period,
+                me.match_second,
+                me.action_type,
+                me.subtype,
+                me.outcome,
+                me.x,
+                me.y,
+                CAST(me.qualifiers AS VARCHAR) AS qualifiers
+            FROM match_events me
+            LEFT JOIN players p ON p.player_id=me.player_id
+            WHERE me.match_id=? AND me.team_id=?
+            ORDER BY me.period NULLS LAST, me.match_second NULLS LAST, me.event_id
+            """,
+            [match_id, team_id],
         ).df()
 
 

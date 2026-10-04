@@ -23,7 +23,7 @@ from app.coach_ui import (
     scoreboard_card,
     section_header,
 )
-from app.data_access import get_squad_summary, get_team_matches, list_teams
+from app.data_access import get_match_event_log, get_match_lineup, get_squad_summary, get_team_matches, list_teams
 from app.match_insights import get_match_observations
 from app.match_rating_access import MATCH_RATING_VERSION, get_match_ratings
 from app.presentation import (
@@ -121,6 +121,18 @@ ratings = anonymize_frame(
     opponent_aliases=opponent_aliases,
 )
 observations = get_match_observations(path, team_id, match_id)
+lineup = anonymize_frame(
+    get_match_lineup(path, team_id, match_id),
+    player_aliases_by_id=player_aliases,
+    player_name_aliases=player_name_aliases,
+    opponent_aliases=opponent_aliases,
+)
+event_log = anonymize_frame(
+    get_match_event_log(path, team_id, match_id),
+    player_aliases_by_id=player_aliases,
+    player_name_aliases=player_name_aliases,
+    opponent_aliases=opponent_aliases,
+)
 match_opponent = display_opponent(match.get("opponent"), opponent_aliases)
 
 page_header(
@@ -153,6 +165,13 @@ with k3:
     metric_card("Jugadores utilizados", str(len(ratings)), "Apariciones con minutos")
 with k4:
     metric_card("Rol no disponible", str(fallback_rows), "Modelo de respaldo explícito, sin imputar posición")
+
+if pd.notna(match.get("corners_for")):
+    b1, b2, b3, b4 = st.columns(4)
+    b1.metric("Córners", f"{int(match['corners_for'])} · {int(match['corners_against'])}")
+    b2.metric("Faltas", f"{int(match['fouls_received'])} recibidas · {int(match['fouls_committed'])} cometidas")
+    b3.metric("Tarjetas", f"{int(match['yellow_cards'])} A · {int(match['red_cards'])} R")
+    b4.metric("Penaltis", f"{int(match['penalties_won'])} favor · {int(match['penalties_conceded'])} contra")
 
 st.write("")
 tab_review, tab_players, tab_dimensions, tab_evidence = st.tabs(["Revisión técnica", "Jugadores", "Dimensiones", "Evidencia"])
@@ -228,6 +247,50 @@ with tab_players:
                 "Confianza %": st.column_config.ProgressColumn(min_value=0, max_value=100, format="%.0f%%"),
             },
         )
+
+    section_header("Acciones registradas por jugador", "Hechos importados del Collector; los valores no se recalculan en esta vista")
+    if lineup.empty:
+        st.info("No hay ficha de acciones para este partido.")
+    else:
+        details = lineup.copy()
+        details["Titular"] = details["started"].map({True: "Sí", False: "No", 1: "Sí", 0: "No"}).fillna("—")
+        details["Rol inicial"] = details["primary_role"].fillna("Sin rol observado")
+        details["Rol/lado y cambios"] = details["observed_role_stints"].fillna("No disponible")
+        columns = [
+            "player", "shirt_number", "Titular", "minutes", "Rol inicial", "Rol/lado y cambios",
+            "passes_total", "passes_completed", "key_passes", "long_balls_total", "long_balls_completed",
+            "crosses_total", "crosses_completed", "assists", "dribbles_total", "dribbles_won", "turnovers",
+            "shots_total", "shots_on_target", "shots_blocked", "goals", "tackles_total", "tackles_won",
+            "interceptions", "blocked_passes", "clearances", "fouls_committed", "fouls_received", "yellow_cards",
+            "red_cards", "penalties_won", "penalties_conceded", "saves", "goals_conceded",
+        ]
+        details = details[[column for column in columns if column in details.columns]]
+        details = details.rename(columns={
+            "player": "Jugador", "shirt_number": "Dorsal", "minutes": "Min", "passes_total": "Pases",
+            "passes_completed": "Comp.", "key_passes": "Clave", "long_balls_total": "Largos",
+            "long_balls_completed": "Largos comp.", "crosses_total": "Centros", "crosses_completed": "Centros comp.",
+            "assists": "Asist.", "dribbles_total": "Regates", "dribbles_won": "Regates gan.",
+            "turnovers": "Pérdidas", "shots_total": "Remates", "shots_on_target": "A puerta",
+            "shots_blocked": "Bloqueados", "goals": "Goles", "tackles_total": "Entradas",
+            "tackles_won": "Ganadas", "interceptions": "Intercepciones", "blocked_passes": "Bloqueos",
+            "clearances": "Despejes", "fouls_committed": "Faltas com.", "fouls_received": "Faltas rec.",
+            "yellow_cards": "Amarillas", "red_cards": "Rojas", "penalties_won": "Penaltis favor",
+            "penalties_conceded": "Penaltis contra", "saves": "Paradas", "goals_conceded": "Goles encajados",
+        })
+        st.dataframe(details, hide_index=True, width="stretch", height=440, alt="Acciones registradas por jugador en el partido seleccionado")
+
+    with st.expander("Registro raw del Collector", expanded=False):
+        st.caption("Cada fila conserva tipo, subtipo, resultado, instante, coordenadas y qualifiers exportados por el Collector.")
+        if event_log.empty:
+            st.info("No hay eventos raw para este partido.")
+        else:
+            raw = event_log.copy()
+            raw["Minuto"] = (pd.to_numeric(raw["match_second"], errors="coerce") // 60).astype("Int64")
+            raw = raw.rename(columns={
+                "player": "Jugador", "action_type": "Acción", "subtype": "Subtipo", "outcome": "Resultado",
+                "x": "X", "y": "Y", "qualifiers": "Qualifiers",
+            })
+            st.dataframe(raw[["Jugador", "period", "Minuto", "Acción", "Subtipo", "Resultado", "X", "Y", "Qualifiers"]], hide_index=True, width="stretch", height=360, alt="Registro raw de eventos exportados por el Collector")
 
 with tab_dimensions:
     section_header("Dimensiones", "Explicación del rendimiento por jugador")

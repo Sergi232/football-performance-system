@@ -145,6 +145,20 @@ latest_match = matches.iloc[0] if not matches.empty else None
 median_latest = pd.to_numeric(latest_match_ratings.get("match_rating_10"), errors="coerce").median() if not latest_match_ratings.empty else None
 median_conf = pd.to_numeric(latest_match_ratings.get("match_rating_confidence"), errors="coerce").median() if not latest_match_ratings.empty else None
 
+# These are direct event aggregates for Collector matches.  Null means the source did
+# not capture the event family, so Team Mode deliberately shows N/D rather than 0.
+result_rows = matches.dropna(subset=["score_for", "score_against"]).copy()
+if result_rows.empty:
+    record_text = "N/D"
+else:
+    sf = pd.to_numeric(result_rows["score_for"], errors="coerce")
+    sa = pd.to_numeric(result_rows["score_against"], errors="coerce")
+    record_text = f"{int((sf > sa).sum())}V · {int((sf == sa).sum())}E · {int((sf < sa).sum())}D"
+
+def event_total(column: str) -> str:
+    values = pd.to_numeric(matches.get(column), errors="coerce")
+    return "N/D" if values.dropna().empty else str(int(values.sum()))
+
 if latest_match is not None:
     board, signals = st.columns([1.55, 1], gap="large")
     with board:
@@ -163,6 +177,15 @@ if latest_match is not None:
             metric_card("Confianza mediana", safe_number(median_conf, 0, "%"), "Último partido")
         with c:
             metric_card("Forma", recent_record(matches, 5), "Últimos 5 · más reciente primero")
+        basic_a, basic_b, basic_c, basic_d = st.columns(4)
+        with basic_a:
+            metric_card("Balance V/E/D", record_text, "Partidos con resultado registrado")
+        with basic_b:
+            metric_card("Goles", f"{event_total('score_for')} · {event_total('score_against')}", "GF · GC")
+        with basic_c:
+            metric_card("Córners", f"{event_total('corners_for')} · {event_total('corners_against')}", "Favor · contra")
+        with basic_d:
+            metric_card("Faltas", f"{event_total('fouls_received')} · {event_total('fouls_committed')}", "Recibidas · cometidas")
     with signals:
         section_header("Cambios recientes", "Comparación descriptiva de bloques de cinco partidos")
         rising, falling = describe_trend(rating_snapshot) if not rating_snapshot.empty else (pd.DataFrame(), pd.DataFrame())
@@ -264,9 +287,15 @@ with tab_matches:
         for col in ["median_match_rating", "median_confidence"]:
             if col not in display.columns:
                 display[col] = pd.NA
-        display = display[["Fecha", "L/V", "opponent", "Resultado", "Formación", "median_match_rating", "median_confidence"]]
-        display.columns = ["Fecha", "L/V", "Rival", "Resultado", "Formación", "Rating mediano", "Confianza mediana %"]
-        st.dataframe(display, hide_index=True, width="stretch", height=600)
+        for col in ["corners_for", "corners_against", "fouls_received", "fouls_committed", "yellow_cards", "red_cards", "penalties_won", "penalties_conceded"]:
+            display[col] = pd.to_numeric(display.get(col), errors="coerce")
+        display["Córners F/C"] = display.apply(lambda r: "N/D" if pd.isna(r.corners_for) else f"{int(r.corners_for)} · {int(r.corners_against)}", axis=1)
+        display["Faltas R/C"] = display.apply(lambda r: "N/D" if pd.isna(r.fouls_received) else f"{int(r.fouls_received)} · {int(r.fouls_committed)}", axis=1)
+        display["Tarjetas A/R"] = display.apply(lambda r: "N/D" if pd.isna(r.yellow_cards) else f"{int(r.yellow_cards)} · {int(r.red_cards)}", axis=1)
+        display["Penaltis F/C"] = display.apply(lambda r: "N/D" if pd.isna(r.penalties_won) else f"{int(r.penalties_won)} · {int(r.penalties_conceded)}", axis=1)
+        display = display[["Fecha", "L/V", "opponent", "Resultado", "Formación", "Córners F/C", "Faltas R/C", "Tarjetas A/R", "Penaltis F/C", "median_match_rating", "median_confidence"]]
+        display.columns = ["Fecha", "L/V", "Rival", "Resultado", "Formación", "Córners F/C", "Faltas R/C", "Tarjetas A/R", "Penaltis F/C", "Rating mediano", "Confianza mediana %"]
+        st.dataframe(display, hide_index=True, width="stretch", height=600, alt="Historial del equipo con resultados y eventos básicos registrados")
 
 with tab_index:
     section_header("Performance Index", "Perfil histórico/posicional complementario al Match Rating")

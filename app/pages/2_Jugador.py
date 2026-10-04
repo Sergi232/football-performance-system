@@ -309,9 +309,27 @@ with tab_technical:
         technical = history.copy()
         technical["match_date"] = pd.to_datetime(technical["match_date"]).dt.date
         technical["opponent"] = technical["opponent"].map(lambda x: display_opponent(x, opponent_aliases))
-        technical = technical[["match_date", "opponent", "minutes", "primary_role", "passes_total", "passes_completed", "assists", "shots_total", "goals", "tackles_total", "tackles_won", "interceptions", "turnovers", "dispossessed"]]
-        technical.columns = ["Fecha", "Rival", "Min", "Rol observado", "Pases", "Completados", "Asist.", "Remates", "Goles", "Entradas", "Ganadas", "Intercepciones", "Pérdidas", "Desposesiones"]
-        st.dataframe(technical, hide_index=True, width="stretch", height=560)
+        technical = technical[[
+            "match_date", "opponent", "started", "minutes", "primary_role", "observed_role_stints",
+            "passes_total", "passes_completed", "key_passes", "long_balls_total", "long_balls_completed",
+            "crosses_total", "crosses_completed", "assists", "dribbles_total", "dribbles_won",
+            "turnovers", "dispossessed", "shots_total", "shots_on_target", "shots_blocked", "goals",
+            "tackles_total", "tackles_won", "interceptions", "blocked_passes", "clearances",
+            "fouls_committed", "fouls_received", "yellow_cards", "red_cards", "penalties_won",
+            "penalties_conceded", "saves", "goals_conceded",
+        ]]
+        technical.columns = [
+            "Fecha", "Rival", "Titular", "Min", "Rol inicial", "Rol/lado y cambios",
+            "Pases", "Completados", "Clave", "Largos", "Largos comp.", "Centros", "Centros comp.",
+            "Asist.", "Regates", "Regates gan.", "Pérdidas", "Desposesiones", "Remates", "A puerta",
+            "Bloqueados", "Goles", "Entradas", "Ganadas", "Intercepciones", "Bloqueos", "Despejes",
+            "Faltas com.", "Faltas rec.", "Amarillas", "Rojas", "Penaltis favor", "Penaltis contra",
+            "Paradas", "Goles encajados",
+        ]
+        technical["Titular"] = technical["Titular"].map({True: "Sí", False: "No", 1: "Sí", 0: "No"}).fillna("—")
+        technical["Rol inicial"] = technical["Rol inicial"].fillna("Sin rol observado")
+        technical["Rol/lado y cambios"] = technical["Rol/lado y cambios"].fillna("No disponible")
+        st.dataframe(technical, hide_index=True, width="stretch", height=560, alt="Acciones técnicas observadas por partido del jugador")
 
 with tab_expert:
     section_header("Motor experto", "Estado auditable del sistema jerárquico")
