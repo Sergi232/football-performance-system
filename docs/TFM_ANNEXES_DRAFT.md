@@ -1,6 +1,6 @@
 # TFM — Borrador de anexos
 
-Fecha: 03/10/2026
+Fecha: 04/10/2026
 Estado: estructura y contenido base para anexos de la memoria.
 
 Objetivo: conservar trazabilidad técnica sin sobrecargar el cuerpo principal. Los anexos deben contener detalle reproducible, no repetir la discusión académica.
@@ -344,41 +344,60 @@ No inferir:
 
 # Anexo G — Coach Copilot
 
-Arquitectura:
+Arquitectura local final:
 
 ```text
-DATA
-→ ANALYTICS
-→ DECISION ENGINE
+QUESTION
+→ DETERMINISTIC HIGH-CONFIDENCE ROUTER
 → READ-ONLY TOOLS
-→ ROUTER
-→ OLLAMA
-→ SEMANTIC GUARD
-→ COACH
+→ PYTHON / DUCKDB / ANALYTICS / EXPERT
+→ STRUCTURED EVIDENCE
+→ FACTUAL ANSWER
 ```
 
-Perfil:
+Fallback semántico solo cuando la intención sigue siendo ambigua:
 
 ```text
-model=qwen3:1.7b
-scope=SPANISH_ONLY_MVP
-thinking=False
-num_ctx=1536
-timeout=18s
+QUESTION AMBIGUA
+→ qwen3.5:4b
+→ TOOL SELECTION
+→ LOCAL TOOL VALIDATION
+→ PYTHON / DUCKDB
+→ STRUCTURED EVIDENCE
+→ FACTUAL ANSWER
 ```
 
-Validación:
+Validación real sobre la DuckDB profesional:
 
 ```text
-router=17/17
-aggregate=66/68=97.1%
-runtime_errors=0
-safety_failures=0
-numeric_grounding=PASS
-castellano=PASS
-subject_contract=PASS
-smoke=4/4 PASS
+SMOKE CONTRACT: PASS (22/22)
+average_elapsed=1.4s
+consultas deterministas típicas=0.1–0.8s
+follow-ups=0.1–0.2s
+fallback Qwen observado fuera de dominio=25.3s
 ```
+
+Guardrails comprobados:
+- fatiga/cansancio;
+- riesgo de lesión;
+- titularidad/XI;
+- recomendaciones tácticas no validadas;
+- `mejor jugador`, `más completo` y `más determinante` sin definición analítica aprobada.
+
+Proveedor externo opcional:
+
+```text
+OpenAI API · clave propia
+```
+
+Contrato:
+- preguntas claras → ruta determinista, sin llamada API;
+- preguntas ambiguas → OpenAI puede seleccionar únicamente tools FPS bounded/read-only;
+- toda tool call externa se revalida localmente;
+- la API key pertenece al usuario y no se persiste en DuckDB ni archivos del proyecto;
+- OpenAI no accede directamente a DuckDB;
+- contract tests + CI PASS;
+- benchmark live con API key real: no validado.
 
 Figura asociada:
 - `docs/figures/tfm_llm_grounding.svg`.
@@ -472,10 +491,13 @@ checkout
 → synthetic demo validator
 ```
 
-Run de referencia:
+Runs recientes de referencia:
 
 ```text
-37081464123 = SUCCESS
+37162911509 = SUCCESS — smoke direct execution fix
+37163349049 = SUCCESS — optional OpenAI Coach Copilot
+37163417219 = SUCCESS — OpenAI BYOK UI + contracts
+37163457928 = SUCCESS — external tool-surface contract tests
 ```
 
 ---
@@ -517,6 +539,6 @@ Prioridad media:
 - C Features;
 - E Match Rating;
 - F GPS;
-- G LLM.
+- G Coach Copilot.
 
 Las capturas pueden dividirse entre cuerpo principal y anexo según espacio.
