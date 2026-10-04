@@ -28,8 +28,8 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Validate unified PERF-18 Match Rating V5 candidate")
     p.add_argument("--db", type=Path, default=DEFAULT_DB)
     p.add_argument("--metadata", type=Path, default=DEFAULT_METADATA)
-    p.add_argument("--outfield-player", default="Aleñá")
-    p.add_argument("--goalkeeper", default="Sivera")
+    p.add_argument("--outfield-player", default="", help="Optional private local sample; omitted in public validation output")
+    p.add_argument("--goalkeeper", default="", help="Optional private local sample; omitted in public validation output")
     return p.parse_args()
 
 
@@ -227,15 +227,17 @@ def main() -> None:
     heavy = final.loc[(final["score_against"] - final["score_for"]) >= 2].copy()
     if not heavy.empty:
         heavy_summary = (
-            heavy.groupby(["match_date", "match_id", "score_for", "score_against"])["match_rating_10"]
+            heavy.groupby(["match_date", "score_for", "score_against"])["match_rating_10"]
             .agg(players="count", mean="mean", median="median")
             .reset_index().sort_values("match_date")
         )
         print("\nHEAVY LOSSES — FULL TEAM")
         print(heavy_summary.to_string(index=False))
 
-    sample_player(final, args.outfield_player, "OUTFIELD SAMPLE")
-    sample_player(final, args.goalkeeper, "GOALKEEPER SAMPLE")
+    if args.outfield_player:
+        sample_player(final, args.outfield_player, "OUTFIELD SAMPLE")
+    if args.goalkeeper:
+        sample_player(final, args.goalkeeper, "GOALKEEPER SAMPLE")
 
     contract = bool(
         coverage_gate and integrity_gate and route_gate and fallback_gate and gk_weight_gate
