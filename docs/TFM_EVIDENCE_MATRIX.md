@@ -1,6 +1,6 @@
 # TFM — Matriz de evidencias y claims
 
-Fecha: 03/10/2026
+Fecha: 04/10/2026
 
 Objetivo: vincular cada afirmación relevante de la memoria con evidencia técnica reproducible del repositorio. Si un claim no aparece aquí o no dispone de evidencia independiente, no debe presentarse como resultado demostrado.
 
@@ -19,20 +19,29 @@ Objetivo: vincular cada afirmación relevante de la memoria con evidencia técni
 | Match Rating y GPS permanecen separados | Arquitectura + access layer | `app/match_rating_access.py`, `app/gps_physical_access.py` | PASS |
 | GPS es opcional y multi-proveedor | Contrato de normalización | `gps/`, `data/migrations/004_gps_normalization.sql` | PASS ESTRUCTURAL |
 | GPS real tiene precedencia sobre sintético | Materialización del resumen físico | `analytics/build_gps_physical_summary.py` | PASS |
-| No existen inferencias de fatiga/readiness/lesión | Guardrails de GPS, Attention, Expert y LLM | `analytics/build_attention_flags.py`, docs GPS, LLM guards | PASS |
+| No existen inferencias de fatiga/readiness/lesión | Guardrails de GPS, Attention, Expert y Assistant | `analytics/build_attention_flags.py`, `llm/coach_agent_fast.py` | PASS |
 | Dashboard Team/Player/Match consume capas validadas | Data contract + QA de producto | `app/` validators | PASS |
 | Access control restringe equipos por rol | Contract tests | `app/access_control.py` + validator | PASS |
 | Autenticación real no está implementada | Estado explícito | `PROJECT_STATE.md` | LIMITACIÓN |
-| Coach Copilot usa tools read-only y no recalcula métricas críticas | Arquitectura LLM + contract tests | `llm/` | PASS |
-| Coach Copilot final es Spanish-only MVP | Semantic guard + validation | `llm/coach_agent_semantic_guard_v4.py`, `llm/validate_local_agent.py` | PASS |
-| Smoke local Coach Copilot funciona con Ollama | Validator local | `LOCAL AGENT CONTRACT: PASS (4/4)` | PASS |
+| Coach Copilot usa tools read-only y no recalcula métricas críticas | Arquitectura + contract tests | `llm/coach_agent_general.py`, `llm/coach_agent_fast.py` | PASS |
+| Las consultas claras del Coach Copilot se resuelven de forma determinista | Smoke real + query grammar | `llm/smoke_test_coach_agent.py`, `llm/coach_agent_general.py` | PASS |
+| El fallback local del Coach Copilot usa Qwen solo para lenguaje ambiguo | Runtime híbrido | `llm/coach_agent_general.py`, `llm/coach_agent_fast.py` | IMPLEMENTADO |
+| Smoke local real del Coach Copilot cubre 22 casos | Ejecución con DuckDB profesional | `SMOKE CONTRACT: PASS (22/22)`, avg `1.4s` | PASS |
+| Follow-ups ordinales/ventana/evidencia mantienen contexto | Smoke real + tests | `llm/smoke_test_coach_agent.py`, `tests/test_coach_agent_fast.py` | PASS |
+| Guardrails bloquean fatiga, lesión, titularidad y criterios globales no validados | Smoke real + tests | `llm/coach_agent_fast.py`, `tests/test_coach_agent_fast.py` | PASS |
+| OpenAI BYOK es opcional y no da acceso directo a DuckDB | Arquitectura externa | `llm/coach_agent_external.py`, `app/pages/5_Assistent_IA.py` | IMPLEMENTADO |
+| Tool calls OpenAI se limitan y revalidan localmente | Contract tests | `tests/test_coach_agent_external.py` | PASS |
+| Una tool externa desconocida se descarta | Contract test | `tests/test_coach_agent_external.py` | PASS |
+| La API key del usuario no se persiste en DuckDB ni archivos del proyecto desde la UI | Implementación UI | `app/pages/5_Assistent_IA.py` | IMPLEMENTADO |
+| El modo OpenAI ha sido probado live con una API key real | No existe evidencia live | — | NO VALIDADO |
 | Reports V6 consumen analytics y no recalculan lógica crítica | Report gate | `reports/validate_reports_pro.py` | PASS |
 | El producto completo supera QA end-to-end | Secuencia de validaciones por capas | `PROJECT_STATE.md` | PASS |
-| La demo anonimizada local elimina identidad, pero no resuelve licencia | Publication validator | `publication/validate_public_demo.py` | PASS / NO REDISTRIBUIBLE |
+| La demo profesional local no se redistribuye por defecto | Política de publicación | `PROJECT_STATE.md`, `publication/` | LIMITACIÓN DE LICENCIA |
 | Existe una demo pública generada desde cero | Builder sintético | `publication/build_synthetic_demo.py` | PASS |
 | La demo sintética contiene 0 filas profesionales | Validator reproducible | `publication/validate_synthetic_demo.py` | PASS |
 | La demo sintética funciona con la capa de app y reports | Validator reproducible | `app_read_layer=PASS`, `report_payloads=PASS` | PASS |
-| El repo se valida desde un entorno limpio | GitHub Actions | `.github/workflows/tests.yml`, run `37081464123` | SUCCESS |
+| La demo sintética es redistribuible según su contrato | Validator reproducible | `redistribution_status=REDISTRIBUTABLE_SYNTHETIC_DEMO` | PASS |
+| El repo se valida desde un entorno limpio | GitHub Actions | `.github/workflows/tests.yml` | SUCCESS |
 | CI se ejecuta en push/PR | Workflow GitHub Actions | `.github/workflows/tests.yml` | ACTIVO |
 
 ## Métricas de referencia del caso profesional de desarrollo
@@ -47,6 +56,18 @@ Match Rating coverage = 590/590
 Goalkeeper rating rows = 38
 generic role fallback = 172
 ```
+
+## Validación de referencia del Coach Copilot
+
+```text
+SMOKE CONTRACT = PASS (22/22)
+average_elapsed = 1.4s
+consultas deterministas típicas = 0.1–0.8s
+follow-ups = 0.1–0.2s
+fallback Qwen fuera de dominio observado = 25.3s
+```
+
+La latencia de 1,4 s es la media de esa batería concreta en el PC de desarrollo. No debe generalizarse como SLA universal.
 
 ## Métricas de la demo pública sintética
 
@@ -79,6 +100,9 @@ Se puede afirmar:
 - que existen controles explícitos contra leakage temporal;
 - que el sistema degrada cuando falta evidencia;
 - que el LLM actúa downstream de analytics y decision engine;
+- que las consultas soportadas de alta confianza pueden resolverse sin LLM;
+- que el Coach Copilot pasó un smoke real de 22/22 casos sobre la DuckDB profesional;
+- que existe un modo OpenAI BYOK opcional protegido por el mismo contrato de tools;
 - que el QA técnico y CI están en PASS.
 
 ## Claims no demostrados
@@ -92,7 +116,9 @@ No afirmar como resultado probado:
 - que el sistema detecte fatiga, readiness o riesgo de lesión;
 - que N13000 recomiende el rol táctico óptimo;
 - que el producto tenga validación comercial real;
-- que exista validación con usuarios reales si no se realiza posteriormente.
+- que exista validación con usuarios reales si no se realiza posteriormente;
+- que el modo OpenAI tenga una latencia o calidad concreta sin una prueba live;
+- que una suscripción ChatGPT sustituya una API key o consumo API en el modo BYOK.
 
 ## Regla de uso en la memoria
 
