@@ -175,12 +175,15 @@ with k2:
 with k3:
     metric_card("A puerta", available_integer(match.get("shots_on_target")), "Gol + a puerta")
 with k4:
-    metric_card("Córners", available_pair(match.get("corners_for"), match.get("corners_against")), "Favor · contra")
+    passes = match.get("passes_total")
+    completed = match.get("passes_completed")
+    pass_label = "N/D" if passes is None or pd.isna(passes) or float(passes) <= 0 or completed is None or pd.isna(completed) else f"{100.0 * float(completed) / float(passes):.0f}%"
+    metric_card("Pase", pass_label, "Completados / intentados")
 
 b1, b2, b3, b4 = st.columns(4)
-b1.metric("Faltas", f"{available_integer(match.get('fouls_committed'))} cometidas · {available_integer(match.get('fouls_received'))} recibidas")
-b2.metric("Tarjetas", f"{available_integer(match.get('yellow_cards'))} amarillas · {available_integer(match.get('red_cards'))} rojas")
-b3.metric("Penaltis", f"{available_integer(match.get('penalties_won'))} favor · {available_integer(match.get('penalties_conceded'))} contra")
+b1.metric("Faltas", f"FC {available_integer(match.get('fouls_committed'))} · FR {available_integer(match.get('fouls_received'))}")
+b2.metric("Tarjetas", f"🟨 {available_integer(match.get('yellow_cards'))} · 🟥 {available_integer(match.get('red_cards'))}")
+b3.metric("Penaltis", f"PF {available_integer(match.get('penalties_won'))} · PC {available_integer(match.get('penalties_conceded'))}")
 b4.metric("Jugadores utilizados", str(len(ratings)), "Apariciones con minutos")
 
 c1, c2, c3 = st.columns(3)

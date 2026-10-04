@@ -198,15 +198,13 @@ if latest_match is not None:
             metric_card("GF", event_total("score_for"), "Goles a favor")
         with d:
             metric_card("GC", event_total("score_against"), "Goles en contra")
-        basic_a, basic_b, basic_c, basic_d = st.columns(4)
+        basic_a, basic_b, basic_c = st.columns(3)
         with basic_a:
             metric_card("Diferencia de goles", event_difference("score_for", "score_against"), "GF menos GC")
         with basic_b:
             metric_card("Remates", event_total("shots_total"), "Total registrado")
         with basic_c:
             metric_card("A puerta", event_total("shots_on_target"), "Gol + a puerta")
-        with basic_d:
-            metric_card("Córners", f"{event_total('corners_for')} · {event_total('corners_against')}", "Favor · contra")
         basic_a, basic_b, basic_c = st.columns(3)
         with basic_a:
             metric_card("Faltas cometidas", event_total("fouls_committed"), "Total registrado")
