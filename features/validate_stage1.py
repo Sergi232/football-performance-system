@@ -17,12 +17,14 @@ RAW_SOURCE_TYPE = "opta_player_stats"
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Validate FEATURE-01")
     parser.add_argument("--db", type=Path, default=DEFAULT_DB)
+    parser.add_argument("--raw-source-type", default=RAW_SOURCE_TYPE)
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
     db_path = args.db.expanduser().resolve()
+    raw_source_type = str(args.raw_source_type).strip()
     catalog = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
     version = catalog["feature_version"]
     ratios = catalog["ratio_features"]
@@ -141,7 +143,7 @@ def main() -> None:
                       AND f.feature_value IS NULL)
                   )
                 """,
-                [RAW_SOURCE_TYPE, version, feature["name"]],
+                [raw_source_type, version, feature["name"]],
             ).fetchone()[0]
 
         for feature in per90:
@@ -165,7 +167,7 @@ def main() -> None:
                       AND f.feature_value IS NULL)
                   )
                 """,
-                [RAW_SOURCE_TYPE, version, feature["name"]],
+                [raw_source_type, version, feature["name"]],
             ).fetchone()[0]
 
         if semantic_errors:

@@ -20,6 +20,8 @@ Esta separación es importante porque la demo sintética demuestra integración 
 
 # 2. Data Collector
 
+La integración completa del primer paso fue validada sobre una DuckDB aislada: una fixture JSON fiel al export V1.1 importó titular, suplente, minutos, rol, cambio de rol, pases, remate, acción defensiva, falta y córner; FEATURE-01/02/03 y Analytics completaron sin reinterpretar eventos. La capa de datos de la app leyó el equipo, partido y jugadores importados. Un único partido no aporta histórico suficiente para Match Rating o recomendación, por lo que no se fuerza esa salida.
+
 El Data Collector V1.1 superó el gate funcional final manteniendo la taxonomía `event_catalog v0.3.0`.
 
 Resultados del gate:

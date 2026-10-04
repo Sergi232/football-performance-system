@@ -91,6 +91,8 @@ Qwen/OpenAI no tienen acceso directo a DuckDB ni calculan Match Rating, Performa
 
 # 4. VARIABLES APROBADAS DEL DATA COLLECTOR
 
+Flujo first-party validado en DB aislada: `Collector HTML → JSON oficial → importer → DuckDB → FEATURE-01/02/03 → Analytics → capa de datos de App`. JSON V1.1 es el contrato oficial; los CSV son auxiliares. La fixture cubre titular, suplente, minutos, rol, cambio de rol, pase correcto/fallado, remate, acción defensiva, falta y córner. Un partido aislado no tiene histórico suficiente para materializar Match Rating o recomendaciones; el comportamiento esperado es ausencia de evidencia, no una inferencia forzada.
+
 Taxonomía congelada:
 
 ```text

@@ -13,6 +13,10 @@ La web es el producto principal. El LLM y los PDF son capas downstream de intera
 
 ## 2. Arquitectura vigente
 
+### Puente Collector → DuckDB
+
+El primer paso operativo queda cerrado con el contrato `Collector HTML → JSON → importer → DuckDB`. `data/import_collector_export.py` valida el catálogo V1.1, importa contexto, roster, minutos, rol observado, stints y eventos atómicos, y agrega solo contadores raw directos. La salida alimenta Feature Engine y Analytics sin introducir métricas avanzadas durante la importación. Los CSV del Collector se usan para revisión; JSON es el formato de intercambio oficial.
+
 ```text
 COLLECTOR / IMPORT + GPS OPCIONAL
         ↓
@@ -384,3 +388,4 @@ REVISIÓN VISUAL FINAL
 ```
 
 No se añaden módulos nuevos salvo que aparezca una necesidad real del cierre académico o una incidencia funcional demostrada.
+

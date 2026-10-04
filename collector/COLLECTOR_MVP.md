@@ -205,3 +205,16 @@ No se usa una categoría manual `CHANCE`, porque sería menos reproducible. El o
 - `tests/test_collector_contract.py` — tests del contrato sobre V1.1.
 
 La taxonomía MVP queda cerrada. Cualquier cambio futuro del Collector debe preservar la compatibilidad de eventos o documentar explícitamente una nueva versión del contrato.
+
+## Contrato oficial de integración V1.1
+
+El formato oficial de intercambio con backend es el **JSON** exportado por el botón `JSON`. Es el único export que conserva de forma conjunta `collector_version`, `catalog_version`, `meta`, `players`, `events`, `player_summary`, minutos, titularidad, rol, lado, cambios de rol y qualifiers. Los CSV se mantienen para inspección humana: `events.csv` contiene acciones atómicas y contexto plano; `summary.csv` contiene agregados visibles, pero no sustituye eventos ni stints.
+
+Flujo oficial:
+
+```text
+Collector HTML → export JSON → data/import_collector_export.py → DuckDB
+→ Feature Engine → Analytics → motor experto / App
+```
+
+El importer valida `collector_version=1.1.0` y `event_catalog=0.3.0`, rechaza estructura o eventos inválidos, conserva acciones en `match_events`, roster/minutos/rol en `player_match`, cambios de rol en `player_role_stints` y agrega únicamente contadores raw directos en `player_match_raw_stats`. La reimportación del mismo JSON es idempotente.

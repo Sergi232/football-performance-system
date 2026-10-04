@@ -157,6 +157,8 @@ La regla global fue impedir que una capa superior inventara resultados no soport
 
 ## 4.2 Selección de variables y Collector
 
+El flujo first-party se cerró de forma reproducible como `Collector HTML → JSON oficial → importer → DuckDB → Feature Engine → Analytics → motor experto / App`. JSON V1.1 se eligió como intercambio oficial porque preserva semántica de partido, plantilla, minutos, rol/lado, cambios de rol y eventos; CSV queda para revisión humana. La prueba aislada verificó fidelidad evento→raw→feature e idempotencia del import, sin calcular métricas avanzadas durante la carga.
+
 Las variables candidatas se filtraron por cinco criterios: observabilidad, consistencia de captura, información diferencial, utilidad posterior y coste de recogida.
 
 La taxonomía final quedó congelada en `event_catalog v0.3.0` e incluye identificación, minutos, rol, pases, centros, regates, pérdidas, remates, defensa, faltas, tarjetas, penaltis, portero y córners/ABP.

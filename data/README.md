@@ -89,6 +89,25 @@ Los datos originales permanecen locales y no se publican en el repositorio.
 
 ## Pipeline de importación
 
+### Collector HTML V1.1 — contrato first-party
+
+```text
+collector/data_collector_futbol_v1.html
+→ JSON oficial
+→ data/import_collector_export.py
+→ teams / players / matches / team_match / player_match
+→ player_role_stints / match_events / player_match_raw_stats
+→ Feature Engine → Analytics → motor experto → App
+```
+
+Uso:
+
+```bash
+python data/import_collector_export.py <export.json> --db <base.duckdb>
+```
+
+El JSON es oficial porque incluye contexto, plantilla, minutos, rol/lado, cambios de rol y eventos; los CSV son exportaciones auxiliares. El importer mapea `action_type/subtype/outcome/qualifiers` directamente a `match_events`, preserva identificadores de fuente y deja como `NULL` cualquier raw sin equivalente semántico del catálogo. No calcula features, ratings ni recomendaciones.
+
 ### DATA-01 — esquema / fixtures
 
 ```bash

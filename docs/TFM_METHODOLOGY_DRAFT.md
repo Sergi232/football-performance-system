@@ -39,6 +39,8 @@ El trabajo se dividió en cuatro tipos de actividad:
 
 # 2. Definición de variables y Data Collector
 
+El puente first-party se valida mediante el contrato `Collector HTML → JSON → importer → DuckDB`. JSON V1.1 es el formato oficial porque conserva metadatos, plantilla, minutos, rol/lado, stints y eventos; CSV queda como export auxiliar. El importer valida catálogo y estructura y no calcula features ni métricas avanzadas.
+
 La selección de variables se realizó aplicando cinco filtros:
 
 1. que la acción fuese observable en vídeo;
