@@ -8,6 +8,7 @@ FPS_DEMO_MODE=0 explicitly for a private local real-identity view.
 from __future__ import annotations
 
 import os
+import re
 from collections import Counter
 from collections.abc import Iterable
 
@@ -36,6 +37,28 @@ def build_player_aliases(squad: pd.DataFrame) -> dict[str, str]:
     frame["player_id"] = frame["player_id"].astype(str)
     frame = frame.drop_duplicates("player_id").sort_values("player_id", kind="stable")
     return {str(row.player_id): f"Jugador {i:02d}" for i, row in enumerate(frame.itertuples(index=False), start=1)}
+
+
+def build_player_alias_to_real(squad: pd.DataFrame) -> dict[str, str]:
+    """Return the canonical demo alias -> full runtime player-name mapping.
+
+    Do not reverse ``build_player_name_aliases``: that mapping also contains surname
+    and abbreviated variants, so a naive reverse can turn ``Jugador 01`` into
+    ``A. Apellido`` instead of the full canonical name required by runtime lookup.
+    """
+    by_id = build_player_aliases(squad)
+    if not by_id or squad is None or squad.empty or not {"player_id", "player"}.issubset(squad.columns):
+        return {}
+    rows = squad[["player_id", "player"]].drop_duplicates("player_id").copy()
+    rows["player_id"] = rows["player_id"].astype(str)
+    rows["player"] = rows["player"].astype(str)
+    out: dict[str, str] = {}
+    for row in rows.itertuples(index=False):
+        alias = by_id.get(str(row.player_id))
+        raw = str(row.player).strip()
+        if alias and raw:
+            out[alias] = raw
+    return out
 
 
 def build_player_name_aliases(squad: pd.DataFrame) -> dict[str, str]:
@@ -84,6 +107,12 @@ def display_opponent(raw_name: object, aliases: dict[str, str]) -> str:
     return aliases.get(raw, "Rival")
 
 
+def _replace_case_insensitive(text: str, source: str, target: str) -> str:
+    if not source:
+        return text
+    return re.sub(re.escape(source), lambda _m: target, text, flags=re.IGNORECASE)
+
+
 def replace_known_names(
     value: object,
     *,
@@ -92,7 +121,11 @@ def replace_known_names(
     team_name: str | None = None,
     team_alias: str = "Equipo Demo",
 ) -> str:
-    """Mask known identities inside free-text presentation strings."""
+    """Mask known identities inside free-text presentation strings.
+
+    Replacement is case-insensitive because LLM providers may alter capitalization
+    even when the underlying evidence contains the canonical spelling.
+    """
     text = "" if value is None else str(value)
     if not demo_mode() or not text:
         return text
@@ -102,8 +135,7 @@ def replace_known_names(
     if team_name:
         replacements[str(team_name)] = team_alias
     for source in sorted(replacements, key=len, reverse=True):
-        if source:
-            text = text.replace(source, replacements[source])
+        text = _replace_case_insensitive(text, source, replacements[source])
     return text
 
 
