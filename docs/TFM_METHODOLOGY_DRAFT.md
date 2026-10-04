@@ -1,6 +1,6 @@
 # TFM — Borrador integrado de metodología
 
-Fecha: 03/10/2026
+Fecha: 04/10/2026
 Estado: borrador académico para integrar en la memoria final.
 Idioma: castellano.
 
@@ -314,38 +314,96 @@ La autenticación real por email/contraseña/sesiones no forma parte del MVP act
 
 # 11. Coach Copilot
 
-El asistente se diseñó como capa downstream de la analítica.
+El asistente se diseñó como capa downstream de la analítica y no como motor de cálculo.
+
+## 11.1 Query grammar y routing determinista
+
+La arquitectura final parte de un espacio de consultas finito y composicional:
+
+```text
+entidad + operación + métrica + agregación + filtros + ventana + follow-up
+```
+
+Cuando la consulta es de alta confianza, se resuelve sin LLM:
+
+```text
+QUESTION
+→ DETERMINISTIC HIGH-CONFIDENCE ROUTER
+→ READ-ONLY TOOLS
+→ PYTHON / DUCKDB / ANALYTICS / EXPERT SYSTEM
+→ STRUCTURED EVIDENCE
+→ FACTUAL ANSWER
+```
+
+Las métricas queryables se definen explícitamente en código y las agregaciones posibles se restringen a operaciones válidas como `sum`, `mean`, `max`, `min` o `latest` según el caso.
+
+## 11.2 Fallback semántico local
+
+Si la consulta no puede mapearse de forma determinista con suficiente confianza, se utiliza:
+
+```text
+qwen3.5:4b
+```
+
+Su función es interpretar el lenguaje y seleccionar una tool válida. El cálculo sigue ejecutándose en Python/DuckDB.
 
 Arquitectura:
 
 ```text
-DATA
-→ ANALYTICS
-→ DECISION ENGINE
-→ READ-ONLY TOOLS
-→ ROUTER
-→ OLLAMA LOCAL
-→ SEMANTIC GUARD
-→ COACH
+QUESTION AMBIGUA
+→ QWEN LOCAL
+→ TOOL SELECTION
+→ LOCAL VALIDATION OF CALL
+→ READ-ONLY TOOL
+→ PYTHON / DUCKDB
+→ STRUCTURED EVIDENCE
+→ FACTUAL ANSWER
 ```
 
-Perfil MVP:
-
-```text
-model = qwen3:1.7b
-scope = SPANISH_ONLY_MVP
-thinking = False
-num_ctx = 1536
-timeout = 18 s
-```
-
-El LLM puede verbalizar y explicar resultados ya calculados, pero no puede:
+El LLM no puede:
 
 - crear métricas nuevas;
 - recalcular Match Rating;
 - modificar pesos del experto;
 - emitir recomendaciones tácticas no validadas;
 - sustituir al motor analítico.
+
+Guardrails explícitos bloquean fatiga/readiness, riesgo de lesión, XI/titularidad y criterios globales no definidos como `mejor jugador`, `más completo` o `más determinante`.
+
+## 11.3 Follow-ups
+
+El historial conversacional conserva la última consulta sustantiva como anchor. Esto permite resolver follow-ups como:
+
+```text
+¿Quién corre más distancia por partido?
+→ ¿Y el segundo?
+→ ¿Y en los últimos 5 partidos?
+→ ¿Qué evidencias tienes?
+```
+
+sin perder la métrica y la operación originales.
+
+## 11.4 Proveedor OpenAI opcional
+
+La misma capa permite seleccionar opcionalmente:
+
+```text
+OpenAI API · clave propia
+```
+
+Las consultas claras siguen la ruta determinista y, por tanto, no requieren llamada API. Para lenguaje ambiguo, OpenAI puede seleccionar únicamente tools FPS bounded/read-only.
+
+Cada tool call externa:
+
+1. se transforma a la estructura local;
+2. se revalida contra el contrato de tools permitido;
+3. se ejecuta localmente sobre Python/DuckDB;
+4. produce evidencia estructurada;
+5. puede ser sintetizada por el modelo externo con numeric grounding guard.
+
+La API key pertenece al usuario y la UI no la persiste en DuckDB ni en archivos del proyecto.
+
+La integración OpenAI se considera implementada y validada contractualmente, pero no se presenta como benchmark live porque no se ha realizado una prueba real con API key.
 
 ---
 
@@ -382,6 +440,8 @@ Cada módulo relevante dispone de tests, contratos o validadores específicos pa
 - precedencia real/synthetic en GPS;
 - ausencia de recomendaciones no validadas;
 - compatibilidad entre capas.
+
+Para el Coach Copilot se añadió un smoke real reproducible de 22 casos y tests específicos de guards, follow-ups y proveedor externo.
 
 ## 13.2 QA global
 
@@ -448,7 +508,8 @@ No se considera demostrado:
 - validez fisiológica del GPS sintético;
 - detección de fatiga/readiness/lesión;
 - superioridad universal del Match Rating;
-- recomendación táctica óptima por N13000.
+- recomendación táctica óptima por N13000;
+- calidad, coste o latencia live del modo OpenAI BYOK sin prueba real.
 
 Esta separación delimita el alcance de la hipótesis y evita sobreinterpretar el prototipo.
 
@@ -467,7 +528,9 @@ variables observables y realistas
 → sistema experto auditable
 → ML solo cuando existe ground truth defendible
 → GPS opcional y conservador
-→ LLM downstream de herramientas deterministas
+→ query grammar + routing determinista
+→ LLM solo como interpretación downstream cuando hace falta
+→ proveedor externo opcional bajo el mismo contrato de tools
 → validación por contratos
 → QA end-to-end
 → demo sintética reproducible
