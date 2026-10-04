@@ -591,9 +591,20 @@ La demo sintética separa software reproducible de redistribución de datos prof
 
 ## 7.11 Contraste de la hipótesis
 
-La hipótesis queda contrastada favorablemente en su dimensión técnica y arquitectónica porque existe un pipeline funcional, auditable, versionado y reproducible. El contraste se limita a esa dimensión: los gates verifican propiedades previamente especificadas de la implementación, no la magnitud de un efecto deportivo.
+La hipótesis queda **parcialmente respaldada**: se ha demostrado su dimensión técnica y arquitectónica, es decir, que los datos observables pueden recorrer una cadena funcional, auditable, versionada y reproducible hasta convertirse en salidas estructuradas de rendimiento, evolución, rol, evidencia experta y consulta conversacional. El contraste se limita a esa dimensión: los gates verifican propiedades previamente especificadas de la implementación, no la magnitud de un efecto deportivo ni la utilidad percibida por un cuerpo técnico.
 
-No queda demostrado un impacto causal sobre decisiones de entrenadores, resultados deportivos o prevención de lesiones.
+| Parte de la hipótesis | Clasificación | Evidencia existente | Alcance exacto |
+|---|---|---|---|
+| Captura y transformación de datos observables | **DEMOSTRADA técnicamente** | Collector V1.1, validación de datos, FEATURE-01/02/03, Analytics y QA end-to-end. | Existe la cadena técnica; no se ha medido el coste ni la fiabilidad interobservador de la captura. |
+| Información visible sobre rendimiento y evolución | **DEMOSTRADA técnicamente** | Match Rating 590/590 en el caso de desarrollo, historial y gráficas en Player/Team Mode, Performance Index experimental y capturas reales. | Se demuestra disponibilidad y trazabilidad de outputs; no validez externa universal del rating o del índice. |
+| Información experta interpretable y auditable | **DEMOSTRADA técnicamente** | `expert_0.7.0`, 154.475 filas de decisión, N12000/N13000, salida visible en la pestaña «Motor experto» y trazabilidad JSON. | La salida comunica rol, evidencia, cobertura y estado final; no emite una recomendación táctica sin policy validada. |
+| Rol y contexto de jugador | **DEMOSTRADA técnicamente** | Rol observado, contexto temporal por rol, rutas específicas o fallback explícito y estado experto mostrado. | No demuestra cuál es el rol táctico óptimo ni permite recomendar alineaciones. |
+| Consulta e interpretación mediante Coach Copilot | **DEMOSTRADA técnicamente para el espacio soportado** | Tools read-only, evidencia estructurada, contrato reproducible y smoke local 28/28. | Demuestra acceso conversacional grounded a resultados existentes; no satisfacción de usuarios ni calidad empírica del fallback LLM. |
+| GPS y componente físico | **DEMOSTRADA como integración descriptiva** | Normalización, resumen jugador-partido, precedencia real/sintético y vistas GPS. | No hay GPS real usado como evidencia N9000; no se demuestra fatiga, readiness, lesión ni comportamiento fisiológico. |
+| Utilidad práctica para el cuerpo técnico | **NO DEMOSTRABLE HOY** | No existe estudio de uso con staff ni comparación con el proceso previo. | Debe permanecer como validación externa pendiente. |
+| Validez externa de Match Rating, Performance Index y reglas expertas | **NO DEMOSTRABLE HOY** | No hay ground truth independiente ni evaluación convergente disponible. | Debe permanecer como limitación y trabajo posterior. |
+
+No quedan huecos críticos que requieran un cambio pequeño de producto para responder la hipótesis en su dimensión técnica. Las partes no demostrables hoy requieren datos externos, usuarios o ground truth independiente y se mantienen como limitaciones.
 
 En términos de preguntas de investigación, la pregunta principal queda respaldada por el flujo integrado desde Collector hasta dashboard, PDF y demo reproducible. La primera subpregunta queda respaldada por la evidencia auditable del sistema experto y sus estados de abstención; la segunda, por el contrato composicional, las herramientas de solo lectura y la batería del Coach. Los controles temporales y de grounding sostienen la fiabilidad metodológica de esas respuestas, pero no son el objetivo que se contrasta. Ninguna de estas respuestas sustituye un estudio de uso con staff, un benchmark empírico del fallback LLM ni una validación externa del Match Rating.
 
