@@ -21,7 +21,7 @@ GLOBAL END-TO-END QA            PASS
 PUBLIC SYNTHETIC DEMO           PASS
 REPRODUCIBILITY                 PASS
 CI AUTOMÁTICO                   PASS
-COACH COPILOT LOCAL REAL        PASS 22/22 · avg 1.4s
+COACH COPILOT LOCAL REAL        PASS 28/28 · avg 0.4s
 OPENAI BYOK CONTRACT            PASS
 ```
 
@@ -233,14 +233,14 @@ pregunta ambigua
 
 El LLM no tiene acceso directo a DuckDB y no recalcula Match Rating, Performance Index, rankings ni decisiones expertas.
 
-Validación local real con DuckDB profesional:
+Validación local real final con DuckDB profesional:
 
 ```text
-SMOKE CONTRACT: PASS (22/22)
-average_elapsed=1.4s
-consultas deterministas típicas=0.1–0.8s
-follow-ups=0.1–0.2s
+SMOKE CONTRACT: PASS (28/28)
+average_elapsed=0.4s
 ```
+
+El smoke cubre rankings, ventanas temporales, perfiles, GPS, comparaciones entre jugadores y por posición, partidos, calidad de datos, guardrails, ruido/fuera de dominio y follow-ups. En esta validación final todos los casos se resolvieron con `rounds=0`.
 
 Smoke reproducible:
 
@@ -376,15 +376,14 @@ Ubuntu limpio
 → pytest -q
 → construir demo sintética
 → validar demo end-to-end
+→ validar Coach Copilot query-space contract
 ```
 
 Runs recientes de referencia:
 
 ```text
-37162911509 = SUCCESS — smoke test direct execution fix
-37163349049 = SUCCESS — optional OpenAI Coach Copilot
-37163417219 = SUCCESS — OpenAI BYOK UI + contracts
-37163457928 = SUCCESS — external tool-surface tests
+37167083614 = SUCCESS — query-space + preflight contract
+37167157174 = SUCCESS — final code gate before local 28-case smoke
 ```
 
 ---
