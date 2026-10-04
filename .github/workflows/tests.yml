@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: ${{ github.workspace }}
+      FPS_DEMO_MODE: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,3 +30,6 @@ jobs:
 
       - name: Build and validate synthetic public demo
         run: python -m publication.validate_synthetic_demo --rebuild
+
+      - name: Validate Coach Copilot query-space contract
+        run: python -m llm.validate_coach_contract --db data/football_performance_synthetic_demo.duckdb
