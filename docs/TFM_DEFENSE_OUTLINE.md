@@ -145,20 +145,21 @@ Usar:
 Mensaje clave:
 
 ```text
-El LLM interpreta lenguaje cuando hace falta.
+El LLM interpreta lenguaje solo cuando hace falta.
 Python/DuckDB calcula los resultados.
 ```
 
 Arquitectura a explicar:
 
 ```text
-pregunta clara
+pregunta
+→ preflight / guardrails
 → router determinista
 → tool read-only
 → DuckDB / analytics
 → respuesta
 
-pregunta ambigua
+solo si sigue habiendo ambigüedad dentro del dominio:
 → Qwen local o OpenAI BYOK opcional
 → tool validada
 → DuckDB / analytics
@@ -169,14 +170,15 @@ pregunta ambigua
 Datos de validación que sí pueden citarse:
 
 ```text
-SMOKE CONTRACT = PASS (22/22)
-average_elapsed = 1.4s
-consultas deterministas típicas = 0.1–0.8s
-follow-ups = 0.1–0.2s
+SMOKE CONTRACT = PASS (28/28)
+average_elapsed = 0.4s
+casos finales con fallback semántico = 0/28
+query-space contract en CI = PASS
 ```
 
 Aclaración importante:
-- el fallback Qwen puede tardar decenas de segundos en CPU;
+- `0,4 s` es la media de esa batería concreta en el PC de desarrollo, no un SLA universal;
+- el fallback Qwen puede ser más lento en CPU, pero queda fuera de la ruta obligatoria de preguntas claras;
 - el modo OpenAI existe como opción BYOK y pasa contratos/CI, pero no se ha benchmarkeado live con una API key real.
 
 Pregunta recomendada en demo:
@@ -185,7 +187,23 @@ Pregunta recomendada en demo:
 ¿Quién corre más distancia por partido?
 ```
 
-Abrir `Evidencia consultada` y señalar que las rondas de interpretación semántica son `0` en una pregunta clara.
+Abrir `Evidencia consultada` y señalar:
+
+```text
+Ruta: determinista + herramientas FPS
+LLM utilizado: no
+Cálculo crítico: Python / DuckDB / analytics materializados
+```
+
+Eso permite demostrar visualmente que el LLM no calcula la respuesta.
+
+Si hay tiempo, segunda consulta útil:
+
+```text
+¿Quién ha rendido mejor en la posición de central? Muéstrame las métricas
+```
+
+Explicar que el sistema declara explícitamente el criterio `Match Rating medio dentro de la muestra de centrales` y no crea un score nuevo.
 
 ---
 
@@ -194,10 +212,11 @@ Abrir `Evidencia consultada` y señalar que las rondas de interpretación semán
 Mostrar una tabla breve:
 
 ```text
-QA global              PASS
-Demo sintética         PASS
-CI entorno limpio      PASS
-Coach Copilot 22/22    PASS
+QA global                 PASS
+Demo sintética            PASS
+CI entorno limpio         PASS
+Query-space contract      PASS
+Coach Copilot real 28/28  PASS
 ```
 
 Explicar la separación:
@@ -287,6 +306,14 @@ Respuesta:
 - opcionalmente puede usarse OpenAI con API key del usuario;
 - ambas opciones están desacopladas del motor analítico.
 
+## ¿Por qué llamarlo asistente IA si muchas consultas son deterministas?
+
+Respuesta:
+- porque la inteligencia del producto no se reduce al modelo generativo;
+- el sistema interpreta consultas naturales mediante una arquitectura híbrida;
+- la decisión de resolver primero de forma determinista mejora grounding, velocidad y auditabilidad;
+- el LLM se utiliza donde realmente aporta valor: ambigüedad semántica y explicación.
+
 ## ¿Por qué sistema experto y no ML?
 
 Respuesta:
@@ -322,6 +349,13 @@ Respuesta:
 - es una opción para usuarios que prefieran un modelo externo más capaz para lenguaje complejo;
 - la misma capa analítica y las mismas tools siguen siendo la fuente de verdad;
 - el usuario aporta su propia API key.
+
+## ¿Puede el sistema comparar posiciones?
+
+Respuesta:
+- sí, compara jugadores dentro de una posición con métricas disponibles;
+- si se pregunta quién ha rendido mejor, declara Match Rating medio como criterio de ordenación;
+- no inventa un score específico de central, delantero, etc. para esa consulta.
 
 ## ¿Qué demuestra realmente el TFM?
 
