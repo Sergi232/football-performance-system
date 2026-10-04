@@ -18,9 +18,9 @@ Fuente de verdad técnica: `PROJECT_STATE.md` + código actual de `main`.
 
 Este Trabajo Final de Máster desarrolla un sistema integral de análisis de rendimiento orientado a equipos de fútbol amateur y semiprofesionales que no disponen de un departamento de análisis propio. El objetivo no es reproducir plataformas profesionales de tracking o proveedores comerciales de eventos, sino demostrar que un conjunto reducido de datos observables de vídeo y GPS opcional puede transformarse en información estructurada, auditable y útil para el cuerpo técnico.
 
-La solución implementa una arquitectura por capas que separa datos brutos, variables derivadas, analítica, sistema experto, presentación y generación de lenguaje. El flujo principal parte de un Data Collector HTML y de una capa opcional de normalización GPS, almacena la información en DuckDB, construye features deterministas y temporalmente seguras, genera evidencia analítica, aplica un sistema experto jerárquico N1000-N13000, presenta los resultados en una aplicación Streamlit e incorpora un asistente local mediante Ollama. Los informes PDF se generan exclusivamente a partir de resultados estructurados ya calculados.
+La solución implementa una arquitectura por capas que separa datos brutos, variables derivadas, analítica, motor experto, presentación y generación de lenguaje. El flujo principal parte de un Data Collector HTML y de una capa opcional de normalización GPS, almacena la información en DuckDB, construye features deterministas y temporalmente seguras, genera evidencia analítica, aplica un motor experto de evaluación y evidencia con gate de recomendación N1000-N13000, presenta los resultados en una aplicación Streamlit e incorpora un asistente local mediante Ollama. Los informes PDF se generan exclusivamente a partir de resultados estructurados ya calculados.
 
-La validación técnica del prototipo se ha realizado mediante contratos de datos, tests unitarios, validadores por capa, pruebas end-to-end y un pipeline de integración continua. El sistema principal supera el QA global y se ha construido además una demo pública sintética reproducible que puede generarse desde un entorno limpio sin depender de la base de datos profesional utilizada durante el desarrollo. El trabajo demuestra la viabilidad técnica y arquitectónica de la propuesta, pero no pretende demostrar un efecto causal sobre la calidad de las decisiones de un entrenador, el rendimiento deportivo ni la prevención de lesiones.
+La validación técnico-funcional del prototipo se ha realizado mediante contratos de datos, tests unitarios, validadores por capa, pruebas end-to-end y un pipeline de integración continua. El sistema principal supera el QA global y se ha construido además una demo pública sintética reproducible que puede generarse desde un entorno limpio sin depender de la base de datos profesional utilizada durante el desarrollo. El trabajo demuestra la viabilidad técnico-funcional y arquitectónica de la propuesta, pero no pretende demostrar un efecto causal sobre la calidad de las decisiones de un entrenador, el rendimiento deportivo ni la prevención de lesiones.
 
 ---
 
@@ -51,7 +51,7 @@ El producto principal es una aplicación web. Los PDF son salidas complementaria
 
 > **Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte al análisis a partir de datos de vídeo y GPS opcional, capaz de transformar hechos observables en información trazable sobre rendimiento, evolución y rol; cuando existe GPS observado, puede añadir variables físicas descriptivas.**
 
-La hipótesis se interpreta en este TFM como una hipótesis de **viabilidad técnica y arquitectónica**. No se formula como una prueba causal de mejora deportiva.
+La hipótesis se interpreta en este TFM como una hipótesis de **viabilidad técnico-funcional y arquitectónica**. No se formula como una prueba causal de mejora deportiva.
 
 ## 2.2 Objetivo general
 
@@ -64,7 +64,7 @@ Diseñar, implementar y validar un sistema reproducible que transforme datos sim
 - normalizar GPS de múltiples proveedores en un esquema común;
 - construir un Feature Engine determinista y sin leakage temporal;
 - construir una capa de Analytics separada de la lógica de decisión;
-- implementar un sistema experto jerárquico y auditable;
+- implementar un motor experto de evaluación y evidencia con gate de recomendación, auditable;
 - desarrollar un Match Rating inmediato y una capa histórica complementaria;
 - construir una aplicación Streamlit con Team, Player y Match Mode;
 - incorporar un asistente IA local que no recalcule métricas críticas;
@@ -333,10 +333,10 @@ DATA
 → COACH
 ```
 
-Modelo MVP:
+Runtime actual del MVP:
 
 ```text
-qwen3:1.7b
+qwen3.5:4b
 scope=SPANISH_ONLY_MVP
 thinking=False
 num_ctx=1536
@@ -345,9 +345,7 @@ timeout=18s
 
 El LLM no accede directamente a DuckDB, no recalcula métricas críticas y no puede sustituir al motor analítico.
 
-El gate de evaluación previo alcanzó 66/68 casos correctos (97,1%), sin errores de runtime ni fallos de seguridad. La limitación aceptada fueron dos casos que superaron el límite formal de frases.
-
-El smoke test final local del contrato del agente terminó en `PASS (4/4)`.
+Los gates previos se conservan como historial de desarrollo, pero no se usan como resultado de cierre. La evidencia canónica es el smoke local final de 28/28 casos, con 0,4 s de media en esa batería y `rounds=0`; se complementa con seis preguntas funcionales y dos casos de abstención reproducibles.
 
 ---
 
@@ -374,6 +372,8 @@ La validación se diseñó por capas.
 ## 14.1 QA funcional y de datos
 
 Se validaron Collector, esquema de datos, features, analytics, Match Rating, GPS, sistema experto, dashboard, access control, asistente y reports.
+
+La evidencia se sintetiza en seis bloques: pipeline y trazabilidad; Match Rating; motor experto; consultas funcionales; robustez y abstención; y privacidad/reproducibilidad. La traza real desde dato bruto hasta dashboard, Coach y PDF pasó; seis preguntas representativas pasaron contra las materializaciones de referencia; y los casos de rol ausente, GPS no disponible, poco historial y policy no validada degradaron sin forzar una conclusión. Los logs se conservan en anexos.
 
 Resultado global:
 
@@ -448,13 +448,13 @@ Estas limitaciones se mantienen explícitas para evitar sobreinterpretar el alca
 
 # 17. Conclusiones
 
-El proyecto confirma la viabilidad técnica de construir un sistema integral de análisis de rendimiento para contextos con recursos limitados sin depender de una infraestructura profesional de tracking.
+El proyecto confirma la viabilidad técnico-funcional y arquitectónica de construir un sistema integral de análisis de rendimiento para contextos con recursos limitados sin depender de una infraestructura profesional de tracking.
 
 La principal aportación no es una única métrica, sino una arquitectura completa y auditable que conecta recogida de datos, almacenamiento, feature engineering, análisis temporal, sistema experto, GPS opcional, visualización, asistente IA e informes.
 
 La separación estricta entre cálculo analítico y generación de lenguaje permite incorporar IA generativa sin delegarle decisiones críticas. Del mismo modo, la existencia de gates y estados de evidencia evita transformar automáticamente falta de datos en recomendaciones no justificadas.
 
-Por tanto, la hipótesis principal queda apoyada en su dimensión de viabilidad técnica y arquitectónica mediante un prototipo funcional, validado y reproducible. Queda fuera del alcance demostrar que su uso mejora causalmente las decisiones técnicas o el rendimiento deportivo.
+Por tanto, la hipótesis principal queda respaldada favorablemente en su alcance técnico-funcional y arquitectónico mediante un prototipo funcional, validado y reproducible. La traza end-to-end, las seis consultas funcionales y la abstención segura prueban funcionamiento y trazabilidad dentro del alcance soportado. Queda fuera del alcance demostrar la validez externa del Match Rating, la utilidad percibida por staff o una mejora causal de decisiones técnicas y rendimiento deportivo.
 
 ---
 

@@ -191,7 +191,7 @@ fecha fuente < fecha observación actual
 ```text
 rows=117735
 non-null=43060
-observed-role player-match=590/835
+registros con rol observado y minutos positivos=590/835 registros de plantilla/alineación
 role labels=23
 ```
 
@@ -565,6 +565,22 @@ docs/TFM_EVALUATION_PROTOCOLS.md
 ```
 
 No se ejecutaron durante este TFM. Se incluyen como diseño de evaluación posterior y no como resultados empíricos.
+
+---
+
+# Anexo M — Validaciones técnico-funcionales reproducibles
+
+Este anexo conserva el detalle ejecutable que no debe sobrecargar el cuerpo principal.
+
+- **Pipeline y trazabilidad:** `publication/validate_hypothesis_functional.py` verifica una traza `raw → feature → analytics → Match Rating/motor experto → dashboard → Coach/PDF`.
+- **Preguntas funcionales:** el mismo validador contrasta seis consultas representativas con sus materializaciones de referencia y obtiene 6/6 PASS.
+- **Abstención:** dos consultas sin policy o evidencia suficiente se bloquean sin forzar una conclusión (2/2 PASS).
+- **Match Rating:** `publication/validate_rating_academic.py` comprueba sensibilidad controlada, rutas GK/posicional/fallback y robustez ante datos incompletos.
+- **Auditoría descriptiva:** `publication/validate_academic_round2.py` informa rendimiento por posición observada, estabilidad temporal, cobertura del motor experto y casos límite; las filas de 1–4 apariciones se etiquetan como muestra pequeña.
+- **Denominadores:** el mismo validador fija 590 apariciones jugadas para Match Rating y 835 registros de plantilla/alineación para el motor experto, incluidos 245 suplentes no utilizados.
+- **Privacidad:** `publication/privacy_gate.py` verifica aliases y ausencia de identificadores privados en material publicable.
+
+Los outputs completos son logs técnicos reproducibles. El cuerpo principal solo incorpora su síntesis, método, resultado y límite de interpretación.
 
 ---
 

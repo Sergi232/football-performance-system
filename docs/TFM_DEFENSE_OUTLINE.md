@@ -106,6 +106,7 @@ Idea clave:
 - cada nodo conserva entrada, condición, resultado, confianza y justificación;
 - N1000–N12000 estructuran evidencia; N13000 es un gate de recomendación.
 - N13000 se abstiene en todos los casos actuales: 501 por policy no validada, 245 por rol desconocido y 89 por falta de evidencia.
+- el motor experto procesa 835 registros de plantilla/alineación; 245 son suplentes no utilizados, mientras que el Match Rating cubre las 590 apariciones jugadas.
 
 Mostrar como ejemplo:
 
@@ -232,6 +233,19 @@ Query-space contract      PASS
 Coach Copilot real 28/28  PASS
 ```
 
+Añadir la síntesis académica:
+
+```text
+traza end-to-end              PASS
+preguntas funcionales         6/6 PASS
+sensibilidad y rutas rating   PASS
+motor experto / abstención    PASS
+casos límite                  PASS
+privacy gate                  PASS
+```
+
+Explicar que estos resultados demuestran funcionamiento y trazabilidad en el alcance soportado; no sustituyen validación externa ni estudio con staff.
+
 Explicar la separación:
 
 ```text
@@ -248,7 +262,7 @@ La demo pública se genera desde cero y contiene 0 filas profesionales.
 
 Conclusión:
 
-> La hipótesis queda contrastada favorablemente como viabilidad técnica y arquitectónica.
+> La hipótesis queda respaldada favorablemente en su alcance técnico-funcional y arquitectónico.
 
 No queda demostrado:
 - mejora real de decisiones de entrenadores;

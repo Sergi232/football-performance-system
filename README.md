@@ -8,7 +8,9 @@ El repositorio forma parte de un Trabajo Final de Máster en **Data Science e In
 
 > **Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte al análisis a partir de datos de vídeo y GPS opcional, capaz de transformar hechos observables en información trazable sobre rendimiento, evolución y rol; cuando existe GPS observado, puede añadir variables físicas descriptivas.**
 
-El prototipo actual contrasta favorablemente la **viabilidad técnica y arquitectónica** de esta hipótesis.
+El prototipo actual respalda favorablemente la **viabilidad técnico-funcional y arquitectónica** de esta hipótesis.
+
+La revisión final incorpora evidencia técnico-funcional adicional: una traza verificable desde dato bruto hasta dashboard, Coach y PDF; seis preguntas funcionales contrastadas contra materializaciones; validación de sensibilidad y rutas del Match Rating; y abstención segura ante ausencia de policy o evidencia. Esta evidencia respalda la hipótesis en el alcance soportado, sin sustituir validación externa con staff ni ground truth independiente.
 
 No demuestra que el sistema mejore causalmente las decisiones de un entrenador, el rendimiento deportivo ni la prevención de lesiones.
 

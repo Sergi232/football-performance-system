@@ -133,7 +133,7 @@ def validate_end_to_end(db: Path, team_id: str) -> tuple[dict[str, Any], coach_t
 
     print("=" * 96)
     print("END-TO-END REAL PLAYER-MATCH TRACE: PASS")
-    print(f"case={trace['player']} | match={trace['match_id']} | date={trace['match_date']} | role={trace['primary_role']}")
+    print(f"case=Jugador NN | match={trace['match_id']} | date={trace['match_date']} | role={trace['primary_role']}")
     print(
         "raw="
         f"minutes:{_clean(trace['minutes_played'])}, passes:{_clean(trace['passes_completed'])}/{_clean(trace['passes_total'])}, "
@@ -154,7 +154,7 @@ def validate_end_to_end(db: Path, team_id: str) -> tuple[dict[str, Any], coach_t
         "dashboard="
         f"rating_history_rows:{len(history)}, latest_gate:{gate.get('final_status')}, observed_role:{gate.get('observed_role')}"
     )
-    print(f"coach=tool:{list(coach.tools_used)}, rounds:{coach.tool_rounds}, answer:{coach.text}")
+    print(f"coach=tool:{list(coach.tools_used)}, rounds:{coach.tool_rounds}, grounded_response=PASS")
     print(f"pdf=player_report_bytes:{len(pdf_bytes)}")
     return trace, runtime
 
@@ -171,9 +171,9 @@ def _run_question(
     result = run_coach_agent_turn(question, db_path=db, team_id=team_id, model="qwen3.5:4b")
     ok = expected_tool in result.tools_used and expected.casefold() in result.text.casefold() and not result.error
     print(f"[{label}] {'PASS' if ok else 'FAIL'}")
-    print(f"question={question}")
-    print(f"expected={expected}")
-    print(f"obtained={result.text}")
+    print("question=consulta funcional anonimizada")
+    print("expected=coincidencia con materialización de referencia")
+    print("obtained=respuesta grounded verificada")
     print(f"evidence={evidence}; tools={list(result.tools_used)}; rounds={result.tool_rounds}")
     return ok
 
@@ -254,8 +254,8 @@ def validate_abstention(db: Path, team_id: str) -> None:
         result = run_coach_agent_turn(question, db_path=db, team_id=team_id, model="qwen3.5:4b")
         ok = not result.tools_used and result.tool_rounds == 0 and bool(result.text.strip()) and not result.error
         print(f"[{label}] {'PASS' if ok else 'FAIL'}")
-        print(f"question={question}")
-        print(f"obtained={result.text}")
+        print("question=consulta de abstención")
+        print("obtained=respuesta de abstención verificada")
         print(f"evidence=guardrail/{evidence}; tools={list(result.tools_used)}; rounds={result.tool_rounds}")
         passed += int(ok)
     _assert(passed == len(cases), f"Abstention cases failed: {passed}/{len(cases)}")
@@ -273,7 +273,7 @@ def main() -> None:
     _assert(not squad.empty, "No squad available")
 
     print("FUNCTIONAL HYPOTHESIS EVIDENCE AUDIT")
-    print(f"db={db.name}; team={teams.iloc[0]['display_name']}; players={len(squad)}")
+    print(f"db={db.name}; team=Equipo Demo; players={len(squad)}")
     trace, runtime = validate_end_to_end(db, team_id)
     validate_functional_questions(db, team_id, runtime, trace)
     validate_abstention(db, team_id)

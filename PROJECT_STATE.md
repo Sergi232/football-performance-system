@@ -47,6 +47,8 @@ impacto comercial                       NO VALIDADO
 
 La evidencia de cierre es técnica y arquitectónica. La integración GPS se ha validado con datos sintéticos; no constituye evidencia fisiológica ni permite afirmar comportamiento físico real en el caso de desarrollo.
 
+La revisión académica final añade evidencia técnico-funcional: traza verificable hasta dashboard/Coach/PDF, seis preguntas funcionales correctas contra materializaciones, sensibilidad y rutas del Match Rating, cobertura y abstención del motor experto, casos límite y privacy gate. El contraste queda favorable en el alcance técnico-funcional y arquitectónico; la validación externa permanece pendiente.
+
 ---
 
 # 3. ARQUITECTURA ACTUAL

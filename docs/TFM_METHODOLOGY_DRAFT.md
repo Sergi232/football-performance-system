@@ -442,7 +442,9 @@ Los PDF consumen resultados materializados y no recalculan lógica crítica.
 
 # 13. Estrategia de validación
 
-La validación se realizó por capas y posteriormente de extremo a extremo.
+La validación se realizó por capas y posteriormente de extremo a extremo. Se organiza en seis bloques: **pipeline y trazabilidad**, **Match Rating**, **motor experto**, **validación funcional**, **robustez y abstención**, y **privacidad y reproducibilidad**. La primera verifica la cadena de datos hasta las superficies visibles; la segunda combina cobertura, sensibilidad, rutas por rol observado y estabilidad descriptiva; la tercera inspecciona evidencia, reglas y abstención; la cuarta contrasta preguntas representativas con materializaciones de referencia; la quinta fuerza condiciones incompletas; y la sexta separa la fuente privada de una demo anónima y reproducible.
+
+Esta organización evita convertir una colección dispersa de `PASS` en una afirmación científica única. Los resultados se informan agrupados por bloque y los logs completos permanecen en anexos.
 
 ## 13.1 Contratos y validators
 

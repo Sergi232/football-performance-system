@@ -8,11 +8,22 @@ Objetivo: vincular cada afirmación relevante de la memoria con evidencia técni
 
 | Pregunta | Evidencia de respuesta | Qué permite afirmar | Qué no permite afirmar |
 |---|---|---|---|
-| **Pregunta principal.** ¿Hasta qué punto pueden transformarse datos sencillos y observables de fútbol amateur o semiprofesional en información útil sobre rendimiento y evolución mediante Data Science, un sistema experto y una interfaz de IA? | Collector, Feature Engine, Analytics, sistema experto, Match Rating/Performance Index, dashboard, Coach, PDF, demo y QA end-to-end | Viabilidad técnica y arquitectónica de transformar datos observables en información estructurada y consultable | Utilidad causal demostrada, mejora de decisiones, rendimiento o resultados deportivos |
+| **Pregunta principal.** ¿Hasta qué punto pueden transformarse datos sencillos y observables de fútbol amateur o semiprofesional en información útil sobre rendimiento y evolución mediante Data Science, un sistema experto y una interfaz de IA? | Collector, Feature Engine, Analytics, motor experto, Match Rating/Performance Index, dashboard, Coach, PDF, demo y QA end-to-end | Viabilidad técnico-funcional y arquitectónica de transformar datos observables en información estructurada y consultable | Utilidad causal demostrada, mejora de decisiones, rendimiento o resultados deportivos |
 | **Subpregunta 1.** ¿Cómo puede un sistema experto transformar esas variables en información interpretable y auditable para el cuerpo técnico? | N1000–N13000, evidencia por nodo, estados de abstención, validadores y vistas de producto | Trazabilidad de las reglas y de la abstención cuando falta evidencia o policy | Validez externa de cada interpretación, recomendación táctica o aceptación por staff |
 | **Subpregunta 2.** ¿Cómo puede una capa de IA conversacional facilitar la consulta e interpretación de los resultados del sistema? | Query-space contract, tools read-only, evidencia estructurada, CI y smoke 28/28 | Acceso conversacional a resultados estructurados para las consultas soportadas | Cobertura universal del lenguaje, calidad empírica del fallback, satisfacción o utilidad percibida |
 
 Los protocolos de fiabilidad interobservador y utilidad con staff están definidos en `docs/TFM_EVALUATION_PROTOCOLS.md`. No están ejecutados y no constituyen evidencia de las respuestas anteriores.
+
+## Objetivos y evidencia de resultado
+
+| Objetivo | Evidencia integrada | Grado de respuesta |
+|---|---|---|
+| Capturar y estructurar datos observables | Collector, esquema jugador-partido y traza end-to-end | Cumplido técnicamente |
+| Construir features y analytics temporales | FEATURE-01/02/03 y ANALYTICS-01 | Cumplido técnicamente |
+| Contextualizar por rol observado y valorar rendimiento | Rutas Match Rating, sensibilidad y estabilidad descriptiva | Cumplido internamente; sin validez externa |
+| Generar evidencia experta auditable | N1000–N13000, traza y abstención | Cumplido; sin recomendación táctica final |
+| Consultar e interpretar resultados | Dashboard/PDF, Coach y 6/6 preguntas funcionales | Cumplido para consultas soportadas |
+| Garantizar robustez, privacidad y reproducibilidad | Casos límite, privacy gate, demo sintética y CI | Cumplido técnicamente; límites externos documentados |
 
 | Claim / resultado | Evidencia principal | Archivo / gate | Estado |
 |---|---|---|---|
@@ -21,11 +32,14 @@ Los protocolos de fiabilidad interobservador y utilidad con staff están definid
 | FEATURE-01 genera 28 features base deterministas | Build + validator | `features/build_player_match_features.py`, `features/validate_stage1.py` | PASS |
 | FEATURE-02 usa pasado estricto | Contrato temporal y validación | `features/build_temporal_features.py` | PASS |
 | FEATURE-03 condiciona por rol observado sin inventarlo | Build + validación | `features/build_role_temporal_features.py` | PASS |
+| La posición/rol por partido es observado en fuente; el experimento ML de posición no se despliega | Contrato FEATURE-03 + decisión experimental | `features/build_role_temporal_features.py`, `dsai/` | PASS / NO_DEPLOY |
 | Analytics separa self-role y peer-role evidence | Contrato ANALYTICS-01 | `analytics/build_stage1.py` | PASS |
 | El sistema experto cubre N1000-N13000 | Builds/validators EXPERT-01..07 | `decision_tree/` | PASS |
 | N9000 ignora GPS sintético como evidencia observada | Corrección + validator EXPERT-03 | `decision_tree/build_stage3.py`, `decision_tree/validate_stage3.py` | PASS |
 | N13000 es un gate de recomendación y actualmente se abstiene en todos los casos | 501 policy no validada; 245 rol desconocido; 89 falta de evidencia | `decision_tree/build_stage7.py`, `tests/test_decision_tree_stage7.py` | PASS |
 | Match Rating V5 cubre todas las apariciones jugadas | Contrato PERF-18 | `match_rating_v0.5-candidate` + validadores de rating | PASS |
+| El Match Rating muestra sensibilidad interna coherente y rutas explícitas por rol observado | Perturbaciones controladas + auditoría de rutas | `publication/validate_rating_academic.py` | PASS |
+| La estabilidad temporal y las diferencias por posición se describen sin inferir posición óptima | Auditoría descriptiva; 1–4 apariciones marcadas como muestra pequeña | `publication/validate_academic_round2.py` | PASS |
 | Match Rating y GPS permanecen separados | Arquitectura + access layer | `app/match_rating_access.py`, `app/gps_physical_access.py` | PASS |
 | GPS es opcional y multi-proveedor | Contrato de normalización | `gps/`, `data/migrations/004_gps_normalization.sql` | PASS ESTRUCTURAL |
 | GPS real tiene precedencia sobre sintético | Materialización del resumen físico | `analytics/build_gps_physical_summary.py` | PASS |
@@ -39,6 +53,10 @@ Los protocolos de fiabilidad interobservador y utilidad con staff están definid
 | Ruido, meta-consultas y fuera de dominio obvio se resuelven antes del LLM | Preflight + smoke + CI | `llm/coach_agent_fast.py`, `llm/validate_coach_contract.py` | PASS |
 | El fallback local del Coach Copilot usa Qwen solo para lenguaje ambiguo dentro del dominio | Runtime híbrido | `llm/coach_agent_general.py`, `llm/coach_agent_fast.py` | IMPLEMENTADO |
 | Smoke local real final del Coach Copilot cubre 28 casos de la ruta especificada | Ejecución con DuckDB profesional | `SMOKE CONTRACT: PASS (28/28)`, avg `0.4s` | PASS |
+| Una traza jugador-partido enlaza raw, feature, analytics, rating/experto, dashboard, Coach y PDF | Validador end-to-end reproducible | `publication/validate_hypothesis_functional.py` | PASS |
+| Seis preguntas funcionales representativas coinciden con sus materializaciones de referencia | Rating, posición, evolución, asistencias y GPS | `publication/validate_hypothesis_functional.py` | 6/6 PASS |
+| Dos consultas sin policy o evidencia se abstienen sin invocar tools | Guardrails de titularidad y fatiga | `publication/validate_hypothesis_functional.py` | 2/2 PASS |
+| El sistema se degrada de forma segura con rol ausente, sin GPS o poco historial | Rutas fallback, N9000 y N13000 | `publication/validate_rating_academic.py`, `publication/validate_academic_round2.py` | PASS |
 | Los 28 casos del smoke final se resolvieron sin fallback semántico | Trace del smoke final | `rounds=0` en todos los casos | PASS |
 | Follow-ups ordinales/ventana/evidencia mantienen contexto | Smoke real + tests | `llm/smoke_test_coach_agent.py`, `tests/test_coach_agent_fast.py` | PASS |
 | Follow-up de comparación por posición mantiene contexto | Smoke real + role contract | `llm/smoke_test_coach_agent.py`, `llm/coach_role_analysis.py` | PASS |
@@ -48,6 +66,7 @@ Los protocolos de fiabilidad interobservador y utilidad con staff están definid
 | Guardrails bloquean fatiga, lesión, titularidad y criterios globales no validados | Smoke real + tests | `llm/coach_agent_fast.py`, `tests/test_coach_agent_fast.py` | PASS |
 | La demo mantiene aliases `Equipo Demo / Jugador XX / Rival XX` dentro del Assistant | Identity boundary + tests | `app/assistant_identity.py`, `tests/test_assistant_identity.py` | PASS |
 | Una identidad interna detectada antes de renderizar en demo bloquea la respuesta | UI safety boundary | `app/pages/5_Assistent_IA.py` | IMPLEMENTADO |
+| Material publicable, DB pública y outputs de validación usan aliases | Privacy gate + validadores alias-only | `publication/privacy_gate.py`, `publication/validate_academic_round2.py` | PASS |
 | OpenAI BYOK es opcional y no da acceso directo a DuckDB | Arquitectura externa | `llm/coach_agent_external.py`, `app/pages/5_Assistent_IA.py` | IMPLEMENTADO |
 | Tool calls OpenAI se limitan y revalidan localmente | Contract tests | `tests/test_coach_agent_external.py` | PASS |
 | Una tool externa desconocida se descarta | Contract test | `tests/test_coach_agent_external.py` | PASS |
@@ -71,6 +90,8 @@ Estas cifras describen el caso técnico utilizado para validar el producto, no u
 ```text
 partidos de demo profesional = 38
 apariciones jugadas = 590
+registros player_match de plantilla/alineación = 835
+suplentes no utilizados = 245
 jugadores en contexto producto = 36
 Match Rating coverage = 590/590
 Goalkeeper rating rows = 38

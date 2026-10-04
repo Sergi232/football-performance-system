@@ -14,6 +14,8 @@ Regla: todas las cifras proceden de gates/validators ya registrados. No recalcul
 | Partidos | 38 |
 | Jugadores en contexto producto | 36 |
 | Apariciones jugadas | 590 |
+| Registros `player_match` de plantilla/alineación | 835 |
+| Suplentes no utilizados | 245 |
 | Match Rating disponibles | 590 |
 | Porteros con ruta específica | 38 |
 | Outfield `PERF18_ANCHORED` | 380 |
@@ -47,14 +49,14 @@ Regla metodológica: FEATURE-02/03 usan pasado estricto.
 | Componente | Filas / cobertura | Estado |
 |---|---:|---|
 | ANALYTICS-01 | 46.760 filas | PASS |
-| EXPERT final | 154.475 decision rows | PASS |
+| Motor experto final | 154.475 decision rows / 835 registros | PASS |
 | N13000 | 2.505 filas | PASS |
 | N13000 `NO_EVIDENCE` | 89 | esperado |
 | N13000 `POLICY_UNVALIDATED` | 501 | esperado |
 | N13000 `ROLE_UNKNOWN` | 245 | esperado |
 | GPS observado no sintético en N9000 | 0 player-match | limitación explícita |
 
-Interpretación: el sistema experto materializa evidencia y puede abstenerse de recomendar.
+Interpretación: el **motor experto de evaluación y evidencia con gate de recomendación** materializa evidencia y N13000 se abstiene de recomendaciones tácticas finales.
 
 Definición de denominadores: `player_match=835` incluye 590 apariciones jugadas y 245 suplentes no utilizados (`started=false`, minutos 0, rol nulo). Match Rating cubre las 590 apariciones jugadas; el motor experto evalúa los 835 registros.
 
@@ -192,6 +194,21 @@ Interpretación: el repositorio se valida desde un entorno limpio sin depender d
 
 ---
 
+## Tabla 10. Síntesis de validación técnico-funcional
+
+| Bloque | Evidencia | Resultado | Límite de interpretación |
+|---|---|---|---|
+| Pipeline y trazabilidad | Traza real hasta dashboard, Coach y PDF | PASS | No mide utilidad percibida. |
+| Match Rating | Sensibilidad, rutas observadas y estabilidad descriptiva | PASS | No prueba validez externa. |
+| Motor experto | Cobertura, traza y abstención N13000 | PASS | No emite recomendación táctica actual. |
+| Consultas funcionales | Seis preguntas contra materializaciones | 6/6 PASS | Espacio de consultas soportado, no lenguaje universal. |
+| Robustez | Casos límite y dos abstenciones | PASS | No valida fisiología ni rol óptimo. |
+| Privacidad/reproducibilidad | Privacy gate, aliases, demo y CI | PASS | No resuelve licencia de la fuente privada. |
+
+Los logs y casos individuales se remiten al Anexo M.
+
+---
+
 ## Regla de uso
 
 En el cuerpo principal usar únicamente las tablas que ayuden a responder la hipótesis. El detalle completo puede pasar a anexos.
@@ -204,3 +221,4 @@ Prioridad recomendada para el cuerpo:
 4. Tabla 6 — Coach Copilot;
 5. Tabla 8 — demo sintética reproducible;
 6. Tabla 9 — CI.
+7. Tabla 10 — síntesis de validación técnico-funcional.

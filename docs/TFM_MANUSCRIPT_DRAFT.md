@@ -1,6 +1,6 @@
 # Football Performance System
 
-## Diseño y validación técnica de un sistema auditable de análisis del rendimiento futbolístico mediante datos observables, analítica reproducible, sistema experto e inteligencia artificial grounded
+## Diseño y validación técnico-funcional de un sistema auditable de análisis del rendimiento futbolístico mediante datos observables, analítica reproducible, motor experto e inteligencia artificial grounded
 
 **Estado:** borrador integrado de memoria.  
 **Idioma:** castellano.  
@@ -13,11 +13,11 @@
 
 # Resumen
 
-Este Trabajo Final de Máster presenta el diseño, implementación y validación técnica de un sistema integral de análisis de rendimiento orientado a equipos de fútbol amateur y semiprofesionales sin departamento propio de análisis. El objetivo no es reproducir plataformas profesionales de tracking o proveedores comerciales de eventos, sino evaluar si un conjunto reducido de datos observables de vídeo puede transformarse en información estructurada, auditable y consultable; el GPS se incorpora como fuente opcional de variables físicas descriptivas cuando existe una observación válida.
+Este Trabajo Final de Máster presenta el diseño, implementación y validación técnico-funcional de un sistema integral de análisis de rendimiento orientado a equipos de fútbol amateur y semiprofesionales sin departamento propio de análisis. El objetivo no es reproducir plataformas profesionales de tracking o proveedores comerciales de eventos, sino evaluar si un conjunto reducido de datos observables de vídeo puede transformarse en información estructurada, auditable y consultable; el GPS se incorpora como fuente opcional de variables físicas descriptivas cuando existe una observación válida.
 
-La solución se organiza mediante una arquitectura por capas que separa datos brutos, variables derivadas, evidencia analítica, lógica de decisión y generación de lenguaje natural. El flujo parte de un Data Collector HTML y de una capa opcional de normalización GPS, almacena la información en DuckDB, construye features deterministas con control temporal `strict-past`, genera evidencia analítica, aplica un sistema experto jerárquico N1000-N13000, presenta los resultados mediante una aplicación Streamlit e incorpora un Coach Copilot grounded. El asistente resuelve consultas claras mediante preflight, routing determinista y herramientas de solo lectura, y reserva un modelo local Qwen para lenguaje ambiguo dentro del dominio; adicionalmente existe un modo OpenAI opcional con clave propia del usuario. Los informes PDF consumen resultados estructurados ya calculados y no recalculan lógica crítica.
+La solución se organiza mediante una arquitectura por capas que separa datos brutos, variables derivadas, evidencia analítica, lógica de decisión y generación de lenguaje natural. El flujo parte de un Data Collector HTML y de una capa opcional de normalización GPS, almacena la información en DuckDB, construye features deterministas con control temporal `strict-past`, genera evidencia analítica, aplica un motor experto de evaluación y evidencia con gate de recomendación N1000-N13000, presenta los resultados mediante una aplicación Streamlit e incorpora un Coach Copilot grounded. El asistente resuelve consultas claras mediante preflight, routing determinista y herramientas de solo lectura, y reserva un modelo local Qwen para lenguaje ambiguo dentro del dominio; adicionalmente existe un modo OpenAI opcional con clave propia del usuario. Los informes PDF consumen resultados estructurados ya calculados y no recalculan lógica crítica.
 
-El prototipo se ha validado mediante contratos de datos, tests unitarios, validadores por capa, pruebas end-to-end y un pipeline de integración continua. El sistema principal supera el QA global y dispone de una demo pública sintética reproducible que puede generarse desde un entorno limpio sin depender de la base profesional utilizada durante el desarrollo. El Coach Copilot cerró su smoke real final sobre la DuckDB profesional con 28/28 casos correctos y 0,4 s de latencia media en esa batería concreta; todos esos casos siguieron la ruta determinista o de preflight sin activar el fallback semántico. Los resultados permiten contrastar favorablemente la hipótesis en su dimensión técnica y arquitectónica. No se demuestra, sin embargo, un efecto causal sobre las decisiones de entrenadores, el rendimiento deportivo, la fatiga o la prevención de lesiones.
+El prototipo se ha validado mediante contratos de datos, tests unitarios, validadores por capa, pruebas end-to-end y un pipeline de integración continua. El sistema principal supera el QA global y dispone de una demo pública sintética reproducible que puede generarse desde un entorno limpio sin depender de la base profesional utilizada durante el desarrollo. El Coach Copilot cerró su smoke real final sobre la DuckDB profesional con 28/28 casos correctos y 0,4 s de latencia media en esa batería concreta; todos esos casos siguieron la ruta determinista o de preflight sin activar el fallback semántico. Junto con la traza end-to-end, las seis preguntas funcionales y los casos de abstención, los resultados respaldan favorablemente la hipótesis en su alcance técnico-funcional y arquitectónico. No se demuestra, sin embargo, un efecto causal sobre las decisiones de entrenadores, el rendimiento deportivo, la fatiga o la prevención de lesiones.
 
 **Palabras clave:** football analytics; performance analysis; expert systems; data engineering; GPS; large language models; reproducibility.
 
@@ -99,7 +99,7 @@ La literatura anterior fundamenta constructos y decisiones de diseño, pero no c
 
 > **Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte al análisis a partir de datos de vídeo y GPS opcional, capaz de transformar hechos observables en información trazable sobre rendimiento, evolución y rol; cuando existe GPS observado, puede añadir variables físicas descriptivas.**
 
-La hipótesis se interpreta como una hipótesis de viabilidad técnica y arquitectónica. No se formula como prueba causal de mejora deportiva.
+La hipótesis se interpreta como una hipótesis de viabilidad técnico-funcional y arquitectónica. No se formula como prueba causal de mejora deportiva.
 
 ## 3.2 Objetivo general
 
@@ -127,7 +127,7 @@ Las preguntas se formulan para evaluar la contribución de Ciencia de Datos e IA
 
 | Pregunta | Evidencia evaluada | Alcance de la respuesta |
 |---|---|---|
-| **Pregunta principal.** ¿Hasta qué punto pueden transformarse datos sencillos y observables de fútbol amateur o semiprofesional en información útil sobre rendimiento y evolución mediante Data Science, un sistema experto y una interfaz de IA? | Collector, Feature Engine, Analytics, sistema experto, Match Rating/Performance Index, dashboard, Coach, PDF y QA end-to-end. | Viabilidad técnica y arquitectónica de la transformación y de la presentación de información estructurada; no utilidad causal demostrada para decisiones o resultados deportivos. |
+| **Pregunta principal.** ¿Hasta qué punto pueden transformarse datos sencillos y observables de fútbol amateur o semiprofesional en información útil sobre rendimiento y evolución mediante Data Science, un sistema experto y una interfaz de IA? | Collector, Feature Engine, Analytics, motor experto, Match Rating/Performance Index, dashboard, Coach, PDF y QA end-to-end. | Viabilidad técnico-funcional y arquitectónica de la transformación y de la presentación de información estructurada; no utilidad causal demostrada para decisiones o resultados deportivos. |
 | **Subpregunta 1.** ¿Cómo puede un sistema experto transformar esas variables en información interpretable y auditable para el cuerpo técnico? | N1000–N13000, evidencia por nodo, estados de abstención, validadores y vistas de producto. | Que la implementación conserva entrada, condición, resultado, confianza y justificación, y puede abstenerse; no que sus interpretaciones sean externamente válidas o recomendadas por staff. |
 | **Subpregunta 2.** ¿Cómo puede una capa de IA conversacional facilitar la consulta e interpretación de los resultados del sistema? | Contrato composicional, herramientas read-only, evidencia estructurada, CI y smoke final del Coach. | Que las consultas soportadas acceden a resultados estructurados y explicables; no calidad universal del lenguaje, satisfacción de usuarios ni valor añadido empírico del fallback LLM. |
 
@@ -289,11 +289,11 @@ Los PDF Team/Player/Match consumen resultados materializados. No recalculan Matc
 
 ## 4.13 Validación
 
-Cada capa dispone de tests y validators específicos. Posteriormente se ejecutó QA end-to-end dividido en Data/Core, Analytics/Expert, Product y Delivery.
+La estrategia se organizó en seis bloques complementarios: **pipeline y trazabilidad**, **Match Rating**, **motor experto**, **validación funcional**, **robustez y abstención**, y **privacidad y reproducibilidad**. El primero verifica la cadena desde dato bruto hasta las superficies visibles; el segundo combina cobertura, sensibilidad controlada, rutas por rol observado y estabilidad descriptiva; el tercero inspecciona evidencia, reglas y abstención; el cuarto contrasta preguntas representativas con materializaciones de referencia; el quinto fuerza condiciones incompletas; y el sexto separa la fuente privada de una demo anónima y reproducible.
 
-El Coach Copilot se valida en dos niveles complementarios: un query-space contract reproducible en CI sobre la demo sintética y un smoke real sobre la DuckDB profesional. El smoke final contiene 28 casos que cubren rankings, perfiles, GPS, comparación entre jugadores, comparación por posición, partido, calidad, guardrails, ruido/fuera de dominio y follow-ups encadenados.
+Cada bloque usa contratos y validators reproducibles; el QA end-to-end integra Data/Core, Analytics/Expert, Product y Delivery. El Coach Copilot se evalúa además mediante un contrato de espacio de consultas en CI y un smoke real sobre la DuckDB de desarrollo. Los resultados detallados y los logs de cada validador se reservan para los anexos.
 
-La validación técnica responde a la pregunta principal y a sus dos subpreguntas. Los resultados de los gates son pruebas de conformidad de implementación y reproducibilidad; no son pruebas de hipótesis estadísticas. Se distinguen de forma explícita de la validación empírica con observadores o staff: esta última requeriría recogida de datos adicional y queda definida como protocolo, no como resultado del presente trabajo.
+Estas pruebas responden a la pregunta principal y a sus dos subpreguntas como evidencia técnico-funcional del artefacto. Un `PASS` expresa conformidad con un contrato explícito, no una prueba de hipótesis estadística ni una evaluación con observadores o staff.
 
 ## 4.14 Reproducibilidad
 
@@ -541,6 +541,32 @@ Runs de referencia del cierre:
 
 El smoke 28/28 es un gate local adicional sobre la DuckDB profesional; el CI usa la demo sintética para garantizar regresión reproducible desde un entorno limpio.
 
+## 6.13 Síntesis de validación técnico-funcional
+
+Las validaciones nuevas se integran en seis bloques, sin interpretar un `PASS` aislado como utilidad percibida o validez externa.
+
+| Bloque | Evidencia resumida | Resultado y alcance |
+|---|---|---|
+| Pipeline y trazabilidad | Caso jugador-partido: raw → feature → analytics → Match Rating / motor experto → dashboard → Coach / PDF. | PASS; demuestra continuidad y provenance de una salida visible. |
+| Match Rating | 590/590 apariciones jugadas; sensibilidad controlada; 38 rutas GK, 380 rutas posicionales y 172 fallbacks explícitos; distribución y variabilidad temporal descriptivas. | PASS; demuestra coherencia interna y trazabilidad, no validez externa. |
+| Motor experto | 835 registros de plantilla/alineación, 154.475 filas de decisión y una traza `input → condición → resultado → evidencia/confianza → justificación`. | PASS; N13000 se abstiene en 501 casos por policy no validada, 245 por rol desconocido y 89 por falta de evidencia. |
+| Validación funcional | Seis preguntas representativas sobre rating, posición, evolución, asistencias y GPS contrastadas contra materializaciones. | 6/6 PASS; demuestra utilidad funcional para el espacio de consultas soportado, no satisfacción de usuarios. |
+| Robustez y abstención | Casos de portero, pocos minutos, rol no fiable, sin GPS, varias posiciones y poco historial; dos consultas bloqueadas por guardrails. | PASS; no se fuerza posición, conclusión fisiológica ni recomendación. |
+| Privacidad y reproducibilidad | Privacy gate, aliases de demo, demo sintética y CI desde entorno limpio. | PASS; demuestra publicación reproducible y anonimizadora, no derechos sobre la fuente privada. |
+
+El rendimiento por posición se presenta solo como descripción del historial de roles observados. Las combinaciones con una a cuatro apariciones se etiquetan como muestra pequeña y no sustentan tendencias fuertes. El detalle ejecutable de cada bloque se conserva en los anexos.
+
+## 6.14 Respuesta a los objetivos
+
+| Grupo de objetivos | Evidencia de resultado | Respuesta |
+|---|---|---|
+| Capturar y estructurar hechos observables | Collector, modelo jugador-partido, validadores y trazabilidad end-to-end. | Cumplido técnicamente. |
+| Transformar datos en features y analytics temporales | FEATURE-01/02/03, `strict-past` y evidencia analítica materializada. | Cumplido técnicamente; no prueba relevancia deportiva universal de cada variable. |
+| Contextualizar por rol observado y valorar rendimiento | Rutas GK/posicional/fallback, sensibilidad y estabilidad descriptiva del Match Rating. | Cumplido como coherencia y trazabilidad interna; no como validación externa del constructo. |
+| Estructurar evidencia experta auditable | N1000–N12000, traza y N13000 con abstención. | Cumplido; no genera recomendaciones tácticas finales. |
+| Hacer consultable y visible la información | Dashboard, PDF, seis consultas funcionales y Coach grounded. | Cumplido para el espacio soportado; no mide satisfacción de usuarios. |
+| Mantener GPS opcional, privacidad y reproducibilidad | Robustez sin GPS, exclusión de GPS sintético como evidencia fisiológica, privacy gate, demo y CI. | Cumplido como integración y reproducibilidad; no valida fisiología ni licencia de la fuente privada. |
+
 ---
 
 # 7. Discusión
@@ -593,7 +619,7 @@ La demo sintética separa software reproducible de redistribución de datos prof
 
 ## 7.11 Contraste de la hipótesis
 
-La hipótesis queda **parcialmente respaldada**: se ha demostrado su dimensión técnica y arquitectónica, es decir, que los datos observables pueden recorrer una cadena funcional, auditable, versionada y reproducible hasta convertirse en salidas estructuradas de rendimiento, evolución, rol, evidencia experta y consulta conversacional. El contraste se limita a esa dimensión: los gates verifican propiedades previamente especificadas de la implementación, no la magnitud de un efecto deportivo ni la utilidad percibida por un cuerpo técnico.
+La hipótesis queda **respaldada favorablemente en su alcance técnico-funcional y arquitectónico**. La evidencia demuestra que datos observables recorren una cadena funcional, auditable, versionada y reproducible hasta convertirse en salidas estructuradas de rendimiento, evolución, rol observado, evidencia experta y consulta conversacional. El contraste no estima un efecto deportivo ni utilidad percibida: los gates verifican propiedades especificadas de la implementación y la validación funcional comprueba que consultas representativas recuperan la evidencia correcta.
 
 | Parte de la hipótesis | Clasificación | Evidencia existente | Alcance exacto |
 |---|---|---|---|
@@ -643,7 +669,7 @@ La demo sintética verifica que el software y los contratos pueden reconstruirse
 
 # 9. Conclusiones
 
-El TFM demuestra la viabilidad técnica de construir un sistema funcional, auditable y reproducible de análisis de rendimiento para fútbol amateur o semiprofesional a partir de vídeo y datos estructurados, con GPS opcional tratado como capa descriptiva.
+El TFM demuestra la viabilidad técnico-funcional y arquitectónica de construir un sistema funcional, auditable y reproducible de análisis de rendimiento para fútbol amateur o semiprofesional a partir de vídeo y datos estructurados, con GPS opcional tratado como capa descriptiva.
 
 Las principales contribuciones son:
 
@@ -666,7 +692,7 @@ Las principales contribuciones son:
 
 La conclusión central es:
 
-> **La propuesta es técnicamente viable, funcional y reproducible como arquitectura de soporte al análisis de rendimiento. Su impacto real sobre decisiones de entrenadores y rendimiento deportivo requiere validación adicional con usuarios, datos reales adicionales y ground truth independiente.**
+> **La hipótesis queda respaldada favorablemente en su alcance técnico-funcional y arquitectónico: el sistema transforma datos observables en información estructurada sobre rendimiento y evolución, la hace trazable mediante Match Rating y motor experto, y permite consultarla mediante Coach y PDF. Quedan pendientes la validez externa de los constructos, la utilidad percibida por staff y cualquier impacto causal sobre decisiones o rendimiento deportivo.**
 
 ---
 

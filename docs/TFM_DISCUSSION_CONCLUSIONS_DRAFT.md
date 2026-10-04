@@ -223,7 +223,7 @@ Hipótesis principal:
 
 > Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte al análisis a partir de datos de vídeo y GPS opcional, capaz de transformar hechos observables en información trazable sobre rendimiento, evolución y rol; cuando existe GPS observado, puede añadir variables físicas descriptivas.
 
-Los resultados permiten contrastarla favorablemente en su dimensión técnica y arquitectónica.
+Los resultados la respaldan favorablemente en su alcance técnico-funcional y arquitectónico.
 
 Esta conclusión responde a la pregunta principal sobre la transformación de datos observables en información de rendimiento y evolución, y a las dos subpreguntas sobre sistema experto e interfaz conversacional. Los controles temporales, la separación entre capas, el grounding y la abstención sostienen metodológicamente esas respuestas. La matriz de evidencias identifica los gates concretos y evita extenderlas a utilidad percibida, calidad empírica del fallback, impacto deportivo o validación externa.
 
@@ -237,6 +237,8 @@ Existe evidencia de que:
 6. el asistente IA funciona downstream de lógica determinista y herramientas read-only;
 7. el espacio de consultas del Assistant se valida mediante contrato, tests y CI, no mediante una colección informal de frases;
 8. el repositorio puede reconstruir una demo sintética en un entorno limpio.
+
+Además, una traza real verificó la continuidad desde dato bruto hasta dashboard, Coach y PDF; seis preguntas funcionales representativas fueron correctas frente a sus materializaciones de referencia; y los casos incompletos confirmaron abstención segura. Estas pruebas amplían el respaldo más allá de la mera existencia de componentes, sin convertirse en una validación externa con staff.
 
 La hipótesis no queda contrastada en términos de impacto causal sobre decisiones, victorias, rendimiento deportivo o prevención de lesiones.
 
@@ -290,7 +292,7 @@ El modo BYOK está integrado y validado contractualmente, pero no dispone todav�
 
 # 13. Conclusiones
 
-El TFM demuestra la viabilidad técnica de construir un sistema funcional y auditable de análisis de rendimiento para un contexto amateur o semiprofesional utilizando vídeo y datos estructurados, con GPS opcional tratado como capa descriptiva.
+El TFM demuestra la viabilidad técnico-funcional y arquitectónica de construir un sistema funcional y auditable de análisis de rendimiento para un contexto amateur o semiprofesional utilizando vídeo y datos estructurados, con GPS opcional tratado como capa descriptiva.
 
 Las principales contribuciones son:
 
@@ -315,7 +317,7 @@ El valor principal del proyecto no reside en maximizar el número de métricas o
 
 La conclusión académica debe formularse de manera precisa:
 
-> **La propuesta es técnicamente viable, funcional y reproducible como arquitectura de soporte al análisis de rendimiento. Su impacto real sobre decisiones de entrenadores y rendimiento deportivo requiere validación adicional con usuarios, datos reales adicionales y ground truth independiente.**
+> **La hipótesis queda respaldada favorablemente en su alcance técnico-funcional y arquitectónico: los datos observables se transforman en información trazable de rendimiento y evolución, se estructuran mediante un motor experto auditable y se consultan mediante una interfaz conversacional. La validez externa de los constructos, la utilidad percibida y el impacto deportivo permanecen pendientes de validación externa.**
 
 ---
 

@@ -400,6 +400,21 @@ Collector
 → Publication layer
 ```
 
+## 11.1 Síntesis de validación técnico-funcional
+
+La evidencia se agrupa para responder las preguntas de investigación, no como una enumeración de gates.
+
+| Bloque | Método | Resultado |
+|---|---|---|
+| Pipeline y trazabilidad | Traza real `raw → feature → analytics → rating/experto → dashboard → Coach/PDF`. | PASS; una salida visible conserva su provenance. |
+| Match Rating | Cobertura, sensibilidad controlada, rutas por rol observado y estabilidad descriptiva. | PASS; 590/590 apariciones jugadas, 38 GK, 380 posicionales y 172 fallbacks. |
+| Motor experto | Cobertura N1000–N13000 y traza de decisión auditable. | PASS; 835 registros evaluados y abstención final controlada. |
+| Funcional | Seis preguntas representativas contrastadas con tablas de referencia. | 6/6 PASS. |
+| Robustez y abstención | Casos de datos incompletos y dos consultas sin policy/evidencia. | PASS; no se fuerza conclusión ni recomendación. |
+| Privacidad y reproducibilidad | Privacy gate, demo sintética y CI limpio. | PASS. |
+
+El detalle de preguntas, trazas y logs se mantiene en anexos. Las comparaciones por posición usan roles observados; las filas con 1–4 apariciones son muestras pequeñas y solo descriptivas.
+
 ---
 
 # 12. Demo pública sintética
@@ -465,13 +480,13 @@ Hipótesis:
 
 > Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte al análisis a partir de datos de vídeo y GPS opcional, capaz de transformar hechos observables en información trazable sobre rendimiento, evolución y rol; cuando existe GPS observado, puede añadir variables físicas descriptivas.
 
-Los resultados permiten defender favorablemente la **viabilidad técnica y arquitectónica** de la hipótesis porque:
+Los resultados respaldan favorablemente la **viabilidad técnico-funcional y arquitectónica** de la hipótesis porque:
 
-1. existe un pipeline funcional desde captura/importación hasta dashboard, asistente y PDF;
+1. existe un pipeline funcional y trazable desde captura/importación hasta dashboard, asistente y PDF;
 2. las capas están separadas y versionadas;
 3. el sistema degrada explícitamente cuando falta evidencia;
 4. existe control temporal contra leakage;
-5. el LLM no es responsable del cálculo crítico;
+5. seis preguntas representativas recuperan resultados estructurados correctos en el espacio de consultas soportado y el LLM no es responsable del cálculo crítico;
 6. la solución se reproduce desde un entorno limpio mediante datos sintéticos.
 
 En relación con las preguntas de investigación, la pregunta principal queda respaldada por el flujo integrado desde Collector hasta dashboard, PDF y demo reproducible. La primera subpregunta queda respaldada por la evidencia auditable del sistema experto y sus estados de abstención; la segunda, por el contrato conversacional, las herramientas de solo lectura y la batería del Coach. Los controles temporales y de grounding sustentan la calidad metodológica de esas respuestas, sin convertirse en su objetivo. Estas evidencias no sustituyen una evaluación con staff, una evaluación empírica del fallback LLM ni validación externa del Match Rating.
