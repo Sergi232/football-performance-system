@@ -1,6 +1,6 @@
 # Football Performance System
 
-## Diseño e implementación de un sistema auditable de análisis del rendimiento futbolístico para equipos amateur y semiprofesionales mediante vídeo, GPS opcional, analítica de datos, sistema experto e inteligencia artificial
+## Diseño y validación técnica de un sistema auditable de análisis del rendimiento futbolístico mediante datos observables, analítica reproducible, sistema experto e inteligencia artificial grounded
 
 **Estado:** borrador integrado de memoria.  
 **Idioma:** castellano.  
@@ -13,7 +13,7 @@
 
 # Resumen
 
-Este Trabajo Final de Máster presenta el diseño, implementación y validación técnica de un sistema integral de análisis de rendimiento orientado a equipos de fútbol amateur y semiprofesionales sin departamento propio de análisis. El objetivo no es reproducir plataformas profesionales de tracking o proveedores comerciales de eventos, sino demostrar que un conjunto reducido de datos observables de vídeo y GPS opcional puede transformarse en información estructurada, auditable y consultable por un cuerpo técnico.
+Este Trabajo Final de Máster presenta el diseño, implementación y validación técnica de un sistema integral de análisis de rendimiento orientado a equipos de fútbol amateur y semiprofesionales sin departamento propio de análisis. El objetivo no es reproducir plataformas profesionales de tracking o proveedores comerciales de eventos, sino evaluar si un conjunto reducido de datos observables de vídeo puede transformarse en información estructurada, auditable y consultable; el GPS se incorpora como fuente opcional de variables físicas descriptivas cuando existe una observación válida.
 
 La solución se organiza mediante una arquitectura por capas que separa datos brutos, variables derivadas, evidencia analítica, lógica de decisión y generación de lenguaje natural. El flujo parte de un Data Collector HTML y de una capa opcional de normalización GPS, almacena la información en DuckDB, construye features deterministas con control temporal `strict-past`, genera evidencia analítica, aplica un sistema experto jerárquico N1000-N13000, presenta los resultados mediante una aplicación Streamlit e incorpora un Coach Copilot grounded. El asistente resuelve consultas claras mediante preflight, routing determinista y herramientas de solo lectura, y reserva un modelo local Qwen para lenguaje ambiguo dentro del dominio; adicionalmente existe un modo OpenAI opcional con clave propia del usuario. Los informes PDF consumen resultados estructurados ya calculados y no recalculan lógica crítica.
 
@@ -87,19 +87,23 @@ El Coach Copilot adopta el mismo principio general: el LLM no accede directament
 
 Sandve et al. (2013) proponen registrar cómo se producen los resultados, conservar versiones y automatizar procesos. El proyecto implementa estos principios mediante Git, tests, validators, CI y una demo sintética generable desde cero.
 
+## 2.9 Alcance de la evaluación de un artefacto técnico
+
+La literatura anterior fundamenta constructos y decisiones de diseño, pero no convierte automáticamente una prueba de software en evidencia de impacto deportivo. Por ello, este trabajo evalúa el artefacto en el plano que puede observarse con la evidencia disponible: conformidad de contratos, trazabilidad entre capas, control temporal e integración reproducible. La evaluación de utilidad con staff, fiabilidad de la observación y validez externa de los constructos deportivos requiere diseños empíricos distintos y no se infiere de los gates técnicos.
+
 ---
 
 # 3. Hipótesis y objetivos
 
 ## 3.1 Hipótesis principal
 
-> **Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte a la decisión a partir de datos de vídeo y GPS opcional, capaz de transformarlos en información sobre rendimiento, evolución, rol y comportamiento físico de los jugadores y del equipo.**
+> **Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte al análisis a partir de datos de vídeo y GPS opcional, capaz de transformar hechos observables en información trazable sobre rendimiento, evolución y rol; cuando existe GPS observado, puede añadir variables físicas descriptivas.**
 
 La hipótesis se interpreta como una hipótesis de viabilidad técnica y arquitectónica. No se formula como prueba causal de mejora deportiva.
 
 ## 3.2 Objetivo general
 
-Diseñar, implementar y validar un sistema reproducible que transforme datos simples de vídeo y GPS opcional en información estructurada para el análisis de equipo, jugador y partido.
+Diseñar, implementar y validar técnicamente un sistema reproducible que transforme datos simples de vídeo en información estructurada para el análisis de equipo, jugador y partido, incorporando GPS solo como fuente opcional y descriptiva.
 
 ## 3.3 Objetivos específicos
 
@@ -123,11 +127,11 @@ Las preguntas se formulan para evaluar la contribución de Ciencia de Datos e IA
 
 | Pregunta | Evidencia evaluada | Alcance de la respuesta |
 |---|---|---|
-| **PI1.** ¿Puede una arquitectura basada en datos observables producir análisis reproducibles sin leakage temporal? | FEATURE-01/02/03, validadores strict-past, contracts de datos y demo sintética. | Viabilidad técnica y reproducibilidad del pipeline. |
-| **PI2.** ¿Puede una capa de IA en lenguaje natural mantener grounding y trazabilidad sin calcular métricas críticas? | Contrato composicional, preflight, tools read-only, CI y smoke final del Coach. | Grounding técnico de las consultas soportadas; no satisfacción de usuarios ni cobertura universal del lenguaje. |
-| **PI3.** ¿Puede el prototipo ofrecer un flujo integrado para equipo, jugador y partido con evidencia visible? | Collector, dashboard, PDF, capturas y QA end-to-end. | Integración funcional; no mejora causal de decisiones ni de resultados deportivos. |
+| **PI1.** ¿Puede un pipeline basado en hechos observables generar features y evidencia histórica reproducibles sin usar información de la misma fecha o del futuro? | FEATURE-01/02/03, validadores strict-past, contracts de datos y demo sintética. | Viabilidad técnica y reproducibilidad del pipeline histórico; no validez deportiva externa de las features. |
+| **PI2.** ¿Puede una interfaz de consulta en lenguaje natural mantenerse grounded y trazable cuando el cálculo crítico queda fuera del LLM? | Contrato composicional, preflight, tools read-only, CI y smoke final del Coach. | Grounding técnico de las consultas cubiertas por la ruta determinista y de los contratos del fallback; no calidad empírica del fallback ni satisfacción de usuarios. |
+| **PI3.** ¿Puede conservarse la trazabilidad de los datos y su evidencia analítica a través del flujo Collector–features–analytics–dashboard–PDF? | Collector, contracts de capas, dashboard, PDF, capturas y QA end-to-end. | Integración y trazabilidad funcional del prototipo; no utilidad causal para decisiones o resultados deportivos. |
 
-La relación completa entre preguntas, evidencia y limitaciones se mantiene en `docs/TFM_EVIDENCE_MATRIX.md`. Los protocolos para evaluar fiabilidad interobservador y utilidad con staff se preparan en `docs/TFM_EVALUATION_PROTOCOLS.md`, pero no se presentan como resultados ejecutados.
+La relación completa entre preguntas, evidencia y limitaciones se mantiene en `docs/TFM_EVIDENCE_MATRIX.md`. La evaluación es una verificación técnica basada en contratos y pruebas de integración: cada `PASS` expresa conformidad con un contrato explícito, no una estimación estadística ni una validación con usuarios. Los protocolos para evaluar fiabilidad interobservador y utilidad con staff se preparan en `docs/TFM_EVALUATION_PROTOCOLS.md`, pero no se presentan como resultados ejecutados.
 
 ---
 
@@ -135,7 +139,7 @@ La relación completa entre preguntas, evidencia y limitaciones se mantiene en `
 
 ## 4.1 Enfoque de desarrollo
 
-El desarrollo siguió una estrategia incremental orientada a producto. Cada capa se validó antes de utilizarla como dependencia de la siguiente.
+El desarrollo siguió una estrategia incremental de construcción y evaluación de un artefacto analítico. Cada capa se validó antes de utilizarla como dependencia de la siguiente. La unidad de análisis para datos, features, rating y evidencia es `player_match`; la unidad de evaluación de los gates es el contrato explícito de cada componente.
 
 ```text
 Collector / Import + GPS opcional
@@ -180,9 +184,11 @@ Esta separación facilita auditabilidad y evita almacenar interpretaciones como 
 
 FEATURE-01 genera 28 features base deterministas. Los ratios y per-90 preservan valores faltantes cuando el denominador no es válido.
 
-FEATURE-02 genera operadores temporales utilizando únicamente pasado estricto.
+FEATURE-02 genera operadores temporales utilizando únicamente pasado estricto. Esta restricción afecta a features, comparativas y tendencias históricas; no convierte el Match Rating post-partido en una predicción previa al encuentro.
 
 FEATURE-03 añade contexto temporal condicionado por rol observado y evita imputar un rol específico cuando no existe evidencia.
+
+La fecha es la granularidad temporal disponible para el contrato `strict-past`. Como decisión conservadora, registros de una misma fecha no se informan entre sí, incluso si pudiera existir un orden horario; esto previene contaminación temporal a costa de descartar posible evidencia histórica intradía.
 
 ## 4.5 Analytics Engine
 
@@ -197,7 +203,7 @@ El jugador actual se excluye del pool de peers y cada peer recibe el mismo peso.
 
 ## 4.6 Match Rating y Performance Index
 
-El Match Rating V5 ofrece una valoración inmediata jugador-partido desde el primer partido. La versión activa es `match_rating_v0.5-candidate`.
+El Match Rating V5 ofrece una valoración inmediata jugador-partido desde el primer partido. La versión activa es `match_rating_v0.5-candidate`: está congelada como especificación técnica de producto, pero no se presenta como constructo externamente validado.
 
 El Performance Index `performance_score_v0.2-experimental` se mantiene como capa histórica y posicional complementaria.
 
@@ -287,7 +293,7 @@ Cada capa dispone de tests y validators específicos. Posteriormente se ejecutó
 
 El Coach Copilot se valida en dos niveles complementarios: un query-space contract reproducible en CI sobre la demo sintética y un smoke real sobre la DuckDB profesional. El smoke final contiene 28 casos que cubren rankings, perfiles, GPS, comparación entre jugadores, comparación por posición, partido, calidad, guardrails, ruido/fuera de dominio y follow-ups encadenados.
 
-La validación técnica responde directamente a PI1, PI2 y PI3. Se distingue de forma explícita de la validación empírica con observadores o staff: esta última requeriría recogida de datos adicional y queda definida como protocolo, no como resultado del presente trabajo.
+La validación técnica responde directamente a PI1, PI2 y PI3. Los resultados de los gates son pruebas de conformidad de implementación y reproducibilidad; no son pruebas de hipótesis estadísticas. Se distinguen de forma explícita de la validación empírica con observadores o staff: esta última requeriría recogida de datos adicional y queda definida como protocolo, no como resultado del presente trabajo.
 
 ## 4.14 Reproducibilidad
 
@@ -324,6 +330,8 @@ El caso utilizado para validar el producto contiene:
 ```
 
 La validación de base de datos cerró sin duplicados críticos, minutos inválidos u orphan events.
+
+El caso constituye un contexto único de desarrollo y sirve para verificar la ejecución del pipeline, no para estimar generalización a ligas, categorías, estilos de juego o procesos de captura distintos.
 
 ## 6.2 Feature Engine
 
@@ -471,6 +479,8 @@ La batería cubre:
 
 Los 28 casos finales pudieron resolverse sin activar el fallback Qwen. La media de 0,4 s corresponde únicamente a esta batería en el PC de desarrollo; no constituye un SLA universal ni mide la latencia de consultas ambiguas que sí requieran inferencia semántica. El modelo `qwen3.5:4b` se conserva como fallback para ese caso residual.
 
+En consecuencia, el resultado respalda la seguridad y cobertura de la ruta determinista/preflight para la batería definida. No permite atribuir al LLM una tasa de acierto, robustez lingüística o valor añadido empírico, porque el fallback no se activó en esos 28 casos.
+
 El modo OpenAI con clave propia del usuario también dispone de tests contractuales y CI: la superficie de herramientas externas coincide con las tools FPS permitidas, los argumentos se revalidan localmente y una tool desconocida se descarta. No se ha realizado todavía una validación live con una API key real, por lo que no se reporta latencia ni calidad live de ese modo.
 
 ## 6.9 Informes PDF
@@ -581,11 +591,11 @@ La demo sintética separa software reproducible de redistribución de datos prof
 
 ## 7.11 Contraste de la hipótesis
 
-La hipótesis queda contrastada favorablemente en su dimensión técnica y arquitectónica porque existe un pipeline funcional, auditable, versionado y reproducible.
+La hipótesis queda contrastada favorablemente en su dimensión técnica y arquitectónica porque existe un pipeline funcional, auditable, versionado y reproducible. El contraste se limita a esa dimensión: los gates verifican propiedades previamente especificadas de la implementación, no la magnitud de un efecto deportivo.
 
 No queda demostrado un impacto causal sobre decisiones de entrenadores, resultados deportivos o prevención de lesiones.
 
-En términos de preguntas de investigación, PI1 queda respaldada por los contratos de datos, los validadores strict-past y la reconstrucción de la demo; PI2 por el contrato composicional y el smoke/CI del Coach; y PI3 por el flujo integrado Collector–dashboard–PDF y sus gates end-to-end. Ninguna de estas respuestas sustituye un estudio de uso con staff ni una validación externa del Match Rating.
+En términos de preguntas de investigación, PI1 queda respaldada por los contratos de datos, los validadores strict-past y la reconstrucción de la demo; PI2 por el contrato composicional, el preflight y la batería de la ruta determinista del Coach, junto con los contratos del fallback; y PI3 por la trazabilidad integrada Collector–features–analytics–dashboard–PDF y sus gates end-to-end. Ninguna de estas respuestas sustituye un estudio de uso con staff, un benchmark empírico del fallback LLM ni una validación externa del Match Rating.
 
 ---
 
@@ -604,11 +614,23 @@ Las principales limitaciones son:
 9. fallback Qwen potencialmente lento en consultas realmente ambiguas sobre CPU;
 10. modo OpenAI BYOK con validación contractual y CI, pero sin benchmark live con una API key real.
 
+## 8.1 Amenazas a la validez
+
+| Dimensión | Amenaza | Mitigación presente | Límite restante |
+|---|---|---|---|
+| Medición | La taxonomía puede ser interpretada de forma distinta por observadores. | Categorías operacionales, contratos y validación funcional. | No hay estudio interobservador ejecutado. |
+| Temporal | Un agregado histórico podría contaminarse con información posterior. | `strict-past` excluye misma fecha y futuro. | El contrato se basa en fecha y no demuestra relevancia deportiva de cada feature. |
+| Constructo | Rating, Performance Index y reglas expertas pueden no representar el rendimiento que juzgaría un experto externo. | Separación de capas, versión explícita, abstención y estado experimental. | Falta ground truth independiente y validación convergente. |
+| Externa | El caso profesional de desarrollo representa un único contexto. | Demo sintética reproducible y límites documentados. | No hay replicación en otros clubes, ligas, observadores o proveedores GPS. |
+| Interacción IA | El fallback semántico puede fallar de forma distinta a la ruta determinista. | Tools bounded/read-only, revalidación y guardrails. | El smoke final no activó el fallback; no hay benchmark lingüístico empírico. |
+
+La demo sintética verifica que el software y los contratos pueden reconstruirse desde cero. No replica el contenido ni permite reproducir los resultados deportivos del caso profesional, que no se redistribuye.
+
 ---
 
 # 9. Conclusiones
 
-El TFM demuestra que es posible construir un sistema funcional, auditable y reproducible de análisis de rendimiento para fútbol amateur o semiprofesional a partir de vídeo, datos estructurados y GPS opcional.
+El TFM demuestra la viabilidad técnica de construir un sistema funcional, auditable y reproducible de análisis de rendimiento para fútbol amateur o semiprofesional a partir de vídeo y datos estructurados, con GPS opcional tratado como capa descriptiva.
 
 Las principales contribuciones son:
 

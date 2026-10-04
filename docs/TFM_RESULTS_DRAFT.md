@@ -289,7 +289,7 @@ La batería final incluye:
 - follow-ups ordinales, ventana temporal y evidencia;
 - follow-up de comparación por posición.
 
-El resultado muestra que toda la batería final pudo resolverse sin invocar Qwen. `qwen3.5:4b` queda como fallback semántico únicamente cuando el router determinista no puede resolver con suficiente confianza una consulta que sigue dentro del dominio soportado.
+El resultado muestra que toda la batería final pudo resolverse sin invocar Qwen. `qwen3.5:4b` queda como fallback semántico únicamente cuando el router determinista no puede resolver con suficiente confianza una consulta que sigue dentro del dominio soportado. Por tanto, esta batería valida la ruta determinista/preflight y no estima calidad, cobertura lingüística ni latencia del fallback.
 
 Los guardrails bloquean explícitamente:
 - fatiga/cansancio;
@@ -461,7 +461,7 @@ El smoke real final 28/28 se ejecutó localmente sobre la DuckDB profesional, mi
 
 Hipótesis:
 
-> Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte a la decisión a partir de datos de vídeo y GPS opcional, capaz de transformarlos en información sobre rendimiento, evolución, rol y comportamiento físico de los jugadores y del equipo.
+> Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte al análisis a partir de datos de vídeo y GPS opcional, capaz de transformar hechos observables en información trazable sobre rendimiento, evolución y rol; cuando existe GPS observado, puede añadir variables físicas descriptivas.
 
 Los resultados permiten defender favorablemente la **viabilidad técnica y arquitectónica** de la hipótesis porque:
 
@@ -472,7 +472,7 @@ Los resultados permiten defender favorablemente la **viabilidad técnica y arqui
 5. el LLM no es responsable del cálculo crítico;
 6. la solución se reproduce desde un entorno limpio mediante datos sintéticos.
 
-En relación con las preguntas de investigación, PI1 queda respaldada por el pipeline de features, los contratos strict-past y la reconstrucción de la demo; PI2 por el contrato composicional, preflight y las validaciones del Coach; y PI3 por los gates de integración desde Collector hasta dashboard y PDF. Estas evidencias no sustituyen una evaluación con staff ni validación externa del Match Rating.
+En relación con las preguntas de investigación, PI1 queda respaldada por el pipeline de features, los contratos strict-past y la reconstrucción de la demo; PI2 por el contrato composicional, preflight y las validaciones de la ruta determinista del Coach, junto con los contratos del fallback; y PI3 por los gates de trazabilidad e integración desde Collector hasta dashboard y PDF. Estas evidencias no sustituyen una evaluación con staff, una evaluación empírica del fallback LLM ni validación externa del Match Rating.
 
 La hipótesis no debe reinterpretarse como demostración de que el sistema:
 - mejora causalmente las decisiones del entrenador;
@@ -502,4 +502,4 @@ captura de datos realista
 + reproducibilidad
 ```
 
-El valor académico del prototipo reside tanto en lo que implementa como en las inferencias que deliberadamente decide no realizar sin evidencia suficiente.
+El valor académico del prototipo reside tanto en lo que implementa como en las inferencias que deliberadamente decide no realizar sin evidencia suficiente. Cada resultado `PASS` debe interpretarse como conformidad con un contrato técnico definido, no como una prueba estadística de eficacia deportiva.

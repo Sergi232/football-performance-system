@@ -105,7 +105,7 @@ Fuente:
 
 ## 3.1 Hipótesis
 
-> Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte a la decisión a partir de datos de vídeo y GPS opcional, capaz de transformarlos en información sobre rendimiento, evolución, rol y comportamiento físico de los jugadores y del equipo.
+> Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte al análisis a partir de datos de vídeo y GPS opcional, capaz de transformar hechos observables en información trazable sobre rendimiento, evolución y rol; cuando existe GPS observado, puede añadir variables físicas descriptivas.
 
 Aclarar que se contrasta como hipótesis de viabilidad técnica/arquitectónica, no como hipótesis causal de mejora deportiva.
 

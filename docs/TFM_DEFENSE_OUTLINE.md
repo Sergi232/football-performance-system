@@ -11,7 +11,7 @@ Objetivo: explicar el proyecto como producto + metodología, no como una lista d
 
 # Mensaje central
 
-> Se ha construido un sistema funcional y auditable que transforma datos simples de vídeo y GPS opcional en información para equipo, jugador y partido, manteniendo separados los cálculos críticos de la capa LLM y evitando inferencias no validadas.
+> Se ha construido un sistema funcional y auditable que transforma datos observables de vídeo en información trazable para equipo, jugador y partido; el GPS es opcional y descriptivo, y los cálculos críticos quedan separados de la capa LLM.
 
 ---
 
@@ -44,9 +44,9 @@ Aclarar inmediatamente:
 Presentar las tres preguntas que organizan la evaluación:
 
 ```text
-PI1  ¿el pipeline es reproducible y evita leakage temporal?
-PI2  ¿la capa de IA mantiene grounding sin calcular métricas críticas?
-PI3  ¿el prototipo integra Collector, análisis y evidencia visible?
+PI1  ¿el pipeline histórico es reproducible y evita información de misma fecha o futuro?
+PI2  ¿la interfaz se mantiene grounded cuando el cálculo crítico queda fuera del LLM?
+PI3  ¿la trazabilidad se conserva desde Collector hasta la presentación de evidencia?
 ```
 
 Anticipar el alcance: las tres preguntas se responden con evidencia técnica; la utilidad con staff y la fiabilidad interobservador requieren evaluación posterior.
@@ -123,7 +123,7 @@ Explicar dos ideas distintas:
 ### Match Rating
 - valoración inmediata desde partido 1;
 - cobertura 590/590 en el caso de desarrollo;
-- V5 congelada tras validación técnica.
+- V5 congelada como especificación técnica; no equivale a validación externa del constructo.
 
 ### GPS
 - opcional;

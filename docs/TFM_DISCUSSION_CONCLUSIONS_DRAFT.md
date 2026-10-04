@@ -10,7 +10,7 @@ Este documento interpreta los resultados del prototipo a la luz del marco teóri
 
 # 1. Discusión general
 
-El principal resultado del TFM es la construcción de un sistema end-to-end capaz de transformar datos simples de vídeo y GPS opcional en información estructurada para equipo, jugador y partido. El sistema no se limita a una métrica aislada: integra captura, almacenamiento, feature engineering, analítica, sistema experto, dashboard, asistente IA y reporting dentro de una arquitectura auditable.
+El principal resultado del TFM es la construcción de un sistema end-to-end capaz de transformar datos simples de vídeo en información estructurada para equipo, jugador y partido, con GPS opcional como capa descriptiva. El sistema no se limita a una métrica aislada: integra captura, almacenamiento, feature engineering, analítica, sistema experto, dashboard, asistente IA y reporting dentro de una arquitectura auditable.
 
 Este resultado encaja con la literatura de performance analysis que defiende una lectura contextual y multidimensional del rendimiento en fútbol. Mackenzie y Cushion (2013), Sarmento et al. (2014) y Sarmento et al. (2022) advierten contra interpretaciones reduccionistas basadas en un único indicador. La arquitectura implementada responde a este problema separando observaciones, features, evidencia analítica y decisión.
 
@@ -50,13 +50,13 @@ Kaufman et al. (2012) muestran que el leakage puede producir resultados aparente
 
 El proyecto evita este problema utilizando únicamente observaciones con fecha estrictamente anterior.
 
-Esta elección fortalece la validez interna de las comparaciones históricas del prototipo. Sin embargo, controlar leakage no garantiza por sí mismo que una feature sea deportivamente relevante: solo garantiza que la información utilizada era legítimamente disponible en ese momento.
+Esta elección fortalece la validez interna de las comparaciones históricas del prototipo. La fecha es la granularidad temporal disponible, de modo que el contrato excluye también registros de la misma fecha aunque pudiera existir un orden horario. Es una decisión conservadora: evita contaminación a costa de no utilizar posible evidencia intradía. Controlar leakage tampoco garantiza que una feature sea deportivamente relevante: solo garantiza que la información utilizada era legítimamente disponible antes del registro evaluado.
 
 ---
 
 # 5. Match Rating: cobertura frente a validez universal
 
-El Match Rating V5 cubre las 590 apariciones jugadas del caso profesional de desarrollo y mantiene rutas específicas para jugadores de campo y porteros, además de un fallback explícito cuando no existe rol fiable.
+El Match Rating V5 cubre las 590 apariciones jugadas del caso profesional de desarrollo y mantiene rutas específicas para jugadores de campo y porteros, además de un fallback explícito cuando no existe rol fiable. El nombre de versión `candidate` se conserva para distinguir la especificación técnica congelada de una validación externa del constructo.
 
 Desde el punto de vista de producto, la cobertura completa resuelve una necesidad práctica: disponer de una valoración inmediata desde el primer partido.
 
@@ -221,11 +221,11 @@ La principal limitación de la demo es que no revalida deportivamente los modelo
 
 Hipótesis principal:
 
-> Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte a la decisión a partir de datos de vídeo y GPS opcional, capaz de transformarlos en información sobre rendimiento, evolución, rol y comportamiento físico de los jugadores y del equipo.
+> Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte al análisis a partir de datos de vídeo y GPS opcional, capaz de transformar hechos observables en información trazable sobre rendimiento, evolución y rol; cuando existe GPS observado, puede añadir variables físicas descriptivas.
 
 Los resultados permiten contrastarla favorablemente en su dimensión técnica y arquitectónica.
 
-Esta conclusión responde a las preguntas de investigación técnicas del trabajo: PI1 sobre reproducibilidad y control temporal, PI2 sobre grounding del Coach y PI3 sobre integración funcional. La matriz de evidencias identifica los gates concretos y evita extender esas respuestas a utilidad percibida, impacto deportivo o validación externa.
+Esta conclusión responde a las preguntas de investigación técnicas del trabajo: PI1 sobre reproducibilidad y control temporal de las capas históricas, PI2 sobre grounding de la ruta determinista del Coach y el contrato de su fallback, y PI3 sobre trazabilidad e integración entre capas. La matriz de evidencias identifica los gates concretos y evita extender esas respuestas a utilidad percibida, calidad empírica del fallback, impacto deportivo o validación externa.
 
 Existe evidencia de que:
 
@@ -290,7 +290,7 @@ El modo BYOK está integrado y validado contractualmente, pero no dispone todav�
 
 # 13. Conclusiones
 
-El TFM demuestra que es posible construir un sistema funcional y auditable de análisis de rendimiento para un contexto amateur o semiprofesional utilizando una combinación de vídeo, datos estructurados y GPS opcional.
+El TFM demuestra la viabilidad técnica de construir un sistema funcional y auditable de análisis de rendimiento para un contexto amateur o semiprofesional utilizando vídeo y datos estructurados, con GPS opcional tratado como capa descriptiva.
 
 Las principales contribuciones son:
 

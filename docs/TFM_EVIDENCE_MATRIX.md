@@ -8,9 +8,9 @@ Objetivo: vincular cada afirmación relevante de la memoria con evidencia técni
 
 | Pregunta | Evidencia de respuesta | Qué permite afirmar | Qué no permite afirmar |
 |---|---|---|---|
-| PI1. Pipeline reproducible y sin leakage temporal | FEATURE-01/02/03, strict-past, contracts y demo sintética reconstruible | Viabilidad técnica del pipeline y control temporal explícito | Validez deportiva externa o ausencia de todo error de captura |
-| PI2. IA grounded sin cálculo crítico en el LLM | Query-space contract, preflight, tools read-only, CI y smoke 28/28 | Trazabilidad técnica en las consultas soportadas | Calidad universal de lenguaje, satisfacción o utilidad percibida |
-| PI3. Flujo integrado para equipo, jugador y partido | Collector, dashboard, PDF, capturas y QA end-to-end | Integración funcional y demostrable del prototipo | Mejora causal de decisiones, rendimiento o resultados |
+| PI1. Pipeline histórico reproducible sin información de misma fecha o futuro | FEATURE-01/02/03, strict-past, contracts y demo sintética reconstruible | Viabilidad técnica del pipeline y control temporal explícito | Validez deportiva externa, capacidad predictiva o ausencia de todo error de captura |
+| PI2. Interfaz grounded con cálculo crítico fuera del LLM | Query-space contract, preflight, tools read-only, CI y smoke 28/28 | Trazabilidad técnica de la ruta determinista y contrato del fallback | Calidad empírica del fallback, cobertura universal de lenguaje, satisfacción o utilidad percibida |
+| PI3. Trazabilidad a través de Collector–features–analytics–presentación | Collector, contracts de capas, dashboard, PDF, capturas y QA end-to-end | Integración funcional y demostrable del prototipo | Mejora causal de decisiones, rendimiento o resultados |
 
 Los protocolos de fiabilidad interobservador y utilidad con staff están definidos en `docs/TFM_EVALUATION_PROTOCOLS.md`. No están ejecutados y no constituyen evidencia de las respuestas anteriores.
 
@@ -38,7 +38,7 @@ Los protocolos de fiabilidad interobservador y utilidad con staff están definid
 | Las consultas claras del Coach Copilot se resuelven de forma determinista | Smoke real + query grammar | `llm/smoke_test_coach_agent.py`, `llm/coach_agent_general.py` | PASS |
 | Ruido, meta-consultas y fuera de dominio obvio se resuelven antes del LLM | Preflight + smoke + CI | `llm/coach_agent_fast.py`, `llm/validate_coach_contract.py` | PASS |
 | El fallback local del Coach Copilot usa Qwen solo para lenguaje ambiguo dentro del dominio | Runtime híbrido | `llm/coach_agent_general.py`, `llm/coach_agent_fast.py` | IMPLEMENTADO |
-| Smoke local real final del Coach Copilot cubre 28 casos | Ejecución con DuckDB profesional | `SMOKE CONTRACT: PASS (28/28)`, avg `0.4s` | PASS |
+| Smoke local real final del Coach Copilot cubre 28 casos de la ruta especificada | Ejecución con DuckDB profesional | `SMOKE CONTRACT: PASS (28/28)`, avg `0.4s` | PASS |
 | Los 28 casos del smoke final se resolvieron sin fallback semántico | Trace del smoke final | `rounds=0` en todos los casos | PASS |
 | Follow-ups ordinales/ventana/evidencia mantienen contexto | Smoke real + tests | `llm/smoke_test_coach_agent.py`, `tests/test_coach_agent_fast.py` | PASS |
 | Follow-up de comparación por posición mantiene contexto | Smoke real + role contract | `llm/smoke_test_coach_agent.py`, `llm/coach_role_analysis.py` | PASS |
@@ -135,6 +135,7 @@ Se puede afirmar:
 - que el LLM actúa downstream de analytics y decision engine;
 - que las consultas soportadas de alta confianza pueden resolverse sin LLM;
 - que el Coach Copilot pasó un smoke real de **28/28 casos** sobre la DuckDB profesional con **0,4 s de media** en esa ejecución;
+- que la ruta determinista/preflight cubrió los 28 casos de esa batería; el fallback semántico no fue invocado en ella;
 - que todos los casos del smoke final siguieron la ruta determinista/preflight (`rounds=0`);
 - que el sistema soporta comparaciones por posición con criterio explícito sin crear un score nuevo;
 - que existe un modo OpenAI BYOK opcional protegido por el mismo contrato de tools;
@@ -155,6 +156,7 @@ No afirmar como resultado probado:
 - que el modo OpenAI tenga una latencia o calidad concreta sin una prueba live;
 - que una suscripción ChatGPT sustituya una API key o consumo API en el modo BYOK;
 - que 0,4 s sea un SLA general del producto o la latencia de consultas semánticas ambiguas.
+- que el fallback LLM tenga una calidad empírica demostrada por el smoke final.
 
 ## Regla de uso en la memoria
 

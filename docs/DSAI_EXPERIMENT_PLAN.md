@@ -1,6 +1,7 @@
 # DSAI experimental plan
 
 Fecha: 26/09/2026
+Estado: histórico. La fuente de verdad académica actual es `docs/TFM_MANUSCRIPT_DRAFT.md`, `docs/TFM_EVIDENCE_MATRIX.md` y `PROJECT_STATE.md`; este plan conserva decisiones de experimentación y no debe usarse para describir el estado de cierre.
 
 Este documento fija el plan experimental metodológico del TFM. No define por sí solo métricas de producto, recomendaciones tácticas ni umbrales operativos.
 
@@ -140,7 +141,7 @@ Sigue `BLOCKED_GROUND_TRUTH`.
 
 ## GPS
 
-El desarrollo actual tiene `GPS observations=0`. GPS no entra en el score base ni en experimentos que pretendan validar datos inexistentes. La arquitectura de importación queda preparada.
+En el experimento que originó este plan no se utilizaban observaciones GPS reales como evidencia para el score. En el cierre del repositorio existe una demo GPS sintética para validar integración, pero sigue habiendo `0` filas de GPS observado no sintético para N9000. GPS no entra en el score base ni en experimentos que pretendan validar fisiología sin datos reales.
 
 ## Criterios comunes de validación
 

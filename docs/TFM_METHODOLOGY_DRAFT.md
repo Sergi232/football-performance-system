@@ -10,7 +10,7 @@ Este capítulo describe cómo se diseñó, implementó y validó el Football Per
 
 # 1. Enfoque metodológico general
 
-El proyecto se desarrolló como un sistema de soporte a la decisión orientado a fútbol amateur y semiprofesional, con una restricción central: las variables de entrada debían ser razonablemente obtenibles a partir de vídeo y GPS opcional sin requerir una infraestructura profesional de tracking.
+El proyecto se desarrolló como un sistema de soporte al análisis orientado a fútbol amateur y semiprofesional, con una restricción central: las variables de entrada debían ser razonablemente obtenibles a partir de vídeo sin requerir una infraestructura profesional de tracking. El GPS se trató como fuente opcional de variables descriptivas, no como evidencia fisiológica si no procedía de una observación real.
 
 El desarrollo siguió un enfoque incremental por capas:
 
@@ -139,7 +139,7 @@ solo pueden usarse observaciones con fecha < t
 
 Los partidos de la misma fecha tampoco se informan mutuamente.
 
-El objetivo es evitar leakage temporal y aproximar la información que habría estado disponible en el momento real de la decisión.
+El objetivo es evitar leakage temporal y aproximar la información disponible antes del partido para las features, comparativas y tendencias históricas. No convierte las valoraciones jugador-partido calculadas tras el encuentro en predicciones prepartido.
 
 ## 4.3 FEATURE-03 — contexto de rol
 
@@ -184,7 +184,7 @@ match_rating_v0.5-candidate
 
 La arquitectura utiliza rutas específicas según rol cuando existe evidencia suficiente y un fallback explícito cuando no existe rol fiable. El portero dispone de una ruta propia.
 
-La fórmula V5 se congeló tras su validación técnica. Cualquier modificación requiere nueva evidencia, experimento explícito y validación.
+La fórmula V5 se congeló como especificación técnica de producto tras validar cobertura, rango y rutas de cálculo. Cualquier modificación requiere nueva evidencia, experimento explícito y validación; su congelación no equivale a validación externa del constructo.
 
 ## 6.2 Performance Index
 
@@ -555,7 +555,7 @@ Esta separación delimita el alcance de la hipótesis y evita sobreinterpretar e
 
 ## 15.1 Preguntas de investigación y trazabilidad de la evaluación
 
-La evaluación técnica se organiza en torno a tres preguntas: PI1, reproducibilidad y control temporal del pipeline; PI2, grounding del Coach sin cálculo crítico en el LLM; y PI3, integración funcional del flujo Collector–dashboard–PDF. La matriz `docs/TFM_EVIDENCE_MATRIX.md` relaciona cada pregunta con sus gates y limita la inferencia permitida.
+La evaluación técnica se organiza en torno a tres preguntas: PI1, reproducibilidad y control temporal del pipeline histórico; PI2, grounding de la ruta determinista del Coach y contrato de su fallback sin cálculo crítico en el LLM; y PI3, trazabilidad e integración del flujo Collector–features–analytics–dashboard–PDF. La matriz `docs/TFM_EVIDENCE_MATRIX.md` relaciona cada pregunta con sus gates y limita la inferencia permitida.
 
 La fiabilidad interobservador del Collector y la utilidad con staff requieren datos que no se recogieron durante el cierre técnico. Sus diseños de evaluación se documentan en `docs/TFM_EVALUATION_PROTOCOLS.md`; son protocolos futuros, no evidencia empírica del presente TFM.
 

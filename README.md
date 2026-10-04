@@ -6,7 +6,7 @@ El repositorio forma parte de un Trabajo Final de Máster en **Data Science e In
 
 ## Hipótesis del TFM
 
-> **Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte a la decisión a partir de datos de vídeo y GPS opcional, capaz de transformarlos en información sobre rendimiento, evolución, rol y comportamiento físico de los jugadores y del equipo.**
+> **Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte al análisis a partir de datos de vídeo y GPS opcional, capaz de transformar hechos observables en información trazable sobre rendimiento, evolución y rol; cuando existe GPS observado, puede añadir variables físicas descriptivas.**
 
 El prototipo actual contrasta favorablemente la **viabilidad técnica y arquitectónica** de esta hipótesis.
 
@@ -475,10 +475,10 @@ El núcleo funcional está cerrado. Prioridad inmediata:
 
 ```text
 1  Revisión visual final del Coach Copilot
-2  Capturas canónicas del producto
-3  Sincronización final del manuscrito con la arquitectura actual
-4  Checklist de entrega
-5  Maquetación / defensa / demo final
+2  Adaptación del manuscrito a la plantilla y rúbrica universitaria
+3  Revisión final de bibliografía, referencias cruzadas y maquetación
+4  Ensayo de defensa y demostración
+5  Checklist y entrega
 ```
 
 Criterio de cierre:

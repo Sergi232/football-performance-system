@@ -33,7 +33,7 @@ No añadir nueva funcionalidad deportiva salvo defecto real. Coach Copilot queda
 
 # 2. HIPÓTESIS DEL TFM
 
-> **Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte a la decisión a partir de datos de vídeo y GPS opcional, capaz de transformarlos en información sobre rendimiento, evolución, rol y comportamiento físico de los jugadores y del equipo.**
+> **Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte al análisis a partir de datos de vídeo y GPS opcional, capaz de transformar hechos observables en información trazable sobre rendimiento, evolución y rol; cuando existe GPS observado, puede añadir variables físicas descriptivas.**
 
 Estado del contraste:
 
@@ -44,6 +44,8 @@ mejora causal del rendimiento           NO DEMOSTRADA
 fatiga / readiness / lesión             NO IMPLEMENTADO / NO VALIDADO
 impacto comercial                       NO VALIDADO
 ```
+
+La evidencia de cierre es técnica y arquitectónica. La integración GPS se ha validado con datos sintéticos; no constituye evidencia fisiológica ni permite afirmar comportamiento físico real en el caso de desarrollo.
 
 ---
 

@@ -49,7 +49,7 @@ El producto principal es una aplicación web. Los PDF son salidas complementaria
 
 ## 2.1 Hipótesis principal
 
-> **Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte a la decisión a partir de datos de vídeo y GPS opcional, capaz de transformarlos en información sobre rendimiento, evolución, rol y comportamiento físico de los jugadores y del equipo.**
+> **Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte al análisis a partir de datos de vídeo y GPS opcional, capaz de transformar hechos observables en información trazable sobre rendimiento, evolución y rol; cuando existe GPS observado, puede añadir variables físicas descriptivas.**
 
 La hipótesis se interpreta en este TFM como una hipótesis de **viabilidad técnica y arquitectónica**. No se formula como una prueba causal de mejora deportiva.
 

@@ -15,14 +15,14 @@ La sección de servicio comercial se mantiene como una consecuencia posterior: i
 
 | Prioridad | Hallazgo verificable | Impacto | Acción recomendada |
 |---|---|---|---|
-| P0 | `main` está dos commits por delante de `origin/main`: `b393a41` y `1b7c047` todavía no están en GitHub. | La versión pública y su CI no incluyen las capturas ni el deck. | Hacer push, comprobar el workflow del commit resultante y etiquetar el punto de entrega. |
-| P0 | El workflow ejecuta `publication.final_delivery_check --allow-missing-screenshots`. | CI puede quedar verde aunque desaparezcan las diez capturas exigidas para la memoria. | En la rama de entrega, eliminar esa excepción o crear un gate de release separado que obligue a las diez capturas. |
+| Resuelto | La rama `main` se sincronizó con `origin/main` y el workflow del commit `e68937e` terminó en SUCCESS. | La versión pública contiene la revisión documental y las capturas. | Mantener `main` congelada salvo defecto reproducible. |
+| Resuelto | El workflow exige `publication.final_delivery_check` sin permitir capturas ausentes. | CI falla si falta una captura canónica. | Mantener este gate en la entrega. |
 | P0 | `app/access_control.py` usa variables de entorno y el rol local por defecto es `SUPERADMIN`; `docs/ACCESS_CONTROL.md` documenta que aún faltan login, sesiones, administración y audit log. | Es correcto para el MVP local, pero no protege un servicio multi-club en producción. | No desplegar con datos de clientes hasta integrar autenticación, scope de organización persistente, logs de acceso y pruebas de autorización end-to-end. |
 | P0 | No hay política de privacidad, retención, contrato de encargado, inventario de tratamientos ni proceso de incidentes versionados. | Los datos de rendimiento identificables requieren gobierno antes de un piloto comercial. | Definir responsable/encargado por flujo, finalidad, retención, derechos, subencargados, controles técnicos y evaluación de impacto cuando el riesgo lo requiera. |
 | P1 | `requirements.txt` usa rangos mínimos sin fichero de bloqueo; CI instala las versiones disponibles en cada ejecución. | La demo es reproducible funcionalmente, pero no queda fijada de forma determinista a nivel de dependencias. | Añadir lockfile o constraints generados y validar una instalación limpia contra esas versiones. |
 | P1 | No hay licencia, aviso de uso comercial ni documento de contribución en la raíz. | La titularidad y el uso del código no quedan claros para colaboradores, clientes ni inversores. | Decidir estrategia de propiedad intelectual antes de publicar: código cerrado, licencia comercial o licencia open source compatible con el plan de negocio. |
 | P1 | CI cubre tests, demo y contrato, pero no ejecuta lint, type-check, cobertura, auditoría de dependencias ni análisis estático de seguridad. | Reduce la señal de madurez de ingeniería y deja regresiones de mantenimiento fuera del gate. | Añadir estas comprobaciones gradualmente, con umbrales realistas y sin convertir métricas de tooling en claims deportivos. |
-| P1 | La memoria tiene hipótesis y objetivos, pero no formula preguntas de investigación ni una tabla única que vincule cada objetivo con método, evidencia y amenaza a la validez. | Un tribunal puede percibir el trabajo como una gran implementación bien documentada, pero con evaluación académica menos nítida. | Añadir un bloque de preguntas de investigación y una matriz de evaluación derivada de la actual matriz de evidencias. |
+| Resuelto | La memoria formula PI1–PI3 y una matriz única de evidencia, alcance y límites. | La evaluación técnica puede leerse como contribución de Ciencia de Datos e IA, sin presentarla como estudio de impacto deportivo. | Mantener el lenguaje de conformidad técnica y las amenazas a la validez incorporadas. |
 | P1 | No existe estudio con entrenadores/analistas ni fiabilidad interobservador del Collector. El propio manuscrito lo reconoce. | Es el límite principal de validez externa y de utilidad operativa. | Preparar un protocolo de piloto y explicarlo como trabajo futuro listo para ejecutar, sin presentar resultados inexistentes. |
 | P2 | El fallback Qwen y OpenAI BYOK tienen contratos, pero no benchmark live de calidad, coste y latencia para ambigüedad real. | La propuesta de IA es técnicamente sólida, aunque no hay evidencia de valor adicional del LLM para usuarios. | Medirlo solo después de definir tareas de usuario y una muestra de preguntas ambiguas reales. |
 
@@ -62,7 +62,7 @@ Esto mejora el rigor del trabajo futuro y permite responder a la pregunta del tr
 
 ### 4. Asegurar el cierre reproducible
 
-Antes de la defensa, el repositorio debe publicar los dos commits locales y el CI debe comprobar el paquete de entrega completo, incluidas las capturas. Después se recomienda crear una etiqueta de versión y conservar el hash de la demo sintética utilizada en la defensa.
+Antes de la defensa, conviene conservar el hash de la demo sintética utilizada en la demostración y, si la normativa lo permite, etiquetar el punto de entrega. La sincronización y el CI del paquete de entrega ya están resueltos.
 
 ## Evolución a producto o servicio después del TFM
 
@@ -123,18 +123,16 @@ Antes de un piloto comercial se deben acordar, con asesoramiento jurídico espec
 
 ## Orden de ejecución recomendado
 
-1. Añadir preguntas de investigación, matriz objetivo-evidencia-límite y amenazas a la validez a la memoria.
-2. Crear los protocolos de fiabilidad del Collector y piloto de staff como anexos, sin resultados simulados.
-3. Adaptar formato, bibliografía y referencias cruzadas a la plantilla universitaria.
-4. Publicar los commits locales, ejecutar y registrar CI de la versión final.
-5. Preparar la defensa alrededor de la cadena de Ciencia de Datos e IA: datos observados, strict-past, analytics, sistema experto, Coach grounded y límites.
+1. Adaptar formato, bibliografía y referencias cruzadas a la plantilla universitaria.
+2. Conservar los protocolos de fiabilidad del Collector y piloto de staff como anexos no ejecutados, sin resultados simulados.
+3. Preparar la defensa alrededor de la cadena de Ciencia de Datos e IA: datos observados, strict-past, analytics, sistema experto, Coach grounded y límites.
 6. Tras la entrega, definir ICP, flujo semanal y métricas de piloto antes de ampliar funcionalidades comerciales.
 7. Antes de procesar datos de clientes, completar identidad, multi-tenancy, observabilidad, seguridad y gobierno de datos.
 
 ## Lo que no conviene hacer ahora
 
 - añadir métricas deportivas, scores o recomendaciones sin nueva evidencia;
-- presentar 28/28 como validación de usuarios o de valor comercial;
+- presentar 28/28 como validación de usuarios, del fallback LLM o de valor comercial;
 - vender GPS descriptivo como prevención de fatiga o lesión;
 - desplegar el MVP con datos de clientes solo porque la demo sintética pase CI;
 - ampliar el uso de LLM antes de demostrar que resuelve una necesidad de usuario mejor que la ruta determinista;
