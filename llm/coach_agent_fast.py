@@ -67,11 +67,16 @@ def _repair_console_text(value: object) -> str:
 
 def _policy_block(question: str) -> str | None:
     from llm import coach_agent_general as agent
+    from llm import coach_role_analysis as role_analysis
 
     q = agent._norm(question)
     # If the user already names an approved metric, words such as "mejor" are only
     # ordering language (e.g. "mejor rating") and must remain supported.
     if agent._metric_in_text(question) is not None:
+        return None
+    # A role-specific performance question is handled by the deterministic role
+    # comparator, which makes Match Rating medio the explicit ordering criterion.
+    if role_analysis.role_from_text(question) is not None:
         return None
     ambiguous = (
         "mas completo",
@@ -174,7 +179,30 @@ def _prepare_call(args: tuple[Any, ...], kwargs: dict[str, Any]) -> tuple[tuple[
 
 
 def run_coach_agent_turn(*args: Any, **kwargs: Any) -> CoachAgentResult:
+    from llm import coach_role_analysis as role_analysis
     from llm.coach_agent_general import run_coach_agent_turn as _run
+
+    # Role comparisons are a common coaching query and should not depend on an LLM.
+    # Run this bounded descriptive route before the broad "best player" policy guard.
+    raw_question = str(args[0]) if args else str(kwargs.get("question") or "")
+    repaired_question = _repair_console_text(raw_question)
+    repaired_history = _repair_history(kwargs.get("history"))
+    if kwargs.get("db_path") is not None and kwargs.get("team_id") is not None:
+        role_result = role_analysis.try_role_query(
+            repaired_question,
+            db_path=kwargs["db_path"],
+            team_id=str(kwargs["team_id"]),
+            history=repaired_history,
+        )
+        if role_result is not None:
+            selected_model = str(kwargs.get("model") or DEFAULT_MODEL)
+            return CoachAgentResult(
+                str(role_result["text"]),
+                selected_model,
+                0,
+                (str(role_result.get("tool") or "compare_role_players"),),
+                None,
+            )
 
     prepared_args, prepared_kwargs, blocked = _prepare_call(args, kwargs)
     if blocked:
