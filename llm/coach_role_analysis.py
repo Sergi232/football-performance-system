@@ -132,9 +132,12 @@ def _is_role_query(text: object) -> bool:
     q = _norm(text)
     if role_from_text(q) is None:
         return False
+    # These are intent families, not exact sentences. Stems intentionally cover
+    # common coach wording such as rinde/rinden/rindiendo/rendimiento.
     signals = (
-        "compara", "comparar", "comparacion", "estadistic", "metric", "rendimiento", "rendido",
+        "compara", "comparar", "comparacion", "estadistic", "metric", "rend",
         "mejor", "peor", "quien", "ranking", "lista", "jugadores", "principales", "datos",
+        "muestra", "ensena", "dime", "como estan",
     )
     return any(token in q for token in signals)
 
