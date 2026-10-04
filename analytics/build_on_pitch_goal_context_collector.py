@@ -47,6 +47,7 @@ def main() -> None:
             raise RuntimeError("No played Collector player-match rows")
 
         rows: list[tuple] = []
+        unavailable = 0
         for match_id, team_id in matches:
             played = con.execute(
                 """
@@ -79,12 +80,18 @@ def main() -> None:
                     goal_seconds.append(int(second))
 
             for player_id, started, minutes, stint_start, stint_end in played:
-                start, end, start_source, end_source, precision, conflict = _resolve_interval(
-                    mid=str(match_id), source_player_id=str(player_id), started=bool(started),
-                    minutes_played=float(minutes), lineup_on=None, lineup_off=None,
-                    event_on=None if stint_start is None else int(stint_start),
-                    event_off=None if stint_end is None else int(stint_end),
-                )
+                try:
+                    start, end, start_source, end_source, precision, conflict = _resolve_interval(
+                        mid=str(match_id), source_player_id=str(player_id), started=bool(started),
+                        minutes_played=float(minutes), lineup_on=None, lineup_off=None,
+                        event_on=None if stint_start is None else int(stint_start),
+                        event_off=None if stint_end is None else int(stint_end),
+                    )
+                except RuntimeError:
+                    # The schema represents auditable unavailable context by no row:
+                    # its NOT NULL interval fields must never receive invented values.
+                    unavailable += 1
+                    continue
                 goals_for = sum(sec >= start and (end is None or sec < end) for sec in goal_seconds)
                 ambiguity = sum(
                     precision != "SECOND_OR_BOUNDARY_EXACT" and (
@@ -110,6 +117,7 @@ def main() -> None:
 
     print("PERF-18 COLLECTOR ON-PITCH GOAL CONTEXT: PASS")
     print(f"context_version={CONTEXT_VERSION} rows={len(rows)}")
+    print(f"on_pitch_context_unavailable={unavailable}")
     print("source=Collector normalized match_events/player_role_stints")
 
 

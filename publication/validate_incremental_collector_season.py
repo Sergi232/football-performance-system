@@ -1,6 +1,6 @@
 """Reproducible incremental Collector V1.1 season for Equipo Demo B."""
 from __future__ import annotations
-import json, subprocess, sys, tempfile
+import argparse, csv, json, subprocess, sys
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -36,30 +36,51 @@ def payload(n:int)->dict:
     if n%3==0: add('B13','SHOT',None,'GOAL',4200)
     return {'collector_version':'1.1.0','catalog_version':'0.3.0','meta':{'matchName':f'Equipo Demo B vs Rival B{n:02d}','teamName':'Equipo Demo B','opponentName':f'Rival B{n:02d}','matchDate':f'2026-0{1+(n-1)//4}-{1+((n-1)%4)*7:02d}','formation':'4-3-3','formationChanges':[]},'players':players,'events':ev,'player_summary':[]}
 
-def run(script,*args): subprocess.run([sys.executable,str(ROOT/script),*map(str,args)],check=True)
+OUTPUT=ROOT/'publication'/'output'
+
+def run(log, script,*args):
+    log.write(f"RUN {script} {' '.join(map(str,args))}\n"); log.flush()
+    subprocess.run([sys.executable,str(ROOT/script),*map(str,args)],check=True,stdout=log,stderr=subprocess.STDOUT)
+    log.flush()
 
 def main():
+    parser=argparse.ArgumentParser(description='Persistent Equipo Demo B incremental validation')
+    parser.add_argument('--db',type=Path,default=OUTPUT/'equipo_demo_b_validation.duckdb')
+    args=parser.parse_args()
+    OUTPUT.mkdir(parents=True,exist_ok=True)
+    db=args.db.expanduser().resolve(); log_path=OUTPUT/'equipo_demo_b_validation.log'; rows_path=OUTPUT/'equipo_demo_b_incremental.csv'
+    if db.exists(): db.unlink()
     OUT.mkdir(parents=True,exist_ok=True)
     for n in range(1,13): (OUT/f'match_{n:03d}.json').write_text(json.dumps(payload(n),ensure_ascii=False,indent=2),encoding='utf-8')
-    with tempfile.TemporaryDirectory() as tmp:
-        db=Path(tmp)/'demo_b.duckdb'; initialize_database(db); rows=[]
+    with log_path.open('w',encoding='utf-8',buffering=1) as log:
+        def note(text): print(text); log.write(text+'\n'); log.flush()
+        initialize_database(db); rows=[]
         for n in range(1,13):
+            note(f'MATCH {n:02d}/12')
             result=import_collector_export(OUT/f'match_{n:03d}.json',db)
-            run('features/build_player_match_features.py','--db',db,'--raw-source-type',SOURCE)
-            run('features/build_temporal_features.py','--db',db);run('features/build_role_temporal_features.py','--db',db);run('analytics/build_stage1.py','--db',db)
+            run(log,'features/build_player_match_features.py','--db',db,'--raw-source-type',SOURCE)
+            run(log,'features/build_temporal_features.py','--db',db);run(log,'features/build_role_temporal_features.py','--db',db);run(log,'analytics/build_stage1.py','--db',db)
             import duckdb
             with duckdb.connect(str(db),read_only=True) as con:
                 pm=con.execute('select count(*) from player_match').fetchone()[0];f=con.execute("select count(*) from player_match_features where feature_version='0.1.0'").fetchone()[0];hist=con.execute("select count(*) from player_match_features where feature_version='0.2.0' and feature_value is not null").fetchone()[0];a=con.execute('select count(*) from analytics_evidence').fetchone()[0]
-            rows.append((n,pm,f,hist,a))
-        run('analytics/run_match_rating_v5_incremental.py','--db',db,'--output-dir',Path(tmp)/'rating_output',
+            rows.append({'match':n,'player_match':pm,'features':f,'temporal_non_null':hist,'analytics_evidence':a,'ratings':0,'expert_evidence':0,'abstentions':0})
+            with rows_path.open('w',newline='',encoding='utf-8') as handle:
+                writer=csv.DictWriter(handle,fieldnames=rows[0].keys()); writer.writeheader(); writer.writerows(rows)
+        run(log,'analytics/run_match_rating_v5_incremental.py','--db',db,'--output-dir',OUTPUT/'rating_output',
             '--v4-frozen-artifact',ROOT/'dsai'/'output'/'perf18_v4_frozen'/'match_rating_v4_reference_frozen.json',
             '--gk-frozen-artifact',ROOT/'dsai'/'output'/'perf18_v5_frozen'/'match_rating_v5_gk_reference_frozen.json')
-        run('decision_tree/run_incremental.py','--db',db)
+        run(log,'decision_tree/run_incremental.py','--db',db)
+        import duckdb
+        with duckdb.connect(str(db),read_only=True) as con:
+            ratings=con.execute("select count(*) from player_match_rating where match_rating_version='match_rating_v0.5-candidate'").fetchone()[0]
+            expert=con.execute("select count(*) from decision_results where engine_version='expert_0.7.0'").fetchone()[0]
+            abst=con.execute("select count(*) from decision_results where engine_version='expert_0.7.0' and decision_status like 'ABSTAIN%'").fetchone()[0]
+        for row in rows: row.update({'ratings':ratings,'expert_evidence':expert,'abstentions':abst})
+        with rows_path.open('w',newline='',encoding='utf-8') as handle:
+            writer=csv.DictWriter(handle,fieldnames=rows[0].keys()); writer.writeheader(); writer.writerows(rows)
         teams=list_teams(db); tid=str(teams.iloc[0].team_id); pid=str(__import__('duckdb').connect(str(db),read_only=True).execute("select player_id from players where display_name='Jugador B01'").fetchone()[0])
         assert len(get_team_matches(db,tid))==12 and len(get_player_match_history(db,tid,pid))==12 and get_team_overview(db,tid)['players']==22
-        print('INCREMENTAL COLLECTOR SEASON: PASS'); print(f'matches=12 players=22 seed={SEED}')
-        print('partido | player_match | features | temporal_non_null | analytics')
-        for row in rows: print(' | '.join(map(str,row)))
-        print('ratings=V5_MATERIALIZED expert=N1000_N13000_MATERIALIZED')
+        note('INCREMENTAL COLLECTOR SEASON: PASS'); note(f'matches=12 players=22 seed={SEED}')
+        note(f'ratings={ratings} expert={expert} abstentions={abst}')
 
 if __name__=='__main__': main()

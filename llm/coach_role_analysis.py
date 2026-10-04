@@ -10,6 +10,7 @@ role sample. Other fields are shown only as descriptive supporting metrics.
 """
 from __future__ import annotations
 
+import math
 import re
 import unicodedata
 from pathlib import Path
@@ -149,6 +150,8 @@ def _fmt_number(value: Any, decimals: int = 2) -> str:
         number = float(value)
     except Exception:
         return str(value)
+    if not math.isfinite(number):
+        return "—"
     if abs(number - round(number)) < 1e-9:
         return str(int(round(number)))
     return f"{number:.{decimals}f}".rstrip("0").rstrip(".")
