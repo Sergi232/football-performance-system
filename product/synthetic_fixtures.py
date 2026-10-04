@@ -2,7 +2,7 @@
 
 These fixtures reproduce the public product contracts and field shapes used by the
 Streamlit/report layers. They are explicitly synthetic: they are not a substitute for
-final validation on the real Deportivo Alaves demonstrator database.
+final validation on the private demonstrator database.
 """
 from __future__ import annotations
 

@@ -48,7 +48,7 @@ from app.ui_theme import apply_professional_theme, position_label, sidebar_navig
 from reports.data_builder import build_team_report_data
 from reports.pdf_engine_es import render_pdf_bytes
 
-DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
+DEFAULT_DB = ROOT / "data" / "football_performance_synthetic_demo.duckdb"
 
 st.set_page_config(page_title="Equipo · Football Performance System", page_icon="⚽", layout="wide")
 apply_professional_theme()

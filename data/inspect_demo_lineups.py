@@ -2,7 +2,7 @@
 
 DATA-02 diagnostic only. This script does not modify the normalized database.
 It prints the real opta_lineups schema and compact value/null diagnostics for
-rows belonging to the validated Deportivo Alavés 2025/26 match set.
+rows belonging to the validated private match set.
 
 Usage from repository root:
     python data/inspect_demo_lineups.py

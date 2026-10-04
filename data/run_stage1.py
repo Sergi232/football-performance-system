@@ -3,7 +3,7 @@
 Stage 1 contract:
     1. initialize/update DuckDB schema;
     2. audit the available PannaData/Opta parquet schemas;
-    3. import Deportivo Alavés 2025/26 fixtures;
+    3. import the configured private-team fixtures;
     4. validate the normalized database.
 
 Usage from repository root:

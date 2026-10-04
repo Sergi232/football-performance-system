@@ -24,8 +24,10 @@ from app.coach_ui import (
 )
 from app.data_access import (
     get_latest_player_gate,
+    get_latest_player_expert_trace,
     get_player_feature_history,
     get_player_match_history,
+    get_player_primary_position,
     get_squad_summary,
     get_team_matches,
     list_base_features,
@@ -51,7 +53,7 @@ from app.ui_theme import apply_professional_theme, position_label, sidebar_navig
 from reports.data_builder import build_player_report_data
 from reports.pdf_engine_es import render_pdf_bytes
 
-DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
+DEFAULT_DB = ROOT / "data" / "football_performance_synthetic_demo.duckdb"
 FEATURE_LABELS = {
     "pass_completion_rate": "Precisión de pase",
     "shots_total_per90": "Remates / 90",
@@ -131,6 +133,7 @@ with sel_player:
     )
 player_name = display_player_name(player_id, raw_player_labels[player_id], player_aliases)
 player_row = squad.loc[squad["player_id"].astype(str) == str(player_id)].iloc[0]
+primary_position = get_player_primary_position(path, team_id, player_id)
 with action:
     st.write("")
     st.write("")
@@ -167,6 +170,15 @@ page_header(
     f"{profile} · {safe_int(player_row.get('minutes'))} minutos · {safe_int(player_row.get('appearances'))} apariciones",
     "Perfil individual",
 )
+if primary_position is None:
+    st.caption("Posición principal: no disponible; el historial no contiene apariciones con rol fiable.")
+else:
+    st.caption(
+        "Posición principal descriptiva: "
+        f"**{position_label(primary_position['position_group'])}** · "
+        f"{float(primary_position['share']):.0%} de {int(primary_position['reliable_appearances'])} "
+        "apariciones con rol fiable. No sustituye el rol observado de cada partido."
+    )
 
 latest_value = latest_rating.get("match_rating_10") if latest_rating else None
 latest_conf = latest_rating.get("match_rating_confidence") if latest_rating else None
@@ -233,6 +245,30 @@ with tab_overview:
     else:
         st.plotly_chart(player_trend_chart(rating_history, "match_rating_10", (3, 10)), width="stretch", config={"displayModeBar": False}, key=f"player_overview_rating_trend_{player_id}")
 
+    with st.expander("Cómo se explica el último Match Rating"):
+        if latest_rating is None:
+            st.info("No hay rating disponible para explicar.")
+        else:
+            st.markdown(
+                f"**Rol observado:** {position_label(latest_rating.get('position_group'))}  \\n+**Ruta utilizada:** {rating_context_label(latest_rating)}  \\n+**Resultado:** {safe_number(latest_rating.get('match_rating_10'), 2, '/10')} · "
+                f"confianza {safe_number(latest_rating.get('match_rating_confidence'), 0, '%')} · "
+                f"{safe_int(latest_rating.get('match_rating_dimensions_used'))} componentes disponibles."
+            )
+            components = [
+                ("Amenaza ofensiva", latest_rating.get("attacking_threat")),
+                ("Creación / progresión", latest_rating.get("creation_progression")),
+                ("Contribución defensiva", latest_rating.get("defensive_contribution")),
+                ("Finalización", latest_rating.get("finishing")),
+                ("Disciplina", latest_rating.get("discipline")),
+            ]
+            visible = [(name, value) for name, value in components if value is not None and pd.notna(value)]
+            if visible:
+                st.table(pd.DataFrame(visible, columns=["Componente disponible", "Contribución / 100"]).round(1))
+            else:
+                st.caption("La ruta de portero muestra sus componentes específicos en el gráfico superior.")
+            if latest_rating.get("rating_path") == "OUTFIELD_ROLE_UNAVAILABLE_FALLBACK_V2":
+                st.warning("La fuente no ofrece un rol fiable: se utiliza el fallback explícito y no se imputa posición.")
+
 with tab_trend:
     section_header("Evolución temporal", "Match Rating, Performance Index y métricas base")
     if not rating_history.empty:
@@ -295,8 +331,18 @@ with tab_expert:
         raw_status = str(gate.get("final_status") or "")
         shown_status = GATE_STATUS_LABELS.get(raw_status, raw_status.replace("_", " ").capitalize() if raw_status else "Sin estado")
         insight_card("Estado final", shown_status, "Salida del motor; no es texto generado por LLM", "neutral")
-        with st.expander("Trazabilidad técnica"):
-            st.json(gate)
+        trace = get_latest_player_expert_trace(path, team_id, player_id)
+        with st.expander("Traza de decisión", expanded=True):
+            st.caption("Las condiciones ejecutables no se almacenan por fila. La justificación materializada es la evidencia auditable de la regla aplicada.")
+            if trace.empty:
+                st.info("No hay traza N12000/N13000 para este partido.")
+            else:
+                shown = trace.rename(columns={
+                    "node_id": "Nodo", "result_value": "Resultado", "confidence": "Confianza", "justification": "Justificación materializada"
+                }).copy()
+                shown["Confianza"] = pd.to_numeric(shown["Confianza"], errors="coerce")
+                st.dataframe(shown, hide_index=True, width="stretch", column_config={"Confianza": st.column_config.NumberColumn(format="%.0f%%")})
+                st.markdown(f"**Estado N12000:** {gate.get('recommendation_gate') or '—'}  \\n+**Estado final N13000:** {shown_status}. No se emite recomendación cuando la policy no está validada.")
 
 with tab_matches:
     section_header("Historial de partidos", "Contexto, minutos y Match Rating")

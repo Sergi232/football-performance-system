@@ -158,6 +158,40 @@ def get_player_match_history(db_path: Path, team_id: str, player_id: str) -> pd.
         ).df()
 
 
+def get_player_primary_position(db_path: Path, team_id: str, player_id: str) -> dict | None:
+    """Describe the most frequent reliable observed position; never infer one."""
+    assert_team_access(team_id)
+    with connect_read_only(db_path) as con:
+        row = con.execute(
+            """
+            WITH observed AS (
+                SELECT r.position_group
+                FROM player_match pm
+                JOIN player_match_rating r
+                  ON r.match_id=pm.match_id AND r.player_id=pm.player_id AND r.team_id=pm.team_id
+                WHERE pm.team_id=? AND pm.player_id=? AND pm.minutes_played > 0
+                  AND r.match_rating_version='match_rating_v0.5-candidate'
+                  AND r.position_group IS NOT NULL AND r.position_group <> 'OTHER_OUTFIELD'
+                  AND r.rating_path <> 'OUTFIELD_ROLE_UNAVAILABLE_FALLBACK_V2'
+                  AND pm.primary_role IS NOT NULL AND trim(pm.primary_role) <> ''
+                  AND lower(trim(pm.primary_role)) <> 'substitute'
+            ), ranked AS (
+                SELECT position_group, COUNT(*) AS appearances,
+                       SUM(COUNT(*)) OVER () AS reliable_appearances,
+                       ROW_NUMBER() OVER (ORDER BY COUNT(*) DESC, position_group) AS rn
+                FROM observed GROUP BY position_group
+            )
+            SELECT position_group, appearances, reliable_appearances,
+                   appearances::DOUBLE / reliable_appearances AS share
+            FROM ranked WHERE rn=1
+            """,
+            [team_id, player_id],
+        ).fetchone()
+    if row is None:
+        return None
+    return dict(zip(["position_group", "appearances", "reliable_appearances", "share"], row))
+
+
 def list_base_features(db_path: Path, player_id: str | None = None) -> list[str]:
     with connect_read_only(db_path) as con:
         if player_id is None:
@@ -251,6 +285,35 @@ def get_latest_player_gate(db_path: Path, team_id: str, player_id: str) -> dict 
         "policy_status", "final_status",
     ]
     return dict(zip(keys, row))
+
+
+def get_latest_player_expert_trace(db_path: Path, team_id: str, player_id: str) -> pd.DataFrame:
+    """Expose the already materialized N12000/N13000 audit trail for the latest match.
+
+    Decision conditions are not stored as executable expressions per result row.
+    The caller must therefore show the stored justification as the rule evidence,
+    rather than reconstructing or inventing a condition.
+    """
+    assert_team_access(team_id)
+    with connect_read_only(db_path) as con:
+        return con.execute(
+            """
+            WITH latest AS (
+                SELECT dr.match_id
+                FROM decision_results dr
+                JOIN matches m ON m.match_id=dr.match_id
+                JOIN player_match pm ON pm.match_id=dr.match_id AND pm.player_id=dr.player_id
+                WHERE dr.engine_version=? AND dr.player_id=? AND pm.team_id=? AND pm.minutes_played > 0
+                ORDER BY m.match_date DESC, dr.match_id DESC LIMIT 1
+            )
+            SELECT dr.node_id, dr.result_value, dr.confidence, dr.justification
+            FROM decision_results dr JOIN latest l ON l.match_id=dr.match_id
+            WHERE dr.engine_version=? AND dr.player_id=?
+              AND (dr.node_id LIKE 'N12000.%' OR dr.node_id LIKE 'N13000.%')
+            ORDER BY dr.node_id
+            """,
+            [FINAL_ENGINE_VERSION, player_id, team_id, FINAL_ENGINE_VERSION, player_id],
+        ).df()
 
 
 def get_match_lineup(db_path: Path, team_id: str, match_id: str) -> pd.DataFrame:

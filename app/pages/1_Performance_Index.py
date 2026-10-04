@@ -17,7 +17,7 @@ from app.performance_score_access import SCORE_VERSION, get_latest_player_score,
 from app.presentation import build_player_aliases, display_player_name, display_team_name
 from app.ui_theme import apply_professional_theme, position_label, sidebar_navigation
 
-DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
+DEFAULT_DB = ROOT / "data" / "football_performance_synthetic_demo.duckdb"
 DIMENSIONS = [
     ("attacking_threat", "Amenaza ofensiva"),
     ("creation_progression", "Creación / progresión"),

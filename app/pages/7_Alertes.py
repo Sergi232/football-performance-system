@@ -26,7 +26,7 @@ from app.presentation import (
 )
 from app.ui_theme import apply_professional_theme, sidebar_navigation
 
-DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
+DEFAULT_DB = ROOT / "data" / "football_performance_synthetic_demo.duckdb"
 
 GROUP_LABELS = {
     "CONTEXT_LIMITATION": "Limitación de contexto",

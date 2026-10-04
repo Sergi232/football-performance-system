@@ -5,7 +5,7 @@ from llm import coach_agent_general as agent
 def test_repairs_common_windows_powershell_question_mark_corruption():
     assert fast._repair_console_text("?Qu? jugador tiene m?s rating?").casefold() == "que jugador tiene mas rating?"
     assert fast._repair_console_text("?Qui?n tiene m?s riesgo de lesi?n?").casefold() == "quien tiene mas riesgo de lesion?"
-    assert fast._repair_console_text("Ponme al d?a sobre Antonio Sivera").casefold() == "ponme al dia sobre antonio sivera"
+    assert fast._repair_console_text("Ponme al d?a sobre Jugador 01").casefold() == "ponme al dia sobre jugador 01"
 
 
 def test_repaired_supported_queries_return_to_deterministic_router_shape():
@@ -40,15 +40,15 @@ def test_supported_metric_superlatives_are_not_blocked():
 
 
 def test_common_profile_wording_is_canonicalized_without_new_sport_rule():
-    out = fast._canonicalize_supported_profile_query("Ponme al día sobre Antonio Sivera")
+    out = fast._canonicalize_supported_profile_query("Ponme al día sobre Jugador 01")
     assert "perfil" in agent._norm(out)
-    assert "antonio sivera" in agent._norm(out)
+    assert "jugador 01" in agent._norm(out)
 
 
 def test_chained_followup_keeps_substantive_anchor_after_history_repair():
     history = [
         {"role": "user", "content": "?Qui?n corre m?s distancia por partido?"},
-        {"role": "assistant", "content": "Antonio Blanco lidera distancia."},
+        {"role": "assistant", "content": "Jugador 01 lidera distancia."},
         {"role": "user", "content": "?Y el segundo?"},
         {"role": "assistant", "content": "2. Jugador B"},
     ]

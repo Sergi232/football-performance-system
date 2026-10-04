@@ -50,7 +50,7 @@ from app.presentation import (
 )
 from app.ui_theme import apply_professional_theme, position_label, sidebar_navigation
 
-DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
+DEFAULT_DB = ROOT / "data" / "football_performance_synthetic_demo.duckdb"
 CFG = DASHBOARD_CONFIG
 
 st.set_page_config(

@@ -12,7 +12,7 @@ Usage:
     python data/import_demo_fixtures.py --db C:/path/to/football_performance.duckdb
 
 Default demo source team:
-    Deportivo Alavés, Opta id 4dtdjgnpdq9uw4sdutti0vaar
+    configured private team, supplied locally through the CLI
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ DEFAULT_INPUT = Path(r"C:\Users\sergi\Desktop\analisi_futbol\input\pannadata")
 DEFAULT_DB = HERE / "football_performance.duckdb"
 SCHEMA_FILE = HERE / "schema.sql"
 DEFAULT_TEAM_SOURCE_ID = "4dtdjgnpdq9uw4sdutti0vaar"
-DEFAULT_TEAM_NAME = "Deportivo Alavés"
+DEFAULT_TEAM_NAME = "Equipo privado"
 DEFAULT_SEASON = "2025/26"
 DEFAULT_COMPETITION = "LaLiga"
 SEASON_START = pd.Timestamp("2025-07-01")

@@ -19,7 +19,7 @@ from app.ui_theme import apply_professional_theme, sidebar_navigation
 from llm.coach_agent_external import DEFAULT_OPENAI_MODEL, run_coach_agent_turn as run_openai_agent_turn
 from llm.coach_agent_fast import DEFAULT_MODEL, ollama_status, run_coach_agent_turn as run_local_agent_turn
 
-DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
+DEFAULT_DB = ROOT / "data" / "football_performance_synthetic_demo.duckdb"
 TOOL_LABELS = {
     "rank_players": "Ranking estructurado de jugadores",
     "compare_role_players": "Comparación estructurada por posición",
