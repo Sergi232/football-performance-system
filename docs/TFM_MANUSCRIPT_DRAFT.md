@@ -15,9 +15,9 @@
 
 Este Trabajo Final de Máster presenta el diseño, implementación y validación técnica de un sistema integral de análisis de rendimiento orientado a equipos de fútbol amateur y semiprofesionales sin departamento propio de análisis. El objetivo no es reproducir plataformas profesionales de tracking o proveedores comerciales de eventos, sino demostrar que un conjunto reducido de datos observables de vídeo y GPS opcional puede transformarse en información estructurada, auditable y consultable por un cuerpo técnico.
 
-La solución se organiza mediante una arquitectura por capas que separa datos brutos, variables derivadas, evidencia analítica, lógica de decisión y generación de lenguaje natural. El flujo parte de un Data Collector HTML y de una capa opcional de normalización GPS, almacena la información en DuckDB, construye features deterministas con control temporal `strict-past`, genera evidencia analítica, aplica un sistema experto jerárquico N1000-N13000, presenta los resultados mediante una aplicación Streamlit e incorpora un Coach Copilot grounded. El asistente resuelve consultas claras mediante routing determinista y herramientas de solo lectura, y reserva un modelo local Qwen para lenguaje ambiguo; adicionalmente existe un modo OpenAI opcional con clave propia del usuario. Los informes PDF consumen resultados estructurados ya calculados y no recalculan lógica crítica.
+La solución se organiza mediante una arquitectura por capas que separa datos brutos, variables derivadas, evidencia analítica, lógica de decisión y generación de lenguaje natural. El flujo parte de un Data Collector HTML y de una capa opcional de normalización GPS, almacena la información en DuckDB, construye features deterministas con control temporal `strict-past`, genera evidencia analítica, aplica un sistema experto jerárquico N1000-N13000, presenta los resultados mediante una aplicación Streamlit e incorpora un Coach Copilot grounded. El asistente resuelve consultas claras mediante preflight, routing determinista y herramientas de solo lectura, y reserva un modelo local Qwen para lenguaje ambiguo dentro del dominio; adicionalmente existe un modo OpenAI opcional con clave propia del usuario. Los informes PDF consumen resultados estructurados ya calculados y no recalculan lógica crítica.
 
-El prototipo se ha validado mediante contratos de datos, tests unitarios, validadores por capa, pruebas end-to-end y un pipeline de integración continua. El sistema principal supera el QA global y dispone de una demo pública sintética reproducible que puede generarse desde un entorno limpio sin depender de la base profesional utilizada durante el desarrollo. Los resultados permiten contrastar favorablemente la hipótesis en su dimensión técnica y arquitectónica. No se demuestra, sin embargo, un efecto causal sobre las decisiones de entrenadores, el rendimiento deportivo, la fatiga o la prevención de lesiones.
+El prototipo se ha validado mediante contratos de datos, tests unitarios, validadores por capa, pruebas end-to-end y un pipeline de integración continua. El sistema principal supera el QA global y dispone de una demo pública sintética reproducible que puede generarse desde un entorno limpio sin depender de la base profesional utilizada durante el desarrollo. El Coach Copilot cerró su smoke real final sobre la DuckDB profesional con 28/28 casos correctos y 0,4 s de latencia media en esa batería concreta; todos esos casos siguieron la ruta determinista o de preflight sin activar el fallback semántico. Los resultados permiten contrastar favorablemente la hipótesis en su dimensión técnica y arquitectónica. No se demuestra, sin embargo, un efecto causal sobre las decisiones de entrenadores, el rendimiento deportivo, la fatiga o la prevención de lesiones.
 
 **Palabras clave:** football analytics; performance analysis; expert systems; data engineering; GPS; large language models; reproducibility.
 
@@ -231,10 +231,11 @@ Existe control de acceso estructural SUPERADMIN/CLUB_ADMIN/STAFF, pero no autent
 
 ## 4.11 Coach Copilot
 
-La arquitectura final prioriza consultas deterministas:
+La arquitectura final prioriza consultas deterministas y añade un preflight explícito antes del routing:
 
 ```text
 QUESTION
+→ PREFLIGHT / GUARDRAILS
 → DETERMINISTIC HIGH-CONFIDENCE ROUTER
 → READ-ONLY TOOLS
 → PYTHON / DUCKDB / ANALYTICS / EXPERT SYSTEM
@@ -243,12 +244,15 @@ QUESTION
 → COACH
 ```
 
-Cuando la intención no puede resolverse con suficiente confianza, se activa un fallback semántico local:
+El espacio de consulta se modela como composición de `entidad + operación + métrica + agregación + rol + filtros + ventana + contexto conversacional`, en lugar de una lista de frases cerrada. El preflight resuelve localmente entradas basura, meta-consultas y preguntas claramente fuera de dominio.
+
+Cuando la intención sigue siendo ambigua y permanece dentro del dominio, se activa un fallback semántico local:
 
 ```text
 QUESTION AMBIGUA
 → QWEN3.5:4B LOCAL
 → TOOL SELECTION
+→ LOCAL TOOL VALIDATION
 → READ-ONLY TOOLS
 → PYTHON / DUCKDB
 → STRUCTURED EVIDENCE
@@ -256,6 +260,8 @@ QUESTION AMBIGUA
 ```
 
 La aplicación incorpora además un modo opcional `OpenAI API · clave propia`. En este modo, las consultas claras siguen la ruta determinista y no consumen API. Solo el lenguaje ambiguo puede utilizar OpenAI para seleccionar herramientas y, cuando es necesario, sintetizar una respuesta a partir de evidencia JSON. Las llamadas de herramientas externas se revalidan localmente y ninguna capa LLM recibe acceso directo a DuckDB.
+
+Las comparaciones por posición están soportadas de forma determinista. Si se pregunta quién ha rendido mejor dentro de una posición, el sistema declara como criterio de ordenación el Match Rating medio dentro de la muestra de ese rol y muestra el resto de métricas como evidencia descriptiva; no crea un score nuevo.
 
 Los guardrails bloquean inferencias no validadas como fatiga, riesgo de lesión, XI ideal, recomendaciones tácticas o conceptos globales como «mejor jugador», «más completo» o «más determinante» cuando no existe una definición analítica aprobada.
 
@@ -267,11 +273,11 @@ Los PDF Team/Player/Match consumen resultados materializados. No recalculan Matc
 
 Cada capa dispone de tests y validators específicos. Posteriormente se ejecutó QA end-to-end dividido en Data/Core, Analytics/Expert, Product y Delivery.
 
-El Coach Copilot se validó además con un smoke test real reproducible sobre la DuckDB profesional, que cubre rankings, perfiles, GPS, comparación, partido, calidad, guardrails y follow-ups encadenados.
+El Coach Copilot se valida en dos niveles complementarios: un query-space contract reproducible en CI sobre la demo sintética y un smoke real sobre la DuckDB profesional. El smoke final contiene 28 casos que cubren rankings, perfiles, GPS, comparación entre jugadores, comparación por posición, partido, calidad, guardrails, ruido/fuera de dominio y follow-ups encadenados.
 
 ## 4.14 Reproducibilidad
 
-La base profesional no se redistribuye. Se construyó una demo sintética desde cero y GitHub Actions ejecuta automáticamente tests y reconstrucción de la demo en un entorno limpio.
+La base profesional no se redistribuye. Se construyó una demo sintética desde cero y GitHub Actions ejecuta automáticamente tests, reconstrucción de la demo y validación del query-space del Coach Copilot en un entorno limpio.
 
 ---
 
@@ -415,6 +421,8 @@ ATTENTION FLAGS
 MATCH MODE
 ```
 
+La demo pública mantiene identidades anónimas coherentes (`Equipo Demo`, `Jugador XX`, `Rival XX`) también en la capa conversacional del Assistant.
+
 ## 6.8 Coach Copilot
 
 La arquitectura final se validó sobre la DuckDB profesional mediante `llm/smoke_test_coach_agent.py`.
@@ -422,11 +430,9 @@ La arquitectura final se validó sobre la DuckDB profesional mediante `llm/smoke
 Resultado real del smoke final:
 
 ```text
-SMOKE CONTRACT: PASS (22/22)
-average_elapsed=1.4s
-consultas deterministas típicas=0.1–0.8s
-follow-ups encadenados=0.1–0.2s
-pregunta fuera de dominio vía fallback Qwen=25.3s
+SMOKE CONTRACT: PASS (28/28)
+average_elapsed=0.4s
+final semantic rounds=0 en todos los casos
 ```
 
 La batería cubre:
@@ -437,16 +443,19 @@ La batería cubre:
 - asistencias;
 - evolución y perfil natural de jugador;
 - GPS;
-- comparación;
+- comparación entre jugadores;
+- comparación de delanteros;
+- comparación de centrales con criterio explícito;
 - detalle de partido;
 - estado del equipo;
 - calidad de datos;
 - guardrails de fatiga, lesión y titularidad;
 - criterios globales no validados;
 - pregunta fuera de dominio;
-- follow-ups ordinales, ventana temporal y evidencia.
+- entrada basura y meta-consulta;
+- follow-ups ordinales, ventana temporal, evidencia y comparación por posición.
 
-El resultado muestra que las consultas claras ya no dependen de un LLM para cada turno y, por ello, la latencia típica queda por debajo de un segundo en el PC objetivo. El modelo `qwen3.5:4b` se conserva como fallback semántico para consultas realmente ambiguas.
+Los 28 casos finales pudieron resolverse sin activar el fallback Qwen. La media de 0,4 s corresponde únicamente a esta batería en el PC de desarrollo; no constituye un SLA universal ni mide la latencia de consultas ambiguas que sí requieran inferencia semántica. El modelo `qwen3.5:4b` se conserva como fallback para ese caso residual.
 
 El modo OpenAI con clave propia del usuario también dispone de tests contractuales y CI: la superficie de herramientas externas coincide con las tools FPS permitidas, los argumentos se revalidan localmente y una tool desconocida se descarta. No se ha realizado todavía una validación live con una API key real, por lo que no se reporta latencia ni calidad live de ese modo.
 
@@ -494,16 +503,17 @@ redistribution_status=REDISTRIBUTABLE_SYNTHETIC_DEMO
 
 ## 6.12 Integración continua
 
-GitHub Actions ejecuta automáticamente instalación, tests y reconstrucción de la demo sintética.
+GitHub Actions ejecuta automáticamente instalación, tests, reconstrucción de la demo sintética y validación del query-space del Coach Copilot.
 
-Runs recientes de referencia:
+Runs de referencia del cierre:
 
 ```text
-37162911509 = SUCCESS — direct execution smoke fix
-37163349049 = SUCCESS — optional OpenAI Coach Copilot
-37163417219 = SUCCESS — OpenAI BYOK UI + contracts
-37163457928 = SUCCESS — external tool-surface contract tests
+37167083614 = SUCCESS — query-space + preflight contract
+37167157174 = SUCCESS — code gate previo al smoke local final
+37168110570 = SUCCESS — documentación/defensa sincronizada sobre la arquitectura final
 ```
+
+El smoke 28/28 es un gate local adicional sobre la DuckDB profesional; el CI usa la demo sintética para garantizar regresión reproducible desde un entorno limpio.
 
 ---
 
@@ -545,9 +555,9 @@ El sistema demuestra integración GPS, no validación fisiológica. La decisión
 
 ## 7.9 Coach Copilot
 
-El asistente demuestra que una interfaz de lenguaje natural puede mantenerse downstream de un motor analítico sin trasladar cálculos críticos al LLM. La evolución del prototipo también mostró que depender de un modelo local para cada consulta penalizaba latencia y robustez. La arquitectura final resuelve primero el espacio de consultas mediante reglas composicionales —entidad, operación, métrica, agregación, filtros, ventana y follow-up— y reserva el LLM para interpretación semántica cuando es realmente necesario.
+El asistente demuestra que una interfaz de lenguaje natural puede mantenerse downstream de un motor analítico sin trasladar cálculos críticos al LLM. La evolución del prototipo también mostró que depender de un modelo local para cada consulta penalizaba latencia y robustez. La arquitectura final resuelve primero el espacio de consultas mediante reglas composicionales —entidad, operación, métrica, agregación, rol, filtros, ventana y follow-up—, incorpora preflight determinista y reserva el LLM para interpretación semántica cuando es realmente necesario.
 
-Este enfoque produjo 22/22 casos correctos en el smoke real y una latencia media de 1,4 segundos, frente a benchmarks anteriores mucho más lentos cuando el LLM intervenía en cada turno. No obstante, las consultas ambiguas que activan Qwen siguen pudiendo tardar del orden de decenas de segundos en CPU.
+Este enfoque produjo 28/28 casos correctos en el smoke real final y una latencia media de 0,4 segundos en esa batería concreta. Todos los casos finales utilizaron `rounds=0`, de modo que el resultado cuantifica la ruta determinista/preflight y no la latencia del fallback Qwen. Las consultas ambiguas que sí requieran un modelo local pueden seguir siendo considerablemente más lentas en CPU.
 
 La integración OpenAI BYOK amplía opcionalmente la interfaz sin cambiar la arquitectura de grounding: el proveedor externo no recibe acceso directo a DuckDB y las tool calls se revalidan localmente. Al no existir todavía prueba live con una clave real, esta extensión se presenta como implementación técnicamente integrada pero no como benchmark empírico de latencia o calidad externa.
 
@@ -575,7 +585,7 @@ Las principales limitaciones son:
 6. autenticación real no implementada;
 7. derechos de redistribución del dataset profesional no resueltos;
 8. demo sintética válida para integración, no para validación fisiológica o deportiva;
-9. fallback Qwen con latencia elevada en consultas realmente ambiguas sobre CPU;
+9. fallback Qwen potencialmente lento en consultas realmente ambiguas sobre CPU;
 10. modo OpenAI BYOK con validación contractual y CI, pero sin benchmark live con una API key real.
 
 ---
@@ -595,7 +605,8 @@ Las principales contribuciones son:
 - Performance Index separado y experimental;
 - GPS descriptivo opcional;
 - aplicación Team/Player/Match;
-- Coach Copilot grounded con router determinista y fallback semántico local;
+- Coach Copilot grounded con preflight, router determinista y fallback semántico local;
+- comparaciones por posición con criterio explícito y sin score nuevo;
 - integración OpenAI BYOK opcional sin acceso directo a DuckDB;
 - informes PDF;
 - QA end-to-end;
