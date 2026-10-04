@@ -24,11 +24,20 @@ Objetivo: vincular cada afirmación relevante de la memoria con evidencia técni
 | Access control restringe equipos por rol | Contract tests | `app/access_control.py` + validator | PASS |
 | Autenticación real no está implementada | Estado explícito | `PROJECT_STATE.md` | LIMITACIÓN |
 | Coach Copilot usa tools read-only y no recalcula métricas críticas | Arquitectura + contract tests | `llm/coach_agent_general.py`, `llm/coach_agent_fast.py` | PASS |
+| El Coach Copilot se gobierna por un espacio de consultas composicional y no por frases aisladas | Contrato canónico + validator | `llm/COACH_COPILOT_CONTRACT.md`, `llm/validate_coach_contract.py` | PASS |
 | Las consultas claras del Coach Copilot se resuelven de forma determinista | Smoke real + query grammar | `llm/smoke_test_coach_agent.py`, `llm/coach_agent_general.py` | PASS |
-| El fallback local del Coach Copilot usa Qwen solo para lenguaje ambiguo | Runtime híbrido | `llm/coach_agent_general.py`, `llm/coach_agent_fast.py` | IMPLEMENTADO |
-| Smoke local real del Coach Copilot cubre 22 casos | Ejecución con DuckDB profesional | `SMOKE CONTRACT: PASS (22/22)`, avg `1.4s` | PASS |
+| Ruido, meta-consultas y fuera de dominio obvio se resuelven antes del LLM | Preflight + smoke + CI | `llm/coach_agent_fast.py`, `llm/validate_coach_contract.py` | PASS |
+| El fallback local del Coach Copilot usa Qwen solo para lenguaje ambiguo dentro del dominio | Runtime híbrido | `llm/coach_agent_general.py`, `llm/coach_agent_fast.py` | IMPLEMENTADO |
+| Smoke local real final del Coach Copilot cubre 28 casos | Ejecución con DuckDB profesional | `SMOKE CONTRACT: PASS (28/28)`, avg `0.4s` | PASS |
+| Los 28 casos del smoke final se resolvieron sin fallback semántico | Trace del smoke final | `rounds=0` en todos los casos | PASS |
 | Follow-ups ordinales/ventana/evidencia mantienen contexto | Smoke real + tests | `llm/smoke_test_coach_agent.py`, `tests/test_coach_agent_fast.py` | PASS |
+| Follow-up de comparación por posición mantiene contexto | Smoke real + role contract | `llm/smoke_test_coach_agent.py`, `llm/coach_role_analysis.py` | PASS |
+| Comparaciones por posición están soportadas con criterio explícito | Role analysis + smoke real | `llm/coach_role_analysis.py`, `tests/test_coach_role_analysis.py` | PASS |
+| Si se pregunta quién ha rendido mejor en una posición, el criterio es Match Rating medio de la muestra | Contrato role analysis | `llm/coach_role_analysis.py`, `llm/COACH_COPILOT_CONTRACT.md` | PASS |
+| La comparación por posición no crea un score nuevo | Contrato role analysis | `llm/coach_role_analysis.py` | PASS |
 | Guardrails bloquean fatiga, lesión, titularidad y criterios globales no validados | Smoke real + tests | `llm/coach_agent_fast.py`, `tests/test_coach_agent_fast.py` | PASS |
+| La demo mantiene aliases `Equipo Demo / Jugador XX / Rival XX` dentro del Assistant | Identity boundary + tests | `app/assistant_identity.py`, `tests/test_assistant_identity.py` | PASS |
+| Una identidad interna detectada antes de renderizar en demo bloquea la respuesta | UI safety boundary | `app/pages/5_Assistent_IA.py` | IMPLEMENTADO |
 | OpenAI BYOK es opcional y no da acceso directo a DuckDB | Arquitectura externa | `llm/coach_agent_external.py`, `app/pages/5_Assistent_IA.py` | IMPLEMENTADO |
 | Tool calls OpenAI se limitan y revalidan localmente | Contract tests | `tests/test_coach_agent_external.py` | PASS |
 | Una tool externa desconocida se descarta | Contract test | `tests/test_coach_agent_external.py` | PASS |
@@ -43,6 +52,7 @@ Objetivo: vincular cada afirmación relevante de la memoria con evidencia técni
 | La demo sintética es redistribuible según su contrato | Validator reproducible | `redistribution_status=REDISTRIBUTABLE_SYNTHETIC_DEMO` | PASS |
 | El repo se valida desde un entorno limpio | GitHub Actions | `.github/workflows/tests.yml` | SUCCESS |
 | CI se ejecuta en push/PR | Workflow GitHub Actions | `.github/workflows/tests.yml` | ACTIVO |
+| CI valida explícitamente el query-space del Coach Copilot | Workflow + validator | `.github/workflows/tests.yml`, `llm/validate_coach_contract.py` | PASS |
 
 ## Métricas de referencia del caso profesional de desarrollo
 
@@ -60,14 +70,27 @@ generic role fallback = 172
 ## Validación de referencia del Coach Copilot
 
 ```text
-SMOKE CONTRACT = PASS (22/22)
-average_elapsed = 1.4s
-consultas deterministas típicas = 0.1–0.8s
-follow-ups = 0.1–0.2s
-fallback Qwen fuera de dominio observado = 25.3s
+SMOKE CONTRACT = PASS (28/28)
+average_elapsed = 0.4s
+final smoke semantic rounds = 0 en todos los casos
 ```
 
-La latencia de 1,4 s es la media de esa batería concreta en el PC de desarrollo. No debe generalizarse como SLA universal.
+Cobertura funcional del smoke final:
+
+```text
+rankings + ventanas
+perfil / evolución
+GPS
+comparación entre jugadores
+comparación por posición
+partidos / equipo
+calidad de datos
+guardrails
+ruido / meta / fuera de dominio
+follow-ups ordinales / temporales / evidencia / rol
+```
+
+La latencia de 0,4 s es la media de esa batería concreta en el PC de desarrollo. No debe generalizarse como SLA universal. Tampoco mide la latencia del fallback Qwen porque los 28 casos finales no necesitaron invocarlo.
 
 ## Métricas de la demo pública sintética
 
@@ -101,7 +124,9 @@ Se puede afirmar:
 - que el sistema degrada cuando falta evidencia;
 - que el LLM actúa downstream de analytics y decision engine;
 - que las consultas soportadas de alta confianza pueden resolverse sin LLM;
-- que el Coach Copilot pasó un smoke real de 22/22 casos sobre la DuckDB profesional;
+- que el Coach Copilot pasó un smoke real de **28/28 casos** sobre la DuckDB profesional con **0,4 s de media** en esa ejecución;
+- que todos los casos del smoke final siguieron la ruta determinista/preflight (`rounds=0`);
+- que el sistema soporta comparaciones por posición con criterio explícito sin crear un score nuevo;
 - que existe un modo OpenAI BYOK opcional protegido por el mismo contrato de tools;
 - que el QA técnico y CI están en PASS.
 
@@ -118,7 +143,8 @@ No afirmar como resultado probado:
 - que el producto tenga validación comercial real;
 - que exista validación con usuarios reales si no se realiza posteriormente;
 - que el modo OpenAI tenga una latencia o calidad concreta sin una prueba live;
-- que una suscripción ChatGPT sustituya una API key o consumo API en el modo BYOK.
+- que una suscripción ChatGPT sustituya una API key o consumo API en el modo BYOK;
+- que 0,4 s sea un SLA general del producto o la latencia de consultas semánticas ambiguas.
 
 ## Regla de uso en la memoria
 
