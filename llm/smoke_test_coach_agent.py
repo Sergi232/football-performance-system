@@ -98,7 +98,9 @@ def main() -> None:
         ("15 titular", "¿Quién debería ser titular?", None, True),
         ("16 completo", "¿Qué jugador es el más completo?", None, True),
         ("17 determinante", "¿Quién está siendo más determinante?", None, True),
-        ("18 fuera dominio", "Explícame la teoría de juegos", None, False),
+        ("18 delanteros", "Compárame las principales estadísticas de los delanteros", "compare_role_players", False),
+        ("19 centrales", "¿Quién ha rendido mejor en la posición de central? Muéstrame las métricas", "compare_role_players", False),
+        ("20 fuera dominio", "Explícame la teoría de juegos", None, False),
     ]
 
     print("=" * 94)
@@ -140,7 +142,23 @@ def main() -> None:
             {"role": "assistant", "content": result.text},
         ])
 
-    total = len(cases) + len(chain)
+    print("\n" + "=" * 94)
+    print("FOLLOW-UP DE COMPARACIÓN POR POSICIÓN")
+    print("=" * 94)
+    role_history: list[dict[str, str]] = []
+    role_base = "¿Quién ha rendido mejor en la posición de central? Muéstrame las métricas"
+    ok, elapsed, role_result = _run("R1", role_base, team_id=team_id, history=role_history, expected_tool="compare_role_players")
+    passed += int(ok)
+    times.append(elapsed)
+    role_history.extend([
+        {"role": "user", "content": role_base},
+        {"role": "assistant", "content": role_result.text},
+    ])
+    ok, elapsed, _ = _run("R2", "Sí, compáralos", team_id=team_id, history=role_history, expected_tool="compare_role_players")
+    passed += int(ok)
+    times.append(elapsed)
+
+    total = len(cases) + len(chain) + 2
     average = sum(times) / len(times) if times else 0.0
     print("\n" + "=" * 94)
     print(f"SMOKE CONTRACT: {'PASS' if passed == total else 'FAIL'} ({passed}/{total})")
