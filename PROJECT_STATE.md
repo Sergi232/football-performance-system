@@ -1,6 +1,6 @@
 # PROJECT_STATE
 
-Última actualización: 03/10/2026
+Última actualización: 04/10/2026
 
 Fuente de verdad operativa del proyecto junto con el código actual de `main`. Si contradice un chat antiguo, prevalece este archivo.
 
@@ -14,8 +14,9 @@ GLOBAL END-TO-END QA                  PASS
 REPRODUCIBILIDAD                      PASS
 CI AUTOMÁTICO                         ACTIVO / PASS
 DEMO PÚBLICA SINTÉTICA                PASS / REDISTRIBUIBLE
-UI FINAL PRESENTATION AUDIT           CERRADO / CORREGIDO / CI PASS
-LLM-02 COACH COPILOT                  CERRADO — GRANITE 4.2 3B / LOCAL E2E 9/9 PASS
+UI FINAL PRESENTATION AUDIT           CERRADO / CORREGIDO
+COACH COPILOT LOCAL                   CERRADO / REAL SMOKE 22/22 PASS
+COACH COPILOT OPENAI BYOK             IMPLEMENTADO / CONTRACT + CI PASS / LIVE API NO VALIDADA
 MEMORIA ACADÉMICA INTEGRADA           BORRADOR COMPLETO
 MARCO TEÓRICO / BIBLIOGRAFÍA          BORRADOR COMPLETO
 METODOLOGÍA                           BORRADOR COMPLETO
@@ -26,12 +27,12 @@ TABLAS ACADÉMICAS                     CREADAS
 FIGURAS TÉCNICAS                      5 SVG CREADOS
 ANEXOS                                BORRADOR CREADO
 GUION DEFENSA                         CREADO
-CAPTURAS REALES PRODUCTO              EN CURSO — REVISIÓN VISUAL FINAL
+CAPTURAS REALES PRODUCTO              EN CURSO — ÚLTIMO GATE VISUAL
 PLANTILLA / RÚBRICA UNIVERSIDAD       PENDIENTE EXTERNO
 PUBLIC DEPLOYMENT                     NO HACER — licencia dataset real no resuelta
 ```
 
-No añadir nueva funcionalidad deportiva salvo defecto real o nueva evidencia.
+No añadir nueva funcionalidad deportiva salvo defecto real o nueva evidencia. Prioridad actual: cierre visual, documental y entrega.
 
 ---
 
@@ -69,18 +70,21 @@ Regla global:
 
 > Una capa superior no inventa métricas, scores, rankings o recomendaciones que no existan en una capa inferior validada.
 
-LLM:
+Coach Copilot actual:
 
 ```text
 QUESTION
-→ OLLAMA GRANITE / STRUCTURED INTENT
-→ READ-ONLY TOOLS
-→ DATA / ANALYTICS / DECISION ENGINE
+→ DETERMINISTIC HIGH-CONFIDENCE ROUTER
+→ si la consulta es clara: READ-ONLY TOOL directamente
+→ si es ambigua: QWEN 3.5 4B local o OPENAI BYOK opcional
+→ PYTHON / DUCKDB / ANALYTICS / EXPERT SYSTEM
 → STRUCTURED EVIDENCE
-→ OLLAMA GRANITE / SYNTHESIS
-→ NUMERIC / POLICY GUARD
+→ respuesta factual determinista o síntesis externa limitada
+→ POLICY / NUMERIC GUARDS
 → COACH
 ```
+
+Ni Qwen ni OpenAI tienen acceso directo a DuckDB. Match Rating, Performance Index, rankings, features y decisiones críticas se calculan fuera del LLM.
 
 ---
 
@@ -101,14 +105,14 @@ DASHBOARD TEAM / PLAYER / MATCH     QA PASS
 DASHBOARD GPS                       QA PASS
 ATTENTION CENTRE                    CERRADO / v0.3
 ACCESS CONTROL                      CONTRACT PASS / AUTH REAL PENDIENTE
-LLM-01                              PASS
-LLM-02 COACH COPILOT                CERRADO — GRANITE 4.2 3B / LOCAL E2E 9/9 PASS
+COACH COPILOT LOCAL                 CERRADO / 22/22 REAL SMOKE PASS
+COACH COPILOT OPENAI BYOK           IMPLEMENTADO / CONTRACT + CI PASS
 REPORTS V6                          CERRADO / PASS
 ```
 
 ---
 
-# COLLECTOR V1.1
+# COLLECTOR V1.1 — VARIABLES APROBADAS
 
 Taxonomía congelada:
 
@@ -117,19 +121,18 @@ collector/event_catalog.json
 catalog_version=0.3.0
 ```
 
-Variables aprobadas:
-- jugador, dorsal, titular/suplente, minutos;
-- partido, equipo, rival, fecha, formación;
-- rol/posición, lado y cambios;
+Variables observables aprobadas:
+- identificación: jugador, dorsal, titular/suplente, minutos;
+- contexto: partido, equipo, rival, fecha, formación, rol/posición, lado y cambios;
 - pase normal/largo/centro × éxito/fallo;
 - pase clave y asistencia;
 - regate y pérdida;
-- remate: gol/a puerta/fuera/bloqueado;
-- entrada, intercepción, bloqueo, despeje;
-- falta cometida/recibida con x/y;
+- remate: gol / a puerta / fuera / bloqueado;
+- defensa: entrada, intercepción, bloqueo y despeje;
+- falta cometida/recibida con localización;
 - tarjeta amarilla/roja;
 - penal ganado/concedido con resultado;
-- parada y gol encajado;
+- portero: parada y gol encajado;
 - córner a favor/en contra + resultado ABP.
 
 No recoger manualmente xG, PPDA, posesión avanzada, pressing, heatmaps, fatiga ni métricas derivables.
@@ -159,17 +162,11 @@ Current-player exclusion y equal-player weighting: PASS.
 
 # MATCH RATING / PERFORMANCE INDEX
 
-Match Rating activo:
+Match Rating activo y congelado:
 
 ```text
 match_rating_v0.5-candidate
 coverage=590/590
-outfield PERF18_ANCHORED=380
-goalkeeper route=38
-generic role fallback=172
-nulls=0
-duplicates=0
-out_of_range=0
 mean=6.388
 median=6.257
 q10=5.757
@@ -178,7 +175,7 @@ min=3.206
 max=9.554
 ```
 
-V5 congelada. No modificar sin nueva evidencia + experimento + validación.
+No modificar sin nueva evidencia + experimento + validación.
 
 Performance Index:
 
@@ -186,7 +183,7 @@ Performance Index:
 performance_score_v0.2-experimental
 ```
 
-Capa histórica/posicional complementaria.
+Capa histórica/posicional complementaria. No sustituye al Match Rating.
 
 ---
 
@@ -214,7 +211,7 @@ Contrato:
 entrada → condición → resultado → confianza → justificación
 ```
 
-Final:
+Estado:
 
 ```text
 engine_version=expert_0.7.0
@@ -225,14 +222,7 @@ POLICY_UNVALIDATED=501
 ROLE_UNKNOWN=245
 ```
 
-N13000 no recomienda sin policy validada.
-
-N9000 solo acepta GPS observado no sintético:
-
-```text
-observed non-synthetic GPS player-match=0
-synthetic GPS excluded from expert evidence=PASS
-```
+N13000 no recomienda sin policy validada. N9000 no usa GPS sintético como evidencia física observada.
 
 ---
 
@@ -261,7 +251,165 @@ No existen thresholds canónicos de HSR, sprint, workload, fatiga, readiness o l
 
 ---
 
-# PRODUCTO
+# COACH COPILOT — RUNTIME FINAL
+
+## Arquitectura local
+
+Runtime principal de producto:
+
+```text
+pregunta
+→ router determinista de alta confianza
+→ tools read-only
+→ Python/DuckDB
+→ respuesta factual determinista
+```
+
+Solo cuando la intención no se puede resolver con suficiente confianza:
+
+```text
+pregunta ambigua
+→ qwen3.5:4b como router semántico local
+→ tools read-only
+→ Python/DuckDB
+→ evidencia estructurada
+→ respuesta factual determinista
+```
+
+Qwen no calcula métricas críticas ni sintetiza rankings numéricos por su cuenta.
+
+Métricas queryables actuales:
+- goals;
+- assists;
+- shots;
+- passes_total;
+- passes_completed;
+- tackles_total;
+- tackles_won;
+- interceptions;
+- turnovers;
+- dispossessed;
+- minutes;
+- appearances;
+- total_distance_m;
+- peak_speed_m_s;
+- max_acceleration_m_s2;
+- min_acceleration_m_s2;
+- latest_match_rating;
+- avg_last5;
+- trend_delta_5v5.
+
+Operaciones soportadas:
+- retrieve / rank / compare / trend / aggregate / evidence;
+- sum / mean / max / min / latest donde corresponda;
+- ventanas `últimos N partidos`;
+- follow-ups ordinales y de evidencia.
+
+Guardrails explícitos:
+- fatiga/cansancio;
+- readiness;
+- riesgo de lesión;
+- XI/titularidad;
+- recomendación táctica no validada;
+- `mejor jugador`, `más completo`, `más determinante` sin definición analítica aprobada.
+
+## Validación local real — 04/10/2026
+
+DuckDB profesional + `qwen3.5:4b`:
+
+```text
+SMOKE CONTRACT: PASS (22/22)
+average_elapsed=1.4s
+consultas deterministas típicas=0.1–0.8s
+follow-ups encadenados=0.1–0.2s
+pregunta fuera de dominio vía fallback Qwen=25.3s
+```
+
+Casos cubiertos: rating, rating medio L5, distancia media, top remates, asistencias, evolución, perfil natural, GPS, comparación, partido, estado de equipo, calidad, fatiga, lesión, titularidad, criterio no validado, fuera de dominio y cadena de follow-ups con evidencia.
+
+El smoke reproducible está en:
+
+```text
+llm/smoke_test_coach_agent.py
+```
+
+## Integración OpenAI opcional — BYOK
+
+Implementada como segunda opción dentro de la misma página del Asistente IA:
+
+```text
+Local · Qwen
+OpenAI API · clave propia
+```
+
+Arquitectura:
+
+```text
+pregunta clara
+→ router determinista local
+→ tool FPS
+→ DuckDB
+→ respuesta
+→ 0 llamadas OpenAI
+
+pregunta ambigua
+→ OpenAI semantic router
+→ tools FPS limitadas y revalidadas localmente
+→ DuckDB / analytics / expert
+→ evidencia estructurada
+→ síntesis OpenAI con numeric grounding guard
+```
+
+Reglas:
+- la API key pertenece al usuario;
+- la UI no la persiste en DuckDB ni en archivos del proyecto;
+- OpenAI no recibe acceso directo a DuckDB;
+- tool calls externas se revalidan contra el contrato local;
+- tools desconocidas se descartan;
+- límites deportivos y guardrails son los mismos que en modo local.
+
+Estado de validación:
+
+```text
+implementación                       PASS
+unit / contract tests                PASS
+synthetic demo CI                    PASS
+llamada real con API key             NO VALIDADA AÚN
+```
+
+No implementar ahora conexión inversa ChatGPT → FPS / MCP. Queda como extensión futura.
+
+---
+
+# HISTÓRICO DE MODELOS / EXPERIMENTOS LLM
+
+```text
+qwen3:1.7b
+- rápido
+- insuficiente en selección semántica compleja y algunos guardrails
+- descartado como runtime final
+
+qwen3.5:4b
+- buen routing semántico
+- demasiado lento cuando se usa en todas las consultas (~55-61s observado)
+- aprobado como fallback semántico, no como paso obligatorio
+
+gemma3:4b
+- tool calling Ollama HTTP 400
+- descartado
+
+granite4.2:3b
+- benchmark contractual inicial 9/9
+- avg ~34.7s
+- fallos espontáneos posteriores en rating/GPS/follow-ups
+- descartado como runtime final; se conserva como benchmark histórico
+```
+
+Decisión final: no validar frases aisladas; validar el espacio de consultas y usar composición `entidad + operación + métrica + agregación + filtros + ventana + follow-up`.
+
+---
+
+# PRODUCTO / UI
 
 Modos:
 - Equipo;
@@ -286,155 +434,7 @@ Access roles:
 
 Autenticación email/password/session: no implementada.
 
-## UI FINAL PRESENTATION AUDIT — CERRADO 03/10/2026
-
-La revisión visual real de Team/Match/Player/GPS/Alerts detectó inconsistencias que los gates estructurales no cubrían. Se corrigieron sin cambiar analytics ni arquitectura:
-
-- badges técnicos públicos (`match_rating_v0.5-candidate`, `performance_score_v0.2-experimental`, GPS/Attention versions) → labels de producto amigables;
-- `TEAM MODE`, `PLAYER MODE`, `MATCH MODE`, `COACH COPILOT`, `ATTENTION CENTRE · DATA QUALITY` → castellano de presentación;
-- `Coach Brief` → `Resumen técnico`;
-- `GOALKEEPER_SEPARATE_PRO_REFERENCE_SHOT90_DIST10` y paths internos → texto de entrenador;
-- `Shot-stopping` → `Paradas`;
-- advertencia ambigua `rating V2` → `modelo de respaldo de Match Rating V5`;
-- tablas Match Mode con columnas raw → columnas de producto;
-- `H/A` bajo cabecera `L/V` en Player/GPS → `L/V` real;
-- Attention Centre: catalán residual y códigos `CONTEXT_LIMITATION`, `ROLE_CONTEXT_UNAVAILABLE`, source layers → labels castellanos legibles;
-- Assistant trace: nombres internos de tools → nombres de consultas legibles;
-- sugerencia de similitud/rol ambiguo del Assistant → pregunta soportada de evolución;
-- Performance Index: `baseline`, `N fallback` y fallback de evidencia raw → terminología final.
-
-Cambios principales:
-- `app/coach_ui.py` sanitización central de labels;
-- `app/pages/1_Performance_Index.py`;
-- `app/pages/2_Jugador.py`;
-- `app/pages/4_Partit.py`;
-- `app/pages/5_Assistent_IA.py`;
-- `app/pages/6_Fisic_GPS.py`;
-- `app/pages/7_Alertes.py`;
-- `analytics/build_attention_flags.py`;
-- `app/validate_demo_presentation.py`;
-- `tests/test_ui_presentation_contract.py`.
-
-Validación GitHub Actions:
-
-```text
-run=37085564464
-unit + contract tests=PASS
-synthetic public demo rebuild + validation=PASS
-conclusion=SUCCESS
-```
-
-La revisión visual debe repetirse tras `git pull`; no reutilizar las capturas anteriores como figuras finales.
-
----
-
-# COACH COPILOT
-
-## Decisión anterior — SUPERADA COMO RUNTIME FINAL
-
-El perfil previo `qwen3:1.7b + router por patrones + semantic guard determinista` alcanzó sus gates definidos, pero una prueba visual con preguntas espontáneas reveló baja cobertura conversacional. El 97,1% era válido sobre el Golden Set existente, no sobre lenguaje libre de entrenador.
-
-Benchmark local comparativo 03/10/2026:
-
-```text
-qwen3:1.7b
-- rápido (~3-12 s warm)
-- FALLA selección semántica compleja de tools
-- FALLA guardrail espontáneo de cansancio
-
-qwen3.5:4b
-- 5/5 tool-selection benchmark PASS
-- guardrail PASS
-- ~55-61 s por selección de tool en el PC objetivo → demasiado lento como runtime principal
-
-gemma3:4b
-- tool calling Ollama: HTTP 400 → descartado para esta arquitectura
-
-granite4.2:3b
-- candidato elegido por equilibrio calidad / latencia / agentic fit
-- benchmark inicial detectó aliases cortos y match-detail irregular
-- esos fallos se resolvieron con clasificación estructurada de intención + normalización Python
-```
-
-## Runtime final validado
-
-```text
-model=granite4.2:3b
-scope=SPANISH_ONLY_MVP
-thinking=False
-FPS_AGENT_NUM_CTX=1536
-keep_alive=30m
-```
-
-Arquitectura final:
-
-```text
-question
-→ Granite structured intent classification
-→ bounded read-only tools
-→ Python/DuckDB + analytics/expert outputs
-→ compact structured evidence
-→ Granite synthesis
-→ numeric/policy guard
-→ coach
-```
-
-Cambios principales:
-- `llm/coach_agent_granite_v2.py` runtime activo;
-- `llm/coach_agent_fast.py` mantiene API pública y delega al runtime Granite;
-- `query_team_stats` añade rankings descriptivos de goles, asistencias, remates, minutos y apariciones;
-- normalización de argumentos y aliases de jugador/rival;
-- ninguna pregunta desconocida cae por defecto en `get_team_snapshot`;
-- guardrails explícitos para fatiga/cansancio, lesión, XI ideal y recomendación táctica;
-- el LLM interpreta y redacta; Python/DuckDB sigue calculando y validando;
-- `llm/validate_local_agent.py` contiene el gate end-to-end real de 9 casos.
-
-Gate local real con DuckDB profesional 03/10/2026:
-
-```text
-max_goals          PASS  47.1s
-max_assists        PASS  16.6s
-player_evolution   PASS  51.6s
-player_gps         PASS  51.3s
-match_detail       PASS  51.6s
-team_state         PASS  55.7s
-quality            PASS  35.7s
-fatigue            PASS   0.0s
-unknown            PASS   2.8s
-average_elapsed          34.7s
-LOCAL AGENT CONTRACT: PASS (9/9)
-```
-
-CI del runtime final:
-
-```text
-run=37152519764
-unit + contract tests=PASS
-synthetic public demo rebuild + validation=PASS
-conclusion=SUCCESS
-```
-
-Estado:
-
-```text
-código / contratos / CI              PASS
-modelo principal                     GRANITE 4.2 3B
-local end-to-end con DuckDB real     PASS 9/9
-latencia media PC objetivo           34.7s
-cierre LLM-02                        CERRADO
-```
-
-Limitación operativa observada:
-- cargar simultáneamente varios modelos Ollama puede agotar la RAM disponible y provocar `DuckDB OutOfMemoryException` antes de iniciar el agente;
-- en uso normal debe mantenerse solo el modelo operativo necesario cargado.
-
-No validados y por tanto no permitidos:
-- ranking por rol como recomendación;
-- similarity final;
-- predicción futura;
-- XI ideal;
-- recomendación táctica automática;
-- fatiga/readiness/lesión.
+UI presentation audit: cerrado. Tras los cambios del Coach Copilot debe hacerse una última revisión visual y recaptura de las pantallas finales.
 
 ---
 
@@ -494,26 +494,37 @@ pytest
 synthetic demo rebuild + validation
 ```
 
-Runs de referencia:
+Runs recientes de referencia:
 
 ```text
-37081464123 = SUCCESS — reproducibilidad inicial
-37085564464 = SUCCESS — UI final presentation audit
-37150798394 = SUCCESS — Granite runtime contracts / synthetic demo
-37152519764 = SUCCESS — Granite structured-intent runtime / tests + synthetic demo
+37162911509 = SUCCESS — smoke test direct execution import fix
+37163349049 = SUCCESS — optional OpenAI Coach Copilot mode
+37163417219 = SUCCESS — OpenAI BYOK Assistant UI + contracts
+37163457928 = SUCCESS — external OpenAI tool-surface contract tests
 ```
 
 ---
 
-# MEMORIA ACADÉMICA — FUENTES CANÓNICAS
+# ARCHIVOS IMPORTANTES
 
-Manuscrito único:
-- `docs/TFM_MANUSCRIPT_DRAFT.md`.
+Core de producto:
+- `app/streamlit_app.py`;
+- `app/pages/5_Assistent_IA.py`;
+- `app/data_access.py`;
+- `app/gps_physical_access.py`;
+- `collector/data_collector_futbol.html`;
+- `collector/event_catalog.json`.
 
-Soporte:
-- `docs/TFM_MANUSCRIPT_ASSEMBLY.md`;
-- `docs/TFM_MEMORIA_BASE.md`;
-- `docs/TFM_MARCO_TEORICO_REFERENCIAS.md`;
+Coach Copilot:
+- `llm/coach_agent_fast.py` — entrada pública local + normalización/guards;
+- `llm/coach_agent_general.py` — query grammar, router determinista, tools y respuestas;
+- `llm/coach_agent_external.py` — OpenAI BYOK opcional;
+- `llm/smoke_test_coach_agent.py` — smoke real reproducible;
+- `tests/test_coach_agent_fast.py`;
+- `tests/test_coach_agent_external.py`.
+
+Documentación académica:
+- `docs/TFM_MANUSCRIPT_DRAFT.md`;
 - `docs/TFM_METHODOLOGY_DRAFT.md`;
 - `docs/TFM_RESULTS_DRAFT.md`;
 - `docs/TFM_DISCUSSION_CONCLUSIONS_DRAFT.md`;
@@ -524,28 +535,6 @@ Soporte:
 - `docs/TFM_DEFENSE_OUTLINE.md`;
 - `docs/TFM_SUBMISSION_CHECKLIST.md`.
 
-Figuras reproducibles:
-- `docs/figures/tfm_architecture_overview.svg`;
-- `docs/figures/tfm_llm_grounding.svg`;
-- `docs/figures/tfm_strict_past.svg`;
-- `docs/figures/tfm_expert_system.svg`;
-- `docs/figures/tfm_data_model.svg`.
-
-Estado:
-
-```text
-manuscrito integrado              CREADO
-marco teórico / bibliografía      CREADOS
-metodología / resultados          CREADOS
-discusión / conclusiones          CREADAS
-tablas / figuras / anexos         CREADOS
-guion defensa                     CREADO
-capturas reales                   EN CURSO — REVISIÓN VISUAL FINAL
-plantilla universitaria           PENDIENTE
-maquetación final                 PENDIENTE
-presentación final                PENDIENTE
-```
-
 ---
 
 # DECISIONES APROBADAS
@@ -555,23 +544,24 @@ presentación final                PENDIENTE
 - raw / features / analytics / decision / LLM separados;
 - strict-past obligatorio;
 - Match Rating V5 congelado;
-- Performance Index separado;
+- Performance Index separado y experimental;
 - experto jerárquico y auditable;
 - ML solo con target defendible y contra baseline simple;
 - GPS opcional, real > synthetic;
 - synthetic GPS no es evidencia física observada;
 - no inferir rol sin evidencia;
 - LLM downstream y read-only;
-- MVP LLM castellano;
-- Granite 4.2 3B como modelo local principal del Coach Copilot;
-- selección semántica mediante clasificación estructurada de intención, no por un listado creciente de `if`;
-- guardrails de policy pueden ser deterministas;
+- query-space composicional antes que una lista creciente de frases;
+- router determinista para consultas claras;
+- `qwen3.5:4b` solo como fallback semántico local;
+- respuesta factual crítica calculada fuera del LLM;
+- OpenAI BYOK opcional dentro de FPS, sin convertirlo en dependencia obligatoria;
 - pregunta no soportada no cae en un resumen genérico del equipo;
 - PDF downstream de analytics;
 - demo pública sintética separada del dataset profesional;
 - CI automático obligatorio;
 - hipótesis limitada a viabilidad técnica/auditable;
-- UI final debe mostrar lenguaje de producto, no tokens internos; trazabilidad técnica queda en expanders/metodología.
+- UI final muestra lenguaje de producto, no tokens internos.
 
 ---
 
@@ -588,43 +578,39 @@ presentación final                PENDIENTE
 - añadir ML solo por complejidad;
 - inventar validación con usuarios;
 - qwen3:1.7b como runtime conversacional final;
-- qwen3.5:4b como runtime principal en el PC objetivo por latencia observada;
-- gemma3:4b como runtime de tool calling con Ollama actual.
+- qwen3.5:4b como paso obligatorio en cada consulta;
+- gemma3:4b como runtime de tool calling con Ollama actual;
+- Granite 4.2 3B como runtime final tras fallos espontáneos;
+- embeddings / nuevo semantic-router antes de la entrega;
+- conexión externa ChatGPT → FPS / MCP en el MVP.
 
 ---
 
 # PROBLEMAS ABIERTOS
 
-Prioridad inmediata:
-- revisar visualmente el Asistente IA final con Granite en la web;
-- recapturar las pantallas afectadas por el UI audit;
-- completar exactamente las 10 capturas canónicas;
-- continuar maquetación final cuando esté disponible la plantilla universitaria.
+Prioridad de entrega:
+- última revisión visual de `app/pages/5_Assistent_IA.py` tras añadir selector Local/OpenAI;
+- capturas canónicas finales;
+- sincronizar README y manuscrito con la arquitectura final del Coach Copilot;
+- revisar checklist de entrega;
+- maquetación/presentación final según plantilla disponible.
 
-Externos / pendientes:
-- plantilla/rúbrica universitaria;
-- formato bibliográfico definitivo;
-- maquetación final;
-- presentación/defensa final;
-- licencia antes de redistribuir dataset profesional.
-
-Mejoras opcionales, no inventar:
-- estudio interobservador;
-- validación con entrenadores/analistas;
-- GPS real;
-- validación externa Match Rating;
-- ground truth N13000;
-- Expert vs ML independiente.
+Limitaciones conocidas:
+- fallback Qwen local puede tardar ~20–30s en CPU para lenguaje realmente ambiguo;
+- modo OpenAI requiere API key y conexión externa;
+- modo OpenAI no tiene todavía una prueba live con una API key real;
+- autenticación de producción no implementada;
+- dataset profesional no redistribuible mientras no se resuelva licencia;
+- no existe validación externa con entrenadores ni ground truth para recomendaciones N13000.
 
 ---
 
 # SIGUIENTE PASO EXACTO
 
-**No añadir más funcionalidad. Volver al gate visual final.**
-
-1. `git pull --ff-only` y arrancar la app con la DuckDB profesional y `granite4.2:3b`;
-2. comprobar visualmente en Asistente IA: `¿Quién es el máximo goleador?`, `¿Cómo ha evolucionado Antonio Sivera?` y `Enséñame los datos GPS de Antonio Sivera.`;
-3. si las respuestas y trazas son correctas, capturar `docs/screenshots/07_coach_copilot.png`;
-4. recapturar Player/Match/GPS/Attention si aún corresponden a las capturas anteriores al UI audit;
-5. producir exactamente las 10 capturas canónicas de `docs/TFM_SCREENSHOT_CHECKLIST.md`: Collector, Team, Player, Match, GPS, Attention, Coach Copilot y los tres PDF;
-6. seleccionar cuerpo/anexos y continuar maquetación final.
+1. `git pull --ff-only`.
+2. Arrancar la app con la DuckDB profesional y revisar visualmente el Asistente IA en modo `Local · Qwen`.
+3. Probar en la UI: rating, distancia, evolución, GPS, comparación y un guardrail; confirmar trazas legibles.
+4. Verificar que aparece `OpenAI API · clave propia`; no es necesario gastar API para cerrar el MVP si no se dispone de una key de prueba.
+5. Capturar la pantalla final del Coach Copilot y completar las 10 capturas de `docs/TFM_SCREENSHOT_CHECKLIST.md`.
+6. Sincronizar manuscrito/resultados/arquitectura con este estado final.
+7. Ejecutar checklist de entrega y congelar versión.
