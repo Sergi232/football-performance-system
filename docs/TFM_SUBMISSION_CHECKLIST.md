@@ -61,6 +61,8 @@ Objetivo: controlar el cierre del TFM sin reabrir funcionalidad ya validada.
 - [x] Marco teórico redactado.
 - [x] Bibliografía base curada.
 - [x] Metodología redactada.
+- [x] Preguntas de investigación, matriz de evidencias y límites de inferencia integrados.
+- [x] Protocolos de evaluación con observadores y staff preparados sin resultados simulados.
 - [x] Resultados redactados con gates reales.
 - [x] Discusión redactada.
 - [x] Limitaciones redactadas.

@@ -41,6 +41,16 @@ Aclarar inmediatamente:
 - no se pretende demostrar que el sistema aumente victorias;
 - se pretende demostrar que la arquitectura integral es viable, auditable y reproducible.
 
+Presentar las tres preguntas que organizan la evaluación:
+
+```text
+PI1  ¿el pipeline es reproducible y evita leakage temporal?
+PI2  ¿la capa de IA mantiene grounding sin calcular métricas críticas?
+PI3  ¿el prototipo integra Collector, análisis y evidencia visible?
+```
+
+Anticipar el alcance: las tres preguntas se responden con evidencia técnica; la utilidad con staff y la fiabilidad interobservador requieren evaluación posterior.
+
 ---
 
 ## 3. Arquitectura
