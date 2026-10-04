@@ -203,6 +203,7 @@ Arquitectura final del runtime local:
 
 ```text
 pregunta natural
+→ preflight / guardrails
 → router determinista de alta confianza
 → tools Python read-only
 → DuckDB + analytics / expert system materializados
@@ -211,7 +212,7 @@ pregunta natural
 → Coach Copilot
 ```
 
-Solo cuando la intención sigue siendo ambigua:
+Solo cuando la intención sigue siendo ambigua y permanece dentro del dominio:
 
 ```text
 pregunta ambigua
@@ -229,21 +230,22 @@ El LLM no accede directamente a DuckDB, no recalcula Match Rating/Performance In
 La gramática de consulta se compone de:
 
 ```text
-entidad + operación + métrica + agregación + filtros + ventana + follow-up
+entidad + operación + métrica + agregación + rol + filtros + ventana + follow-up
 ```
 
-Las consultas claras no necesitan LLM. Esto reduce latencia, coste y superficie de error.
+Las consultas claras no necesitan LLM. Ruido, meta-consultas y fuera de dominio obvio se resuelven también mediante preflight local sin invocar un modelo.
 
-Validación local real con DuckDB profesional:
+Validación local real final con DuckDB profesional:
 
 ```text
-SMOKE CONTRACT: PASS (22/22)
-average_elapsed=1.4s
-consultas deterministas típicas=0.1–0.8s
-follow-ups=0.1–0.2s
+SMOKE CONTRACT: PASS (28/28)
+average_elapsed=0.4s
+all final smoke cases: rounds=0
 ```
 
-El fallback Qwen puede tardar del orden de 20–30 s en CPU cuando una consulta requiere interpretación semántica.
+El smoke final cubre rankings, ventanas temporales, perfiles, GPS, comparación entre jugadores, comparación por posición, partidos, calidad de datos, guardrails, ruido/fuera de dominio y follow-ups encadenados.
+
+El fallback Qwen queda reservado para lenguaje ambiguo dentro del dominio y puede tener una latencia significativamente mayor en CPU; por eso no forma parte de la ruta obligatoria de una consulta clara.
 
 Guardrails explícitos:
 - fatiga/cansancio;
@@ -252,6 +254,12 @@ Guardrails explícitos:
 - XI/titularidad;
 - recomendación táctica no validada;
 - `mejor jugador`, `más completo` o `más determinante` sin criterio analítico aprobado.
+
+Comparación por posición:
+- el sistema puede comparar grupos posicionales de forma determinista;
+- si se pregunta quién ha rendido mejor dentro de una posición, el criterio explícito de ordenación es Match Rating medio en esa muestra;
+- las métricas adicionales son evidencia descriptiva;
+- no se crea un score nuevo.
 
 #### Proveedor externo opcional
 
@@ -370,7 +378,7 @@ El núcleo funcional está cerrado. La prioridad es:
 ```text
 REVISIÓN VISUAL FINAL
 → CAPTURAS CANÓNICAS
-→ SINCRONIZACIÓN DOCUMENTAL
+→ SINCRONIZACIÓN DOCUMENTAL FINAL
 → MAQUETACIÓN MEMORIA
 → DEFENSA / DEMO
 ```
