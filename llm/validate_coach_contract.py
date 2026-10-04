@@ -1,8 +1,8 @@
-"""Validate the Coach Copilot core query space on a reproducible DuckDB.
+"""Reproducible deterministic Coach Copilot query-space validation.
 
-This validator intentionally avoids LLM-dependent cases. Its purpose is to ensure
-that the product's common coaching queries, follow-ups, guardrails and demo identity
-boundary do not depend on Qwen/OpenAI and therefore remain fast and reproducible in CI.
+This gate intentionally avoids LLM-dependent cases. It validates the common product
+contract, follow-ups, guardrails, non-domain preflight and demo identity boundary on
+a reproducible DuckDB.
 """
 from __future__ import annotations
 
@@ -30,22 +30,8 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _run(
-    question: str,
-    *,
-    db: Path,
-    team_id: str,
-    expected_tool: str | None,
-    history: list[dict[str, str]] | None = None,
-    blocked: bool = False,
-):
-    result = run_coach_agent_turn(
-        question,
-        db_path=db,
-        team_id=team_id,
-        model=MODEL,
-        history=history,
-    )
+def _run(question: str, *, db: Path, team_id: str, expected_tool: str | None, history=None, blocked: bool = False):
+    result = run_coach_agent_turn(question, db_path=db, team_id=team_id, model=MODEL, history=history)
     tools = list(result.tools_used)
     if blocked:
         ok = not tools and result.tool_rounds == 0 and bool(result.text.strip())
@@ -60,9 +46,7 @@ def main() -> None:
     if not db.exists():
         raise SystemExit(f"Database not found: {db}")
 
-    # CI/public validation must exercise the same alias policy used for screenshots.
     os.environ["FPS_DEMO_MODE"] = "1"
-
     teams = list_teams(db)
     if teams.empty:
         raise SystemExit("No teams in validation DB")
@@ -75,16 +59,9 @@ def main() -> None:
         raise SystemExit("Validation DB needs squad and matches")
 
     players = squad["player"].dropna().astype(str).tolist()
-    p1 = players[0]
-    p2 = players[1]
+    p1, p2 = players[0], players[1]
     opponent = str(matches.iloc[0]["opponent"])
-
-    identity = build_assistant_identity_context(
-        squad,
-        matches,
-        raw_team_name=raw_team_name,
-        team_alias=team_alias,
-    )
+    identity = build_assistant_identity_context(squad, matches, raw_team_name=raw_team_name, team_alias=team_alias)
 
     cases = [
         ("rating", "¿Qué jugador tiene más rating?", "rank_players"),
@@ -128,21 +105,23 @@ def main() -> None:
         if not ok:
             failures.append(label)
 
-    guardrails = [
+    blocked_cases = [
         ("fatigue", "¿Quién está más cansado?"),
         ("injury", "¿Quién tiene más riesgo de lesión?"),
         ("lineup", "¿Quién debería ser titular?"),
         ("best_general", "¿Quién es el mejor jugador del equipo?"),
         ("complete", "¿Quién es el jugador más completo?"),
         ("decisive", "¿Quién es el más determinante?"),
+        ("garbage", "sss"),
+        ("meta_help", "no puedes hacer nada"),
+        ("out_domain", "Explícame la teoría de juegos"),
     ]
-    for label, question in guardrails:
+    for label, question in blocked_cases:
         ok, result = _run(question, db=db, team_id=team_id, expected_tool=None, blocked=True)
         print(f"{label:18} {'PASS' if ok else 'FAIL'} tools={list(result.tools_used)} rounds={result.tool_rounds}")
         if not ok:
             failures.append(label)
 
-    # Ranking follow-up chain must preserve the substantive anchor.
     history: list[dict[str, str]] = []
     chain = [
         ("follow_base", "¿Quién corre más distancia por partido?"),
@@ -155,38 +134,26 @@ def main() -> None:
         print(f"{label:18} {'PASS' if ok else 'FAIL'} tools={list(result.tools_used)} rounds={result.tool_rounds}")
         if not ok:
             failures.append(label)
-        history.extend([
-            {"role": "user", "content": question},
-            {"role": "assistant", "content": result.text},
-        ])
+        history.extend([{"role": "user", "content": question}, {"role": "assistant", "content": result.text}])
 
-    # Role follow-up must recover a prior position even after noise in the chat.
     role_history = [
         {"role": "user", "content": "Compárame las principales estadísticas de los centrales"},
         {"role": "assistant", "content": "comparación previa"},
         {"role": "user", "content": "no puedes hacer nada"},
         {"role": "assistant", "content": "limitación"},
     ]
-    ok, role_follow = _run(
-        "Sí, compáralos",
-        db=db,
-        team_id=team_id,
-        expected_tool="compare_role_players",
-        history=role_history,
-    )
+    ok, role_follow = _run("Sí, compáralos", db=db, team_id=team_id, expected_tool="compare_role_players", history=role_history)
     print(f"{'role_followup':18} {'PASS' if ok else 'FAIL'} tools={list(role_follow.tools_used)} rounds={role_follow.tool_rounds}")
     if not ok:
         failures.append("role_followup")
 
-    # UI alias -> canonical runtime -> UI alias roundtrip.
     player_aliases = sorted(alias for alias in identity.alias_to_runtime if alias.startswith("Jugador "))
     opponent_aliases = sorted(alias for alias in identity.alias_to_runtime if alias.startswith("Rival "))
     if not player_aliases or not opponent_aliases:
         failures.append("identity_maps_missing")
     else:
         alias = player_aliases[0]
-        display_question = f"¿Cómo ha evolucionado {alias}?"
-        runtime_question = identity.to_runtime(display_question)
+        runtime_question = identity.to_runtime(f"¿Cómo ha evolucionado {alias}?")
         ok, alias_result = _run(runtime_question, db=db, team_id=team_id, expected_tool="get_player_profile")
         display_answer = identity.to_display(alias_result.text)
         privacy_ok = ok and alias in display_answer and not identity.leaked_runtime_identities(display_answer)
@@ -195,8 +162,7 @@ def main() -> None:
             failures.append("identity_player")
 
         opp_alias = opponent_aliases[0]
-        display_question = f"¿Qué pasó contra {opp_alias}?"
-        runtime_question = identity.to_runtime(display_question)
+        runtime_question = identity.to_runtime(f"¿Qué pasó contra {opp_alias}?")
         ok, opp_result = _run(runtime_question, db=db, team_id=team_id, expected_tool="get_match_detail")
         display_answer = identity.to_display(opp_result.text)
         privacy_ok = ok and opp_alias in display_answer and not identity.leaked_runtime_identities(display_answer)
@@ -204,13 +170,7 @@ def main() -> None:
         if not privacy_ok:
             failures.append("identity_opponent")
 
-    # Role answers contain several names: all must be masked in demo presentation.
-    _, raw_role = _run(
-        "Compárame las principales estadísticas de los delanteros",
-        db=db,
-        team_id=team_id,
-        expected_tool="compare_role_players",
-    )
+    _, raw_role = _run("Compárame las principales estadísticas de los delanteros", db=db, team_id=team_id, expected_tool="compare_role_players")
     display_role = identity.to_display(raw_role.text)
     privacy_ok = not identity.leaked_runtime_identities(display_role)
     print(f"{'identity_role':18} {'PASS' if privacy_ok else 'FAIL'}")
@@ -223,7 +183,7 @@ def main() -> None:
         print("Failures: " + ", ".join(failures))
         raise SystemExit(1)
     print("COACH COPILOT CONTRACT: PASS")
-    print("Core deterministic queries, follow-ups, guardrails and demo identities validated without LLM use.")
+    print("Core queries, follow-ups, guardrails, preflight and demo identities validated without LLM use.")
     print("=" * 88)
 
 
