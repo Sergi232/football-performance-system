@@ -138,22 +138,67 @@ COACH_COPILOT_CONTRACT.md
 + smoke real reproducible
 ```
 
-## 7. Pendiente para entrega
+## 7. Sincronización académica
+
+Documentos actualizados al gate final 28/28:
+
+```text
+TFM_MANUSCRIPT_DRAFT.md
+TFM_METHODOLOGY_DRAFT.md
+TFM_RESULTS_DRAFT.md
+TFM_DISCUSSION_CONCLUSIONS_DRAFT.md
+TFM_EVIDENCE_MATRIX.md
+TFM_TABLES_RESULTS.md
+TFM_ANNEXES_DRAFT.md
+TFM_FIGURES_TABLES_PLAN.md
+TFM_DEFENSE_OUTLINE.md
+TFM_SCREENSHOT_CHECKLIST.md
+TFM_SUBMISSION_CHECKLIST.md
+ARCHITECTURE.md
+DATA_SCIENCE_AI_STRATEGY.md
+DECISIONS.md
+WORKFLOW.md
+```
+
+Las cifras antiguas de 16/16 y 22/22 quedan como histórico de desarrollo, no como resultado final de la memoria.
+
+## 8. Pendiente para entrega
 
 Solo quedan tareas de cierre:
 
 ```text
 1. revisión visual final en FPS_DEMO_MODE=1
 2. 10 capturas canónicas
-3. sincronización numérica final del manuscrito
-4. adaptación a plantilla / bibliografía / numeración
-5. presentación y backup estático
-6. entrega
+3. adaptación a plantilla / bibliografía / numeración
+4. presentación y backup estático
+5. entrega
 ```
 
-## 8. Comandos de reproducción
+## 9. Ejecución de la demo final
 
-Demo pública:
+Launcher Windows recomendado:
+
+```powershell
+.\run_final_demo.ps1
+```
+
+Hace automáticamente:
+
+```text
+rebuild + validate synthetic demo
+→ FPS_DB_PATH = synthetic demo
+→ FPS_DEMO_MODE = 1
+→ Qwen fallback por defecto si no existe otra configuración
+→ Streamlit
+```
+
+Para reabrir la demo sin reconstruir la base:
+
+```powershell
+.\run_final_demo.ps1 -SkipRebuild
+```
+
+Comandos manuales equivalentes:
 
 ```powershell
 python -m publication.validate_synthetic_demo --rebuild
