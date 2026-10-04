@@ -1,6 +1,6 @@
 # TFM — Checklist de capturas reales del producto
 
-Fecha: 03/10/2026
+Fecha: 04/10/2026
 Estado: pendiente de ejecución visual sobre el producto real.
 
 Objetivo: definir exactamente qué capturas deben producirse para la memoria y la defensa. Estas capturas deben salir de la aplicación real ejecutada; no deben sustituirse por mockups.
@@ -107,28 +107,43 @@ Uso:
 
 ## Captura 7 — Coach Copilot
 
+Usar **modo `Local · Qwen`** para la captura canónica, porque es el runtime validado localmente y no depende de una API externa.
+
 Pregunta recomendada:
 
 ```text
-¿Cómo ha evolucionado este jugador?
+¿Quién corre más distancia por partido?
 ```
 
-o una pregunta equivalente que esté dentro del contrato validado.
+Alternativa:
+
+```text
+¿Cómo ha evolucionado Antonio Sivera?
+```
 
 Mostrar:
+- selector `Motor de lenguaje`;
+- modo `Local · Qwen`;
 - pregunta;
 - respuesta en castellano;
-- contexto de jugador/equipo;
+- expander `Evidencia consultada` abierto si cabe en la misma captura;
+- tool legible, rondas de interpretación semántica y modelo;
 - sin recomendaciones no validadas.
 
-Uso:
-- demostrar la capa conversacional downstream de analytics.
+Idealmente la pregunta elegida debe mostrar `Rondas de interpretación semántica: 0`, para evidenciar que una consulta clara se resuelve mediante el router determinista y las tools FPS sin depender del LLM.
 
-Evitar preguntas de:
+Uso:
+- demostrar la capa conversacional downstream de analytics y la arquitectura deterministic-first.
+
+No usar como captura canónica:
+- una API key real visible;
 - XI ideal;
 - riesgo de lesión;
 - ranking de rol no validado;
-- recomendación táctica automática.
+- recomendación táctica automática;
+- `mejor jugador`, `más completo` o `más determinante` sin métrica explícita.
+
+El selector `OpenAI API · clave propia` puede aparecer como opción disponible, pero no es necesario activarlo ni mostrar una key para cerrar el MVP.
 
 ---
 
@@ -163,6 +178,7 @@ Mostrar una página representativa del informe de partido.
 - detalle de un nodo del sistema experto;
 - historial temporal de un jugador;
 - ejemplo de máscara `Equipo Demo / Jugador XX / Rival XX`;
+- selector Local/OpenAI del Coach Copilot sin mostrar claves;
 - GitHub Actions con CI en verde;
 - árbol del repositorio.
 
