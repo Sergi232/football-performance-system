@@ -1,6 +1,6 @@
 # TFM — Estructura canónica de ensamblaje de la memoria
 
-Fecha: 03/10/2026
+Fecha: 04/10/2026
 Estado: estructura académica de referencia hasta disponer de la plantilla/rúbrica oficial.
 Idioma: castellano.
 
@@ -9,6 +9,9 @@ Idioma: castellano.
 Evitar que la memoria final se convierta en una suma de documentos técnicos inconexos. Este archivo define el orden académico final, qué documento alimenta cada capítulo y qué contenido debe quedar en cuerpo principal o en anexos.
 
 La memoria final deberá redactarse como un único texto. Los documentos auxiliares de `docs/TFM_*` son fuentes de trabajo, no capítulos independientes para entregar tal cual.
+
+**Manuscrito integrado canónico actual:** `docs/TFM_MANUSCRIPT_DRAFT.md`.  
+`docs/TFM_MEMORIA_BASE.md` se conserva como borrador técnico histórico de apoyo y no debe prevalecer sobre el manuscrito integrado, `PROJECT_STATE.md` o el código actual.
 
 ---
 
@@ -21,7 +24,7 @@ Pendiente de adaptar a la plantilla oficial de la universidad.
 ## Resumen
 
 Fuente principal:
-- `docs/TFM_MEMORIA_BASE.md`.
+- `docs/TFM_MANUSCRIPT_DRAFT.md`.
 
 Debe explicar en 200–300 palabras:
 - problema;
@@ -56,7 +59,7 @@ reproducibility
 # 1. Introducción
 
 Fuente:
-- `docs/TFM_MEMORIA_BASE.md`;
+- `docs/TFM_MANUSCRIPT_DRAFT.md`;
 - `docs/TFM_MARCO_TEORICO_REFERENCIAS.md`.
 
 Contenido:
@@ -98,7 +101,7 @@ Regla:
 
 Fuente:
 - `PROJECT_STATE.md`;
-- `docs/TFM_MEMORIA_BASE.md`.
+- `docs/TFM_MANUSCRIPT_DRAFT.md`.
 
 ## 3.1 Hipótesis
 
@@ -112,7 +115,7 @@ Diseñar, implementar y validar un sistema reproducible de análisis de rendimie
 
 ## 3.3 Objetivos específicos
 
-Usar la lista ya definida en `TFM_MEMORIA_BASE.md`.
+Usar la lista sincronizada de `docs/TFM_MANUSCRIPT_DRAFT.md`.
 
 ---
 
@@ -155,7 +158,7 @@ Objetivo: mostrar cómo la metodología se materializa en producto.
 
 Figuras prioritarias:
 - arquitectura general;
-- DATA → ANALYTICS → DECISION → LLM;
+- Coach Copilot deterministic-first / grounding;
 - modelo de datos simplificado;
 - strict-past;
 - sistema experto N1000-N13000.
@@ -189,7 +192,8 @@ Orden recomendado:
 
 Regla estricta:
 - un resultado cuantitativo solo entra si existe gate/validator reproducible;
-- separar siempre caso profesional de desarrollo y demo sintética.
+- separar siempre caso profesional de desarrollo y demo sintética;
+- el modo OpenAI BYOK se presenta como implementación contractual, no como benchmark live.
 
 ---
 
@@ -231,7 +235,9 @@ Limitaciones obligatorias:
 - GPS real insuficiente para cerrar inferencias físicas expertas;
 - N13000 sin policy de recomendación validada;
 - autenticación real no implementada;
-- derechos del dataset profesional no resueltos para redistribución.
+- derechos del dataset profesional no resueltos para redistribución;
+- fallback semántico local con latencia elevada en CPU;
+- OpenAI BYOK sin benchmark live con API key real.
 
 ---
 
@@ -252,7 +258,8 @@ Trabajo futuro prioritario:
 - policy N13000;
 - experto vs ML;
 - automatización parcial por visión artificial;
-- autenticación/despliegue si se resuelven derechos.
+- autenticación/despliegue si se resuelven derechos;
+- validación live de proveedores externos solo si aporta valor real.
 
 ---
 
@@ -310,8 +317,9 @@ Fuente:
 - Player Mode;
 - Match Mode;
 - GPS;
+- Attention Centre;
 - Coach Copilot;
-- PDF.
+- PDF Team/Player/Match.
 
 ---
 
@@ -333,23 +341,23 @@ Mover a anexos o repositorio:
 # Estado actual de redacción
 
 ```text
-Introducción / hipótesis       BASE DISPONIBLE
-Marco teórico                  BORRADOR COMPLETO
-Metodología                    BORRADOR COMPLETO
-Arquitectura                   DOCUMENTADA
-Resultados                     BORRADOR COMPLETO
-Discusión                      BORRADOR COMPLETO
-Limitaciones                   BORRADOR COMPLETO
-Conclusiones                   BORRADOR COMPLETO
-Bibliografía                   BASE CURADA
-Plan de figuras/tablas         DEFINIDO
-Anexos                         ESTRUCTURA DEFINIDA
-Plantilla universitaria        PENDIENTE
-Figuras/capturas finales       PENDIENTE
-Maquetación final              PENDIENTE
-Defensa                        PENDIENTE
+Manuscrito integrado            SINCRONIZADO 04/10/2026
+Marco teórico                   BORRADOR COMPLETO
+Metodología                     BORRADOR COMPLETO / SINCRONIZADA
+Arquitectura                    SINCRONIZADA
+Resultados                      BORRADOR COMPLETO / SINCRONIZADOS
+Discusión                       BORRADOR COMPLETO / SINCRONIZADA
+Limitaciones                    BORRADOR COMPLETO
+Conclusiones                    BORRADOR COMPLETO
+Bibliografía                    BASE CURADA
+Plan de figuras/tablas          DEFINIDO
+Anexos                          SINCRONIZADOS
+Plantilla universitaria         PENDIENTE SI NO DISPONIBLE
+Capturas finales                PENDIENTE
+Maquetación final               PENDIENTE
+Defensa                         GUION ACTUALIZADO
 ```
 
 ## Próximo paso
 
-La siguiente fase no es redactar más texto genérico. Es producir **evidencia visual y tablas reproducibles** y después ensamblar el manuscrito según la plantilla oficial cuando esté disponible.
+La siguiente fase no es redactar más texto genérico. Es producir las **10 capturas reales canónicas**, aplicar la plantilla/maquetación final y ejecutar el checklist de entrega.
