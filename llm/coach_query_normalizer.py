@@ -1,9 +1,11 @@
 """Conservative normalization for natural Coach Copilot questions.
 
-Granite remains the primary semantic router. This module only canonicalizes a
-small set of high-confidence supported intents when accents, punctuation,
-common typos or terse coach phrasing would otherwise make routing brittle.
-It never calculates football data or creates unsupported conclusions.
+The deterministic router is the primary runtime. This module only canonicalizes a
+small set of high-confidence supported intents when accents, punctuation, common
+typos or terse coach phrasing would otherwise make routing brittle. Qwen3.5 4B or
+the optional OpenAI provider are semantic fallbacks only when deterministic routing
+cannot resolve an in-domain query. This module never calculates football data or
+creates unsupported conclusions.
 """
 from __future__ import annotations
 
@@ -63,7 +65,6 @@ def canonicalize_question(question: str) -> str:
     if not q:
         return original
 
-    # Policy-sensitive questions must reach the existing guardrails unchanged.
     if _contains_any(
         q,
         (
@@ -78,23 +79,18 @@ def canonicalize_question(question: str) -> str:
 
     if _contains_any(q, ("goleador", "goleadora", "goles", "ha marcado", "marca mas", "mas gol")) and ranking_hint:
         return "¿Quién es el máximo goleador?"
-
     if _contains_any(q, ("asistencia", "asistencias", "asistente")) and ranking_hint:
         return "¿Quién lleva más asistencias?"
-
     if _contains_any(q, ("remate", "remates", "disparo", "disparos", "tira mas")) and ranking_hint:
         return "¿Quién acumula más remates?"
-
     if _contains_any(q, ("minutos", "minuto", "ha jugado", "juega mas")) and ranking_hint:
         return "¿Quién acumula más minutos?"
-
     if _contains_any(q, ("apariciones", "partidos jugados", "ha jugado mas partidos")) and ranking_hint:
         return "¿Quién acumula más apariciones?"
 
     player = _player_alias(q)
     if player and _contains_any(q, ("gps", "fisico", "fisica", "distancia", "velocidad")):
         return f"Enséñame los datos GPS de {player}."
-
     if player and _contains_any(q, ("evolucion", "evolucionado", "mejorado", "empeorado", "forma", "rendimiento")):
         return f"¿Cómo ha evolucionado {player} últimamente?"
 
@@ -104,7 +100,6 @@ def canonicalize_question(question: str) -> str:
 
     if _contains_any(q, ("calidad de datos", "limitaciones de datos", "datos incompletos", "cobertura de datos")):
         return "¿Qué limitaciones de datos tenemos?"
-
     if _contains_any(q, ("estado del equipo", "estado equipo", "forma del equipo", "como esta el equipo", "como va el equipo")):
         return "Resume el estado reciente del equipo."
 
