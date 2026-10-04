@@ -316,18 +316,21 @@ La autenticación real por email/contraseña/sesiones no forma parte del MVP act
 
 El asistente se diseñó como capa downstream de la analítica y no como motor de cálculo.
 
-## 11.1 Query grammar y routing determinista
+## 11.1 Query-space contract, preflight y routing determinista
 
 La arquitectura final parte de un espacio de consultas finito y composicional:
 
 ```text
-entidad + operación + métrica + agregación + filtros + ventana + follow-up
+entidad + operación + métrica + agregación + rol + filtros + ventana + contexto conversacional
 ```
+
+Antes del routing se aplica un preflight local. Su función es resolver o rechazar sin LLM entradas como ruido, meta-consultas o preguntas claramente fuera del dominio.
 
 Cuando la consulta es de alta confianza, se resuelve sin LLM:
 
 ```text
 QUESTION
+→ PREFLIGHT / GUARDRAILS
 → DETERMINISTIC HIGH-CONFIDENCE ROUTER
 → READ-ONLY TOOLS
 → PYTHON / DUCKDB / ANALYTICS / EXPERT SYSTEM
@@ -337,9 +340,11 @@ QUESTION
 
 Las métricas queryables se definen explícitamente en código y las agregaciones posibles se restringen a operaciones válidas como `sum`, `mean`, `max`, `min` o `latest` según el caso.
 
+Las comparaciones por posición forman parte del contrato. Si se pregunta quién ha rendido mejor dentro de un rol, el sistema utiliza de forma explícita el Match Rating medio de la muestra como criterio de ordenación y presenta métricas adicionales como evidencia; no genera un score nuevo.
+
 ## 11.2 Fallback semántico local
 
-Si la consulta no puede mapearse de forma determinista con suficiente confianza, se utiliza:
+Si la consulta no puede mapearse de forma determinista con suficiente confianza y sigue dentro del dominio, se utiliza:
 
 ```text
 qwen3.5:4b
@@ -381,7 +386,7 @@ El historial conversacional conserva la última consulta sustantiva como anchor.
 → ¿Qué evidencias tienes?
 ```
 
-sin perder la métrica y la operación originales.
+sin perder la métrica y la operación originales. El mismo principio se aplica a follow-ups de comparación por posición.
 
 ## 11.4 Proveedor OpenAI opcional
 
@@ -404,6 +409,18 @@ Cada tool call externa:
 La API key pertenece al usuario y la UI no la persiste en DuckDB ni en archivos del proyecto.
 
 La integración OpenAI se considera implementada y validada contractualmente, pero no se presenta como benchmark live porque no se ha realizado una prueba real con API key.
+
+## 11.5 Anonimización en demo
+
+La capa conversacional comparte el mismo contrato de identidad que el resto de la demo pública:
+
+```text
+Equipo Demo
+Jugador XX
+Rival XX
+```
+
+Los aliases visibles se traducen a identidades internas únicamente antes de llamar a las tools y se vuelven a anonimizar antes de renderizar. Una identidad interna conocida detectada en la respuesta final de demo provoca el bloqueo de esa respuesta.
 
 ---
 
@@ -441,7 +458,29 @@ Cada módulo relevante dispone de tests, contratos o validadores específicos pa
 - ausencia de recomendaciones no validadas;
 - compatibilidad entre capas.
 
-Para el Coach Copilot se añadió un smoke real reproducible de 22 casos y tests específicos de guards, follow-ups y proveedor externo.
+Para el Coach Copilot se aplican dos gates complementarios:
+
+```text
+CI reproducible
+→ llm/validate_coach_contract.py
+→ demo sintética
+→ query-space + posiciones + guardrails + follow-ups + preflight + aliases
+
+smoke real local
+→ llm/smoke_test_coach_agent.py
+→ DuckDB profesional
+→ 28 casos finales
+```
+
+El smoke real final obtuvo:
+
+```text
+SMOKE CONTRACT: PASS (28/28)
+average_elapsed=0.4s
+semantic rounds=0 en los 28 casos
+```
+
+Esta media describe la batería concreta ejecutada en el PC de desarrollo; no constituye un SLA universal ni mide la latencia del fallback Qwen.
 
 ## 13.2 QA global
 
@@ -483,6 +522,7 @@ push / pull_request
 → pytest
 → construcción de demo sintética
 → validator end-to-end
+→ Coach Copilot query-space contract
 ```
 
 ---
@@ -528,7 +568,7 @@ variables observables y realistas
 → sistema experto auditable
 → ML solo cuando existe ground truth defendible
 → GPS opcional y conservador
-→ query grammar + routing determinista
+→ preflight + query-space contract + routing determinista
 → LLM solo como interpretación downstream cuando hace falta
 → proveedor externo opcional bajo el mismo contrato de tools
 → validación por contratos
