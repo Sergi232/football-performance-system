@@ -4,7 +4,7 @@
 
 **Estado:** borrador integrado de memoria.  
 **Idioma:** castellano.  
-**Fecha de referencia técnica:** 03/10/2026.  
+**Fecha de referencia técnica:** 04/10/2026.  
 **Fuente de verdad técnica:** código actual de `main` + `PROJECT_STATE.md`.
 
 > Este documento es el manuscrito académico integrado de trabajo. Debe adaptarse a la plantilla, extensión y norma bibliográfica oficial de la universidad cuando estén disponibles.
@@ -15,7 +15,7 @@
 
 Este Trabajo Final de Máster presenta el diseño, implementación y validación técnica de un sistema integral de análisis de rendimiento orientado a equipos de fútbol amateur y semiprofesionales sin departamento propio de análisis. El objetivo no es reproducir plataformas profesionales de tracking o proveedores comerciales de eventos, sino demostrar que un conjunto reducido de datos observables de vídeo y GPS opcional puede transformarse en información estructurada, auditable y consultable por un cuerpo técnico.
 
-La solución se organiza mediante una arquitectura por capas que separa datos brutos, variables derivadas, evidencia analítica, lógica de decisión y generación de lenguaje natural. El flujo parte de un Data Collector HTML y de una capa opcional de normalización GPS, almacena la información en DuckDB, construye features deterministas con control temporal `strict-past`, genera evidencia analítica, aplica un sistema experto jerárquico N1000-N13000, presenta los resultados mediante una aplicación Streamlit e incorpora un asistente local basado en Ollama. Los informes PDF consumen resultados estructurados ya calculados y no recalculan lógica crítica.
+La solución se organiza mediante una arquitectura por capas que separa datos brutos, variables derivadas, evidencia analítica, lógica de decisión y generación de lenguaje natural. El flujo parte de un Data Collector HTML y de una capa opcional de normalización GPS, almacena la información en DuckDB, construye features deterministas con control temporal `strict-past`, genera evidencia analítica, aplica un sistema experto jerárquico N1000-N13000, presenta los resultados mediante una aplicación Streamlit e incorpora un Coach Copilot grounded. El asistente resuelve consultas claras mediante routing determinista y herramientas de solo lectura, y reserva un modelo local Qwen para lenguaje ambiguo; adicionalmente existe un modo OpenAI opcional con clave propia del usuario. Los informes PDF consumen resultados estructurados ya calculados y no recalculan lógica crítica.
 
 El prototipo se ha validado mediante contratos de datos, tests unitarios, validadores por capa, pruebas end-to-end y un pipeline de integración continua. El sistema principal supera el QA global y dispone de una demo pública sintética reproducible que puede generarse desde un entorno limpio sin depender de la base profesional utilizada durante el desarrollo. Los resultados permiten contrastar favorablemente la hipótesis en su dimensión técnica y arquitectónica. No se demuestra, sin embargo, un efecto causal sobre las decisiones de entrenadores, el rendimiento deportivo, la fatiga o la prevención de lesiones.
 
@@ -33,7 +33,7 @@ Este TFM aborda ese problema como una cuestión de accesibilidad analítica. La 
 
 La literatura de performance analysis señala que el rendimiento futbolístico es multidimensional y contextual. Mackenzie y Cushion (2013), Sarmento et al. (2014) y Sarmento et al. (2022) destacan la importancia de interpretar los indicadores teniendo en cuenta el contexto y evitando reducir el rendimiento a una única variable. Esta idea se traduce en una arquitectura que separa datos brutos, features, evidencia analítica y decisión.
 
-El producto final es una aplicación web con Team Mode, Player Mode y Match Mode, complementada por una capa física GPS, un sistema experto, un asistente local y exportación PDF.
+El producto final es una aplicación web con Team Mode, Player Mode y Match Mode, complementada por una capa física GPS, un sistema experto, un asistente IA grounded y exportación PDF.
 
 ---
 
@@ -81,7 +81,7 @@ El sistema experto del proyecto sigue este principio mediante una jerarquía N10
 
 Los modelos de lenguaje pueden producir respuestas plausibles pero incorrectas. Huang et al. (2025) revisan el problema de hallucination y factualidad. Lewis et al. (2020) muestran el valor de combinar generación con memoria externa, mientras que Schick et al. (2023) muestran la utilidad de conectar modelos de lenguaje a herramientas especializadas.
 
-El Coach Copilot adopta el mismo principio general: el LLM no accede directamente a la base ni calcula métricas críticas, sino que consulta resultados estructurados mediante herramientas de solo lectura.
+El Coach Copilot adopta el mismo principio general: el LLM no accede directamente a la base ni calcula métricas críticas, sino que consulta resultados estructurados mediante herramientas de solo lectura. Además, el sistema prioriza routing determinista para consultas claras, reduciendo tanto la latencia como la superficie de error del modelo generativo.
 
 ## 2.8 Reproducibilidad computacional
 
@@ -111,7 +111,8 @@ Diseñar, implementar y validar un sistema reproducible que transforme datos sim
 - implementar un sistema experto jerárquico y auditable;
 - desarrollar un Match Rating inmediato y una capa histórica complementaria;
 - construir una aplicación Streamlit Team/Player/Match;
-- integrar un asistente local que no recalcule métricas críticas;
+- integrar un asistente grounded que no recalcule métricas críticas;
+- permitir opcionalmente un proveedor LLM externo mediante clave del propio usuario sin darle acceso directo a DuckDB;
 - generar informes PDF a partir de resultados estructurados;
 - validar el sistema por capas y end-to-end;
 - garantizar una demo reproducible sin redistribuir datos profesionales.
@@ -230,20 +231,33 @@ Existe control de acceso estructural SUPERADMIN/CLUB_ADMIN/STAFF, pero no autent
 
 ## 4.11 Coach Copilot
 
-La arquitectura es:
+La arquitectura final prioriza consultas deterministas:
 
 ```text
-DATA
-→ ANALYTICS
-→ DECISION ENGINE
+QUESTION
+→ DETERMINISTIC HIGH-CONFIDENCE ROUTER
 → READ-ONLY TOOLS
-→ ROUTER
-→ OLLAMA LOCAL
-→ SEMANTIC GUARD
+→ PYTHON / DUCKDB / ANALYTICS / EXPERT SYSTEM
+→ STRUCTURED EVIDENCE
+→ FACTUAL ANSWER
 → COACH
 ```
 
-El LLM puede explicar resultados ya calculados, pero no crear métricas o recomendaciones no validadas.
+Cuando la intención no puede resolverse con suficiente confianza, se activa un fallback semántico local:
+
+```text
+QUESTION AMBIGUA
+→ QWEN3.5:4B LOCAL
+→ TOOL SELECTION
+→ READ-ONLY TOOLS
+→ PYTHON / DUCKDB
+→ STRUCTURED EVIDENCE
+→ FACTUAL ANSWER
+```
+
+La aplicación incorpora además un modo opcional `OpenAI API · clave propia`. En este modo, las consultas claras siguen la ruta determinista y no consumen API. Solo el lenguaje ambiguo puede utilizar OpenAI para seleccionar herramientas y, cuando es necesario, sintetizar una respuesta a partir de evidencia JSON. Las llamadas de herramientas externas se revalidan localmente y ninguna capa LLM recibe acceso directo a DuckDB.
+
+Los guardrails bloquean inferencias no validadas como fatiga, riesgo de lesión, XI ideal, recomendaciones tácticas o conceptos globales como «mejor jugador», «más completo» o «más determinante» cuando no existe una definición analítica aprobada.
 
 ## 4.12 Informes PDF
 
@@ -252,6 +266,8 @@ Los PDF Team/Player/Match consumen resultados materializados. No recalculan Matc
 ## 4.13 Validación
 
 Cada capa dispone de tests y validators específicos. Posteriormente se ejecutó QA end-to-end dividido en Data/Core, Analytics/Expert, Product y Delivery.
+
+El Coach Copilot se validó además con un smoke test real reproducible sobre la DuckDB profesional, que cubre rankings, perfiles, GPS, comparación, partido, calidad, guardrails y follow-ups encadenados.
 
 ## 4.14 Reproducibilidad
 
@@ -401,27 +417,38 @@ MATCH MODE
 
 ## 6.8 Coach Copilot
 
-Resultado del gate final:
+La arquitectura final se validó sobre la DuckDB profesional mediante `llm/smoke_test_coach_agent.py`.
+
+Resultado real del smoke final:
 
 ```text
-router=17/17
-aggregate=66/68=97.1%
-runtime_errors=0
-safety_failures=0
-numeric_grounding=PASS
-castellano=PASS
-subject_contract=PASS
-average_latency<=12s PASS
+SMOKE CONTRACT: PASS (22/22)
+average_elapsed=1.4s
+consultas deterministas típicas=0.1–0.8s
+follow-ups encadenados=0.1–0.2s
+pregunta fuera de dominio vía fallback Qwen=25.3s
 ```
 
-Smoke local final:
+La batería cubre:
+- Match Rating más reciente;
+- Match Rating medio últimos cinco;
+- distancia media por partido;
+- top de remates;
+- asistencias;
+- evolución y perfil natural de jugador;
+- GPS;
+- comparación;
+- detalle de partido;
+- estado del equipo;
+- calidad de datos;
+- guardrails de fatiga, lesión y titularidad;
+- criterios globales no validados;
+- pregunta fuera de dominio;
+- follow-ups ordinales, ventana temporal y evidencia.
 
-```text
-qwen3:1.7b
-num_ctx=1536
-ollama_warmup=PASS
-LOCAL AGENT CONTRACT=PASS 4/4
-```
+El resultado muestra que las consultas claras ya no dependen de un LLM para cada turno y, por ello, la latencia típica queda por debajo de un segundo en el PC objetivo. El modelo `qwen3.5:4b` se conserva como fallback semántico para consultas realmente ambiguas.
+
+El modo OpenAI con clave propia del usuario también dispone de tests contractuales y CI: la superficie de herramientas externas coincide con las tools FPS permitidas, los argumentos se revalidan localmente y una tool desconocida se descarta. No se ha realizado todavía una validación live con una API key real, por lo que no se reporta latencia ni calidad live de ese modo.
 
 ## 6.9 Informes PDF
 
@@ -469,14 +496,13 @@ redistribution_status=REDISTRIBUTABLE_SYNTHETIC_DEMO
 
 GitHub Actions ejecuta automáticamente instalación, tests y reconstrucción de la demo sintética.
 
-Run de referencia:
+Runs recientes de referencia:
 
 ```text
-37081464123
-Install dependencies=PASS
-pytest=PASS
-synthetic demo=PASS
-Conclusion=SUCCESS
+37162911509 = SUCCESS — direct execution smoke fix
+37163349049 = SUCCESS — optional OpenAI Coach Copilot
+37163417219 = SUCCESS — OpenAI BYOK UI + contracts
+37163457928 = SUCCESS — external tool-surface contract tests
 ```
 
 ---
@@ -519,7 +545,11 @@ El sistema demuestra integración GPS, no validación fisiológica. La decisión
 
 ## 7.9 Coach Copilot
 
-El asistente demuestra que un LLM local puede actuar como interfaz de explicación sobre resultados estructurados. La arquitectura reduce el riesgo de que la generación lingüística sustituya a los cálculos críticos.
+El asistente demuestra que una interfaz de lenguaje natural puede mantenerse downstream de un motor analítico sin trasladar cálculos críticos al LLM. La evolución del prototipo también mostró que depender de un modelo local para cada consulta penalizaba latencia y robustez. La arquitectura final resuelve primero el espacio de consultas mediante reglas composicionales —entidad, operación, métrica, agregación, filtros, ventana y follow-up— y reserva el LLM para interpretación semántica cuando es realmente necesario.
+
+Este enfoque produjo 22/22 casos correctos en el smoke real y una latencia media de 1,4 segundos, frente a benchmarks anteriores mucho más lentos cuando el LLM intervenía en cada turno. No obstante, las consultas ambiguas que activan Qwen siguen pudiendo tardar del orden de decenas de segundos en CPU.
+
+La integración OpenAI BYOK amplía opcionalmente la interfaz sin cambiar la arquitectura de grounding: el proveedor externo no recibe acceso directo a DuckDB y las tool calls se revalidan localmente. Al no existir todavía prueba live con una clave real, esta extensión se presenta como implementación técnicamente integrada pero no como benchmark empírico de latencia o calidad externa.
 
 ## 7.10 Reproducibilidad
 
@@ -544,7 +574,9 @@ Las principales limitaciones son:
 5. N13000 sin policy validada de rol óptimo o XI ideal;
 6. autenticación real no implementada;
 7. derechos de redistribución del dataset profesional no resueltos;
-8. demo sintética válida para integración, no para validación fisiológica o deportiva.
+8. demo sintética válida para integración, no para validación fisiológica o deportiva;
+9. fallback Qwen con latencia elevada en consultas realmente ambiguas sobre CPU;
+10. modo OpenAI BYOK con validación contractual y CI, pero sin benchmark live con una API key real.
 
 ---
 
@@ -563,7 +595,8 @@ Las principales contribuciones son:
 - Performance Index separado y experimental;
 - GPS descriptivo opcional;
 - aplicación Team/Player/Match;
-- Coach Copilot local grounded;
+- Coach Copilot grounded con router determinista y fallback semántico local;
+- integración OpenAI BYOK opcional sin acceso directo a DuckDB;
 - informes PDF;
 - QA end-to-end;
 - demo pública sintética;
@@ -586,7 +619,9 @@ Las siguientes mejoras deben priorizar evidencia antes que complejidad:
 5. policy validada para N13000;
 6. comparación experto vs ML con ground truth independiente;
 7. automatización parcial del Collector mediante visión artificial si reduce coste real de captura;
-8. autenticación completa y despliegue solo cuando los derechos estén resueltos.
+8. autenticación completa y despliegue solo cuando los derechos estén resueltos;
+9. validación live y comparación de proveedores externos del asistente solo si aporta valor al producto;
+10. posible exposición futura de las tools mediante un protocolo estándar, sin convertirla en dependencia del MVP.
 
 ---
 
@@ -628,7 +663,7 @@ Scott, M. T. U., Scott, T. J., & Kelly, V. G. (2016). The Validity and Reliabili
 
 - adaptar portada, índice y extensión a la plantilla oficial;
 - convertir figuras SVG al formato exigido si es necesario;
-- insertar capturas reales de Collector, Team, Player, Match, GPS, Coach Copilot y PDF;
+- insertar capturas reales de Collector, Team, Player, Match, GPS, Attention, Coach Copilot y PDF;
 - seleccionar qué tablas quedan en cuerpo y cuáles pasan a anexos;
 - revisar estilo bibliográfico final;
 - añadir numeración cruzada de figuras/tablas;
