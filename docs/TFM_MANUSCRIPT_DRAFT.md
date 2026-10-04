@@ -117,6 +117,18 @@ Diseñar, implementar y validar un sistema reproducible que transforme datos sim
 - validar el sistema por capas y end-to-end;
 - garantizar una demo reproducible sin redistribuir datos profesionales.
 
+## 3.4 Preguntas de investigación y alcance de la evaluación
+
+Las preguntas se formulan para evaluar la contribución de Ciencia de Datos e IA del prototipo, no para inferir eficacia deportiva causal.
+
+| Pregunta | Evidencia evaluada | Alcance de la respuesta |
+|---|---|---|
+| **PI1.** ¿Puede una arquitectura basada en datos observables producir análisis reproducibles sin leakage temporal? | FEATURE-01/02/03, validadores strict-past, contracts de datos y demo sintética. | Viabilidad técnica y reproducibilidad del pipeline. |
+| **PI2.** ¿Puede una capa de IA en lenguaje natural mantener grounding y trazabilidad sin calcular métricas críticas? | Contrato composicional, preflight, tools read-only, CI y smoke final del Coach. | Grounding técnico de las consultas soportadas; no satisfacción de usuarios ni cobertura universal del lenguaje. |
+| **PI3.** ¿Puede el prototipo ofrecer un flujo integrado para equipo, jugador y partido con evidencia visible? | Collector, dashboard, PDF, capturas y QA end-to-end. | Integración funcional; no mejora causal de decisiones ni de resultados deportivos. |
+
+La relación completa entre preguntas, evidencia y limitaciones se mantiene en `docs/TFM_EVIDENCE_MATRIX.md`. Los protocolos para evaluar fiabilidad interobservador y utilidad con staff se preparan en `docs/TFM_EVALUATION_PROTOCOLS.md`, pero no se presentan como resultados ejecutados.
+
 ---
 
 # 4. Metodología
@@ -274,6 +286,8 @@ Los PDF Team/Player/Match consumen resultados materializados. No recalculan Matc
 Cada capa dispone de tests y validators específicos. Posteriormente se ejecutó QA end-to-end dividido en Data/Core, Analytics/Expert, Product y Delivery.
 
 El Coach Copilot se valida en dos niveles complementarios: un query-space contract reproducible en CI sobre la demo sintética y un smoke real sobre la DuckDB profesional. El smoke final contiene 28 casos que cubren rankings, perfiles, GPS, comparación entre jugadores, comparación por posición, partido, calidad, guardrails, ruido/fuera de dominio y follow-ups encadenados.
+
+La validación técnica responde directamente a PI1, PI2 y PI3. Se distingue de forma explícita de la validación empírica con observadores o staff: esta última requeriría recogida de datos adicional y queda definida como protocolo, no como resultado del presente trabajo.
 
 ## 4.14 Reproducibilidad
 
@@ -570,6 +584,8 @@ La demo sintética separa software reproducible de redistribución de datos prof
 La hipótesis queda contrastada favorablemente en su dimensión técnica y arquitectónica porque existe un pipeline funcional, auditable, versionado y reproducible.
 
 No queda demostrado un impacto causal sobre decisiones de entrenadores, resultados deportivos o prevención de lesiones.
+
+En términos de preguntas de investigación, PI1 queda respaldada por los contratos de datos, los validadores strict-past y la reconstrucción de la demo; PI2 por el contrato composicional y el smoke/CI del Coach; y PI3 por el flujo integrado Collector–dashboard–PDF y sus gates end-to-end. Ninguna de estas respuestas sustituye un estudio de uso con staff ni una validación externa del Match Rating.
 
 ---
 

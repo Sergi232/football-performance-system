@@ -4,6 +4,16 @@ Fecha: 04/10/2026
 
 Objetivo: vincular cada afirmación relevante de la memoria con evidencia técnica reproducible del repositorio. Si un claim no aparece aquí o no dispone de evidencia independiente, no debe presentarse como resultado demostrado.
 
+## Preguntas de investigación y evidencia
+
+| Pregunta | Evidencia de respuesta | Qué permite afirmar | Qué no permite afirmar |
+|---|---|---|---|
+| PI1. Pipeline reproducible y sin leakage temporal | FEATURE-01/02/03, strict-past, contracts y demo sintética reconstruible | Viabilidad técnica del pipeline y control temporal explícito | Validez deportiva externa o ausencia de todo error de captura |
+| PI2. IA grounded sin cálculo crítico en el LLM | Query-space contract, preflight, tools read-only, CI y smoke 28/28 | Trazabilidad técnica en las consultas soportadas | Calidad universal de lenguaje, satisfacción o utilidad percibida |
+| PI3. Flujo integrado para equipo, jugador y partido | Collector, dashboard, PDF, capturas y QA end-to-end | Integración funcional y demostrable del prototipo | Mejora causal de decisiones, rendimiento o resultados |
+
+Los protocolos de fiabilidad interobservador y utilidad con staff están definidos en `docs/TFM_EVALUATION_PROTOCOLS.md`. No están ejecutados y no constituyen evidencia de las respuestas anteriores.
+
 | Claim / resultado | Evidencia principal | Archivo / gate | Estado |
 |---|---|---|---|
 | El Collector V1.1 implementa la taxonomía aprobada | Validator final + tests contractuales | `collector/validate_collector_v1.py`, `tests/test_collector_contract.py` | PASS |

@@ -553,6 +553,12 @@ No se considera demostrado:
 
 Esta separación delimita el alcance de la hipótesis y evita sobreinterpretar el prototipo.
 
+## 15.1 Preguntas de investigación y trazabilidad de la evaluación
+
+La evaluación técnica se organiza en torno a tres preguntas: PI1, reproducibilidad y control temporal del pipeline; PI2, grounding del Coach sin cálculo crítico en el LLM; y PI3, integración funcional del flujo Collector–dashboard–PDF. La matriz `docs/TFM_EVIDENCE_MATRIX.md` relaciona cada pregunta con sus gates y limita la inferencia permitida.
+
+La fiabilidad interobservador del Collector y la utilidad con staff requieren datos que no se recogieron durante el cierre técnico. Sus diseños de evaluación se documentan en `docs/TFM_EVALUATION_PROTOCOLS.md`; son protocolos futuros, no evidencia empírica del presente TFM.
+
 ---
 
 # 16. Síntesis metodológica

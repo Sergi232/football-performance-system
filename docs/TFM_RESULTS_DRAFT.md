@@ -472,6 +472,8 @@ Los resultados permiten defender favorablemente la **viabilidad técnica y arqui
 5. el LLM no es responsable del cálculo crítico;
 6. la solución se reproduce desde un entorno limpio mediante datos sintéticos.
 
+En relación con las preguntas de investigación, PI1 queda respaldada por el pipeline de features, los contratos strict-past y la reconstrucción de la demo; PI2 por el contrato composicional, preflight y las validaciones del Coach; y PI3 por los gates de integración desde Collector hasta dashboard y PDF. Estas evidencias no sustituyen una evaluación con staff ni validación externa del Match Rating.
+
 La hipótesis no debe reinterpretarse como demostración de que el sistema:
 - mejora causalmente las decisiones del entrenador;
 - aumenta rendimiento, puntos o victorias;

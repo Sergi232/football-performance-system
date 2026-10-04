@@ -532,7 +532,7 @@ Runs de referencia del cierre:
 
 # Anexo K — Capturas del producto
 
-Pendiente de incorporar imágenes reales según:
+Capturas reales disponibles según:
 
 ```text
 docs/TFM_SCREENSHOT_CHECKLIST.md
@@ -551,6 +551,18 @@ Capturas previstas:
 10. PDF Match.
 
 Todas las capturas de producto deben utilizar modo demo/anónimo cuando corresponda y no mostrar API keys, rutas privadas ni identidades profesionales reales.
+
+---
+
+# Anexo L — Protocolos de evaluación empírica
+
+El protocolo de fiabilidad interobservador del Collector y el piloto de utilidad con staff están preparados en:
+
+```text
+docs/TFM_EVALUATION_PROTOCOLS.md
+```
+
+No se ejecutaron durante este TFM. Se incluyen como diseño de evaluación posterior y no como resultados empíricos.
 
 ---
 

@@ -225,6 +225,8 @@ Hipótesis principal:
 
 Los resultados permiten contrastarla favorablemente en su dimensión técnica y arquitectónica.
 
+Esta conclusión responde a las preguntas de investigación técnicas del trabajo: PI1 sobre reproducibilidad y control temporal, PI2 sobre grounding del Coach y PI3 sobre integración funcional. La matriz de evidencias identifica los gates concretos y evita extender esas respuestas a utilidad percibida, impacto deportivo o validación externa.
+
 Existe evidencia de que:
 
 1. el sistema cubre el flujo completo desde captura/importación hasta visualización y reporting;
@@ -248,9 +250,13 @@ Las principales limitaciones del trabajo son:
 
 No se ha realizado una evaluación formal con entrenadores o analistas para medir utilidad percibida, facilidad de uso o impacto sobre decisiones.
 
+El protocolo de piloto está preparado en `docs/TFM_EVALUATION_PROTOCOLS.md`, pero no se ha ejecutado y no debe citarse como resultado.
+
 ## 12.2 Fiabilidad interobservador
 
 El Collector tiene validación funcional, pero no se ha ejecutado un estudio experimental de acuerdo entre observadores.
+
+El diseño de muestreo, medidas y tratamiento de discrepancias queda documentado en `docs/TFM_EVALUATION_PROTOCOLS.md` para una evaluación posterior.
 
 ## 12.3 Generalización del Match Rating
 
