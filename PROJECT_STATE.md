@@ -29,6 +29,12 @@ PUBLIC DEPLOYMENT                      NO HACER CON DATASET REAL POR LICENCIA
 
 No añadir nueva funcionalidad deportiva salvo defecto real. Coach Copilot queda congelado para entrega; el cierre documental continúa sujeto a plantilla universitaria y presentación final.
 
+## FASE 2 — instalación nueva desde Collector (PASS)
+
+Validación reproducible conservada en `publication/output/equipo_demo_b_validation.duckdb`, con log y CSV incremental. Se importaron 12 JSON V1.1 de Equipo Demo B: 264 registros `player_match`, 168 Match Rating V5 (144 ruta posicional V4.1, 12 GK y 12 fallback V2 por rol no disponible) y 48.840 filas N1000–N13000. GPS no se cargó: `GPS_NOT_AVAILABLE / EXPECTED_ABSTENTION`.
+
+La calibración profesional se ejecuta offline; runtime consume los artefactos congelados V4/GK y no accede a PannaData/Opta. La equivalencia original frente a artefactos congelados fue PASS con `max_abs_error=7.478e-13`.
+
 ---
 
 # 2. HIPÓTESIS DEL TFM

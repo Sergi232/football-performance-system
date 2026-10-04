@@ -522,3 +522,9 @@ captura de datos realista
 ```
 
 El valor académico del prototipo reside tanto en lo que implementa como en las inferencias que deliberadamente decide no realizar sin evidencia suficiente. Cada resultado `PASS` debe interpretarse como conformidad con un contrato técnico definido, no como una prueba estadística de eficacia deportiva.
+# Validación Fase 2: instalación nueva desde Collector
+
+La simulación incremental reproducible de Equipo Demo B importó 12 JSON V1.1 en una DuckDB vacía y persistente. Produjo 264 registros `player_match`, 168 Match Rating V5 (144 rutas posicionales V4.1, 12 rutas GK y 12 fallback V2 por rol no disponible) y 48.840 filas del motor N1000–N13000. Team, Player, Match, Coach grounded y los PDF Team/Player/Match se validaron sobre esa misma base. La ausencia intencionada de GPS se registró como `GPS_NOT_AVAILABLE / EXPECTED_ABSTENTION`.
+
+La referencia profesional se usa únicamente para calibración offline. En runtime, V4 y GK consumen artefactos congelados; la equivalencia contra la ruta original fue PASS, con error absoluto máximo `7.478e-13`. Esta evidencia prueba reproducibilidad técnica y no constituye validación externa del rating ni utilidad percibida.
+
