@@ -105,20 +105,23 @@ No interpretar como: validación fisiológica.
 | Indicador | Valor |
 |---|---:|
 | MVP | Castellano |
-| Arquitectura | deterministic-first + semantic fallback |
+| Arquitectura | preflight + deterministic-first + semantic fallback |
 | Fallback local | `qwen3.5:4b` |
-| Smoke real | 22 / 22 PASS |
-| Latencia media batería | 1,4 s |
-| Consultas deterministas típicas | 0,1–0,8 s |
-| Follow-ups encadenados | 0,1–0,2 s |
-| Fallback fuera de dominio observado | 25,3 s |
+| Smoke real final | **28 / 28 PASS** |
+| Latencia media batería final | **0,4 s** |
+| Casos finales con fallback semántico | **0 / 28** |
+| Query-space contract en CI | PASS |
+| Comparación por posición | PASS |
+| Follow-ups ordinal/ventana/evidencia/rol | PASS |
+| Ruido / meta / fuera de dominio preflight | PASS |
 | Fatiga / lesión / titularidad guards | PASS |
 | Criterios globales no validados bloqueados | PASS |
 | Numeric / tool grounding | PASS |
+| Demo identity boundary | PASS |
 | OpenAI BYOK contract | PASS |
 | OpenAI live benchmark | NO VALIDADO |
 
-Interpretación: las consultas de alta confianza se resuelven con routing determinista y herramientas FPS; Qwen queda como fallback semántico. La media de 1,4 s corresponde únicamente a la batería concreta ejecutada en el PC de desarrollo y no constituye un SLA universal.
+Interpretación: las consultas de alta confianza se resuelven con routing determinista y herramientas FPS; Qwen queda como fallback semántico únicamente para ambigüedad dentro del dominio. La media de 0,4 s corresponde a la batería concreta de 28 casos ejecutada en el PC de desarrollo y no constituye un SLA universal ni mide la latencia del fallback Qwen.
 
 ---
 
@@ -178,9 +181,10 @@ No interpretar como: revalidación científica del Match Rating o Performance In
 | `pytest -q` | PASS |
 | Build demo sintética | PASS |
 | Validator demo sintética | PASS |
-| Run OpenAI tool contract | `37163457928` SUCCESS |
+| Coach Copilot query-space contract | PASS |
+| Run de referencia | `37167157174` SUCCESS |
 
-Interpretación: el repositorio se valida desde un entorno limpio sin depender de la DuckDB privada.
+Interpretación: el repositorio se valida desde un entorno limpio sin depender de la DuckDB privada. El smoke 28/28 es un gate local adicional sobre la DuckDB profesional y no sustituye al CI sintético reproducible.
 
 ---
 
