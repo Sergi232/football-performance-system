@@ -158,20 +158,28 @@ fallback_rows = int((ratings["rating_path"] == "OUTFIELD_ROLE_UNAVAILABLE_FALLBA
 
 k1, k2, k3, k4 = st.columns(4)
 with k1:
-    metric_card("Rating mediano", safe_number(median_rating, 2, "/10"), "Jugadores con minutos")
+    metric_card("Marcador", result_text(match.get("score_for"), match.get("score_against")), f"{team_name} · {match_opponent}")
 with k2:
-    metric_card("Confianza mediana", safe_number(median_conf, 0, "%"), "Cobertura de la evidencia")
+    metric_card("Remates", safe_number(match.get("shots_total"), 0), "Total registrado")
 with k3:
-    metric_card("Jugadores utilizados", str(len(ratings)), "Apariciones con minutos")
+    metric_card("A puerta", safe_number(match.get("shots_on_target"), 0), "Gol + a puerta")
 with k4:
-    metric_card("Rol no disponible", str(fallback_rows), "Modelo de respaldo explícito, sin imputar posición")
+    metric_card("Córners", f"{safe_number(match.get('corners_for'), 0)} · {safe_number(match.get('corners_against'), 0)}", "Favor · contra")
 
 if pd.notna(match.get("corners_for")):
     b1, b2, b3, b4 = st.columns(4)
-    b1.metric("Córners", f"{int(match['corners_for'])} · {int(match['corners_against'])}")
-    b2.metric("Faltas", f"{int(match['fouls_received'])} recibidas · {int(match['fouls_committed'])} cometidas")
-    b3.metric("Tarjetas", f"{int(match['yellow_cards'])} A · {int(match['red_cards'])} R")
-    b4.metric("Penaltis", f"{int(match['penalties_won'])} favor · {int(match['penalties_conceded'])} contra")
+    b1.metric("Faltas", f"{int(match['fouls_committed'])} cometidas · {int(match['fouls_received'])} recibidas")
+    b2.metric("Tarjetas", f"{int(match['yellow_cards'])} amarillas · {int(match['red_cards'])} rojas")
+    b3.metric("Penaltis", f"{int(match['penalties_won'])} favor · {int(match['penalties_conceded'])} contra")
+    b4.metric("Jugadores utilizados", str(len(ratings)), "Apariciones con minutos")
+
+c1, c2, c3 = st.columns(3)
+with c1:
+    metric_card("Rating mediano", safe_number(median_rating, 2, "/10"), "Jugadores con minutos")
+with c2:
+    metric_card("Confianza mediana", safe_number(median_conf, 0, "%"), "Cobertura de la evidencia")
+with c3:
+    metric_card("Rol no disponible", str(fallback_rows), "Modelo de respaldo explícito, sin imputar posición")
 
 st.write("")
 tab_review, tab_players, tab_dimensions, tab_evidence = st.tabs(["Revisión técnica", "Jugadores", "Dimensiones", "Evidencia"])

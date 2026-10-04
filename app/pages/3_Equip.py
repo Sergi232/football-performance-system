@@ -18,6 +18,7 @@ from app.coach_ui import (
     metric_card,
     names_with_delta,
     page_header,
+    player_trend_chart,
     rating_trend_chart,
     recent_record,
     safe_int,
@@ -159,6 +160,22 @@ def event_total(column: str) -> str:
     values = pd.to_numeric(matches.get(column), errors="coerce")
     return "N/D" if values.dropna().empty else str(int(values.sum()))
 
+
+def event_difference(left: str, right: str) -> str:
+    values_left = pd.to_numeric(matches.get(left), errors="coerce")
+    values_right = pd.to_numeric(matches.get(right), errors="coerce")
+    if values_left.dropna().empty or values_right.dropna().empty:
+        return "N/D"
+    return f"{int(values_left.sum() - values_right.sum()):+d}"
+
+
+def team_pass_completion() -> str:
+    attempted = pd.to_numeric(matches.get("passes_total"), errors="coerce")
+    completed = pd.to_numeric(matches.get("passes_completed"), errors="coerce")
+    if attempted.dropna().empty or completed.dropna().empty or attempted.sum() <= 0:
+        return "N/D"
+    return f"{100.0 * completed.sum() / attempted.sum():.0f}%"
+
 if latest_match is not None:
     board, signals = st.columns([1.55, 1], gap="large")
     with board:
@@ -170,6 +187,44 @@ if latest_match is not None:
             "Local" if latest_match.get("venue") == "H" else "Visitante",
             safe_text(latest_match.get("starting_formation"), "No disponible"),
         )
+        section_header("Indicadores del periodo", "Agregados directos de los eventos registrados")
+        a, b, c, d = st.columns(4)
+        with a:
+            metric_card("Partidos", safe_int(overview.get("matches")), "Periodo seleccionado")
+        with b:
+            metric_card("V / E / D", record_text, "Resultados registrados")
+        with c:
+            metric_card("GF", event_total("score_for"), "Goles a favor")
+        with d:
+            metric_card("GC", event_total("score_against"), "Goles en contra")
+        basic_a, basic_b, basic_c, basic_d = st.columns(4)
+        with basic_a:
+            metric_card("Diferencia de goles", event_difference("score_for", "score_against"), "GF menos GC")
+        with basic_b:
+            metric_card("Remates", event_total("shots_total"), "Total registrado")
+        with basic_c:
+            metric_card("A puerta", event_total("shots_on_target"), "Gol + a puerta")
+        with basic_d:
+            metric_card("Córners", f"{event_total('corners_for')} · {event_total('corners_against')}", "Favor · contra")
+        basic_a, basic_b, basic_c = st.columns(3)
+        with basic_a:
+            metric_card("Faltas cometidas", event_total("fouls_committed"), "Total registrado")
+        with basic_b:
+            metric_card("Faltas recibidas", event_total("fouls_received"), "Total registrado")
+        with basic_c:
+            metric_card("Pase completado", team_pass_completion(), "Completados / intentados")
+
+        section_header("Disciplina y penaltis", "Eventos registrados durante el periodo")
+        basic_a, basic_b, basic_c, basic_d = st.columns(4)
+        with basic_a:
+            metric_card("Amarillas", event_total("yellow_cards"), "Total registrado")
+        with basic_b:
+            metric_card("Rojas", event_total("red_cards"), "Total registrado")
+        with basic_c:
+            metric_card("Penaltis a favor", event_total("penalties_won"), "Total registrado")
+        with basic_d:
+            metric_card("Penaltis en contra", event_total("penalties_conceded"), "Total registrado")
+
         a, b, c = st.columns(3)
         with a:
             metric_card("Rating mediano", safe_number(median_latest, 2, "/10"), "Último partido")
@@ -177,15 +232,6 @@ if latest_match is not None:
             metric_card("Confianza mediana", safe_number(median_conf, 0, "%"), "Último partido")
         with c:
             metric_card("Forma", recent_record(matches, 5), "Últimos 5 · más reciente primero")
-        basic_a, basic_b, basic_c, basic_d = st.columns(4)
-        with basic_a:
-            metric_card("Balance V/E/D", record_text, "Partidos con resultado registrado")
-        with basic_b:
-            metric_card("Goles", f"{event_total('score_for')} · {event_total('score_against')}", "GF · GC")
-        with basic_c:
-            metric_card("Córners", f"{event_total('corners_for')} · {event_total('corners_against')}", "Favor · contra")
-        with basic_d:
-            metric_card("Faltas", f"{event_total('fouls_received')} · {event_total('fouls_committed')}", "Recibidas · cometidas")
     with signals:
         section_header("Cambios recientes", "Comparación descriptiva de bloques de cinco partidos")
         rising, falling = describe_trend(rating_snapshot) if not rating_snapshot.empty else (pd.DataFrame(), pd.DataFrame())
@@ -211,6 +257,25 @@ with tab_staff:
         else:
             st.plotly_chart(squad_matrix_chart(rating_snapshot), width="stretch", config={"displayModeBar": False})
             st.caption("No es un ranking de calidad: muestra posición relativa en forma reciente y cambio 5 vs 5.")
+
+    section_header("Evolución de producción", "Serie por partido de un agregado ya registrado")
+    available_trends = {
+        "Goles a favor": "score_for",
+        "Goles en contra": "score_against",
+        "Remates": "shots_total",
+        "Remates a puerta": "shots_on_target",
+        "Córners a favor": "corners_for",
+        "Faltas cometidas": "fouls_committed",
+        "Faltas recibidas": "fouls_received",
+    }
+    trend_label = st.selectbox("Variable de evolución", list(available_trends), key="team_event_trend")
+    trend_column = available_trends[trend_label]
+    trend_frame = matches[["match_date", "opponent", trend_column]].rename(columns={trend_column: "value"}).dropna(subset=["value"])
+    if trend_frame.empty:
+        st.info("No hay eventos registrados para mostrar esta evolución.")
+    else:
+        upper = max(1.0, float(pd.to_numeric(trend_frame["value"], errors="coerce").max()) * 1.15)
+        st.plotly_chart(player_trend_chart(trend_frame, "value", (0, upper)), width="stretch", config={"displayModeBar": False}, key=f"team_event_trend_chart_{trend_column}")
 
     section_header("Movimiento reciente de la plantilla", "Jugadores con historial comparable")
     if rating_snapshot.empty:

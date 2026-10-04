@@ -14,6 +14,7 @@ from import_collector_export import SOURCE_TYPE, import_collector_export  # noqa
 from init_database import initialize_database  # noqa: E402
 
 FIXTURE = ROOT / "collector" / "fixtures" / "collector_export_v1_1.json"
+SCOREBOARD_FIXTURE = ROOT / "collector" / "fixtures" / "collector_export_scoreboard_v1_1.json"
 
 
 def prepared_db(tmp_path: Path) -> Path:
@@ -81,3 +82,28 @@ def test_collector_presentation_queries_keep_raw_event_and_role_trace(tmp_path: 
     assert "NO_SHOT" in str(foul["qualifiers"])
     corner = events.loc[events["action_type"] == "CORNER"].iloc[0]
     assert "SHOT_AFTER_RESTART" in str(corner["qualifiers"])
+
+
+def test_collector_scoreboard_aggregates_match_controlled_export(tmp_path: Path) -> None:
+    """Direct Team/Match aggregates must match the V1.1 events exactly."""
+    db = prepared_db(tmp_path)
+    result = import_collector_export(SCOREBOARD_FIXTURE, db)
+
+    from app.data_access import get_match_lineup, get_team_matches
+
+    matches = get_team_matches(db, str(result["team_id"]))
+    row = matches.iloc[0]
+    assert {
+        "score_for": int(row["score_for"]),
+        "score_against": int(row["score_against"]),
+        "corners_for": int(row["corners_for"]),
+        "corners_against": int(row["corners_against"]),
+        "fouls_received": int(row["fouls_received"]),
+        "fouls_committed": int(row["fouls_committed"]),
+    } == {
+        "score_for": 2, "score_against": 1,
+        "corners_for": 3, "corners_against": 2,
+        "fouls_received": 4, "fouls_committed": 5,
+    }
+    striker = get_match_lineup(db, str(result["team_id"]), str(result["match_id"])).loc[lambda f: f["player"] == "Jugador 01"].iloc[0]
+    assert (int(striker["goals"]), int(striker["passes_total"]), int(striker["passes_completed"]), int(striker["key_passes"])) == (2, 2, 1, 1)

@@ -88,6 +88,10 @@ def get_team_matches(db_path: Path, team_id: str) -> pd.DataFrame:
                 CASE WHEN m.source_type='collector_html_v1.1' THEN ev.red_cards END AS red_cards,
                 CASE WHEN m.source_type='collector_html_v1.1' THEN ev.penalties_won END AS penalties_won,
                 CASE WHEN m.source_type='collector_html_v1.1' THEN ev.penalties_conceded END AS penalties_conceded,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.shots_total END AS shots_total,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.shots_on_target END AS shots_on_target,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.passes_total END AS passes_total,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.passes_completed END AS passes_completed,
                 tm.starting_formation
             FROM team_match tm
             JOIN matches m ON m.match_id = tm.match_id
@@ -103,7 +107,11 @@ def get_team_matches(db_path: Path, team_id: str) -> pd.DataFrame:
                   COUNT(*) FILTER (WHERE action_type='CARD' AND subtype='YELLOW') AS yellow_cards,
                   COUNT(*) FILTER (WHERE action_type='CARD' AND subtype='RED') AS red_cards,
                   COUNT(*) FILTER (WHERE action_type='PENALTY' AND subtype='WON') AS penalties_won,
-                  COUNT(*) FILTER (WHERE action_type='PENALTY' AND subtype='CONCEDED') AS penalties_conceded
+                  COUNT(*) FILTER (WHERE action_type='PENALTY' AND subtype='CONCEDED') AS penalties_conceded,
+                  COUNT(*) FILTER (WHERE action_type='SHOT') AS shots_total,
+                  COUNT(*) FILTER (WHERE action_type='SHOT' AND outcome IN ('GOAL','ON_TARGET')) AS shots_on_target,
+                  COUNT(*) FILTER (WHERE action_type='PASS') AS passes_total,
+                  COUNT(*) FILTER (WHERE action_type='PASS' AND outcome='SUCCESS') AS passes_completed
                 FROM match_events GROUP BY match_id, team_id
             ) ev ON ev.match_id=tm.match_id AND ev.team_id=tm.team_id
             WHERE tm.team_id = ?
@@ -168,7 +176,7 @@ def get_player_match_history(db_path: Path, team_id: str, player_id: str) -> pd.
                 (
                     SELECT COUNT(*) FROM match_events me
                     WHERE me.match_id=pm.match_id AND me.team_id=pm.team_id AND me.player_id=pm.player_id
-                      AND me.action_type='PASS' AND CAST(me.qualifiers AS VARCHAR) LIKE '%"key_pass":true%'
+                      AND me.action_type='PASS' AND CAST(json_extract(me.qualifiers, '$.key_pass') AS VARCHAR) = 'true'
                 ) AS key_passes,
                 rs.long_balls_total,
                 rs.long_balls_completed,
@@ -393,7 +401,7 @@ def get_match_lineup(db_path: Path, team_id: str, match_id: str) -> pd.DataFrame
                 (
                     SELECT COUNT(*) FROM match_events me
                     WHERE me.match_id=pm.match_id AND me.team_id=pm.team_id AND me.player_id=pm.player_id
-                      AND me.action_type='PASS' AND CAST(me.qualifiers AS VARCHAR) LIKE '%"key_pass":true%'
+                      AND me.action_type='PASS' AND CAST(json_extract(me.qualifiers, '$.key_pass') AS VARCHAR) = 'true'
                 ) AS key_passes,
                 rs.long_balls_total,
                 rs.long_balls_completed,

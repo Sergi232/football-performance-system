@@ -1,0 +1,38 @@
+{
+  "collector_version": "1.1.0",
+  "catalog_version": "0.3.0",
+  "meta": {
+    "matchName": "Equipo Control vs Rival Control",
+    "teamName": "Equipo Control",
+    "opponentName": "Rival Control",
+    "matchDate": "2026-09-01",
+    "formation": "4-3-3",
+    "formationChanges": []
+  },
+  "players": [
+    {"id":"P01","name":"Jugador 01","shirtNumber":9,"starter":true,"minuteIn":0,"minuteOut":90,"role":"Delantero","side":"Centro","roleChanges":[]},
+    {"id":"P02","name":"Jugador 02","shirtNumber":1,"starter":true,"minuteIn":0,"minuteOut":90,"role":"Portero","side":"Centro","roleChanges":[]}
+  ],
+  "events": [
+    {"event_id":"e01","player_id":"P01","action_type":"PASS","subtype":"NORMAL","outcome":"SUCCESS","period":1,"match_second":100,"video_second":100,"x":null,"y":null,"qualifiers":{"key_pass":true},"linked_event_id":null},
+    {"event_id":"e02","player_id":"P01","action_type":"PASS","subtype":"LONG","outcome":"FAIL","period":1,"match_second":120,"video_second":120,"x":null,"y":null,"qualifiers":{},"linked_event_id":null},
+    {"event_id":"e03","player_id":"P01","action_type":"SHOT","subtype":null,"outcome":"GOAL","period":1,"match_second":300,"video_second":300,"x":null,"y":null,"qualifiers":{},"linked_event_id":null},
+    {"event_id":"e04","player_id":"P01","action_type":"SHOT","subtype":null,"outcome":"GOAL","period":2,"match_second":3900,"video_second":3900,"x":null,"y":null,"qualifiers":{},"linked_event_id":null},
+    {"event_id":"e05","player_id":"P02","action_type":"GK","subtype":"GOAL_CONCEDED","outcome":null,"period":2,"match_second":4200,"video_second":4200,"x":null,"y":null,"qualifiers":{},"linked_event_id":null},
+    {"event_id":"e06","player_id":null,"action_type":"CORNER","subtype":"FOR","outcome":null,"period":1,"match_second":400,"video_second":400,"x":null,"y":null,"qualifiers":{},"linked_event_id":null},
+    {"event_id":"e07","player_id":null,"action_type":"CORNER","subtype":"FOR","outcome":null,"period":1,"match_second":500,"video_second":500,"x":null,"y":null,"qualifiers":{},"linked_event_id":null},
+    {"event_id":"e08","player_id":null,"action_type":"CORNER","subtype":"FOR","outcome":null,"period":2,"match_second":4100,"video_second":4100,"x":null,"y":null,"qualifiers":{},"linked_event_id":null},
+    {"event_id":"e09","player_id":null,"action_type":"CORNER","subtype":"AGAINST","outcome":null,"period":1,"match_second":600,"video_second":600,"x":null,"y":null,"qualifiers":{},"linked_event_id":null},
+    {"event_id":"e10","player_id":null,"action_type":"CORNER","subtype":"AGAINST","outcome":null,"period":2,"match_second":4300,"video_second":4300,"x":null,"y":null,"qualifiers":{},"linked_event_id":null},
+    {"event_id":"e11","player_id":"P01","action_type":"FOUL","subtype":"RECEIVED","outcome":null,"period":1,"match_second":700,"video_second":700,"x":80,"y":20,"qualifiers":{},"linked_event_id":null},
+    {"event_id":"e12","player_id":"P01","action_type":"FOUL","subtype":"RECEIVED","outcome":null,"period":1,"match_second":800,"video_second":800,"x":70,"y":20,"qualifiers":{},"linked_event_id":null},
+    {"event_id":"e13","player_id":"P01","action_type":"FOUL","subtype":"RECEIVED","outcome":null,"period":2,"match_second":4000,"video_second":4000,"x":75,"y":20,"qualifiers":{},"linked_event_id":null},
+    {"event_id":"e14","player_id":"P01","action_type":"FOUL","subtype":"RECEIVED","outcome":null,"period":2,"match_second":4050,"video_second":4050,"x":60,"y":20,"qualifiers":{},"linked_event_id":null},
+    {"event_id":"e15","player_id":"P02","action_type":"FOUL","subtype":"COMMITTED","outcome":null,"period":1,"match_second":900,"video_second":900,"x":30,"y":70,"qualifiers":{},"linked_event_id":null},
+    {"event_id":"e16","player_id":"P02","action_type":"FOUL","subtype":"COMMITTED","outcome":null,"period":1,"match_second":1000,"video_second":1000,"x":30,"y":70,"qualifiers":{},"linked_event_id":null},
+    {"event_id":"e17","player_id":"P02","action_type":"FOUL","subtype":"COMMITTED","outcome":null,"period":1,"match_second":1100,"video_second":1100,"x":30,"y":70,"qualifiers":{},"linked_event_id":null},
+    {"event_id":"e18","player_id":"P02","action_type":"FOUL","subtype":"COMMITTED","outcome":null,"period":2,"match_second":4400,"video_second":4400,"x":30,"y":70,"qualifiers":{},"linked_event_id":null},
+    {"event_id":"e19","player_id":"P02","action_type":"FOUL","subtype":"COMMITTED","outcome":null,"period":2,"match_second":4500,"video_second":4500,"x":30,"y":70,"qualifiers":{},"linked_event_id":null}
+  ],
+  "player_summary": []
+}

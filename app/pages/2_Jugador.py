@@ -184,23 +184,98 @@ latest_value = latest_rating.get("match_rating_10") if latest_rating else None
 latest_conf = latest_rating.get("match_rating_confidence") if latest_rating else None
 avg5 = snap.get("avg_last5") if snap is not None else None
 delta5 = snap.get("trend_delta_5v5") if snap is not None else None
+history = get_player_match_history(path, team_id, player_id)
+
+
+def history_total(column: str) -> int:
+    values = pd.to_numeric(history.get(column), errors="coerce")
+    return 0 if values.dropna().empty else int(values.fillna(0).sum())
+
+
+def observed_role_context() -> str:
+    if history.empty:
+        return "Sin rol observado"
+    value = history.iloc[0].get("primary_role")
+    return "Sin rol observado" if value is None or pd.isna(value) or not str(value).strip() else str(value)
 
 k1, k2, k3, k4 = st.columns(4)
 with k1:
-    metric_card("Último Match Rating", safe_number(latest_value, 2, "/10"), "Rendimiento del partido más reciente")
+    metric_card("Minutos", safe_int(player_row.get("minutes")), "Periodo seleccionado")
 with k2:
-    metric_card("Media últimos 5", safe_number(avg5, 2, "/10"), "Forma reciente descriptiva")
+    metric_card("Titularidades", safe_int(player_row.get("starts")), "Periodo seleccionado")
 with k3:
-    delta_text = "—" if delta5 is None or pd.isna(delta5) else f"{float(delta5):+.2f}"
-    tone = "positive" if delta5 is not None and pd.notna(delta5) and float(delta5) > 0 else "negative" if delta5 is not None and pd.notna(delta5) and float(delta5) < 0 else "neutral"
-    metric_card("Cambio 5 vs 5", delta_text, "Últimos 5 menos 5 anteriores", tone=tone)
+    metric_card("Rol observado", observed_role_context(), "Última aparición registrada")
 with k4:
-    metric_card("Confianza último partido", safe_number(latest_conf, 0, "%"), "Cobertura de la evidencia")
+    metric_card("Match Rating", safe_number(latest_value, 2, "/10"), "Último partido")
+if not history.empty:
+    latest_stints = history.iloc[0].get("observed_role_stints")
+    st.caption(f"Contexto de rol/lado: {latest_stints if latest_stints is not None and pd.notna(latest_stints) else 'no disponible en la fuente.'}")
 
 st.write("")
 tab_overview, tab_trend, tab_technical, tab_expert, tab_matches = st.tabs(["Visión técnica", "Evolución", "Técnico", "Motor experto", "Partidos"])
 
 with tab_overview:
+    section_header("Producción del periodo", "Contadores directos de las acciones registradas")
+    attack_a, attack_b, attack_c, attack_d, attack_e = st.columns(5)
+    with attack_a:
+        metric_card("Goles", str(history_total("goals")), "Ataque")
+    with attack_b:
+        metric_card("Asistencias", str(history_total("assists")), "Ataque")
+    with attack_c:
+        metric_card("Remates", str(history_total("shots_total")), "Ataque")
+    with attack_d:
+        metric_card("A puerta", str(history_total("shots_on_target")), "Ataque")
+    with attack_e:
+        metric_card("Pases clave", str(history_total("key_passes")), "Ataque")
+
+    section_header("Construcción y 1v1", "Pase y acciones individuales registradas")
+    total_passes, completed_passes = history_total("passes_total"), history_total("passes_completed")
+    pass_pct = "N/D" if total_passes <= 0 else f"{100.0 * completed_passes / total_passes:.0f}%"
+    build_a, build_b, build_c, build_d, build_e = st.columns(5)
+    with build_a:
+        metric_card("Pases", f"{completed_passes} / {total_passes}", "Completados / intentados")
+    with build_b:
+        metric_card("% pase", pass_pct, "Periodo seleccionado")
+    with build_c:
+        metric_card("Largos", str(history_total("long_balls_total")), "Intentados")
+    with build_d:
+        metric_card("Centros", str(history_total("crosses_total")), "Intentados")
+    with build_e:
+        metric_card("Regates", str(history_total("dribbles_total")), "Intentados")
+    one_a, one_b = st.columns(2)
+    with one_a:
+        metric_card("Regates ganados", str(history_total("dribbles_won")), "1v1")
+    with one_b:
+        metric_card("Pérdidas", str(history_total("turnovers")), "Acciones registradas")
+
+    section_header("Defensa y disciplina", "Contadores directos; no son recomendaciones")
+    defence_a, defence_b, defence_c, defence_d = st.columns(4)
+    with defence_a:
+        metric_card("Entradas", str(history_total("tackles_total")), "Total · ganadas " + str(history_total("tackles_won")))
+    with defence_b:
+        metric_card("Intercepciones", str(history_total("interceptions")), "Periodo seleccionado")
+    with defence_c:
+        metric_card("Bloqueos", str(history_total("blocked_passes")), "Periodo seleccionado")
+    with defence_d:
+        metric_card("Despejes", str(history_total("clearances")), "Periodo seleccionado")
+    discipline_a, discipline_b, discipline_c, discipline_d = st.columns(4)
+    with discipline_a:
+        metric_card("Faltas", f"{history_total('fouls_committed')} / {history_total('fouls_received')}", "Cometidas / recibidas")
+    with discipline_b:
+        metric_card("Amarillas", str(history_total("yellow_cards")), "Periodo seleccionado")
+    with discipline_c:
+        metric_card("Rojas", str(history_total("red_cards")), "Periodo seleccionado")
+    with discipline_d:
+        metric_card("Penaltis", f"{history_total('penalties_won')} / {history_total('penalties_conceded')}", "Favor / contra")
+
+    if profile == "Portero" or history_total("saves") > 0 or history_total("goals_conceded") > 0:
+        section_header("Portero", "Visible porque existe evidencia específica de portería")
+        keeper_a, keeper_b = st.columns(2)
+        with keeper_a:
+            metric_card("Paradas", str(history_total("saves")), "Periodo seleccionado")
+        with keeper_b:
+            metric_card("Goles encajados", str(history_total("goals_conceded")), "Periodo seleccionado")
+
     context_col, chart_col = st.columns([.8, 1.35], gap="large")
     with context_col:
         section_header("Último partido", "Contexto inmediato para la revisión")
@@ -304,7 +379,6 @@ with tab_trend:
 
 with tab_technical:
     section_header("Rendimiento técnico", "Acciones observadas; sin convertirlas en conclusiones automáticas")
-    history = get_player_match_history(path, team_id, player_id)
     if not history.empty:
         technical = history.copy()
         technical["match_date"] = pd.to_datetime(technical["match_date"]).dt.date
