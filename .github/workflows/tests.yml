@@ -35,4 +35,4 @@ jobs:
         run: python -m llm.validate_coach_contract --db data/football_performance_synthetic_demo.duckdb
 
       - name: Validate final delivery consistency
-        run: python -m publication.final_delivery_check --allow-missing-screenshots
+        run: python -m publication.final_delivery_check
