@@ -101,8 +101,8 @@ def apply_professional_theme() -> None:
             align-items:flex-start;
             justify-content:space-between;
             gap:1rem;
-            margin: .15rem 0 1.25rem 0;
-            padding-bottom: 1rem;
+            margin: .1rem 0 1rem 0;
+            padding-bottom: .8rem;
             border-bottom: 1px solid var(--fps-border);
         }
         .coach-kicker, .fps-kicker {
@@ -113,8 +113,8 @@ def apply_professional_theme() -> None:
             letter-spacing: .11em;
             margin-bottom: .28rem;
         }
-        .coach-title { color:var(--fps-text); font-size:2.05rem; line-height:1.08; font-weight:850; letter-spacing:-.035em; }
-        .coach-subtitle { color:var(--fps-muted); font-size:.94rem; margin-top:.4rem; max-width:850px; }
+        .coach-title { color:var(--fps-text); font-size:1.9rem; line-height:1.1; font-weight:850; letter-spacing:-.03em; }
+        .coach-subtitle { color:var(--fps-muted); font-size:.89rem; line-height:1.45; margin-top:.32rem; max-width:760px; }
         .coach-badge {
             display:inline-flex;
             border:1px solid #CDE5DE;
@@ -126,32 +126,36 @@ def apply_professional_theme() -> None:
             border-radius:999px;
             white-space:nowrap;
         }
-        .coach-section-head { margin: 1.2rem 0 .65rem 0; }
-        .coach-section-title { font-size:1.16rem; font-weight:800; color:var(--fps-text); letter-spacing:-.02em; }
-        .coach-section-sub { font-size:.82rem; color:var(--fps-muted); margin-top:.18rem; }
+        .coach-section-head { margin: 1rem 0 .5rem 0; }
+        .coach-section-title { font-size:1.05rem; font-weight:800; color:var(--fps-text); letter-spacing:-.015em; }
+        .coach-section-sub { font-size:.78rem; color:var(--fps-muted); line-height:1.35; margin-top:.14rem; }
         .coach-metric-card, .fps-score-card {
             background: var(--fps-card);
             border: 1px solid var(--fps-border);
-            border-radius: 13px;
-            padding: .9rem 1rem;
-            min-height: 118px;
-            box-shadow: 0 2px 8px rgba(11,31,51,.035);
+            border-radius: 9px;
+            padding: .78rem .9rem;
+            min-height: 104px;
+            box-shadow: none;
         }
         .coach-metric-label, .fps-score-label {
             color: var(--fps-muted);
-            font-size: .7rem;
+            font-size: .68rem;
             text-transform: uppercase;
             letter-spacing: .08em;
             font-weight: 800;
+            line-height: 1.2;
         }
         .coach-metric-value, .fps-score-value {
             color: var(--fps-text);
-            font-size: 1.75rem;
+            font-size: 1.3rem;
             font-weight: 850;
-            line-height: 1.08;
-            margin-top: .35rem;
+            line-height: 1.1;
+            letter-spacing: -.025em;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+            margin-top: .32rem;
         }
-        .coach-metric-sub, .fps-score-sub { color: var(--fps-muted); margin-top:.35rem; font-size:.78rem; line-height:1.3; }
+        .coach-metric-sub, .fps-score-sub { color: var(--fps-muted); margin-top:.28rem; font-size:.75rem; line-height:1.32; }
         .coach-delta { margin-top:.25rem; font-size:.77rem; font-weight:800; }
         .coach-positive { color:var(--fps-good); }
         .coach-negative { color:var(--fps-bad); }
@@ -160,9 +164,9 @@ def apply_professional_theme() -> None:
         .coach-scoreboard {
             background: linear-gradient(135deg, #0B1F33 0%, #14344F 100%);
             color:#fff;
-            border-radius:15px;
-            padding:1.25rem 1.4rem;
-            box-shadow:0 8px 22px rgba(11,31,51,.13);
+            border-radius:11px;
+            padding:1.05rem 1.2rem;
+            box-shadow:none;
             min-height:158px;
         }
         .coach-score-meta { color:#9CB0C0; font-size:.76rem; font-weight:750; text-transform:uppercase; letter-spacing:.06em; }
@@ -175,10 +179,10 @@ def apply_professional_theme() -> None:
             background:#fff;
             border:1px solid var(--fps-border);
             border-left:4px solid #9AA8B4;
-            border-radius:11px;
-            padding:.82rem .95rem;
-            margin-bottom:.58rem;
-            min-height:94px;
+            border-radius:8px;
+            padding:.72rem .85rem;
+            margin-bottom:.5rem;
+            min-height:0;
         }
         .coach-insight-positive { border-left-color:var(--fps-good); }
         .coach-insight-negative { border-left-color:var(--fps-bad); }

@@ -181,10 +181,14 @@ with k4:
     metric_card("Pase", pass_label, "Completados / intentados")
 
 b1, b2, b3, b4 = st.columns(4)
-b1.metric("Faltas", f"FC {available_integer(match.get('fouls_committed'))} · FR {available_integer(match.get('fouls_received'))}")
-b2.metric("Tarjetas", f"🟨 {available_integer(match.get('yellow_cards'))} · 🟥 {available_integer(match.get('red_cards'))}")
-b3.metric("Penaltis", f"PF {available_integer(match.get('penalties_won'))} · PC {available_integer(match.get('penalties_conceded'))}")
-b4.metric("Jugadores utilizados", str(len(ratings)), "Apariciones con minutos")
+with b1:
+    metric_card("Faltas", f"FC {available_integer(match.get('fouls_committed'))} · FR {available_integer(match.get('fouls_received'))}", "Cometidas · recibidas")
+with b2:
+    metric_card("Tarjetas", f"🟨 {available_integer(match.get('yellow_cards'))} · 🟥 {available_integer(match.get('red_cards'))}", "Amarillas · rojas")
+with b3:
+    metric_card("Penaltis", f"PF {available_integer(match.get('penalties_won'))} · PC {available_integer(match.get('penalties_conceded'))}", "A favor · en contra")
+with b4:
+    metric_card("Jugadores utilizados", str(len(ratings)), "Apariciones con minutos")
 
 c1, c2, c3 = st.columns(3)
 with c1:
