@@ -207,7 +207,8 @@ def main() -> None:
     print(f"eligible_before={s['eligible_rows_observable_roles_before']}")
     print(f"eligible_observable_scores={eligible}")
     print(f"recovered_eligible_rows={s['recovered_eligible_rows']}")
-    print(f"coverage_observable_roles={s['coverage_rate_observable_roles']:.4f}")
+    coverage = s['coverage_rate_observable_roles']
+    print(f"coverage_observable_roles={coverage:.4f}" if coverage is not None else "coverage_observable_roles=NOT_AVAILABLE")
     print(f"eligible_scores_using_fallback={fallback_scores}")
     print(f"high_participation_without_score={s['high_participation_outfield_players_without_score']}")
     print("No threshold, good/bad label or tactical recommendation was created.")

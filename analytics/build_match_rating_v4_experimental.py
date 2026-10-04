@@ -84,6 +84,17 @@ def map_local_role(primary_role: Any, broad_group: Any) -> tuple[str, str]:
     """Map source-supported local role text to PERF-18 seven-role taxonomy."""
     text = _norm(primary_role)
     broad = str(broad_group or "").strip().upper()
+    # Official Collector V1.1 labels are observed source labels, not inferred
+    # positions.  These aliases only translate those enumerated UI values to
+    # the pre-existing seven-role taxonomy.
+    collector_aliases = {
+        "portero": "goalkeeper", "central": "central defender",
+        "lateral": "full back", "carrilero": "wing back",
+        "mediocentro defensivo": "defensive midfielder", "mediocentro": "central midfielder",
+        "interior": "central midfielder", "mediapunta": "attacking midfielder",
+        "extremo": "winger", "delantero": "striker",
+    }
+    text = collector_aliases.get(text, text)
     if "goalkeeper" in text or broad == "GK":
         return "GK", "LOCAL_ROLE_GK"
 
@@ -95,6 +106,8 @@ def map_local_role(primary_role: Any, broad_group: Any) -> tuple[str, str]:
 
     if "wing back" in pos or "full back" in pos:
         return "FB", "LOCAL_ROLE_EXACT"
+    if "central defender" in pos:
+        return "CB", "LOCAL_ROLE_EXACT"
     if "defender" in pos:
         if wide:
             return "FB", "LOCAL_ROLE_EXACT"

@@ -97,17 +97,25 @@ def load_existing_routes(db: Path) -> tuple[pd.DataFrame, pd.DataFrame, int]:
             SELECT {', '.join(RATING_COLUMNS)}
             FROM player_match_rating
             WHERE match_rating_version=? AND position_group='OTHER_OUTFIELD'
+              AND NOT EXISTS (
+                  SELECT 1 FROM player_match_rating v41
+                  WHERE v41.match_rating_version=?
+                    AND v41.match_id=player_match_rating.match_id
+                    AND v41.team_id=player_match_rating.team_id
+                    AND v41.player_id=player_match_rating.player_id
+              )
             ORDER BY match_date, match_id, player_id
             """,
-            [V2_VERSION],
+            [V2_VERSION, OUTFIELD_VERSION],
         ).df()
         expected_played = int(con.execute(
             "SELECT COUNT(*) FROM player_match WHERE minutes_played>0"
         ).fetchone()[0])
     if outfield.empty:
         raise RuntimeError("V4.1 outfield candidate not materialized")
-    if fallback.empty:
-        raise RuntimeError("No V2 OTHER_OUTFIELD fallback rows found")
+    # A fully role-observed Collector batch legitimately has no V2 fallback
+    # rows. The fallback remains available when such rows exist; it is not a
+    # precondition for materializing the other validated routes.
     return outfield, fallback, expected_played
 
 
@@ -119,7 +127,12 @@ def build_final_goalkeeper(
     frozen_artifact: Path | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     local = gk.load_local(db)
-    if local.empty or local["match_date"].isna().any():
+    if local.empty:
+        return pd.DataFrame(columns=RATING_COLUMNS), {
+            "local_rows": 0, "local_matches": 0,
+            "status": "NO_GOALKEEPER_ROWS_IN_BATCH",
+        }
+    if local["match_date"].isna().any():
         raise RuntimeError("Local goalkeeper rows/date coverage unavailable")
 
     cutoff = pd.Timestamp(local["match_date"].min())

@@ -153,3 +153,5 @@ data/processed/*
 data/rejected/*
 !data/rejected/.gitkeep
 data/ingestion_log.jsonl
+data/local_collector_runtime/*
+!data/local_collector_runtime/.gitkeep

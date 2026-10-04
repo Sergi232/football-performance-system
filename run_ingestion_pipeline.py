@@ -32,33 +32,48 @@ def run(log: Path, script: str,*args: object):
         subprocess.run([sys.executable,str(ROOT/script),*map(str,args)],check=True,stdout=out,stderr=subprocess.STDOUT)
     event(log,stage=script,status='pass',seconds=round(time.monotonic()-started,3))
 
-def main():
-    p=argparse.ArgumentParser(description='Ingest Collector V1.1 JSON folder')
-    p.add_argument('--db',type=Path,required=True); p.add_argument('--incoming',type=Path,default=INCOMING)
-    p.add_argument('--processed',type=Path,default=PROCESSED); p.add_argument('--rejected',type=Path,default=REJECTED)
-    p.add_argument('--log',type=Path,default=RUNTIME/'ingestion_log.jsonl')
-    args=p.parse_args(); db=args.db.expanduser().resolve(); incoming=args.incoming.expanduser().resolve(); processed=args.processed.expanduser().resolve(); rejected=args.rejected.expanduser().resolve(); log=args.log.expanduser().resolve()
+def move_to(path: Path, destination: Path) -> Path:
+    """Move an export without overwriting evidence from an earlier submission."""
+    target = destination / path.name
+    if target.exists():
+        target = destination / f"{path.stem}__{int(time.time() * 1000)}{path.suffix}"
+    shutil.move(str(path), target)
+    return target
+
+def ingest_batch(db: Path, incoming: Path = INCOMING, processed: Path = PROCESSED,
+                 rejected: Path = REJECTED, log: Path = RUNTIME/'ingestion_log.jsonl') -> dict:
+    """Import one Collector folder and rebuild derived layers once for its valid batch.
+
+    This is the single execution entry point used by both the CLI and localhost
+    service. It preserves the Collector V1.1 contract and never reads private
+    calibration data at runtime.
+    """
+    db=db.expanduser().resolve(); incoming=incoming.expanduser().resolve(); processed=processed.expanduser().resolve(); rejected=rejected.expanduser().resolve(); log=log.expanduser().resolve()
     for d in (incoming,processed,rejected,db.parent): d.mkdir(parents=True,exist_ok=True)
     if not db.exists(): initialize_database(db)
-    queued=[]
+    queued=[]; rejected_count=0; duplicates=0; imported=[]; details=[]
     for path in incoming.glob('*.json'):
         try:
             payload=load_export(path); validate_payload(payload); date,mid=source_key(payload); queued.append((date,mid,path,payload))
         except Exception as exc:
-            target=rejected/path.name; shutil.move(str(path),target)
-            (rejected/(path.stem+'.reason.json')).write_text(json.dumps({'file':path.name,'reason':str(exc)},ensure_ascii=False,indent=2),encoding='utf-8')
-            event(log,file=path.name,status='rejected',reason=str(exc))
-    imported=[]
+            target=move_to(path,rejected)
+            (rejected/(target.stem+'.reason.json')).write_text(json.dumps({'file':target.name,'reason':str(exc)},ensure_ascii=False,indent=2),encoding='utf-8')
+            event(log,file=target.name,status='rejected',reason=str(exc)); rejected_count+=1
+            details.append({'file':target.name,'status':'rejected','reason':str(exc)})
     for _,mid,path,payload in sorted(queued,key=lambda x:(x[0],x[1])):
         started=time.monotonic()
         with duckdb.connect(str(db)) as con: exists=bool(con.execute('select count(*) from matches where match_id=?',[mid]).fetchone()[0])
         if exists:
-            status='duplicate'; result={'match_id':mid,'players':0,'events':0}
+            status='duplicate'; result={'match_id':mid,'players':len(payload['players']),'events':len(payload['events'])}; duplicates+=1
         else:
             result=import_collector_export(path,db); status='imported'; imported.append(path)
         event(log,file=path.name,status=status,match_id=result['match_id'],players=result['players'],events=result['events'],seconds=round(time.monotonic()-started,3))
-        if exists: shutil.move(str(path),processed/path.name)
-    if imported:
+        details.append({'file':path.name,'status':status,**result})
+        if exists: move_to(path,processed)
+    stages=[]
+    # Re-run derived layers when a previous import succeeded but an earlier
+    # derived stage failed.  Raw import is idempotent, so this is safe.
+    if imported or duplicates:
         stages=[
             ('features/build_player_match_features.py','--db',db,'--raw-source-type','collector_html_v1.1'),
             ('features/build_temporal_features.py','--db',db),('features/build_role_temporal_features.py','--db',db),
@@ -69,6 +84,18 @@ def main():
             for script,*a in stages: run(log,script,*a)
         except Exception as exc:
             event(log,stage=script,status='failed',reason=str(exc)); raise
-        for path in imported: shutil.move(str(path),processed/path.name)
-    print(f'INGESTION PIPELINE: PASS imported={len(imported)} queued={len(queued)}')
+        for path in imported: move_to(path,processed)
+    summary={'status':'pass','imported':len(imported),'duplicates':duplicates,'rejected':rejected_count,
+             'queued':len(queued),'details':details,'stages':[s[0] for s in stages]}
+    event(log,stage='batch',**{k:v for k,v in summary.items() if k not in {'details','stages'}})
+    return summary
+
+def main():
+    p=argparse.ArgumentParser(description='Ingest Collector V1.1 JSON folder')
+    p.add_argument('--db',type=Path,required=True); p.add_argument('--incoming',type=Path,default=INCOMING)
+    p.add_argument('--processed',type=Path,default=PROCESSED); p.add_argument('--rejected',type=Path,default=REJECTED)
+    p.add_argument('--log',type=Path,default=RUNTIME/'ingestion_log.jsonl')
+    args=p.parse_args()
+    summary=ingest_batch(args.db,args.incoming,args.processed,args.rejected,args.log)
+    print(f"INGESTION PIPELINE: PASS imported={summary['imported']} queued={summary['queued']} duplicates={summary['duplicates']} rejected={summary['rejected']}")
 if __name__=='__main__': main()
