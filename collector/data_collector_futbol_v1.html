@@ -50,7 +50,7 @@ header{position:sticky;top:0;z-index:30;background:var(--navy);color:#fff;box-sh
     <summary>Guardar / exportar</summary>
     <div class="panel-body stack">
       <button class="btn-good" id="finalizeMatchButton" onclick="finalizeMatch()">FINALIZAR PARTIDO</button>
-      <div id="finalizeStatus" class="muted" aria-live="polite">Listo para validar y procesar el partido en local.</div>
+      <div id="finalizeStatus" class="muted" aria-live="polite">Listo para validar y procesar el partido en local.</div><div id="dbActive" class="muted">DB activa: comprobando…</div>
       <a id="dashboardLink" class="muted" href="http://127.0.0.1:8503" target="_blank" rel="noopener" hidden>Abrir dashboard</a>
       <div class="toolbar"><button class="btn-good" onclick="exportEventsCSV()">CSV eventos</button><button class="btn-good" onclick="exportSummaryCSV()">CSV resumen</button><button class="btn-dark" onclick="copyEventsCSV()">Copiar CSV</button><button class="btn-warn" onclick="downloadJSON()">JSON</button></div>
       <button class="btn-danger" onclick="resetAll()">Reiniciar partido</button>
@@ -194,9 +194,10 @@ function toCsv(rows){return rows.map(r=>r.map(csvEscape).join(";")).join("\n")}f
 function downloadText(text,name,type){const b=new Blob([text],{type}),u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(u)}
 function resetAll(){if(!confirm("¿Seguro que quieres borrar todos los datos del partido?"))return;localStorage.removeItem(STORAGE_KEY);state=createInitialState();activeIndex=0;pendingSetPieceEventId=null;["matchName","teamName","opponentName","matchDate","formation"].forEach(id=>document.getElementById(id).value="");document.getElementById("bulkNames").value="";renderAll();toast("Partido reiniciado.")}
 function formatSeconds(v){const m=Math.floor(v/60),s=String(v%60).padStart(2,"0");return`${m}:${s}`}function slug(s){return String(s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"")}function escapeHtml(s){return String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
+async function showActiveDb(){const el=document.getElementById("dbActive");try{const r=await fetch("/health"),v=await r.json();el.textContent=`DB activa: ${v.db}`}catch(e){el.textContent="DB activa: servicio local no disponible"}}
 function toast(msg){const el=document.getElementById("toast");el.textContent=msg;el.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove("show"),1300)}
 document.addEventListener("keydown",e=>{const tag=document.activeElement.tagName.toLowerCase();if(["input","textarea","select"].includes(tag))return;const k=e.key.toLowerCase();if(shortcuts[k]){e.preventDefault();recordEvent(...shortcuts[k]);return}if(k==="backspace"){e.preventDefault();undoLast();return}if(k==="arrowleft"){e.preventDefault();selectPreviousPlayer();return}if(k==="arrowright"){e.preventDefault();selectNextPlayer()}});
-init();
+init();showActiveDb();
 </script>
 </body>
 </html>

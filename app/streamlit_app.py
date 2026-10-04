@@ -113,6 +113,7 @@ def _render_quick_nav() -> None:
 
 
 path = db_path()
+st.sidebar.caption(f"DB activa: {path}")
 if not path.exists():
     st.error(f"No se ha encontrado la base de datos: {path}")
     st.stop()
