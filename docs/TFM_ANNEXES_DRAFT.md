@@ -348,6 +348,7 @@ Arquitectura local final:
 
 ```text
 QUESTION
+→ PREFLIGHT / GUARDRAILS
 → DETERMINISTIC HIGH-CONFIDENCE ROUTER
 → READ-ONLY TOOLS
 → PYTHON / DUCKDB / ANALYTICS / EXPERT
@@ -355,7 +356,7 @@ QUESTION
 → FACTUAL ANSWER
 ```
 
-Fallback semántico solo cuando la intención sigue siendo ambigua:
+Fallback semántico solo cuando la intención sigue siendo ambigua dentro del dominio:
 
 ```text
 QUESTION AMBIGUA
@@ -367,15 +368,27 @@ QUESTION AMBIGUA
 → FACTUAL ANSWER
 ```
 
-Validación real sobre la DuckDB profesional:
+Contrato del espacio de consultas:
 
 ```text
-SMOKE CONTRACT: PASS (22/22)
-average_elapsed=1.4s
-consultas deterministas típicas=0.1–0.8s
-follow-ups=0.1–0.2s
-fallback Qwen observado fuera de dominio=25.3s
+entidad + operación + métrica + agregación + rol + filtros + ventana + follow-up
 ```
+
+Validación real final sobre la DuckDB profesional:
+
+```text
+SMOKE CONTRACT: PASS (28/28)
+average_elapsed=0.4s
+semantic rounds=0 en los 28 casos finales
+```
+
+El gate cubre rankings, ventanas, perfiles, GPS, comparación entre jugadores, comparación por posición, partidos, calidad, guardrails, ruido/fuera de dominio y follow-ups ordinales, temporales, de evidencia y de rol.
+
+Comparación por posición:
+- posiciones cubiertas: GK / CB / FB / DM / CM / AM / W / ST;
+- si se pregunta quién ha rendido mejor en un rol, el criterio explícito es Match Rating medio en la muestra;
+- métricas adicionales son evidencia descriptiva;
+- no se crea un score nuevo.
 
 Guardrails comprobados:
 - fatiga/cansancio;
@@ -383,6 +396,11 @@ Guardrails comprobados:
 - titularidad/XI;
 - recomendaciones tácticas no validadas;
 - `mejor jugador`, `más completo` y `más determinante` sin definición analítica aprobada.
+
+Preflight comprobado:
+- entrada basura (`sss`) → aclaración inmediata, sin LLM;
+- meta-consulta → capacidades, sin LLM;
+- fuera de dominio obvio → rechazo inmediato, sin LLM.
 
 Proveedor externo opcional:
 
@@ -398,6 +416,16 @@ Contrato:
 - OpenAI no accede directamente a DuckDB;
 - contract tests + CI PASS;
 - benchmark live con API key real: no validado.
+
+Anonimización demo:
+
+```text
+Equipo Demo
+Jugador 01, Jugador 02, ...
+Rival 01, Rival 02, ...
+```
+
+La traducción a identidades internas se limita al boundary de tools y se revierte antes de renderizar.
 
 Figura asociada:
 - `docs/figures/tfm_llm_grounding.svg`.
@@ -489,15 +517,15 @@ checkout
 → pytest
 → synthetic demo build
 → synthetic demo validator
+→ Coach Copilot query-space contract
 ```
 
-Runs recientes de referencia:
+Runs de referencia del cierre:
 
 ```text
-37162911509 = SUCCESS — smoke direct execution fix
-37163349049 = SUCCESS — optional OpenAI Coach Copilot
-37163417219 = SUCCESS — OpenAI BYOK UI + contracts
-37163457928 = SUCCESS — external tool-surface contract tests
+37167083614 = SUCCESS — query-space + preflight contract
+37167157174 = SUCCESS — code gate previo al smoke final
+37168110570 = SUCCESS — documentación/defensa sincronizada
 ```
 
 ---
@@ -521,6 +549,8 @@ Capturas previstas:
 8. PDF Team;
 9. PDF Player;
 10. PDF Match.
+
+Todas las capturas de producto deben utilizar modo demo/anónimo cuando corresponda y no mostrar API keys, rutas privadas ni identidades profesionales reales.
 
 ---
 
