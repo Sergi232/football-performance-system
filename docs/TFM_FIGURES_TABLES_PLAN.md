@@ -1,6 +1,6 @@
 # TFM — Plan de figuras, tablas y anexos
 
-Fecha: 03/10/2026
+Fecha: 04/10/2026
 Estado: plan de producción académica.
 
 Objetivo: definir qué elementos visuales y tablas necesita la memoria final, qué evidencia debe alimentar cada uno y qué afirmaciones pueden sostener. Ninguna figura debe contener cifras reconstruidas manualmente si existe una fuente reproducible en el repositorio.
@@ -37,28 +37,44 @@ No usar para afirmar:
 
 ---
 
-## Figura 2 — Separación DATA → ANALYTICS → DECISION ENGINE → LLM
+## Figura 2 — Coach Copilot deterministic-first y grounding
 
 Contenido:
 
 ```text
-DuckDB
-→ features / analytics materializados
-→ expert system
-→ read-only tools
-→ router
-→ Ollama local
-→ semantic guard
-→ Coach Copilot
+QUESTION
+→ DETERMINISTIC HIGH-CONFIDENCE ROUTER
+→ READ-ONLY TOOLS
+→ PYTHON / DUCKDB / ANALYTICS / EXPERT
+→ STRUCTURED EVIDENCE
+→ COACH
+```
+
+Ramas semánticas opcionales solo cuando hacen falta:
+
+```text
+Qwen 3.5 4B local
+OpenAI API BYOK
+        ↓
+misma superficie de tools revalidada localmente
 ```
 
 Fuente:
-- `llm/`;
+- `llm/coach_agent_general.py`;
+- `llm/coach_agent_fast.py`;
+- `llm/coach_agent_external.py`;
+- `docs/figures/tfm_llm_grounding.svg`;
 - `docs/ARCHITECTURE.md`;
 - `PROJECT_STATE.md`.
 
 Claim permitido:
-- el LLM se encuentra downstream de la lógica crítica y no es el motor de cálculo.
+- el cálculo crítico permanece en Python/DuckDB;
+- una consulta clara no necesita LLM;
+- los proveedores LLM solo actúan como capa semántica downstream cuando es necesario.
+
+No usar para afirmar:
+- que OpenAI ha sido benchmarkeado live con una API key real;
+- que el LLM decide ratings o recomendaciones tácticas.
 
 ---
 
@@ -232,16 +248,18 @@ Capturas mínimas:
 2. Player Mode;
 3. Match Mode;
 4. Físico/GPS;
-5. Coach Copilot.
+5. Attention Centre;
+6. Coach Copilot.
 
 Fuente:
-- ejecución real de `app/streamlit_app.py` con `FPS_DEMO_MODE=1`.
+- ejecución real de `app/streamlit_app.py` con `FPS_DEMO_MODE=1` cuando corresponda.
 
 Requisitos:
-- nombres demo visibles;
+- nombres demo visibles en capturas destinadas a publicación;
 - castellano;
 - no exponer datos profesionales identificables;
-- usar la misma resolución/aspecto cuando sea posible.
+- usar la misma resolución/aspecto cuando sea posible;
+- para Coach Copilot, mostrar `Local · Qwen`, una pregunta determinista y `Evidencia consultada`.
 
 ---
 
@@ -330,7 +348,7 @@ Filas:
 - Expert;
 - Dashboard;
 - Access control;
-- LLM;
+- Coach Copilot;
 - Reports;
 - Publication/demo.
 
@@ -371,7 +389,29 @@ No interpretar como validez externa universal.
 
 ---
 
-## Tabla 6 — Demo sintética pública reproducible
+## Tabla 6 — Coach Copilot
+
+Datos canónicos:
+
+```text
+SMOKE CONTRACT = PASS (22/22)
+average_elapsed = 1.4s
+deterministic typical = 0.1–0.8s
+follow-ups = 0.1–0.2s
+fallback Qwen observed = 25.3s
+OpenAI BYOK contract = PASS
+OpenAI live benchmark = NOT VALIDATED
+```
+
+Fuente:
+- `llm/smoke_test_coach_agent.py`;
+- `tests/test_coach_agent_fast.py`;
+- `tests/test_coach_agent_external.py`;
+- `PROJECT_STATE.md`.
+
+---
+
+## Tabla 7 — Demo sintética pública reproducible
 
 Datos:
 
@@ -397,7 +437,7 @@ Fuente:
 
 ---
 
-## Tabla 7 — Limitaciones y mitigaciones
+## Tabla 8 — Limitaciones y mitigaciones
 
 Filas recomendadas:
 
@@ -410,6 +450,8 @@ Filas recomendadas:
 | Auth real ausente | no es SaaS productivo completo | access-control structural | proveedor identidad |
 | Dataset profesional no redistribuible | no publicable | demo sintética | licencia/open data |
 | Collector sin estudio multiobservador propio | fiabilidad humana no demostrada | contratos funcionales | estudio inter/intra-observer |
+| Fallback Qwen lento en CPU | algunas consultas ambiguas tardan | deterministic-first | hardware/modelo/proveedor alternativo |
+| OpenAI BYOK sin benchmark live | no se puede afirmar latencia/calidad | contrato + CI | prueba live controlada |
 
 ---
 
@@ -459,7 +501,10 @@ más referencia a GitHub Actions.
 ## Anexo G — Coach Copilot
 
 Incluir:
-- arquitectura;
+- query grammar;
+- arquitectura deterministic-first;
+- fallback Qwen local;
+- OpenAI BYOK opcional;
 - preguntas soportadas;
 - guardrails;
 - ejemplos de respuesta grounded;
@@ -484,11 +529,11 @@ Producto
 → Figuras 7 y 9
 
 Validación/resultados
-→ Figura 10
-→ Tablas 4, 5 y 6
+→ Figuras 2 y 10
+→ Tablas 4, 5, 6 y 7
 
 Limitaciones
-→ Tabla 7
+→ Tabla 8
 
 Anexos
 → detalle técnico reproducible
