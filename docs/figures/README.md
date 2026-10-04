@@ -61,5 +61,5 @@ Fuente: elaboración propia.
 - No utilizar estos diagramas como evidencia de eficacia deportiva; representan diseño e implementación.
 - Mantener los pies en castellano en la memoria.
 - Si la plantilla de la universidad exige PNG, exportar estos SVG sin modificar su contenido.
-- Las capturas reales de Collector, dashboard, Coach Copilot y PDF deben añadirse por separado desde el producto ejecutado.
+- Las capturas reales de Collector, dashboard, Coach Copilot y PDF ya están disponibles en `docs/screenshots/` y deben integrarse en la memoria durante la maquetación.
 - No sustituir las capturas reales por mockups.

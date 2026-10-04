@@ -674,7 +674,7 @@ Scott, M. T. U., Scott, T. J., & Kelly, V. G. (2016). The Validity and Reliabili
 
 - adaptar portada, índice y extensión a la plantilla oficial;
 - convertir figuras SVG al formato exigido si es necesario;
-- insertar capturas reales de Collector, Team, Player, Match, GPS, Attention, Coach Copilot y PDF;
+- integrar en la maquetación las capturas reales ya disponibles en `docs/screenshots/`;
 - seleccionar qué tablas quedan en cuerpo y cuáles pasan a anexos;
 - revisar estilo bibliográfico final;
 - añadir numeración cruzada de figuras/tablas;

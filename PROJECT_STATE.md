@@ -521,8 +521,6 @@ Entrega:
 
 # 15. PROBLEMAS ABIERTOS / LIMITACIONES
 
-- revisión visual final del Assistant con aliases demo;
-- capturas finales del producto;
 - OpenAI BYOK tiene contract tests pero no una llamada real con API key;
 - no hay autenticación productiva completa;
 - no hay validación causal con entrenadores/clubes;
@@ -534,12 +532,10 @@ Entrega:
 # 16. SIGUIENTE PASO EXACTO
 
 ```text
-1. abrir Streamlit en FPS_DEMO_MODE=1
-2. revisión visual final del producto y del Assistant
-3. realizar capturas canónicas
-4. sincronización final de manuscrito/checklist si alguna captura o etiqueta cambió
-5. congelar main para entrega
-6. maquetación / defensa / submission checklist
+1. adaptar la memoria a la plantilla/rúbrica universitaria disponible
+2. revisar bibliografía, numeración y referencias cruzadas conforme a esa plantilla
+3. preparar y ensayar la defensa con el material estático disponible
+4. congelar main para entrega
 ```
 
 No volver al patrón `usuario prueba frases al azar → se añade una regla`. Los defectos del espacio soportado deben detectarse mediante contrato + tests paramétricos + CI.

@@ -164,14 +164,12 @@ Las cifras antiguas de 16/16 y 22/22 quedan como histórico de desarrollo, no co
 
 ## 8. Pendiente para entrega
 
-Solo quedan tareas de cierre:
+Las tareas técnicas de cierre están completadas. Quedan tareas académicas dependientes de la plantilla y de la defensa:
 
 ```text
-1. revisión visual final en FPS_DEMO_MODE=1
-2. 10 capturas canónicas
-3. adaptación a plantilla / bibliografía / numeración
-4. presentación y backup estático
-5. entrega
+1. adaptación a plantilla / bibliografía / numeración
+2. ensayo de presentación y demo
+3. entrega
 ```
 
 ## 9. Ejecución de la demo final

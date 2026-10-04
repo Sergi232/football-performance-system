@@ -1,7 +1,9 @@
 # TFM — Guion base de defensa
 
 Fecha: 04/10/2026
-Estado: guion preliminar; adaptar a la duración oficial cuando se conozca.
+Estado: guion y deck editable preparados; adaptar a la duración oficial cuando se conozca.
+
+Deck editable: `docs/FPS_TFM_Defensa.pptx`.
 
 Objetivo: explicar el proyecto como producto + metodología, no como una lista de scripts.
 
