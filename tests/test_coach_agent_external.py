@@ -49,8 +49,8 @@ def test_missing_user_api_key_fails_before_network_call():
 
 def test_role_comparison_is_deterministic_and_does_not_use_openai(monkeypatch):
     monkeypatch.setattr(
-        external._role_analysis,
-        "try_role_query",
+        external._fast,
+        "_try_role_pre_route",
         lambda *args, **kwargs: {
             "text": "Comparación descriptiva de centrales: Jugador X.",
             "tool": "compare_role_players",
@@ -71,3 +71,23 @@ def test_role_comparison_is_deterministic_and_does_not_use_openai(monkeypatch):
     assert result.tools_used == ("compare_role_players",)
     assert result.tool_rounds == 0
     assert "centrales" in result.text
+
+
+def test_preflight_rejection_does_not_use_openai(monkeypatch):
+    monkeypatch.setattr(external._fast, "_try_role_pre_route", lambda *args, **kwargs: None)
+    monkeypatch.setattr(external._fast, "_preflight_message", lambda *args, **kwargs: "Consulta fuera de dominio")
+
+    def _network_must_not_run(*args, **kwargs):
+        raise AssertionError("OpenAI must not run after deterministic preflight rejection")
+
+    monkeypatch.setattr(external, "_openai_route", _network_must_not_run)
+    result = external.run_coach_agent_turn(
+        "Explícame la teoría de juegos",
+        db_path=Path("not-needed.duckdb"),
+        team_id="TEAM",
+        api_key="sk-test",
+        model="test-model",
+    )
+    assert result.text == "Consulta fuera de dominio"
+    assert result.tools_used == ()
+    assert result.tool_rounds == 0
