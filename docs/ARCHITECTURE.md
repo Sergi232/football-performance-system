@@ -1,7 +1,7 @@
 # Arquitectura v1 — Football Performance System
 
 Estado: **ARCHITECTURE-01 / CERRADO**  
-Fecha de sincronización: 03/10/2026
+Fecha de sincronización: 04/10/2026
 
 Este documento define la arquitectura vigente del producto. `PROJECT_STATE.md` y el código actual de `main` prevalecen si existe cualquier discrepancia histórica.
 
@@ -199,40 +199,89 @@ Estado: **dashboard profesional operativo; contratos de datos, presentación dem
 
 ### L10 — AI Assistant
 
-Arquitectura vigente:
+Arquitectura final del runtime local:
 
 ```text
 pregunta natural
-→ Ollama Granite 4.2 3B / clasificación estructurada de intención
+→ router determinista de alta confianza
 → tools Python read-only
 → DuckDB + analytics / expert system materializados
-→ evidencia estructurada compacta
-→ Ollama Granite 4.2 3B / síntesis
-→ guard numérico / policy
+→ evidencia estructurada
+→ respuesta factual determinista
 → Coach Copilot
+```
+
+Solo cuando la intención sigue siendo ambigua:
+
+```text
+pregunta ambigua
+→ qwen3.5:4b como router semántico local
+→ tool validada
+→ Python / DuckDB
+→ evidencia estructurada
+→ respuesta factual
 ```
 
 Versión oficial MVP: **castellano**.
 
-El LLM interpreta la intención y redacta sobre evidencia estructurada, pero no accede directamente a DuckDB ni puede crear métricas críticas, recalcular Match Rating/Performance Index, saltarse N13000 o emitir recomendaciones bloqueadas.
+El LLM no accede directamente a DuckDB, no recalcula Match Rating/Performance Index y no puede crear métricas críticas ni saltarse los guardrails o N13000.
 
-Las consultas observadas se ejecutan en herramientas de solo lectura. Una pregunta fuera de cobertura devuelve una limitación explícita y no cae en un resumen genérico del equipo.
-
-Estado: **LLM-02 cerrado funcionalmente**. Gate local real con DuckDB profesional: `LOCAL AGENT CONTRACT: PASS (9/9)`.
-
-Perfil operativo validado:
+La gramática de consulta se compone de:
 
 ```text
-model=granite4.2:3b
-thinking=False
-FPS_AGENT_NUM_CTX=1536
-keep_alive=30m
-average_elapsed=34.7s en el PC objetivo
+entidad + operación + métrica + agregación + filtros + ventana + follow-up
 ```
 
-El gate cubre máximo goleador, asistencias, evolución de jugador, GPS, partido, estado del equipo, calidad de datos, fatiga/cansancio bloqueado y pregunta fuera de alcance.
+Las consultas claras no necesitan LLM. Esto reduce latencia, coste y superficie de error.
 
-No están validadas las inferencias de fatiga/readiness/lesión, XI ideal ni recomendaciones tácticas automáticas.
+Validación local real con DuckDB profesional:
+
+```text
+SMOKE CONTRACT: PASS (22/22)
+average_elapsed=1.4s
+consultas deterministas típicas=0.1–0.8s
+follow-ups=0.1–0.2s
+```
+
+El fallback Qwen puede tardar del orden de 20–30 s en CPU cuando una consulta requiere interpretación semántica.
+
+Guardrails explícitos:
+- fatiga/cansancio;
+- readiness;
+- riesgo de lesión;
+- XI/titularidad;
+- recomendación táctica no validada;
+- `mejor jugador`, `más completo` o `más determinante` sin criterio analítico aprobado.
+
+#### Proveedor externo opcional
+
+La misma página ofrece un segundo modo:
+
+```text
+OpenAI API · clave propia
+```
+
+Arquitectura:
+
+```text
+pregunta clara
+→ mismo router determinista local
+→ tool FPS
+→ DuckDB
+→ respuesta
+→ 0 llamadas API
+
+pregunta ambigua
+→ OpenAI semantic router
+→ tools bounded/read-only revalidadas localmente
+→ DuckDB / analytics / expert
+→ evidencia estructurada
+→ síntesis externa limitada + numeric grounding guard
+```
+
+La API key pertenece al usuario y la UI no la persiste en DuckDB ni en archivos del proyecto. La implementación y contratos pasan CI; no existe todavía benchmark live con una API key real.
+
+La conexión inversa `ChatGPT → FPS` mediante MCP no forma parte del MVP actual.
 
 ### L11 — Reporting
 
@@ -264,9 +313,9 @@ Responsabilidad:
 - GitHub;
 - documentación TFM.
 
-Estado: **Global end-to-end QA cerrado en PASS el 03/10/2026**.
+Estado: **Global end-to-end QA cerrado en PASS**.
 
-La exportación demo anonimizda pasa su contrato, pero la redistribución pública del dataset fuente sigue bloqueada por derechos/licencia.
+La demo sintética es redistribuible y reproducible. La redistribución pública del dataset profesional sigue bloqueada por derechos/licencia.
 
 ## 4. Cadena validada end-to-end
 
@@ -283,7 +332,7 @@ Collector
 → Demo presentation
 → Coach Copilot
 → PDF
-→ Public-demo anonymization
+→ Public synthetic demo
 ```
 
 Resultado vigente:
@@ -308,9 +357,9 @@ Los gates estructurales relevantes ya resueltos o documentados incluyen:
 - `DG-AN-01` — comparaciones analíticas;
 - `DG-N13-01` — recommendation gate;
 - `DG-UX-01` — jerarquía TEAM / PLAYER / MATCH;
-- `DG-LLM-01` — arquitectura local del Assistant;
+- `DG-LLM-01` — arquitectura grounded del Assistant;
 - `DG-REP-01` — informes técnicos;
-- `DG-PUB-01` — redistribución de datos, todavía bloqueada por licencia.
+- `DG-PUB-01` — redistribución de datos, todavía bloqueada para el dataset profesional por licencia.
 
 Sergi no valida decisiones técnicas ordinarias o reversibles. Solo se abre gate si afecta significado deportivo, arquitectura, metodología, métrica principal, política de recomendación, UX principal, privacidad/publicación o scope del TFM.
 
@@ -321,6 +370,7 @@ El núcleo funcional está cerrado. La prioridad es:
 ```text
 REVISIÓN VISUAL FINAL
 → CAPTURAS CANÓNICAS
+→ SINCRONIZACIÓN DOCUMENTAL
 → MAQUETACIÓN MEMORIA
 → DEFENSA / DEMO
 ```
