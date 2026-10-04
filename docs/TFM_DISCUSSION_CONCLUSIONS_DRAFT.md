@@ -4,7 +4,7 @@ Fecha: 04/10/2026
 Estado: borrador académico para integrar en la memoria final.
 Idioma: castellano.
 
-Este documento interpreta los resultados del prototipo a la luz del marco teórico ya documentado en `docs/TFM_MARCO_TEORICO_REFERENCIAS.md`. La discusión distingue explícitamente entre viabilidad técnica demostrada y eficacia deportiva no demostrada.
+Este documento interpreta los resultados del prototipo a la luz del marco teórico documentado en `docs/TFM_MARCO_TEORICO_REFERENCIAS.md`. La discusión distingue explícitamente entre viabilidad técnica demostrada y eficacia deportiva no demostrada.
 
 ---
 
@@ -132,13 +132,16 @@ La evolución del Coach Copilot mostró que usar un LLM en cada turno no era la 
 La arquitectura final cambió el problema: en lugar de validar una lista creciente de frases, se modeló un espacio de consultas composicional basado en:
 
 ```text
-entidad + operación + métrica + agregación + filtros + ventana + follow-up
+entidad + operación + métrica + agregación + rol + filtros + ventana + contexto conversacional
 ```
+
+Además, un preflight determinista resuelve ruido, meta-consultas y preguntas claramente fuera del dominio antes de considerar cualquier modelo generativo.
 
 Las consultas de alta confianza se resuelven de forma determinista:
 
 ```text
 QUESTION
+→ PREFLIGHT / GUARDRAILS
 → DETERMINISTIC ROUTER
 → READ-ONLY TOOL
 → PYTHON / DUCKDB
@@ -146,18 +149,19 @@ QUESTION
 → FACTUAL ANSWER
 ```
 
-Solo el lenguaje ambiguo activa `qwen3.5:4b` como router semántico local. El modelo no calcula métricas ni redacta por su cuenta rankings numéricos críticos.
+Solo el lenguaje ambiguo que permanece dentro del dominio puede activar `qwen3.5:4b` como router semántico local. El modelo no calcula métricas ni redacta por su cuenta rankings numéricos críticos.
 
 La validación real final obtuvo:
 
 ```text
-SMOKE CONTRACT: PASS (22/22)
-average_elapsed=1.4s
-consultas deterministas típicas=0.1–0.8s
-follow-ups=0.1–0.2s
+SMOKE CONTRACT: PASS (28/28)
+average_elapsed=0.4s
+semantic rounds=0 en los 28 casos finales
 ```
 
-Este resultado no implica que todas las preguntas posibles respondan en 1,4 segundos. El fallback Qwen observado en una pregunta fuera de dominio tardó 25,3 segundos, lo que confirma que el hardware local sigue siendo una limitación cuando se necesita inferencia semántica.
+El dato de 0,4 s debe interpretarse correctamente: corresponde a esa batería concreta en el PC de desarrollo y a una ruta final completamente determinista/preflight. No es un SLA universal ni mide la latencia del fallback Qwen. Las consultas ambiguas que sí requieran inferencia semántica local pueden seguir siendo considerablemente más lentas en CPU.
+
+La ampliación del contrato a comparaciones por posición también evita introducir nuevos scores ad hoc. Cuando se pregunta quién ha rendido mejor dentro de una posición, se utiliza como criterio explícito el Match Rating medio dentro de la muestra de ese rol y el resto de métricas se presenta como evidencia descriptiva.
 
 La arquitectura reduce dos riesgos documentados en la literatura:
 
@@ -184,6 +188,12 @@ OPENAI
 La API key pertenece al usuario y la UI no la persiste en DuckDB ni en archivos del proyecto.
 
 La integración dispone de contract tests y CI, pero no se ha realizado todavía un benchmark live con una API key real. En consecuencia, no se presentan como resultados demostrados su latencia, coste o calidad externa.
+
+## 9.2 Identidades y privacidad de la demo
+
+El Assistant comparte el mismo boundary de presentación que el resto de la demo. Las identidades visibles `Equipo Demo`, `Jugador XX` y `Rival XX` se traducen internamente únicamente para consultar las tools y se vuelven a anonimizar antes de renderizar.
+
+Esta decisión evita que la capa conversacional reintroduzca nombres profesionales que la interfaz ya había ocultado. En modo demo, una identidad interna conocida detectada en la respuesta final provoca el bloqueo de esa respuesta.
 
 ---
 
@@ -223,7 +233,8 @@ Existe evidencia de que:
 4. el sistema experto conserva trazabilidad y puede abstenerse de recomendar;
 5. GPS puede integrarse de forma opcional sin contaminar otras capas;
 6. el asistente IA funciona downstream de lógica determinista y herramientas read-only;
-7. el repositorio puede reconstruir una demo sintética en un entorno limpio.
+7. el espacio de consultas del Assistant se valida mediante contrato, tests y CI, no mediante una colección informal de frases;
+8. el repositorio puede reconstruir una demo sintética en un entorno limpio.
 
 La hipótesis no queda contrastada en términos de impacto causal sobre decisiones, victorias, rendimiento deportivo o prevención de lesiones.
 
@@ -263,7 +274,7 @@ La base de desarrollo no puede tratarse como dataset público mientras no exista
 
 ## 12.8 Latencia del fallback local
 
-Aunque las consultas deterministas son rápidas, las preguntas que requieren Qwen pueden tardar decenas de segundos en CPU.
+La ruta determinista es rápida en el gate final, pero una consulta ambigua que requiera Qwen puede ser mucho más lenta en CPU. El smoke final no mide ese caso porque sus 28 consultas se resolvieron con `rounds=0`.
 
 ## 12.9 Proveedor OpenAI
 
@@ -285,8 +296,10 @@ Las principales contribuciones son:
 - Match Rating inmediato y Performance Index separado;
 - integración GPS descriptiva y opcional;
 - dashboard Team/Player/Match;
-- Coach Copilot grounded con routing determinista y fallback semántico local;
+- Coach Copilot grounded con preflight, routing determinista y fallback semántico local;
+- comparaciones por posición con criterio explícito sin crear un score nuevo;
 - integración OpenAI BYOK opcional bajo el mismo contrato de tools;
+- anonimización coherente también en la capa conversacional de la demo;
 - informes PDF downstream de analytics;
 - QA end-to-end;
 - demo sintética reproducible;
