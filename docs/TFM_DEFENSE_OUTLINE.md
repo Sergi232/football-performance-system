@@ -104,7 +104,8 @@ Idea clave:
 - no es un único `DecisionTreeClassifier`;
 - es una jerarquía auditable;
 - cada nodo conserva entrada, condición, resultado, confianza y justificación;
-- N13000 puede abstenerse.
+- N1000–N12000 estructuran evidencia; N13000 es un gate de recomendación.
+- N13000 se abstiene en todos los casos actuales: 501 por policy no validada, 245 por rol desconocido y 89 por falta de evidencia.
 
 Mostrar como ejemplo:
 

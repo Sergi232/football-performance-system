@@ -24,7 +24,7 @@ Los protocolos de fiabilidad interobservador y utilidad con staff están definid
 | Analytics separa self-role y peer-role evidence | Contrato ANALYTICS-01 | `analytics/build_stage1.py` | PASS |
 | El sistema experto cubre N1000-N13000 | Builds/validators EXPERT-01..07 | `decision_tree/` | PASS |
 | N9000 ignora GPS sintético como evidencia observada | Corrección + validator EXPERT-03 | `decision_tree/build_stage3.py`, `decision_tree/validate_stage3.py` | PASS |
-| N13000 no emite recomendación sin policy validada | Recommendation gate | `decision_tree/build_stage7.py`, `tests/test_decision_tree_stage7.py` | PASS |
+| N13000 es un gate de recomendación y actualmente se abstiene en todos los casos | 501 policy no validada; 245 rol desconocido; 89 falta de evidencia | `decision_tree/build_stage7.py`, `tests/test_decision_tree_stage7.py` | PASS |
 | Match Rating V5 cubre todas las apariciones jugadas | Contrato PERF-18 | `match_rating_v0.5-candidate` + validadores de rating | PASS |
 | Match Rating y GPS permanecen separados | Arquitectura + access layer | `app/match_rating_access.py`, `app/gps_physical_access.py` | PASS |
 | GPS es opcional y multi-proveedor | Contrato de normalización | `gps/`, `data/migrations/004_gps_normalization.sql` | PASS ESTRUCTURAL |

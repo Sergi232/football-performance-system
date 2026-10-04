@@ -126,6 +126,8 @@ players context=36
 played appearances=590
 ```
 
+Definición de universos: `player_match=835` representa registros de plantilla/alineación; 590 tienen minutos positivos y 245 son suplentes no utilizados (`started=false`, minutos 0, rol nulo). Match Rating cubre solo apariciones jugadas; el motor experto recorre los 835 registros para conservar estados de disponibilidad, evidencia y abstención.
+
 Estado:
 
 ```text
@@ -171,6 +173,8 @@ Es complementario y experimental; no sustituye al Match Rating.
 ---
 
 # 7. EXPERT SYSTEM
+
+Denominación canónica: **motor experto de evaluación y evidencia con gate de recomendación**. N1000–N12000 generan evidencia estructurada; N13000 no recomienda en el estado actual: 501 abstenciones por policy no validada, 245 por rol desconocido y 89 por falta de evidencia.
 
 ```text
 N1000   disponibilidad / actividad

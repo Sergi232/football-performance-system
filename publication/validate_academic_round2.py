@@ -29,6 +29,52 @@ def require(value: bool, message: str) -> None:
         raise RuntimeError(message)
 
 
+def audit_denominators(con: duckdb.DuckDBPyConnection) -> None:
+    """Make the rating and expert-system reporting universes explicit."""
+    total = con.execute("SELECT COUNT(*) FROM player_match").fetchone()[0]
+    played = con.execute(
+        "SELECT COUNT(*) FROM player_match WHERE minutes_played > 0"
+    ).fetchone()[0]
+    unused_substitutes = con.execute(
+        """
+        SELECT COUNT(*)
+        FROM player_match
+        WHERE minutes_played = 0
+          AND started = FALSE
+          AND primary_role IS NULL
+        """
+    ).fetchone()[0]
+    rating_rows = con.execute(
+        "SELECT COUNT(*) FROM player_match_rating WHERE match_rating_version=?",
+        [RATING_VERSION],
+    ).fetchone()[0]
+    expert_records = con.execute(
+        """
+        SELECT COUNT(*) FROM (
+            SELECT DISTINCT match_id, player_id
+            FROM decision_results
+            WHERE engine_version=?
+        )
+        """,
+        [ENGINE_VERSION],
+    ).fetchone()[0]
+
+    require(total == played + unused_substitutes, "Unexpected player_match denominator split")
+    require(rating_rows == played, "Match Rating must cover played appearances only")
+    require(expert_records == total, "Expert engine must cover the roster/lineup universe")
+
+    print("\n0. DENOMINADORES")
+    print(f"player_match (plantilla/alineación): {total}")
+    print(f"Apariciones jugadas (minutes_played > 0): {played}")
+    print(
+        "Suplentes no utilizados "
+        "(started=false, minutes_played=0, primary_role=NULL): "
+        f"{unused_substitutes}"
+    )
+    print(f"Match Rating V5: {rating_rows} apariciones jugadas")
+    print(f"Motor experto: {expert_records} registros de plantilla/alineación")
+
+
 def compact(value: Any, digits: int = 2) -> str:
     if value is None or pd.isna(value):
         return "—"
@@ -71,10 +117,13 @@ def position_performance(con: duckdb.DuckDBPyConnection, team_id: str, alias: di
     require(not frame.empty, "No multi-position reliable player case found")
     frame["Jugador"] = frame["player_id"].map(lambda x: player_label(x, alias))
     show = frame[["Jugador", "position_group", "appearances", "minutes", "rating_mean", "rating_sd", "temporal_slope"]].copy()
-    show.columns = ["Jugador", "Posición observada", "Apariciones", "Minutos", "Rating medio", "DE", "Tendencia/rating-partido"]
+    show["Muestra"] = show["appearances"].map(
+        lambda n: "MUESTRA PEQUEÑA (1–4)" if n <= 4 else "Muestra descriptiva"
+    )
+    show.columns = ["Jugador", "Posición observada", "Apariciones", "Minutos", "Rating medio", "DE", "Tendencia/rating-partido", "Muestra"]
     print("\n1. RENDIMIENTO DESCRIPTIVO POR POSICIÓN OBSERVADA")
     print(show.to_string(index=False, formatters={c: lambda x: compact(x) for c in ["Minutos", "Rating medio", "DE", "Tendencia/rating-partido"]}))
-    print("Interpretación: diferencias descriptivas por muestra; no se infiere ni recomienda una posición óptima.")
+    print("Interpretación: diferencias descriptivas por muestra; no se infiere ni recomienda una posición óptima. Las filas de 1–4 apariciones no sostienen tendencias ni interpretaciones fuertes.")
 
 
 def expert_coverage(con: duckdb.DuckDBPyConnection) -> None:
@@ -212,6 +261,7 @@ def main() -> None:
     print("SECOND ACADEMIC VALIDATION — ALIAS-ONLY OUTPUT")
     print("team=Equipo Demo; identity_policy=Jugador NN / Rival NN")
     with duckdb.connect(str(db), read_only=True) as con:
+        audit_denominators(con)
         position_performance(con, team_id, alias)
         expert_coverage(con)
         rating_stability(con, team_id, alias)

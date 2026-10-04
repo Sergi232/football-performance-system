@@ -66,13 +66,13 @@ La decisión de congelar V5 tras su validación técnica evita modificar pesos d
 
 ---
 
-# 6. Sistema experto y decisión conservadora
+# 6. Motor experto de evaluación y evidencia con gate de recomendación
 
 El sistema experto N1000-N13000 fue diseñado para mantener trazabilidad y degradar de forma explícita cuando falta evidencia.
 
 Esta estrategia es coherente con el uso de sistemas basados en reglas descrito por Liu et al. (2016) y con la preferencia por interpretabilidad defendida por Rudin (2019) cuando una decisión necesita explicación.
 
-El resultado más importante del sistema experto no es que emita muchas recomendaciones, sino precisamente que puede abstenerse de hacerlo.
+El resultado del sistema experto no es emitir recomendaciones tácticas finales. N1000–N12000 estructuran evidencia y N13000 actúa como gate de recomendación. En el caso actual, N13000 se abstiene en todos los registros: 501 por policy no validada, 245 por rol desconocido y 89 por falta de evidencia.
 
 N13000 devuelve estados como:
 

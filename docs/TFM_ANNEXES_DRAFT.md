@@ -202,7 +202,7 @@ Figura asociada:
 
 ---
 
-# Anexo D — Sistema experto N1000-N13000
+# Anexo D — Motor experto de evaluación y evidencia con gate de recomendación
 
 Jerarquía:
 
@@ -221,6 +221,8 @@ N11000  consistencia / tendencia
 N12000  player-fit evidence
 N13000  recommendation gate
 ```
+
+N1000–N12000 estructuran evidencia auditable. N13000 decide si existe base suficiente para recomendar; en el caso evaluado se abstiene en los 835 registros: 501 por policy no validada, 245 por rol desconocido y 89 por falta de evidencia. No se emite una recomendación táctica final.
 
 Contrato de cada nodo:
 

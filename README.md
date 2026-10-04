@@ -130,6 +130,8 @@ coverage=590/590 en el caso profesional de desarrollo
 
 Valoración inmediata jugador-partido. Está congelado: no se modifica sin nueva evidencia, experimento explícito y validación.
 
+**Denominadores del caso de desarrollo.** `player_match` contiene 835 registros de plantilla/alineación: 590 apariciones jugadas (`minutes_played > 0`) y 245 suplentes no utilizados (`started=false`, `minutes_played=0`, `primary_role=NULL`). Match Rating V5 cubre exclusivamente las 590 apariciones jugadas; el motor experto evalúa los 835 registros porque también materializa disponibilidad, ausencia de rol y abstención.
+
 ### Performance Index
 
 ```text
@@ -141,6 +143,8 @@ Capa histórica/posicional complementaria. No sustituye al Match Rating y conser
 ---
 
 ## Sistema experto
+
+El sistema se denomina **motor experto de evaluación y evidencia con gate de recomendación**. N1000–N12000 estructuran evidencia auditable; N13000 únicamente decide si existiría base para recomendar. En el caso actual no emite recomendaciones finales: 501 casos se abstienen por policy no validada, 245 por rol desconocido y 89 por falta de evidencia.
 
 ```text
 N1000   disponibilidad / actividad

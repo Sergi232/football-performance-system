@@ -20,6 +20,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from publication.validate_hypothesis_functional import _pick_trace_case  # noqa: E402
+from app.presentation import build_player_aliases  # noqa: E402
 
 DB = ROOT / "data" / "football_performance.duckdb"
 SYNTHETIC_DB = ROOT / "data" / "football_performance_synthetic_demo.duckdb"
@@ -113,12 +114,24 @@ def expert_trace(db: Path) -> str:
                WHERE match_rating_version=?
                GROUP BY team_id ORDER BY COUNT(*) DESC LIMIT 1""", [V5]
         ).fetchone()[0])
+        squad = con.execute(
+            """
+            SELECT p.player_id, p.display_name AS player, COUNT(*) AS appearances
+            FROM player_match pm
+            JOIN players p ON p.player_id=pm.player_id
+            WHERE pm.team_id=?
+            GROUP BY 1, 2
+            ORDER BY appearances DESC, p.player_id
+            """,
+            [team_id],
+        ).df()
     trace = _pick_trace_case(db, team_id)
+    player_alias = build_player_aliases(squad).get(str(trace["player_id"]), "Jugador")
     nodes = {x["node_id"]: x for x in trace["expert"]}
     final = nodes["N13000.120"]
     require(final["result_value"].startswith("RECOMMENDATION_NOT_ISSUED"), "Trace has an unsupported final recommendation")
     print("AUDITABLE EXPERT TRACE: PASS")
-    print(f"case={trace['player']} | match={trace['match_id']} | observed_role={trace['primary_role']}")
+    print(f"case={player_alias} | match={trace['match_id']} | observed_role={trace['primary_role']}")
     print(f"input=minutes:{clean(trace['minutes_played'])}; passes:{clean(trace['passes_completed'])}/{clean(trace['passes_total'])}; pass_completion_rate:{clean(trace['pass_completion_rate'])}")
     print(f"condition=N12000.100 -> {nodes['N12000.100']['result_value']}; N13000.100 -> {nodes['N13000.100']['result_value']}")
     print(f"evidence=scope:{trace['comparison_scope']}; state:{trace['evidence_state']}; rating:{clean(trace['match_rating_10'])}/10; confidence:{clean(trace['match_rating_confidence'])}")

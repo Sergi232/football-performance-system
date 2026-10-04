@@ -199,7 +199,7 @@ El jugador actual queda excluido del pool de peers y cada peer recibe el mismo p
 
 ---
 
-# 8. Sistema experto N1000-N13000
+# 8. Motor experto de evaluación y evidencia con gate de recomendación
 
 El sistema experto se organiza como una jerarquía modular:
 
@@ -227,7 +227,7 @@ entrada → condición → resultado → confianza → justificación
 
 La finalidad del árbol no es replicar un `DecisionTreeClassifier`, sino ofrecer una arquitectura de reglas auditables que pueda crecer de forma modular.
 
-N13000 constituye un gate de seguridad. Aunque exista evidencia de rol, no se emite una recomendación táctica si no se ha validado previamente una política de recomendación, sus pesos y sus umbrales.
+N1000–N12000 generan y estructuran evidencia auditable. N13000 constituye el gate de recomendación: decide si habría base suficiente para recomendar. En el estado actual se abstiene en los 835 registros evaluados: 501 por policy no validada, 245 por rol desconocido y 89 por falta de evidencia. Por tanto, no se presenta como un recomendador táctico final.
 
 ---
 
@@ -253,6 +253,8 @@ Baseline validado:
 - 0 valores nulos;
 - 0 duplicados;
 - 0 valores fuera de rango.
+
+El denominador del rating son las 590 apariciones jugadas (`minutes_played > 0`). Es distinto de los 835 registros `player_match` de plantilla/alineación que recorre el motor experto: los 245 registros adicionales son suplentes no utilizados (`started=false`, minutos 0 y rol nulo), conservados para materializar disponibilidad y abstención.
 
 La fórmula V5 está congelada y no debe modificarse sin nueva evidencia y validación experimental.
 

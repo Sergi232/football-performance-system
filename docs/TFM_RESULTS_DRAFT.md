@@ -64,6 +64,8 @@ jugadores en contexto producto = 36
 apariciones jugadas = 590
 ```
 
+El denominador `player_match=835` corresponde a registros de plantilla/alineación. Incluye 590 apariciones jugadas y 245 suplentes no utilizados (`started=false`, minutos 0 y rol nulo). Match Rating utiliza el universo de 590 apariciones jugadas; el motor experto utiliza los 835 registros para representar también disponibilidad, falta de rol y abstención.
+
 La validación de base de datos confirmó, entre otros contratos:
 
 ```text
@@ -104,7 +106,7 @@ El contrato temporal utiliza pasado estricto y excluye información futura y de 
 ```text
 rows = 117735 / 117735
 non-null = 43060
-player-match with observed role = 590 / 835
+registros de plantilla/alineación con rol observado y minutos positivos = 590 / 835
 distinct role labels = 23
 strict-past contract = PASS
 ```
@@ -129,7 +131,7 @@ La capa no produce por sí misma score, ranking ni recomendación.
 
 ---
 
-# 5. Sistema experto N1000-N13000
+# 5. Motor experto de evaluación y evidencia con gate de recomendación
 
 La construcción incremental cerró siete stages y culminó en `expert_0.7.0`.
 
@@ -151,7 +153,7 @@ ROLE_UNKNOWN = 245
 
 Interpretación:
 - el sistema conserva evidencia y estados auditables;
-- no fuerza una recomendación cuando falta evidencia o cuando la política no ha sido validada.
+- N13000 se abstiene en todos los casos: 501 por policy no validada, 245 por rol desconocido y 89 por falta de evidencia; por tanto, no es un recomendador táctico final.
 
 ## 5.1 N9000 y GPS
 

@@ -198,7 +198,7 @@ Se mantiene separado del Match Rating para no mezclar una valoración inmediata 
 
 ---
 
-# 7. Sistema experto N1000-N13000
+# 7. Motor experto de evaluación y evidencia con gate de recomendación
 
 En lugar de utilizar un único `DecisionTreeClassifier`, se implementó un sistema experto jerárquico y modular.
 
@@ -232,7 +232,7 @@ entrada
 
 La finalidad es garantizar trazabilidad y permitir que una conclusión pueda auditarse.
 
-N13000 actúa como gate final. Aunque exista evidencia, no se emite una recomendación táctica si no existe una policy validada.
+N1000–N12000 generan y estructuran evidencia auditable. N13000 actúa como gate final: decide si habría base suficiente para recomendar, pero no emite una recomendación táctica si no existe una policy validada o falta evidencia. En el caso evaluado, la salida final es siempre una abstención.
 
 ---
 

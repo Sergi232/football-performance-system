@@ -329,6 +329,8 @@ El caso utilizado para validar el producto contiene:
 590 apariciones jugadas
 ```
 
+Para evitar ambigüedad, se distinguen dos universos. `player_match` contiene 835 registros de plantilla/alineación: 590 apariciones jugadas (`minutes_played > 0`) y 245 suplentes no utilizados (`started=false`, minutos 0 y rol nulo). El Match Rating se calcula solo para las 590 apariciones jugadas. El motor experto cubre los 835 registros porque también registra disponibilidad, ausencia de rol y abstención.
+
 La validación de base de datos cerró sin duplicados críticos, minutos inválidos u orphan events.
 
 El caso constituye un contexto único de desarrollo y sirve para verificar la ejecución del pipeline, no para estimar generalización a ligas, categorías, estilos de juego o procesos de captura distintos.
@@ -357,7 +359,7 @@ FEATURE-03:
 ```text
 117.735 filas
 43.060 valores no nulos
-590/835 player-match con rol observado
+590/835 registros de plantilla/alineación con rol observado y minutos positivos
 PASS
 ```
 
@@ -387,7 +389,7 @@ POLICY_UNVALIDATED=501
 ROLE_UNKNOWN=245
 ```
 
-El sistema conserva evidencia y puede abstenerse de emitir recomendaciones.
+N1000–N12000 estructuran evidencia auditable. N13000 decide si hay base para recomendar, pero en el estado actual se abstiene en los 835 registros: 501 por policy no validada, 245 por rol desconocido y 89 por falta de evidencia. Por tanto, no se presenta como un recomendador táctico final.
 
 ## 6.5 Match Rating V5
 

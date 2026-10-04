@@ -36,7 +36,7 @@ No interpretar como: muestra representativa del fútbol amateur.
 | FEATURE-02 | 163.660 filas | PASS |
 | FEATURE-03 | 117.735 / 117.735 filas | PASS |
 | FEATURE-03 | 43.060 valores no nulos | PASS |
-| FEATURE-03 | 590 / 835 player-match con rol observado | PASS |
+| FEATURE-03 | 590 / 835 registros de plantilla/alineación con rol observado y minutos positivos | PASS |
 
 Regla metodológica: FEATURE-02/03 usan pasado estricto.
 
@@ -55,6 +55,10 @@ Regla metodológica: FEATURE-02/03 usan pasado estricto.
 | GPS observado no sintético en N9000 | 0 player-match | limitación explícita |
 
 Interpretación: el sistema experto materializa evidencia y puede abstenerse de recomendar.
+
+Definición de denominadores: `player_match=835` incluye 590 apariciones jugadas y 245 suplentes no utilizados (`started=false`, minutos 0, rol nulo). Match Rating cubre las 590 apariciones jugadas; el motor experto evalúa los 835 registros.
+
+Para comparaciones de rendimiento por posición observada, las filas con 1–4 apariciones se marcan como **muestra pequeña**: se conservan de forma descriptiva, pero no sostienen una tendencia ni una interpretación fuerte.
 
 ---
 
