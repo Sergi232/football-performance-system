@@ -5,22 +5,16 @@ import os
 import sys
 from pathlib import Path
 
-import pandas as pd
 import streamlit as st
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from app.assistant_identity import build_assistant_identity_context
 from app.coach_ui import page_header
 from app.data_access import get_squad_summary, get_team_matches, list_teams
-from app.presentation import (
-    build_opponent_aliases,
-    build_player_name_aliases,
-    demo_mode,
-    display_team_name,
-    replace_known_names,
-)
+from app.presentation import demo_mode, display_team_name
 from app.ui_theme import apply_professional_theme, sidebar_navigation
 from llm.coach_agent_external import DEFAULT_OPENAI_MODEL, run_coach_agent_turn as run_openai_agent_turn
 from llm.coach_agent_fast import DEFAULT_MODEL, ollama_status, run_coach_agent_turn as run_local_agent_turn
@@ -28,6 +22,7 @@ from llm.coach_agent_fast import DEFAULT_MODEL, ollama_status, run_coach_agent_t
 DEFAULT_DB = ROOT / "data" / "football_performance.duckdb"
 TOOL_LABELS = {
     "rank_players": "Ranking estructurado de jugadores",
+    "compare_role_players": "Comparación estructurada por posición",
     "query_team_stats": "Estadísticas observadas del equipo",
     "get_team_snapshot": "Resumen del equipo",
     "get_data_quality": "Calidad de datos",
@@ -49,15 +44,6 @@ def db_path() -> Path:
 
 def history_key(team_id: str, provider: str) -> str:
     return f"fps_agent_history::{provider}::{team_id}"
-
-
-def _replace_aliases_with_real(text: str, reverse_map: dict[str, str]) -> str:
-    if not demo_mode():
-        return text
-    out = str(text)
-    for alias in sorted(reverse_map, key=len, reverse=True):
-        out = out.replace(alias, reverse_map[alias])
-    return out
 
 
 def tools_label(values: list[str] | tuple[str, ...]) -> str:
@@ -123,26 +109,20 @@ raw_team_name = raw_team_labels[team_id]
 team_name = display_team_labels[team_id]
 squad = get_squad_summary(path, team_id)
 matches = get_team_matches(path, team_id)
-player_name_aliases = build_player_name_aliases(squad)
-opponent_aliases = build_opponent_aliases(matches.get("opponent", pd.Series(dtype=str)).tolist())
-reverse_aliases = {alias: real for real, alias in player_name_aliases.items()}
-reverse_aliases.update({alias: real for real, alias in opponent_aliases.items()})
-if demo_mode():
-    reverse_aliases[team_name] = raw_team_name
+identity = build_assistant_identity_context(
+    squad,
+    matches,
+    raw_team_name=raw_team_name,
+    team_alias=team_name,
+)
 
 
 def to_display(text: object) -> str:
-    return replace_known_names(
-        text,
-        player_name_aliases=player_name_aliases,
-        opponent_aliases=opponent_aliases,
-        team_name=raw_team_name,
-        team_alias=team_name,
-    )
+    return identity.to_display(text)
 
 
 def to_runtime(text: object) -> str:
-    return _replace_aliases_with_real(str(text), reverse_aliases)
+    return identity.to_runtime(text)
 
 
 if provider == "local":
@@ -182,6 +162,7 @@ with st.expander("¿Qué puede hacer el agente?", expanded=not history):
         st.markdown(
             """
             - crear rankings descriptivos por Match Rating, goles, asistencias, remates, minutos y métricas GPS disponibles;
+            - comparar jugadores de una misma posición con métricas relevantes y criterio explícito de Match Rating cuando se pregunta por rendimiento;
             - aplicar agregaciones y ventanas temporales soportadas;
             - resumir equipo y partidos;
             - explicar perfiles y evolución reciente;
@@ -194,7 +175,7 @@ with st.expander("¿Qué puede hacer el agente?", expanded=not history):
             """
             **No puede inventar:**
             - métricas o criterios no definidos;
-            - quién es «el mejor», «el más completo» o «el más determinante» sin una métrica validada;
+            - quién es «el mejor», «el más completo» o «el más determinante» sin una métrica o contexto validado;
             - riesgo de lesión o fatiga;
             - alineación ideal;
             - recomendaciones tácticas no validadas.
@@ -207,9 +188,9 @@ else:
     suggested_player = to_display(str(squad.iloc[0]["player"]))
 suggestions = [
     "¿Qué jugador tiene más rating?",
-    "¿Quién corre más distancia por partido?",
+    "Compárame las principales estadísticas de los delanteros",
+    "¿Quién ha rendido mejor en la posición de central? Muéstrame las métricas",
     f"¿Cómo ha evolucionado {suggested_player}?",
-    "¿Qué limitaciones de datos tenemos ahora mismo?",
 ]
 if not history:
     cols = st.columns(2)
@@ -236,7 +217,7 @@ for message in history:
                     st.caption(f"Incidencia: {trace['error']}")
 
 pending = st.session_state.pop(f"fps_agent_pending::{provider}", None)
-question = st.chat_input("Pregunta sobre el equipo, jugadores, partidos, evolución, estadísticas o GPS...")
+question = st.chat_input("Pregunta sobre el equipo, jugadores, partidos, evolución, estadísticas, posiciones o GPS...")
 if pending and not question:
     question = pending
 
@@ -278,29 +259,33 @@ if question:
             st.error("Falta la OpenAI API key para usar este modo.")
         else:
             display_answer = to_display(result.text)
-            st.markdown(display_answer)
-            with st.expander("Evidencia consultada"):
-                st.write("Consultas utilizadas: " + tools_label(list(result.tools_used)))
-                st.write(f"Rondas de interpretación semántica: {result.tool_rounds}")
-                st.write(f"Motor: {provider_label}")
-                st.write(f"Modelo: `{result.model}`")
-                if result.error:
-                    st.caption(f"Incidencia: {result.error}")
+            leaks = identity.leaked_runtime_identities(display_answer)
+            if leaks and demo_mode():
+                st.error("Se ha bloqueado una respuesta por una incidencia de anonimización en la capa de presentación.")
+            else:
+                st.markdown(display_answer)
+                with st.expander("Evidencia consultada"):
+                    st.write("Consultas utilizadas: " + tools_label(list(result.tools_used)))
+                    st.write(f"Rondas de interpretación semántica: {result.tool_rounds}")
+                    st.write(f"Motor: {provider_label}")
+                    st.write(f"Modelo: `{result.model}`")
+                    if result.error:
+                        st.caption(f"Incidencia: {result.error}")
 
-            history.append(
-                {
-                    "role": "assistant",
-                    "content": display_answer,
-                    "trace": {
-                        "tools_used": list(result.tools_used),
-                        "tool_rounds": result.tool_rounds,
-                        "model": result.model,
-                        "provider_label": provider_label,
-                        "error": result.error,
-                    },
-                }
-            )
-            st.session_state[key] = history
+                history.append(
+                    {
+                        "role": "assistant",
+                        "content": display_answer,
+                        "trace": {
+                            "tools_used": list(result.tools_used),
+                            "tool_rounds": result.tool_rounds,
+                            "model": result.model,
+                            "provider_label": provider_label,
+                            "error": result.error,
+                        },
+                    }
+                )
+                st.session_state[key] = history
 
 with st.expander("Arquitectura y límites"):
     st.write(
@@ -316,4 +301,4 @@ with st.expander("Arquitectura y límites"):
             "En modo OpenAI, solo la pregunta/contexto necesario y la evidencia estructurada requerida se envían al proveedor externo; la API key pertenece al usuario y no se persiste en DuckDB."
         )
     if demo_mode():
-        st.caption("Modo demo activo: las identidades se sustituyen solo en la capa de presentación; los cálculos internos conservan los IDs originales.")
+        st.caption("Modo demo activo: el chat usa exactamente las mismas identidades anónimas visibles en la plataforma; la traducción a nombres internos ocurre solo antes de consultar las herramientas y nunca se muestra al usuario.")
