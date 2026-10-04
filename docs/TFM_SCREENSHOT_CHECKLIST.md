@@ -115,22 +115,29 @@ Pregunta recomendada:
 ¿Quién corre más distancia por partido?
 ```
 
-Alternativa:
+Alternativas válidas:
 
 ```text
-¿Cómo ha evolucionado Antonio Sivera?
+¿Cómo ha evolucionado Jugador 01?
+
+Compárame las principales estadísticas de los delanteros
+
+¿Quién ha rendido mejor en la posición de central? Muéstrame las métricas
 ```
 
 Mostrar:
-- selector `Motor de lenguaje`;
+- selector `Fallback semántico`;
 - modo `Local · Qwen`;
 - pregunta;
 - respuesta en castellano;
-- expander `Evidencia consultada` abierto si cabe en la misma captura;
-- tool legible, rondas de interpretación semántica y modelo;
-- sin recomendaciones no validadas.
+- identidades demo (`Equipo Demo`, `Jugador XX`, `Rival XX`) cuando corresponda;
+- expander `Evidencia consultada` abierto;
+- `Ruta: determinista + herramientas FPS` cuando la consulta sea clara;
+- `LLM utilizado: no` en la captura determinista;
+- tool/consulta estructurada legible;
+- referencia a Python / DuckDB / analytics materializados.
 
-Idealmente la pregunta elegida debe mostrar `Rondas de interpretación semántica: 0`, para evidenciar que una consulta clara se resuelve mediante el router determinista y las tools FPS sin depender del LLM.
+La captura canónica debe mostrar una consulta con `rounds=0` internamente, presentada al usuario como **ruta determinista sin uso de LLM**. Esto evidencia que el modelo de lenguaje es un fallback de interpretación y no el motor que calcula la respuesta.
 
 Uso:
 - demostrar la capa conversacional downstream de analytics y la arquitectura deterministic-first.
@@ -139,9 +146,10 @@ No usar como captura canónica:
 - una API key real visible;
 - XI ideal;
 - riesgo de lesión;
-- ranking de rol no validado;
 - recomendación táctica automática;
-- `mejor jugador`, `más completo` o `más determinante` sin métrica explícita.
+- `mejor jugador`, `más completo` o `más determinante` sin métrica/criterio explícito.
+
+Las comparaciones por posición **sí están validadas** cuando el criterio se declara de forma explícita. Si se pregunta quién ha rendido mejor dentro de una posición, el sistema ordena por Match Rating medio de esa muestra y enseña métricas descriptivas adicionales; no crea un score nuevo.
 
 El selector `OpenAI API · clave propia` puede aparecer como opción disponible, pero no es necesario activarlo ni mostrar una key para cerrar el MVP.
 
@@ -162,13 +170,13 @@ Uso:
 
 ## Captura 9 — PDF Player
 
-Mostrar una página representativa del informe de jugador.
+Mostrar una página representativa del informe de jugador con identidad demo/anónima.
 
 ---
 
 ## Captura 10 — PDF Match
 
-Mostrar una página representativa del informe de partido.
+Mostrar una página representativa del informe de partido con rival demo/anónimo.
 
 ---
 
@@ -178,6 +186,7 @@ Mostrar una página representativa del informe de partido.
 - detalle de un nodo del sistema experto;
 - historial temporal de un jugador;
 - ejemplo de máscara `Equipo Demo / Jugador XX / Rival XX`;
+- comparación por posición con criterio explícito;
 - selector Local/OpenAI del Coach Copilot sin mostrar claves;
 - GitHub Actions con CI en verde;
 - árbol del repositorio.
@@ -209,4 +218,5 @@ Una captura entra en la memoria solo si:
 2. usa modo demo/anónimo cuando corresponda;
 3. no muestra claims fuera del alcance validado;
 4. es legible a tamaño de página;
-5. tiene una función argumental clara dentro de la memoria.
+5. tiene una función argumental clara dentro de la memoria;
+6. no expone API keys, rutas privadas o identidades profesionales reales.
