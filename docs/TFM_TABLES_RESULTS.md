@@ -1,6 +1,6 @@
 # TFM — Tablas canónicas de resultados
 
-Fecha: 03/10/2026
+Fecha: 04/10/2026
 Estado: tablas académicas listas para integrar en la memoria.
 
 Regla: todas las cifras proceden de gates/validators ya registrados. No recalcular manualmente estos valores para la memoria si no cambia la versión del producto.
@@ -100,23 +100,25 @@ No interpretar como: validación fisiológica.
 
 ---
 
-## Tabla 6. Coach Copilot
+## Tabla 6. Coach Copilot final
 
 | Indicador | Valor |
 |---|---:|
-| MVP | Spanish-only |
-| Modelo | `qwen3:1.7b` |
-| Router | 17 / 17 |
-| Full aggregate | 66 / 68 = 97,1% |
-| Runtime errors | 0 |
-| Safety failures | 0 |
-| Numeric grounding | PASS |
-| Castellano | PASS |
-| Subject contract | PASS |
-| Latencia media ≤ 12 s | PASS |
-| Smoke local final | 4 / 4 PASS |
+| MVP | Castellano |
+| Arquitectura | deterministic-first + semantic fallback |
+| Fallback local | `qwen3.5:4b` |
+| Smoke real | 22 / 22 PASS |
+| Latencia media batería | 1,4 s |
+| Consultas deterministas típicas | 0,1–0,8 s |
+| Follow-ups encadenados | 0,1–0,2 s |
+| Fallback fuera de dominio observado | 25,3 s |
+| Fatiga / lesión / titularidad guards | PASS |
+| Criterios globales no validados bloqueados | PASS |
+| Numeric / tool grounding | PASS |
+| OpenAI BYOK contract | PASS |
+| OpenAI live benchmark | NO VALIDADO |
 
-Limitación aceptada: 2/68 casos superaron el límite formal de frases.
+Interpretación: las consultas de alta confianza se resuelven con routing determinista y herramientas FPS; Qwen queda como fallback semántico. La media de 1,4 s corresponde únicamente a la batería concreta ejecutada en el PC de desarrollo y no constituye un SLA universal.
 
 ---
 
@@ -176,7 +178,7 @@ No interpretar como: revalidación científica del Match Rating o Performance In
 | `pytest -q` | PASS |
 | Build demo sintética | PASS |
 | Validator demo sintética | PASS |
-| Run de referencia | `37081464123` SUCCESS |
+| Run OpenAI tool contract | `37163457928` SUCCESS |
 
 Interpretación: el repositorio se valida desde un entorno limpio sin depender de la DuckDB privada.
 
