@@ -43,6 +43,7 @@ Contenido:
 
 ```text
 QUESTION
+→ PREFLIGHT / GUARDRAILS
 → DETERMINISTIC HIGH-CONFIDENCE ROUTER
 → READ-ONLY TOOLS
 → PYTHON / DUCKDB / ANALYTICS / EXPERT
@@ -50,7 +51,7 @@ QUESTION
 → COACH
 ```
 
-Ramas semánticas opcionales solo cuando hacen falta:
+Ramas semánticas opcionales solo cuando persiste ambigüedad dentro del dominio:
 
 ```text
 Qwen 3.5 4B local
@@ -60,6 +61,7 @@ misma superficie de tools revalidada localmente
 ```
 
 Fuente:
+- `llm/COACH_COPILOT_CONTRACT.md`;
 - `llm/coach_agent_general.py`;
 - `llm/coach_agent_fast.py`;
 - `llm/coach_agent_external.py`;
@@ -70,6 +72,7 @@ Fuente:
 Claim permitido:
 - el cálculo crítico permanece en Python/DuckDB;
 - una consulta clara no necesita LLM;
+- ruido/meta/fuera de dominio obvio se resuelve en preflight;
 - los proveedores LLM solo actúan como capa semántica downstream cuando es necesario.
 
 No usar para afirmar:
@@ -259,7 +262,8 @@ Requisitos:
 - castellano;
 - no exponer datos profesionales identificables;
 - usar la misma resolución/aspecto cuando sea posible;
-- para Coach Copilot, mostrar `Local · Qwen`, una pregunta determinista y `Evidencia consultada`.
+- para Coach Copilot, mostrar `Fallback semántico = Local · Qwen`, una pregunta determinista y `Evidencia consultada`;
+- en esa evidencia, mostrar `Ruta: determinista + herramientas FPS`, `LLM utilizado: no` y el cálculo crítico en Python/DuckDB.
 
 ---
 
@@ -274,13 +278,15 @@ clean clone
 → build synthetic DB from scratch
 → validate app read layer
 → validate reports
+→ validate Coach query-space contract
 → PASS
 ```
 
 Fuente:
 - `.github/workflows/tests.yml`;
 - `publication/build_synthetic_demo.py`;
-- `publication/validate_synthetic_demo.py`.
+- `publication/validate_synthetic_demo.py`;
+- `llm/validate_coach_contract.py`.
 
 Claim permitido:
 - el producto puede validarse en un entorno limpio sin la DuckDB profesional.
@@ -394,20 +400,33 @@ No interpretar como validez externa universal.
 Datos canónicos:
 
 ```text
-SMOKE CONTRACT = PASS (22/22)
-average_elapsed = 1.4s
-deterministic typical = 0.1–0.8s
-follow-ups = 0.1–0.2s
-fallback Qwen observed = 25.3s
+SMOKE CONTRACT = PASS (28/28)
+average_elapsed = 0.4s
+semantic fallback used in final smoke = 0/28
+query-space contract in CI = PASS
+role comparisons = PASS
+follow-ups = PASS
+preflight garbage/meta/out-of-domain = PASS
 OpenAI BYOK contract = PASS
 OpenAI live benchmark = NOT VALIDATED
 ```
 
 Fuente:
+- `llm/COACH_COPILOT_CONTRACT.md`;
 - `llm/smoke_test_coach_agent.py`;
+- `llm/validate_coach_contract.py`;
 - `tests/test_coach_agent_fast.py`;
 - `tests/test_coach_agent_external.py`;
 - `PROJECT_STATE.md`.
+
+Interpretación permitida:
+- la batería final de alta confianza se resolvió de forma determinista/preflight en el PC de desarrollo;
+- Qwen sigue existiendo como fallback semántico para ambigüedad dentro del dominio.
+
+No interpretar como:
+- SLA universal de 0,4 s;
+- latencia del fallback Qwen;
+- benchmark live de OpenAI.
 
 ---
 
@@ -450,7 +469,7 @@ Filas recomendadas:
 | Auth real ausente | no es SaaS productivo completo | access-control structural | proveedor identidad |
 | Dataset profesional no redistribuible | no publicable | demo sintética | licencia/open data |
 | Collector sin estudio multiobservador propio | fiabilidad humana no demostrada | contratos funcionales | estudio inter/intra-observer |
-| Fallback Qwen lento en CPU | algunas consultas ambiguas tardan | deterministic-first | hardware/modelo/proveedor alternativo |
+| Fallback Qwen lento en CPU | algunas consultas ambiguas pueden tardar | deterministic-first | hardware/modelo/proveedor alternativo |
 | OpenAI BYOK sin benchmark live | no se puede afirmar latencia/calidad | contrato + CI | prueba live controlada |
 
 ---
@@ -501,14 +520,16 @@ más referencia a GitHub Actions.
 ## Anexo G — Coach Copilot
 
 Incluir:
-- query grammar;
+- query-space contract;
+- preflight;
 - arquitectura deterministic-first;
 - fallback Qwen local;
 - OpenAI BYOK opcional;
-- preguntas soportadas;
+- comparación por posición con criterio explícito;
 - guardrails;
 - ejemplos de respuesta grounded;
-- limitaciones no soportadas.
+- límites no soportados;
+- anonimizador de identidades demo.
 
 ---
 
