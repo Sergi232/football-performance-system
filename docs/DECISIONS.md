@@ -181,19 +181,20 @@ Home, Team, Player y Match deben responder primero qué necesita entender el ent
 ### DG-LLM-01 — Arquitectura final del asistente
 Estado: `APPROVED`
 
-Decisión: **C — deterministic-first + fallback local + provider opcional desacoplado**.
+Decisión: **C — deterministic-first + preflight/guardrails + fallback local + provider opcional desacoplado**.
 
 Runtime local final:
 
 ```text
 pregunta
+→ preflight / guardrails
 → router determinista de alta confianza
 → Python tools read-only
 → DuckDB / analytics / expert outputs
 → respuesta factual determinista
 ```
 
-Solo si la intención sigue siendo ambigua:
+Solo si la intención sigue siendo ambigua y permanece dentro del dominio:
 
 ```text
 pregunta ambigua
@@ -209,17 +210,24 @@ Reglas aprobadas:
 - el LLM no accede directamente a DuckDB;
 - el LLM no recalcula Match Rating, Performance Index ni decisiones críticas;
 - las consultas claras no deben pagar latencia LLM innecesaria;
-- el espacio de consulta se modela como `entidad + operación + métrica + agregación + filtros + ventana + follow-up`;
+- ruido, meta-consultas y fuera de dominio obvio se resuelven antes del LLM;
+- el espacio de consulta se modela como `entidad + operación + métrica + agregación + rol + filtros + ventana + follow-up`;
 - guardrails deterministas son válidos para policies no aprobadas;
 - preguntas fuera de cobertura deben declarar la limitación;
-- `mejor jugador`, `más completo` o `más determinante` no se resuelven sin definición analítica aprobada.
+- `mejor jugador`, `más completo` o `más determinante` no se resuelven sin definición analítica aprobada;
+- sí se permiten comparaciones de rendimiento dentro de una posición cuando el criterio de ordenación se declara explícitamente y no se crea un score nuevo;
+- la prioridad de entidad es `jugador concreto > término que también pueda describir una posición`;
+- la demo debe mantener identidades anónimas coherentes también dentro del Assistant.
 
-Validación local real:
+Validación local real final:
 
 ```text
-SMOKE CONTRACT: PASS (22/22)
-average_elapsed=1.4s
+SMOKE CONTRACT: PASS (28/28)
+average_elapsed=0.4s
+all final smoke cases: rounds=0
 ```
+
+El gate final cubre rankings, ventanas temporales, perfiles, GPS, comparaciones entre jugadores y por posición, partidos, calidad de datos, guardrails, ruido/fuera de dominio y follow-ups encadenados.
 
 Proveedor opcional implementado:
 
@@ -274,6 +282,7 @@ Estas reglas no requieren un nuevo gate mientras no cambie su significado estruc
 - el gate visual humano es obligatorio para dashboard y PDF;
 - las capas superiores no pueden inventar métricas o recomendaciones no existentes en capas inferiores;
 - no reabrir DATA / FEATURES / EXPERT / MATCH RATING sin incidencia concreta o evidencia nueva;
+- no volver al patrón `usuario prueba frases al azar → se añade una regla`: la cobertura del Assistant se gobierna mediante contrato + tests + CI;
 - despliegue público del dataset profesional continúa bloqueado mientras no se decida expresamente lo contrario.
 
 ## Regla de uso
