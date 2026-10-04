@@ -1,8 +1,8 @@
 # Football Performance System
 
-Sistema de análisis de rendimiento futbolístico orientado a equipos amateur y semiprofesionales sin departamento de análisis propio. Convierte datos observables de vídeo y GPS opcional en información estructurada, auditable y utilizable por un cuerpo técnico.
+Sistema de análisis de rendimiento futbolístico para equipos amateur y semiprofesionales sin departamento de análisis propio. Convierte datos observables de vídeo y GPS opcional en información estructurada, auditable y utilizable por un cuerpo técnico.
 
-El repositorio forma parte de un Trabajo Final de Máster en **Data Science e Inteligencia Artificial**. El producto principal es una aplicación web funcional; los PDF y el asistente IA son capas complementarias sobre analytics ya calculados.
+El repositorio forma parte de un Trabajo Final de Máster en **Data Science e Inteligencia Artificial**. El producto principal es una aplicación web funcional; los PDF y el asistente IA son capas downstream sobre analytics ya calculados.
 
 ## Hipótesis del TFM
 
@@ -17,49 +17,13 @@ No demuestra que el sistema mejore causalmente las decisiones de un entrenador, 
 ## Estado actual
 
 ```text
-GLOBAL END-TO-END QA        PASS
-PUBLIC SYNTHETIC DEMO       PASS
-REPRODUCIBILITY             PASS
-CI AUTOMÁTICO               PASS
-COACH COPILOT LOCAL E2E     PASS 9/9
+GLOBAL END-TO-END QA            PASS
+PUBLIC SYNTHETIC DEMO           PASS
+REPRODUCIBILITY                 PASS
+CI AUTOMÁTICO                   PASS
+COACH COPILOT LOCAL REAL        PASS 22/22 · avg 1.4s
+OPENAI BYOK CONTRACT            PASS
 ```
-
-Cadena validada:
-
-```text
-Collector / Import + GPS opcional
-→ DuckDB
-→ Features
-→ Analytics
-→ Match Rating
-→ GPS
-→ Expert N1000-N13000
-→ Dashboard
-→ Access control
-→ Demo presentation
-→ Coach Copilot
-→ PDF
-```
-
-Estado resumido:
-
-- Data Collector HTML V1.1 cerrado y oficial;
-- taxonomía `event_catalog v0.3.0` congelada;
-- Data Layer DuckDB con unidad principal `player_match`;
-- normalización GPS multi-proveedor validada;
-- GPS sintético de integración explícitamente etiquetado;
-- Feature Engine FEATURE-01/02/03 validado;
-- Analytics Engine validado;
-- sistema experto `expert_0.7.0` N1000-N13000 validado;
-- Match Rating V5 activo y congelado;
-- Performance Index histórico/posicional experimental;
-- Attention Centre auditable;
-- dashboard Streamlit Team / Player / Match / Físico-GPS / Asistente;
-- Coach Copilot local mediante Ollama y tools Python read-only;
-- informes PDF Team / Player / Match V6;
-- control de acceso estructural;
-- demo pública sintética reproducible desde cero;
-- GitHub Actions activo en `push` y `pull_request`.
 
 Fuente de verdad operativa: [`PROJECT_STATE.md`](PROJECT_STATE.md).
 
@@ -97,10 +61,9 @@ Entrada oficial:
 
 ```text
 collector/data_collector_futbol.html
-→ collector/data_collector_futbol_v1.html
 ```
 
-Taxonomía:
+Taxonomía congelada:
 
 ```text
 event_catalog v0.3.0
@@ -109,28 +72,21 @@ event_catalog v0.3.0
 Registra hechos observables y contexto de partido; no calcula métricas avanzadas.
 
 Incluye:
-
 - partido, equipo, rival, fecha y formación;
-- jugador, dorsal editable, titular/suplente, entrada/salida y minutos;
+- jugador, dorsal, titular/suplente y minutos;
 - rol, lado y cambios de rol;
 - pase normal/largo/centro con éxito/fallo;
 - pase clave y asistencia;
 - regates y pérdidas;
 - remates con outcomes exclusivos;
-- defensa: entrada, intercepción, bloqueo y despeje;
-- faltas con x/y;
-- tarjetas y segunda amarilla;
-- penaltis;
+- entrada, intercepción, bloqueo y despeje;
+- faltas con localización;
+- tarjetas y penaltis;
 - córners/ABP y resultado de secuencia;
 - portero: parada y gol encajado;
-- autosave, undo, CSV eventos, CSV resumen y JSON;
-- interfaz visible en castellano y responsive.
+- exportación estructurada y autosave.
 
-Estado:
-
-```text
-COLLECTOR V1.1 FINAL GATE: PASS
-```
+No recoge manualmente xG, PPDA, posesión avanzada, pressing, heatmaps, fatiga ni métricas derivables.
 
 ---
 
@@ -161,8 +117,6 @@ PEER_ROLE_PRIOR
 
 El jugador actual queda excluido del pool de peers y cada peer recibe el mismo peso.
 
-Analytics no crea por sí mismo rankings, recomendaciones ni labels de rendimiento bueno/malo.
-
 ---
 
 ## Match Rating y Performance Index
@@ -171,22 +125,10 @@ Analytics no crea por sí mismo rankings, recomendaciones ni labels de rendimien
 
 ```text
 match_rating_v0.5-candidate
+coverage=590/590 en el caso profesional de desarrollo
 ```
 
-Valoración inmediata jugador-partido, disponible desde el primer partido.
-
-Baseline validado del caso profesional de desarrollo:
-
-```text
-played_rows=590
-rated_rows=590
-rating_coverage=1.0000
-matches=38
-goalkeeper_rows=38
-generic_role_rows=172
-```
-
-V5 está congelado. No se modifica sin nueva evidencia, experimento explícito y validación.
+Valoración inmediata jugador-partido. Está congelado: no se modifica sin nueva evidencia, experimento explícito y validación.
 
 ### Performance Index
 
@@ -249,66 +191,100 @@ GPS real observado > GPS sintético
 
 No existen umbrales canónicos de HSR, sprint, workload, fatiga, readiness o riesgo de lesión.
 
-GPS no modifica Match Rating, Performance Index ni decisiones expertas.
-
 ---
 
 ## Modos del producto
 
-### Team Mode
-
-Estado del equipo, plantilla, forma, participación, Match Rating, Performance Index, evolución, tendencias descriptivas, evidencia experta y GPS opcional.
-
-### Player Mode
-
-Perfil individual, Match Ratings, Performance Index, dimensiones, evolución, rol observado, expert, GPS y PDF.
-
-### Match Mode
-
-Operativo desde el primer partido: ratings, confianza, minutos, roles, observaciones deterministas, GPS y PDF.
-
-### Físico / GPS
-
-Capa descriptiva opcional y separada de las decisiones deportivas críticas.
-
-### Rival Mode
-
-Extensión futura. El sistema principal no depende de datos del rival.
+- **Team Mode**: estado del equipo, plantilla, forma, participación, ratings, tendencias y evidencia.
+- **Player Mode**: perfil individual, evolución, rol observado, expert system, GPS y PDF.
+- **Match Mode**: ratings, minutos, roles, observaciones deterministas, GPS y PDF.
+- **Físico / GPS**: capa descriptiva opcional separada de las decisiones críticas.
+- **Calidad y alertas**: cobertura, limitaciones y atención de datos.
+- **Asistente IA**: consultas en lenguaje natural sobre resultados estructurados.
+- **Rival Mode**: extensión futura; el sistema principal no depende de datos del rival.
 
 ---
 
 ## Coach Copilot
 
-Arquitectura vigente:
+El asistente ya no depende de que un LLM interprete todas las preguntas.
+
+### Runtime local final
 
 ```text
-pregunta natural
-→ Ollama Granite 4.2 3B / clasificación estructurada de intención
+pregunta
+→ router determinista de alta confianza
 → tools Python read-only
-→ DuckDB + analytics / expert system materializados
-→ evidencia estructurada compacta
-→ Ollama Granite 4.2 3B / síntesis
-→ guard numérico / policy
-→ Coach Copilot
+→ DuckDB / analytics / expert system
+→ respuesta factual determinista
 ```
 
-MVP oficial: castellano.
-
-Perfil local validado:
+Solo si la intención sigue siendo ambigua:
 
 ```text
-model=granite4.2:3b
-thinking=False
-FPS_AGENT_NUM_CTX=1536
-LOCAL AGENT CONTRACT: PASS (9/9)
-average_elapsed=34.7s en el PC objetivo
+pregunta ambigua
+→ qwen3.5:4b
+→ selección semántica de tool
+→ tools Python read-only
+→ DuckDB / analytics / expert system
+→ evidencia estructurada
+→ respuesta factual
 ```
 
-El gate end-to-end real cubre máximo goleador, asistencias, evolución de jugador, GPS, detalle de partido, estado del equipo, calidad de datos, guardrail de cansancio/fatiga y pregunta fuera de alcance.
+El LLM no tiene acceso directo a DuckDB y no recalcula Match Rating, Performance Index, rankings ni decisiones expertas.
 
-El modelo interpreta la intención y redacta, pero no accede directamente a DuckDB ni recalcula Match Rating, Performance Index, features críticas o decisiones expertas. Las consultas se ejecutan en herramientas de solo lectura y una pregunta no soportada no cae en un resumen genérico del equipo.
+Validación local real con DuckDB profesional:
 
-No están validadas y por tanto siguen bloqueadas las inferencias de fatiga/readiness/lesión, XI ideal y recomendaciones tácticas automáticas.
+```text
+SMOKE CONTRACT: PASS (22/22)
+average_elapsed=1.4s
+consultas deterministas típicas=0.1–0.8s
+follow-ups=0.1–0.2s
+```
+
+Smoke reproducible:
+
+```powershell
+python llm\smoke_test_coach_agent.py
+```
+
+### OpenAI opcional con clave del usuario
+
+La misma página del asistente permite seleccionar:
+
+```text
+Local · Qwen
+OpenAI API · clave propia
+```
+
+En modo OpenAI:
+- las preguntas claras siguen siendo deterministas y no consumen API;
+- solo el lenguaje ambiguo puede usar OpenAI como router semántico;
+- OpenAI únicamente puede pedir tools FPS bounded/read-only;
+- cada tool call se revalida localmente;
+- DuckDB sigue siendo consultado por Python, no por el modelo;
+- la API key pertenece al usuario y la UI no la persiste en DuckDB ni en archivos del proyecto;
+- los mismos guardrails deportivos siguen activos.
+
+Estado:
+
+```text
+implementación                     PASS
+unit / contract tests              PASS
+synthetic demo CI                  PASS
+live call con API key real         NO VALIDADA AÚN
+```
+
+La conexión inversa `ChatGPT → FPS` mediante MCP no forma parte del MVP actual.
+
+### Límites explícitos
+
+El asistente no debe inventar ni afirmar sin policy validada:
+- fatiga o readiness;
+- riesgo de lesión;
+- XI ideal o quién debe ser titular;
+- recomendación táctica automática;
+- `mejor jugador`, `más completo` o `más determinante` sin una métrica analítica aprobada.
 
 ---
 
@@ -352,12 +328,6 @@ report_payloads=PASS
 redistribution_status=REDISTRIBUTABLE_SYNTHETIC_DEMO
 ```
 
-La demo sintética reutiliza el código real del proyecto para Features, Analytics, Expert System, GPS y capas de producto.
-
-Match Rating V5 y Performance Index de esta demo son fixtures sintéticos de compatibilidad de UI/producto. No representan una revalidación científica del modelo calibrado en el caso profesional.
-
-Más detalle: [`publication/README.md`](publication/README.md).
-
 ---
 
 ## Ejecutar la demo pública desde un clone limpio
@@ -377,20 +347,24 @@ No se necesita la DuckDB profesional para esta demo.
 
 ---
 
+## Ejecutar el caso local de desarrollo
+
+```powershell
+$env:FPS_DB_PATH="D:\Data\Sergi\Desktop\football-performance-system\data\football_performance.duckdb"
+$env:FPS_LOCAL_LLM_MODEL="qwen3.5:4b"
+streamlit run app\streamlit_app.py
+```
+
+Para usar fallback semántico local se necesita Ollama y el modelo configurado. Las consultas deterministas siguen funcionando aunque Ollama no esté disponible.
+
+---
+
 ## CI automático
 
 Workflow:
 
 ```text
 .github/workflows/tests.yml
-```
-
-Se ejecuta automáticamente en:
-
-```text
-push
-pull_request
-workflow_dispatch
 ```
 
 Pipeline:
@@ -404,16 +378,14 @@ Ubuntu limpio
 → validar demo end-to-end
 ```
 
-Ejecución validada:
+Runs recientes de referencia:
 
 ```text
-GitHub Actions run 37152519764
-Unit and contract tests: PASS
-Synthetic public demo: PASS
-Conclusion: SUCCESS
+37162911509 = SUCCESS — smoke test direct execution fix
+37163349049 = SUCCESS — optional OpenAI Coach Copilot
+37163417219 = SUCCESS — OpenAI BYOK UI + contracts
+37163457928 = SUCCESS — external tool-surface tests
 ```
-
-Esto verifica que el repositorio funciona fuera del ordenador de desarrollo.
 
 ---
 
@@ -435,7 +407,6 @@ Esto verifica que el repositorio funciona fuera del ordenador de desarrollo.
 ## DS / ML experimental
 
 Experimentos documentados:
-
 - change detection → experimental / no deploy;
 - player similarity → exploratorio / no deploy;
 - role/source-position classification → context-only / no deploy.
@@ -449,7 +420,6 @@ La robustez pre-match mostró que un baseline simple basado en historial posicio
 ## Límites del proyecto
 
 No está validado afirmar que el sistema:
-
 - mejora causalmente las decisiones del entrenador;
 - aumenta rendimiento, puntos o victorias;
 - detecta fatiga o readiness;
@@ -465,17 +435,14 @@ La autenticación completa de producción tampoco forma parte del MVP actual.
 ## Documentación clave
 
 - [`PROJECT_STATE.md`](PROJECT_STATE.md) — fuente de verdad operativa;
-- [`docs/TFM_MEMORIA_BASE.md`](docs/TFM_MEMORIA_BASE.md) — borrador técnico de la memoria;
+- [`docs/TFM_MANUSCRIPT_DRAFT.md`](docs/TFM_MANUSCRIPT_DRAFT.md) — manuscrito integrado;
 - [`docs/TFM_EVIDENCE_MATRIX.md`](docs/TFM_EVIDENCE_MATRIX.md) — claims y evidencias;
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — arquitectura vigente;
-- [`docs/WORKFLOW.md`](docs/WORKFLOW.md) — flujo actual;
-- [`docs/DECISIONS.md`](docs/DECISIONS.md) — decisiones estructurales;
-- [`docs/DATA_SCIENCE_AI_STRATEGY.md`](docs/DATA_SCIENCE_AI_STRATEGY.md) — estrategia DS/IA;
-- [`docs/MATCH_RATING_PRODUCT_CONTRACT.md`](docs/MATCH_RATING_PRODUCT_CONTRACT.md) — Match Rating V5;
-- [`dsai/README.md`](dsai/README.md) — experimentación DS/ML;
-- [`collector/COLLECTOR_MVP.md`](collector/COLLECTOR_MVP.md) — Collector V1.1;
-- [`gps/README.md`](gps/README.md) — GPS;
-- [`publication/README.md`](publication/README.md) — publicación y reproducibilidad.
+- [`docs/TFM_METHODOLOGY_DRAFT.md`](docs/TFM_METHODOLOGY_DRAFT.md) — metodología;
+- [`docs/TFM_RESULTS_DRAFT.md`](docs/TFM_RESULTS_DRAFT.md) — resultados;
+- [`docs/TFM_DISCUSSION_CONCLUSIONS_DRAFT.md`](docs/TFM_DISCUSSION_CONCLUSIONS_DRAFT.md) — discusión y conclusiones;
+- [`docs/TFM_SCREENSHOT_CHECKLIST.md`](docs/TFM_SCREENSHOT_CHECKLIST.md) — capturas de entrega;
+- [`docs/TFM_SUBMISSION_CHECKLIST.md`](docs/TFM_SUBMISSION_CHECKLIST.md) — checklist final;
+- [`publication/README.md`](publication/README.md) — demo y reproducibilidad.
 
 ---
 
@@ -505,13 +472,14 @@ football-performance-system/
 
 ## Fase actual
 
-El núcleo funcional está cerrado. La prioridad inmediata vuelve al cierre visual y académico:
+El núcleo funcional está cerrado. Prioridad inmediata:
 
 ```text
 1  Revisión visual final del Coach Copilot
 2  Capturas canónicas del producto
-3  Adaptación a plantilla / maquetación final
-4  Defensa y demo final
+3  Sincronización final del manuscrito con la arquitectura actual
+4  Checklist de entrega
+5  Maquetación / defensa / demo final
 ```
 
 Criterio de cierre:
