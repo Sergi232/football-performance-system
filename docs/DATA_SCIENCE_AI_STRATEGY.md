@@ -223,6 +223,7 @@ Runtime local final:
 
 ```text
 DATA / ANALYTICS / DECISION ENGINE
+→ PREFLIGHT / GUARDRAILS
 → DETERMINISTIC QUERY ROUTER
 → READ-ONLY TOOLS
 → PYTHON / DUCKDB
@@ -230,7 +231,7 @@ DATA / ANALYTICS / DECISION ENGINE
 → COACH
 ```
 
-Solo si una consulta no se puede resolver con suficiente confianza:
+Solo si una consulta no se puede resolver con suficiente confianza y sigue dentro del dominio:
 
 ```text
 QUESTION AMBIGUA
@@ -246,18 +247,23 @@ Principios:
 - MVP en castellano;
 - consultas claras sin dependencia de LLM;
 - `qwen3.5:4b` únicamente como fallback semántico local;
+- ruido, meta-consultas y fuera de dominio obvio se resuelven mediante preflight determinista;
 - tools Python read-only;
 - sin acceso directo del LLM a DuckDB;
 - el LLM no crea Match Rating, Performance Index, features críticas ni decisiones expertas;
 - guardrails deterministas para inferencias no validadas;
-- follow-ups anclados a la última consulta sustantiva.
+- follow-ups anclados a la última consulta sustantiva;
+- comparación por posición permitida con criterio explícito y sin crear un score nuevo.
 
-Validación local real:
+Validación local real final:
 
 ```text
-SMOKE CONTRACT: PASS (22/22)
-average_elapsed=1.4s
+SMOKE CONTRACT: PASS (28/28)
+average_elapsed=0.4s
+all final smoke cases: rounds=0
 ```
+
+El smoke final cubre rankings, ventanas, perfiles, GPS, comparaciones entre jugadores, comparaciones por posición, partidos, calidad, guardrails, ruido/fuera de dominio y follow-ups.
 
 La aplicación incorpora además un proveedor opcional `OpenAI API · clave propia`. Este modo reutiliza la misma capa de tools y no modifica Analytics/Decision Engine. Las tool calls externas se revalidan localmente y la API key del usuario no se persiste en DuckDB ni archivos del proyecto. La integración pasa contract tests y CI, pero no dispone todavía de benchmark live con una API key real.
 
@@ -271,7 +277,7 @@ EXPERT BASELINE                     ✓
 MATCH RATING V5                     ✓
 PERFORMANCE INDEX EXPERIMENTAL      ✓
 DS/ML EXPERIMENTS + NO-DEPLOY       ✓
-COACH COPILOT FINAL                 ✓
+COACH COPILOT FINAL 28/28           ✓
 OPENAI BYOK CONTRACT                ✓
 REPORTS / PRODUCT                   ✓
 GLOBAL END-TO-END QA                ✓
