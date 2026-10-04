@@ -58,6 +58,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--input-dir", type=Path, default=None)
     p.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
     p.add_argument("--gk-gate", type=Path, default=DEFAULT_GK_GATE)
+    p.add_argument("--gk-frozen-artifact", type=Path, default=None)
     p.add_argument("--min-reference-minutes", type=float, default=30.0)
     p.add_argument("--max-pca-fit-rows", type=int, default=200000)
     return p.parse_args()
@@ -112,23 +113,31 @@ def load_existing_routes(db: Path) -> tuple[pd.DataFrame, pd.DataFrame, int]:
 
 def build_final_goalkeeper(
     db: Path,
-    input_dir: Path,
+    input_dir: Path | None,
     min_reference_minutes: float,
     max_pca_fit_rows: int,
+    frozen_artifact: Path | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     local = gk.load_local(db)
     if local.empty or local["match_date"].isna().any():
         raise RuntimeError("Local goalkeeper rows/date coverage unavailable")
 
     cutoff = pd.Timestamp(local["match_date"].min())
-    reference, _ = gk.load_reference(input_dir, cutoff, min_reference_minutes)
-    train, valid, test, split_info = gkgate.split_dates(reference)
-
-    # Reproduce the exact methodology that passed the final gate: TRAIN-only reference
-    # and calibration, validated weight locked at 90/10, untouched VALID/TEST kept for audit.
-    ref = gkgate.fit_reference(train, max_pca_fit_rows)
-    comp_train = gkgate.components(train, ref)
-    calibration = gkgate.fit_calibration(train, comp_train, SHOT_WEIGHT)
+    if frozen_artifact is not None:
+        frozen = json.loads(frozen_artifact.expanduser().resolve().read_text(encoding="utf-8"))
+        if frozen.get("artifact_version") != "perf18_v5_gk_reference_frozen_v1":
+            raise RuntimeError("Unsupported frozen V5 GK artifact")
+        ref, calibration, split_info = frozen["reference_model"], frozen["calibration"], frozen["reference_split"]
+        reference_rows = frozen["reference_rows"]
+    else:
+        if input_dir is None:
+            raise RuntimeError("V5 GK calibration needs input data or --gk-frozen-artifact")
+        reference, _ = gk.load_reference(input_dir, cutoff, min_reference_minutes)
+        train, valid, test, split_info = gkgate.split_dates(reference)
+        ref = gkgate.fit_reference(train, max_pca_fit_rows)
+        comp_train = gkgate.components(train, ref)
+        calibration = gkgate.fit_calibration(train, comp_train, SHOT_WEIGHT)
+        reference_rows = {"train": int(len(train)), "valid": int(len(valid)), "test": int(len(test))}
     comp_local = gkgate.components(local, ref)
     score = gkgate.score(local, comp_local, SHOT_WEIGHT, calibration)
 
@@ -163,14 +172,13 @@ def build_final_goalkeeper(
         "local_matches": int(out["match_id"].nunique()),
         "reference_cutoff_before": str(cutoff.date()),
         "reference_split": split_info,
-        "reference_rows": {
-            "train": int(len(train)), "valid": int(len(valid)), "test": int(len(test))
-        },
+        "reference_rows": reference_rows,
         "shot_weight": SHOT_WEIGHT,
         "distribution_weight": DIST_WEIGHT,
         "calibration": calibration,
         "prior_save_rate": float(ref["prior_save_rate"]),
         "prior_strength_shots": float(ref["prior_strength_shots"]),
+        "reference_model": ref,
     }
     return out[RATING_COLUMNS].reset_index(drop=True), meta
 
@@ -181,6 +189,7 @@ def build_candidate(
     gate: dict[str, Any],
     min_reference_minutes: float,
     max_pca_fit_rows: int,
+    gk_frozen_artifact: Path | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     outfield, fallback, expected_played = load_existing_routes(db)
 
@@ -197,7 +206,7 @@ def build_candidate(
     fallback["source_score_version"] = "match_rating_v0.2_fallback_role_unavailable"
 
     goalkeeper, gk_meta = build_final_goalkeeper(
-        db, input_dir, min_reference_minutes, max_pca_fit_rows
+        db, input_dir, min_reference_minutes, max_pca_fit_rows, gk_frozen_artifact
     )
 
     final = pd.concat([outfield[RATING_COLUMNS], goalkeeper, fallback[RATING_COLUMNS]], ignore_index=True)
@@ -256,7 +265,7 @@ def main() -> None:
     db = args.db.expanduser().resolve()
     if not db.exists():
         raise FileNotFoundError(db)
-    input_dir = discover_input_dir(args.input_dir)
+    input_dir = None if args.gk_frozen_artifact is not None else discover_input_dir(args.input_dir)
     gate = load_gate(args.gk_gate)
     out_dir = args.output_dir.expanduser().resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -266,11 +275,21 @@ def main() -> None:
         input_dir,
         gate,
         float(args.min_reference_minutes),
-        int(args.max_pca_fit_rows),
+        int(args.max_pca_fit_rows), args.gk_frozen_artifact,
     )
     materialize(db, frame)
     artifact = out_dir / "match_rating_v5_candidate_metadata.json"
     artifact.write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
+    if args.gk_frozen_artifact is None:
+        (out_dir / "match_rating_v5_gk_reference_frozen.json").write_text(
+            json.dumps({
+                "artifact_version": "perf18_v5_gk_reference_frozen_v1",
+                "reference_model": metadata["goalkeeper"]["reference_model"],
+                "calibration": metadata["goalkeeper"]["calibration"],
+                "reference_split": metadata["goalkeeper"]["reference_split"],
+                "reference_rows": metadata["goalkeeper"]["reference_rows"],
+            }, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
 
     print("PERF-18 UNIFIED MATCH RATING V5 CANDIDATE: MATERIALIZED")
     print(f"version={FINAL_VERSION}")

@@ -70,6 +70,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--db", type=Path, default=DEFAULT_DB)
     p.add_argument("--input-dir", type=Path, default=None)
     p.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
+    p.add_argument("--frozen-artifact", type=Path, default=None)
     return p.parse_args()
 
 
@@ -197,12 +198,21 @@ def build_reference_models(input_dir: Path, cutoff: pd.Timestamp) -> tuple[dict[
     return models, counts
 
 
-def build_candidate(db_path: Path, input_dir: Path) -> tuple[pd.DataFrame, dict[str, Any]]:
+def build_candidate(db_path: Path, input_dir: Path | None, frozen_artifact: Path | None = None) -> tuple[pd.DataFrame, dict[str, Any]]:
     local = load_local_source(db_path)
     if local["match_date"].isna().any():
         raise RuntimeError("Local match dates contain NULL; leakage-safe reference cutoff cannot be guaranteed")
     cutoff = pd.Timestamp(local["match_date"].min())
-    models, reference_counts = build_reference_models(input_dir, cutoff)
+    if frozen_artifact is not None:
+        frozen = json.loads(frozen_artifact.expanduser().resolve().read_text(encoding="utf-8"))
+        if frozen.get("artifact_version") != "perf18_v4_outfield_reference_frozen_v1":
+            raise RuntimeError("Unsupported frozen V4 reference artifact")
+        models = frozen["models"]
+        reference_counts = frozen["reference_rows_by_role"]
+    else:
+        if input_dir is None:
+            raise RuntimeError("V4 calibration needs --input-dir or --frozen-artifact")
+        models, reference_counts = build_reference_models(input_dir, cutoff)
 
     out_parts: list[pd.DataFrame] = []
     for role in ROLE_ORDER:
@@ -252,6 +262,7 @@ def build_candidate(db_path: Path, input_dir: Path) -> tuple[pd.DataFrame, dict[
         "local_first_match_date": str(cutoff.date()),
         "professional_reference_policy": "match_date strictly before local_first_match_date",
         "professional_reference_rows_by_role": reference_counts,
+        "models": models,
         "local_rows": int(len(frame)),
         "local_matches": int(frame["match_id"].nunique()),
         "role_counts": {str(k): int(v) for k, v in frame["position_group"].value_counts().items()},
@@ -286,14 +297,25 @@ def main() -> None:
     db_path = args.db.expanduser().resolve()
     if not db_path.exists():
         raise FileNotFoundError(f"Database not found: {db_path}")
-    input_dir = discover_input_dir(args.input_dir)
+    input_dir = None if args.frozen_artifact is not None else discover_input_dir(args.input_dir)
     out_dir = args.output_dir.expanduser().resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    frame, metadata = build_candidate(db_path, input_dir)
+    frame, metadata = build_candidate(db_path, input_dir, args.frozen_artifact)
     materialize(db_path, frame)
     artifact = out_dir / "match_rating_v4_local_metadata.json"
     artifact.write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
+    if args.frozen_artifact is None:
+        frozen = {
+            "artifact_version": "perf18_v4_outfield_reference_frozen_v1",
+            "source_version": SOURCE_VERSION,
+            "reference_cutoff_before": metadata["local_first_match_date"],
+            "reference_rows_by_role": metadata["professional_reference_rows_by_role"],
+            "models": metadata["models"],
+        }
+        (out_dir / "match_rating_v4_reference_frozen.json").write_text(
+            json.dumps(frozen, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
 
     print("PERF-18 MATCH RATING V4 EXPERIMENTAL OUTFIELD: MATERIALIZED")
     print(f"version={V4_VERSION}")
