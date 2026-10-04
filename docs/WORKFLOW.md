@@ -1,6 +1,6 @@
 # Workflow del proyecto — fases, agentes y gates
 
-Fecha de sincronización: 03/10/2026
+Fecha de sincronización: 04/10/2026
 
 Este documento define cómo se trabaja sobre el estado actual del Football Performance System.
 
@@ -29,8 +29,8 @@ F6  PRODUCT UX                      CERRADO / OPERATIVO
 F7  REPORTING + ASSISTANT           CERRADO MVP / VALIDADO
 F8  GLOBAL QA                       CERRADO / PASS
 F9  FINAL DOCUMENTATION             ACTIVO
-F10 REPRODUCIBILITY / CI            ACTIVO
-F11 MEMORIA / DEFENSA               SIGUIENTE
+F10 REPRODUCIBILITY / CI            PASS / ACTIVO
+F11 MEMORIA / DEFENSA               ACTIVO
 ```
 
 `PROJECT_STATE.md` mantiene versiones, resultados de gates y limitaciones exactas.
@@ -38,15 +38,15 @@ F11 MEMORIA / DEFENSA               SIGUIENTE
 ## 3. Orden actual de trabajo
 
 ```text
-DOCUMENTATION SYNC
+FINAL UI CHECK
         ↓
-REPRODUCIBILITY PACKAGE
+CANONICAL SCREENSHOTS
         ↓
-VALIDATOR PATH CONSISTENCY
+DOCUMENTATION / MANUSCRIPT SYNC
         ↓
-CI PUSH / PULL_REQUEST
+SUBMISSION CHECKLIST
         ↓
-TFM MEMORY / DELIVERY README
+FORMATTING / DELIVERY
         ↓
 DEFENSE / FINAL DEMO
 ```
@@ -133,40 +133,58 @@ Consume resultados calculados; no crea nueva lógica analítica.
 
 ### A8 — AI Assistant
 
-Propietario de lenguaje natural, routing determinista, tools read-only, síntesis local, semantic guard y guardrails.
+Propietario de lenguaje natural, query grammar, routing determinista, tools read-only, fallback semántico, grounding y guardrails.
 
-Arquitectura:
+Runtime local:
 
 ```text
-analytics materializados
+analytics / expert outputs materializados
+→ router determinista de alta confianza
 → Python tools read-only
-→ router determinista
-→ compact evidence
-→ Ollama qwen3:1.7b
-→ semantic guard
-→ Coach Copilot
+→ DuckDB
+→ respuesta factual
 ```
 
-Estado: **LLM-02 cerrado MVP / castellano / smoke 4/4 PASS**.
-
-Contrato operativo local:
+Fallback solo cuando hace falta:
 
 ```text
-FPS_AGENT_NUM_CTX=1536
-FPS_AGENT_TIMEOUT=18
-thinking=False
-keep_alive=30m
+pregunta ambigua
+→ qwen3.5:4b
+→ selección semántica de tool
+→ contrato local de tools
+→ Python / DuckDB
+→ evidencia estructurada
+→ respuesta factual
 ```
 
-El warm-up debe usar el mismo `num_ctx` que producción.
+Estado local: **cerrado MVP / castellano / real smoke 22/22 PASS / avg 1.4s**.
+
+La mayoría de consultas soportadas no activa Qwen y responde en ~0.1–0.8s. El fallback semántico puede tardar ~20–30s en CPU.
+
+Proveedor opcional:
+
+```text
+OpenAI API · clave propia
+```
+
+Reglas:
+- las consultas claras siguen siendo locales/deterministas;
+- OpenAI solo puede seleccionar tools FPS bounded/read-only;
+- tool calls revalidadas localmente;
+- API key del usuario, no persistida en DuckDB ni archivos del proyecto;
+- mismo grounding y guardrails;
+- contract + CI PASS;
+- live API benchmark no validado todavía.
+
+No se implementa `ChatGPT → FPS` mediante MCP en el MVP.
 
 ### A9 — QA / Publication
 
 Propietario de tests, regressions, privacidad, anonimización, demo, instalación limpia, release y documentación.
 
-Estado: **Global end-to-end QA PASS**.
+Estado: **Global end-to-end QA PASS / synthetic demo PASS / CI PASS**.
 
-Trabajo activo: reproducibilidad pública y CI final.
+Trabajo activo: cierre de entrega y capturas finales.
 
 ## 5. Cómo se interpreta un fallo nuevo
 
@@ -187,9 +205,9 @@ No se rediseña arquitectura por defecto.
 ## 6. Paralelismo permitido
 
 Permitido:
-- documentación y reproducibilidad en paralelo si no modifican contratos analíticos;
-- CI y limpieza de documentación después de validar localmente los comandos;
-- preparación de memoria mientras se completa el paquete reproducible.
+- documentación, capturas y revisión de entrega en paralelo si no modifican contratos analíticos;
+- CI después de cambios de documentación/código;
+- preparación de memoria y defensa sobre el estado ya validado.
 
 No permitido:
 - Product inventando métricas;
@@ -288,11 +306,11 @@ Indicar de forma breve:
 ## 10. Prioridad actual
 
 ```text
-1  Documentation sync               ACTIVO
-2  Reproducibility package          SIGUIENTE
-3  Validator path consistency
-4  Reactivar CI push/PR
-5  Memoria / README de entrega
+1  Último gate visual del Asistente IA
+2  10 capturas canónicas
+3  Revisión final de documentación/manuscrito
+4  Submission checklist
+5  Maquetación / entrega
 6  Defensa / demo final
 ```
 
