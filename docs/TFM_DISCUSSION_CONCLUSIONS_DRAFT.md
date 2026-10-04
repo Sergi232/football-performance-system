@@ -1,6 +1,6 @@
 # TFM — Borrador de discusión y conclusiones
 
-Fecha: 03/10/2026
+Fecha: 04/10/2026
 Estado: borrador académico para integrar en la memoria final.
 Idioma: castellano.
 
@@ -10,7 +10,7 @@ Este documento interpreta los resultados del prototipo a la luz del marco teóri
 
 # 1. Discusión general
 
-El principal resultado del TFM es la construcción de un sistema end-to-end capaz de transformar datos simples de vídeo y GPS opcional en información estructurada para equipo, jugador y partido. El sistema no se limita a una métrica aislada: integra captura, almacenamiento, feature engineering, analítica, sistema experto, dashboard, asistente local y reporting dentro de una arquitectura auditable.
+El principal resultado del TFM es la construcción de un sistema end-to-end capaz de transformar datos simples de vídeo y GPS opcional en información estructurada para equipo, jugador y partido. El sistema no se limita a una métrica aislada: integra captura, almacenamiento, feature engineering, analítica, sistema experto, dashboard, asistente IA y reporting dentro de una arquitectura auditable.
 
 Este resultado encaja con la literatura de performance analysis que defiende una lectura contextual y multidimensional del rendimiento en fútbol. Mackenzie y Cushion (2013), Sarmento et al. (2014) y Sarmento et al. (2022) advierten contra interpretaciones reduccionistas basadas en un único indicador. La arquitectura implementada responde a este problema separando observaciones, features, evidencia analítica y decisión.
 
@@ -125,30 +125,65 @@ Esta limitación es una fortaleza metodológica del TFM: la ausencia de una conc
 
 ---
 
-# 9. Coach Copilot: utilidad lingüística con cálculo fuera del LLM
+# 9. Coach Copilot: lenguaje natural sin trasladar el cálculo al LLM
 
-El Coach Copilot obtuvo un resultado agregado de 66/68 casos correctos en su gate final y un smoke local 4/4 tras estabilizar el runtime de Ollama.
+La evolución del Coach Copilot mostró que usar un LLM en cada turno no era la solución más robusta ni eficiente para el hardware objetivo. Los benchmarks previos con distintos modelos permitieron comprobar que el routing semántico podía funcionar, pero con latencias elevadas y comportamientos espontáneos inconsistentes en algunas consultas.
 
-La arquitectura evita utilizar el LLM como fuente primaria de verdad:
+La arquitectura final cambió el problema: en lugar de validar una lista creciente de frases, se modeló un espacio de consultas composicional basado en:
 
 ```text
-DATA
-→ ANALYTICS
-→ DECISION ENGINE
-→ READ-ONLY TOOLS
-→ ROUTER
-→ LLM
-→ SEMANTIC GUARD
+entidad + operación + métrica + agregación + filtros + ventana + follow-up
 ```
 
-Esta separación responde a dos riesgos documentados en literatura:
+Las consultas de alta confianza se resuelven de forma determinista:
+
+```text
+QUESTION
+→ DETERMINISTIC ROUTER
+→ READ-ONLY TOOL
+→ PYTHON / DUCKDB
+→ STRUCTURED EVIDENCE
+→ FACTUAL ANSWER
+```
+
+Solo el lenguaje ambiguo activa `qwen3.5:4b` como router semántico local. El modelo no calcula métricas ni redacta por su cuenta rankings numéricos críticos.
+
+La validación real final obtuvo:
+
+```text
+SMOKE CONTRACT: PASS (22/22)
+average_elapsed=1.4s
+consultas deterministas típicas=0.1–0.8s
+follow-ups=0.1–0.2s
+```
+
+Este resultado no implica que todas las preguntas posibles respondan en 1,4 segundos. El fallback Qwen observado en una pregunta fuera de dominio tardó 25,3 segundos, lo que confirma que el hardware local sigue siendo una limitación cuando se necesita inferencia semántica.
+
+La arquitectura reduce dos riesgos documentados en la literatura:
 
 - hallucinations y falta de fidelidad factual en LLM (Huang et al., 2025);
-- ventaja de combinar lenguaje con memoria externa o herramientas especializadas (Lewis et al., 2020; Schick et al., 2023).
+- dependencia innecesaria de un modelo generativo cuando la consulta puede resolverse con herramientas estructuradas (Lewis et al., 2020; Schick et al., 2023).
 
-El resultado del TFM no demuestra que el modelo local sea infalible. Sí demuestra que el asistente puede integrarse como capa de interacción sin transferirle el cálculo crítico.
+## 9.1 Proveedor OpenAI opcional
 
-La elección de un modelo local pequeño también favorece privacidad y control operativo, aunque introduce restricciones de calidad y latencia que deberán reevaluarse si el producto escala.
+La aplicación incorpora además un modo `OpenAI API · clave propia`.
+
+Este modo no sustituye el motor analítico ni obliga a enviar cada consulta al proveedor externo. Las preguntas claras continúan siendo deterministas y no consumen API. Para lenguaje ambiguo, OpenAI puede seleccionar únicamente tools FPS bounded/read-only y cada llamada se revalida localmente antes de ejecutarse.
+
+Por tanto, el flujo mantiene:
+
+```text
+OPENAI
+→ intención / tool request
+→ validación local
+→ Python / DuckDB / analytics / expert
+→ evidencia estructurada
+→ respuesta grounded
+```
+
+La API key pertenece al usuario y la UI no la persiste en DuckDB ni en archivos del proyecto.
+
+La integración dispone de contract tests y CI, pero no se ha realizado todavía un benchmark live con una API key real. En consecuencia, no se presentan como resultados demostrados su latencia, coste o calidad externa.
 
 ---
 
@@ -187,7 +222,7 @@ Existe evidencia de que:
 3. existen controles explícitos contra leakage temporal;
 4. el sistema experto conserva trazabilidad y puede abstenerse de recomendar;
 5. GPS puede integrarse de forma opcional sin contaminar otras capas;
-6. el LLM funciona downstream de lógica determinista;
+6. el asistente IA funciona downstream de lógica determinista y herramientas read-only;
 7. el repositorio puede reconstruir una demo sintética en un entorno limpio.
 
 La hipótesis no queda contrastada en términos de impacto causal sobre decisiones, victorias, rendimiento deportivo o prevención de lesiones.
@@ -226,6 +261,14 @@ Existe control de acceso estructural, pero no autenticación completa de usuario
 
 La base de desarrollo no puede tratarse como dataset público mientras no exista confirmación explícita de derechos/licencia.
 
+## 12.8 Latencia del fallback local
+
+Aunque las consultas deterministas son rápidas, las preguntas que requieren Qwen pueden tardar decenas de segundos en CPU.
+
+## 12.9 Proveedor OpenAI
+
+El modo BYOK está integrado y validado contractualmente, pero no dispone todavía de benchmark live con una API key real.
+
 ---
 
 # 13. Conclusiones
@@ -242,7 +285,8 @@ Las principales contribuciones son:
 - Match Rating inmediato y Performance Index separado;
 - integración GPS descriptiva y opcional;
 - dashboard Team/Player/Match;
-- Coach Copilot local conectado a herramientas read-only;
+- Coach Copilot grounded con routing determinista y fallback semántico local;
+- integración OpenAI BYOK opcional bajo el mismo contrato de tools;
 - informes PDF downstream de analytics;
 - QA end-to-end;
 - demo sintética reproducible;
@@ -269,6 +313,8 @@ Orden recomendado:
 5. definición y evaluación de una policy de recomendación para N13000;
 6. comparación experto vs ML con ground truth independiente;
 7. automatización parcial del Collector mediante visión por computador si reduce coste real de captura;
-8. autenticación completa y despliegue solo cuando derechos/licencias estén resueltos.
+8. autenticación completa y despliegue solo cuando derechos/licencias estén resueltos;
+9. validación live de proveedores externos del asistente si aporta valor real;
+10. posible exposición futura de las tools mediante un protocolo estándar, sin convertirlo en dependencia del MVP.
 
 No debe priorizarse añadir nuevas métricas si no existe evidencia de que mejoran una decisión final del producto.
