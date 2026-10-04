@@ -11,9 +11,6 @@ import sys
 import time
 from pathlib import Path
 
-# When this file is executed directly (python llm/smoke_test_coach_agent.py),
-# Python puts llm/ on sys.path rather than the repository root. Add the root before
-# importing app.* or llm.* so the documented command works on Windows and Linux.
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -39,13 +36,7 @@ def _pick(names: list[str], token: str, fallback: str) -> str:
 
 def _run(label: str, question: str, *, team_id: str, history=None, expected_tool: str | None = None, expect_blocked: bool = False):
     start = time.perf_counter()
-    result = run_coach_agent_turn(
-        question,
-        db_path=DB,
-        team_id=team_id,
-        model=MODEL,
-        history=history,
-    )
+    result = run_coach_agent_turn(question, db_path=DB, team_id=team_id, model=MODEL, history=history)
     elapsed = time.perf_counter() - start
     tools = list(result.tools_used)
     if expect_blocked:
@@ -64,7 +55,6 @@ def _run(label: str, question: str, *, team_id: str, history=None, expected_tool
 def main() -> None:
     if not DB.exists():
         raise SystemExit(f"Database not found: {DB}")
-
     teams = list_teams(DB)
     if teams.empty:
         raise SystemExit("No teams available in database.")
@@ -100,7 +90,9 @@ def main() -> None:
         ("17 determinante", "¿Quién está siendo más determinante?", None, True),
         ("18 delanteros", "Compárame las principales estadísticas de los delanteros", "compare_role_players", False),
         ("19 centrales", "¿Quién ha rendido mejor en la posición de central? Muéstrame las métricas", "compare_role_players", False),
-        ("20 fuera dominio", "Explícame la teoría de juegos", None, False),
+        ("20 fuera dominio", "Explícame la teoría de juegos", None, True),
+        ("21 basura", "sss", None, True),
+        ("22 meta", "no puedes hacer nada", None, True),
     ]
 
     print("=" * 94)
@@ -113,13 +105,7 @@ def main() -> None:
     passed = 0
     times: list[float] = []
     for label, question, expected_tool, blocked in cases:
-        ok, elapsed, _ = _run(
-            label,
-            question,
-            team_id=team_id,
-            expected_tool=expected_tool,
-            expect_blocked=blocked,
-        )
+        ok, elapsed, _ = _run(label, question, team_id=team_id, expected_tool=expected_tool, expect_blocked=blocked)
         passed += int(ok)
         times.append(elapsed)
 
@@ -137,10 +123,7 @@ def main() -> None:
         ok, elapsed, result = _run(label, question, team_id=team_id, history=history, expected_tool="rank_players")
         passed += int(ok)
         times.append(elapsed)
-        history.extend([
-            {"role": "user", "content": question},
-            {"role": "assistant", "content": result.text},
-        ])
+        history.extend([{"role": "user", "content": question}, {"role": "assistant", "content": result.text}])
 
     print("\n" + "=" * 94)
     print("FOLLOW-UP DE COMPARACIÓN POR POSICIÓN")
@@ -150,10 +133,7 @@ def main() -> None:
     ok, elapsed, role_result = _run("R1", role_base, team_id=team_id, history=role_history, expected_tool="compare_role_players")
     passed += int(ok)
     times.append(elapsed)
-    role_history.extend([
-        {"role": "user", "content": role_base},
-        {"role": "assistant", "content": role_result.text},
-    ])
+    role_history.extend([{"role": "user", "content": role_base}, {"role": "assistant", "content": role_result.text}])
     ok, elapsed, _ = _run("R2", "Sí, compáralos", team_id=team_id, history=role_history, expected_tool="compare_role_players")
     passed += int(ok)
     times.append(elapsed)
