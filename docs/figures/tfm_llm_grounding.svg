@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="620" viewBox="0 0 1400 620">
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="700" viewBox="0 0 1400 700">
   <defs>
     <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
       <path d="M0,0 L12,6 L0,12 z" fill="#2f3b52"/>
@@ -9,55 +9,69 @@
       .box{fill:#f7f9fc;stroke:#2f3b52;stroke-width:2;rx:16}
       .logic{fill:#eef9f2;stroke:#2d7a4f;stroke-width:2;rx:16}
       .llm{fill:#fff6e8;stroke:#a96614;stroke-width:2;rx:16}
-      .label{font:700 20px Arial,sans-serif;fill:#172033;text-anchor:middle}
-      .small{font:400 15px Arial,sans-serif;fill:#4f5f72;text-anchor:middle}
+      .optional{fill:#f4f0ff;stroke:#6e57a8;stroke-width:2;rx:16}
+      .label{font:700 19px Arial,sans-serif;fill:#172033;text-anchor:middle}
+      .small{font:400 14px Arial,sans-serif;fill:#4f5f72;text-anchor:middle}
       .arrow{stroke:#2f3b52;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+      .dashed{stroke:#7b6a9e;stroke-width:2;fill:none;stroke-dasharray:8 7;marker-end:url(#arrow)}
       .rule{font:700 17px Arial,sans-serif;fill:#8f2d2d;text-anchor:middle}
+      .note{font:400 15px Arial,sans-serif;fill:#516074;text-anchor:middle}
     </style>
   </defs>
-  <rect width="1400" height="620" fill="#fff"/>
-  <text x="70" y="62" class="title">Coach Copilot — el LLM no es el motor analítico</text>
-  <text x="70" y="95" class="sub">Los cálculos críticos se resuelven antes de la síntesis lingüística</text>
 
-  <rect x="55" y="215" width="170" height="105" class="box"/>
-  <text x="140" y="257" class="label">DATA</text>
-  <text x="140" y="286" class="small">DuckDB</text>
+  <rect width="1400" height="700" fill="#fff"/>
+  <text x="70" y="58" class="title">Coach Copilot — deterministic-first, LLM downstream</text>
+  <text x="70" y="91" class="sub">Las métricas y decisiones críticas se calculan en Python/DuckDB; el modelo de lenguaje solo interpreta cuando hace falta</text>
 
-  <rect x="270" y="215" width="180" height="105" class="logic"/>
-  <text x="360" y="257" class="label">ANALYTICS</text>
-  <text x="360" y="286" class="small">evidencia materializada</text>
+  <rect x="55" y="210" width="165" height="105" class="box"/>
+  <text x="137" y="250" class="label">QUESTION</text>
+  <text x="137" y="279" class="small">lenguaje natural</text>
 
-  <rect x="495" y="215" width="200" height="105" class="logic"/>
-  <text x="595" y="257" class="label">DECISION ENGINE</text>
-  <text x="595" y="286" class="small">experto / gates</text>
+  <rect x="265" y="210" width="205" height="105" class="logic"/>
+  <text x="367" y="246" class="label">DETERMINISTIC</text>
+  <text x="367" y="270" class="label">ROUTER</text>
+  <text x="367" y="295" class="small">entidad · operación · métrica</text>
 
-  <rect x="740" y="215" width="180" height="105" class="logic"/>
-  <text x="830" y="257" class="label">READ-ONLY TOOLS</text>
-  <text x="830" y="286" class="small">consultas permitidas</text>
+  <rect x="515" y="210" width="190" height="105" class="logic"/>
+  <text x="610" y="250" class="label">READ-ONLY TOOLS</text>
+  <text x="610" y="279" class="small">contrato bounded</text>
 
-  <rect x="965" y="215" width="150" height="105" class="box"/>
-  <text x="1040" y="257" class="label">ROUTER</text>
-  <text x="1040" y="286" class="small">intención</text>
+  <rect x="750" y="210" width="195" height="105" class="logic"/>
+  <text x="847" y="246" class="label">PYTHON /</text>
+  <text x="847" y="270" class="label">DUCKDB</text>
+  <text x="847" y="295" class="small">analytics + expert</text>
 
-  <rect x="1160" y="160" width="180" height="105" class="llm"/>
-  <text x="1250" y="202" class="label">OLLAMA LLM</text>
-  <text x="1250" y="231" class="small">qwen3:1.7b</text>
+  <rect x="990" y="210" width="170" height="105" class="logic"/>
+  <text x="1075" y="250" class="label">EVIDENCE</text>
+  <text x="1075" y="279" class="small">estructurada</text>
 
-  <rect x="1160" y="330" width="180" height="105" class="llm"/>
-  <text x="1250" y="372" class="label">SEMANTIC GUARD</text>
-  <text x="1250" y="401" class="small">límites de claims</text>
+  <rect x="1205" y="210" width="145" height="105" class="box"/>
+  <text x="1277" y="250" class="label">COACH</text>
+  <text x="1277" y="279" class="small">respuesta factual</text>
 
-  <rect x="965" y="455" width="180" height="105" class="logic"/>
-  <text x="1055" y="497" class="label">COACH</text>
-  <text x="1055" y="526" class="small">respuesta explicada</text>
+  <line x1="220" y1="262" x2="265" y2="262" class="arrow"/>
+  <line x1="470" y1="262" x2="515" y2="262" class="arrow"/>
+  <line x1="705" y1="262" x2="750" y2="262" class="arrow"/>
+  <line x1="945" y1="262" x2="990" y2="262" class="arrow"/>
+  <line x1="1160" y1="262" x2="1205" y2="262" class="arrow"/>
 
-  <line x1="225" y1="267" x2="270" y2="267" class="arrow"/>
-  <line x1="450" y1="267" x2="495" y2="267" class="arrow"/>
-  <line x1="695" y1="267" x2="740" y2="267" class="arrow"/>
-  <line x1="920" y1="267" x2="965" y2="267" class="arrow"/>
-  <path d="M1115 267 C1140 267,1145 215,1160 215" class="arrow"/>
-  <line x1="1250" y1="265" x2="1250" y2="330" class="arrow"/>
-  <path d="M1160 382 C1100 410,1070 435,1055 455" class="arrow"/>
+  <text x="700" y="370" class="note">Si la intención no se puede resolver con suficiente confianza, se activa un router semántico opcional:</text>
 
-  <text x="690" y="390" class="rule">NO calcula Match Rating · NO inventa métricas · NO crea recomendaciones tácticas no validadas</text>
+  <rect x="355" y="410" width="280" height="105" class="llm"/>
+  <text x="495" y="449" class="label">LOCAL FALLBACK</text>
+  <text x="495" y="477" class="small">Qwen 3.5 4B · Ollama</text>
+  <text x="495" y="499" class="small">solo interpretación semántica</text>
+
+  <rect x="765" y="410" width="280" height="105" class="optional"/>
+  <text x="905" y="449" class="label">EXTERNAL OPTIONAL</text>
+  <text x="905" y="477" class="small">OpenAI API · clave propia</text>
+  <text x="905" y="499" class="small">mismo contrato de tools</text>
+
+  <path d="M367 315 C367 350,430 375,495 410" class="dashed"/>
+  <path d="M367 315 C520 350,780 360,905 410" class="dashed"/>
+  <path d="M495 515 C530 550,570 555,610 315" class="dashed"/>
+  <path d="M905 515 C850 555,700 555,610 315" class="dashed"/>
+
+  <text x="700" y="595" class="rule">NO acceso directo a DuckDB · NO recalcula Match Rating · NO inventa métricas · NO fuerza recomendaciones no validadas</text>
+  <text x="700" y="632" class="note">Consultas claras: 0 llamadas LLM · Ambiguas: LLM selecciona una tool validada, pero Python/DuckDB conserva el cálculo y la fuente de verdad</text>
 </svg>
