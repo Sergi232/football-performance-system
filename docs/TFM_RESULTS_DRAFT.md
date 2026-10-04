@@ -1,6 +1,6 @@
 # TFM — Borrador del capítulo de resultados
 
-Fecha: 03/10/2026
+Fecha: 04/10/2026
 Estado: borrador académico basado exclusivamente en evidencia técnica ya registrada.
 
 Regla: este documento no introduce nuevas métricas ni interpreta como causal aquello que los validators solo demuestran técnicamente.
@@ -257,40 +257,70 @@ Limitación:
 
 # 9. Coach Copilot
 
-El contrato `LLM-01` cerró correctamente las herramientas read-only y guardrails básicos.
+La arquitectura final prioriza un router determinista de alta confianza y reserva el LLM para lenguaje ambiguo.
 
-Evaluación final del Coach Copilot Spanish-only MVP:
-
-```text
-router = 17/17
-full aggregate = 66/68 = 97.1%
-runtime errors = 0
-safety failures = 0
-numeric grounding = PASS
-castellano = PASS
-subject contract = PASS
-average latency <= 12 s = PASS
-```
-
-Limitación menor aceptada:
-- 2 de 68 casos superaron el límite formal de frases.
-
-Tras resolver una incidencia operativa de contexto de Ollama, el smoke final local fue:
+Validación real sobre la DuckDB profesional:
 
 ```text
-model=qwen3:1.7b
-scope=SPANISH_ONLY_MVP
-num_ctx=1536
-ollama_warmup=PASS
-team_grounding_es=PASS
-quality_grounding_es=PASS
-guardrail_lineup_es=PASS
-guardrail_fatigue_es=PASS
-LOCAL AGENT CONTRACT: PASS (4/4)
+SMOKE CONTRACT: PASS (22/22)
+average_elapsed = 1.4s
+consultas deterministas típicas = 0.1–0.8s
+follow-ups encadenados = 0.1–0.2s
+fallback Qwen observado en pregunta fuera de dominio = 25.3s
 ```
+
+La batería incluye:
+- Match Rating más reciente;
+- Match Rating medio últimos cinco;
+- distancia media por partido;
+- top de remates;
+- asistencias;
+- evolución y perfil natural de jugador;
+- GPS;
+- comparación;
+- detalle de partido;
+- estado del equipo;
+- calidad de datos;
+- guardrails de fatiga, lesión y titularidad;
+- criterios globales no validados;
+- pregunta fuera de dominio;
+- follow-ups ordinales, ventana temporal y evidencia.
+
+El resultado muestra que las consultas soportadas y claras ya no dependen de un LLM en cada turno. `qwen3.5:4b` queda como fallback semántico cuando el router determinista no puede resolver la intención con suficiente confianza.
+
+Los guardrails bloquean explícitamente:
+- fatiga/cansancio;
+- readiness;
+- riesgo de lesión;
+- XI/titularidad;
+- recomendación táctica automática no validada;
+- conceptos como «mejor jugador», «más completo» o «más determinante» sin una definición analítica aprobada.
+
+## 9.1 OpenAI BYOK opcional
+
+La aplicación incorpora una segunda opción de motor de lenguaje:
+
+```text
+OpenAI API · clave propia
+```
+
+Las consultas claras siguen utilizando la ruta determinista local y no generan una llamada API. Para consultas ambiguas, OpenAI puede seleccionar únicamente tools FPS bounded/read-only; cada llamada se revalida mediante el contrato local antes de ejecutarse.
+
+Validación disponible:
+
+```text
+external tool surface = PASS
+local revalidation of arguments = PASS
+unknown external tool dropped = PASS
+missing API key guard = PASS
+unit / contract tests = PASS
+synthetic demo CI = PASS
+```
+
+No se ha ejecutado todavía un benchmark live con una API key real. Por tanto, no se reportan resultados de latencia, coste o calidad live para este modo.
 
 No están validados:
-- ranking por rol;
+- ranking por rol como recomendación;
 - player similarity como función final;
 - predicción futura;
 - XI ideal;
@@ -398,14 +428,13 @@ checkout limpio
 → validator end-to-end
 ```
 
-Tras corregir el `PYTHONPATH` del runner, la ejecución de referencia fue:
+Runs recientes de referencia:
 
 ```text
-run = 37081464123
-Install dependencies = PASS
-Run unit and contract tests = PASS
-Build and validate synthetic public demo = PASS
-Conclusion = SUCCESS
+37162911509 = SUCCESS — direct execution smoke fix
+37163349049 = SUCCESS — optional OpenAI Coach Copilot
+37163417219 = SUCCESS — OpenAI BYOK UI + contracts
+37163457928 = SUCCESS — external tool-surface contract tests
 ```
 
 Esto demuestra reproducibilidad técnica desde un entorno limpio del repositorio.
@@ -448,7 +477,8 @@ captura de datos realista
 + Match Rating
 + GPS opcional
 + dashboard
-+ LLM grounded
++ Coach Copilot grounded
++ proveedor externo BYOK opcional
 + PDF
 + QA
 + reproducibilidad
