@@ -82,16 +82,16 @@ def get_team_matches(db_path: Path, team_id: str) -> pd.DataFrame:
                 CASE WHEN m.source_type='collector_html_v1.1' THEN ev.goals_against ELSE tm.score_against END AS score_against,
                 CASE WHEN m.source_type='collector_html_v1.1' THEN ev.corners_for END AS corners_for,
                 CASE WHEN m.source_type='collector_html_v1.1' THEN ev.corners_against END AS corners_against,
-                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.fouls_received END AS fouls_received,
-                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.fouls_committed END AS fouls_committed,
-                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.yellow_cards END AS yellow_cards,
-                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.red_cards END AS red_cards,
-                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.penalties_won END AS penalties_won,
-                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.penalties_conceded END AS penalties_conceded,
-                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.shots_total END AS shots_total,
-                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.shots_on_target END AS shots_on_target,
-                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.passes_total END AS passes_total,
-                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.passes_completed END AS passes_completed,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.fouls_received ELSE raw.fouls_received END AS fouls_received,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.fouls_committed ELSE raw.fouls_committed END AS fouls_committed,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.yellow_cards ELSE raw.yellow_cards END AS yellow_cards,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.red_cards ELSE raw.red_cards END AS red_cards,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.penalties_won ELSE raw.penalties_won END AS penalties_won,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.penalties_conceded ELSE raw.penalties_conceded END AS penalties_conceded,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.shots_total ELSE raw.shots_total END AS shots_total,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.shots_on_target ELSE raw.shots_on_target END AS shots_on_target,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.passes_total ELSE raw.passes_total END AS passes_total,
+                CASE WHEN m.source_type='collector_html_v1.1' THEN ev.passes_completed ELSE raw.passes_completed END AS passes_completed,
                 tm.starting_formation
             FROM team_match tm
             JOIN matches m ON m.match_id = tm.match_id
@@ -114,6 +114,22 @@ def get_team_matches(db_path: Path, team_id: str) -> pd.DataFrame:
                   COUNT(*) FILTER (WHERE action_type='PASS' AND outcome='SUCCESS') AS passes_completed
                 FROM match_events GROUP BY match_id, team_id
             ) ev ON ev.match_id=tm.match_id AND ev.team_id=tm.team_id
+            LEFT JOIN (
+                SELECT
+                  match_id, team_id,
+                  SUM(shots_total) AS shots_total,
+                  SUM(shots_on_target) AS shots_on_target,
+                  SUM(passes_total) AS passes_total,
+                  SUM(passes_completed) AS passes_completed,
+                  SUM(fouls_committed) AS fouls_committed,
+                  SUM(fouls_received) AS fouls_received,
+                  SUM(yellow_cards) AS yellow_cards,
+                  SUM(red_cards) AS red_cards,
+                  SUM(penalties_won) AS penalties_won,
+                  SUM(penalties_conceded) AS penalties_conceded
+                FROM player_match_raw_stats
+                GROUP BY match_id, team_id
+            ) raw ON raw.match_id=tm.match_id AND raw.team_id=tm.team_id
             WHERE tm.team_id = ?
             ORDER BY m.match_date DESC, m.match_id
             """,

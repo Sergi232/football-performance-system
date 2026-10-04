@@ -146,8 +146,9 @@ latest_match = matches.iloc[0] if not matches.empty else None
 median_latest = pd.to_numeric(latest_match_ratings.get("match_rating_10"), errors="coerce").median() if not latest_match_ratings.empty else None
 median_conf = pd.to_numeric(latest_match_ratings.get("match_rating_confidence"), errors="coerce").median() if not latest_match_ratings.empty else None
 
-# These are direct event aggregates for Collector matches.  Null means the source did
-# not capture the event family, so Team Mode deliberately shows N/D rather than 0.
+# Collector matches use their event ledger. Historical matches use deterministic sums
+# from player-match raw statistics. A null still means that neither source captured the
+# family, so the UI keeps N/D rather than manufacturing a zero.
 result_rows = matches.dropna(subset=["score_for", "score_against"]).copy()
 if result_rows.empty:
     record_text = "N/D"
@@ -354,10 +355,15 @@ with tab_matches:
                 display[col] = pd.NA
         for col in ["corners_for", "corners_against", "fouls_received", "fouls_committed", "yellow_cards", "red_cards", "penalties_won", "penalties_conceded"]:
             display[col] = pd.to_numeric(display.get(col), errors="coerce")
-        display["Córners F/C"] = display.apply(lambda r: "N/D" if pd.isna(r.corners_for) else f"{int(r.corners_for)} · {int(r.corners_against)}", axis=1)
-        display["Faltas R/C"] = display.apply(lambda r: "N/D" if pd.isna(r.fouls_received) else f"{int(r.fouls_received)} · {int(r.fouls_committed)}", axis=1)
-        display["Tarjetas A/R"] = display.apply(lambda r: "N/D" if pd.isna(r.yellow_cards) else f"{int(r.yellow_cards)} · {int(r.red_cards)}", axis=1)
-        display["Penaltis F/C"] = display.apply(lambda r: "N/D" if pd.isna(r.penalties_won) else f"{int(r.penalties_won)} · {int(r.penalties_conceded)}", axis=1)
+        def pair_or_nd(row: pd.Series, left: str, right: str) -> str:
+            if pd.isna(row.get(left)) or pd.isna(row.get(right)):
+                return "N/D"
+            return f"{int(row[left])} · {int(row[right])}"
+
+        display["Córners F/C"] = display.apply(lambda r: pair_or_nd(r, "corners_for", "corners_against"), axis=1)
+        display["Faltas R/C"] = display.apply(lambda r: pair_or_nd(r, "fouls_received", "fouls_committed"), axis=1)
+        display["Tarjetas A/R"] = display.apply(lambda r: pair_or_nd(r, "yellow_cards", "red_cards"), axis=1)
+        display["Penaltis F/C"] = display.apply(lambda r: pair_or_nd(r, "penalties_won", "penalties_conceded"), axis=1)
         display = display[["Fecha", "L/V", "opponent", "Resultado", "Formación", "Córners F/C", "Faltas R/C", "Tarjetas A/R", "Penaltis F/C", "median_match_rating", "median_confidence"]]
         display.columns = ["Fecha", "L/V", "Rival", "Resultado", "Formación", "Córners F/C", "Faltas R/C", "Tarjetas A/R", "Penaltis F/C", "Rating mediano", "Confianza mediana %"]
         st.dataframe(display, hide_index=True, width="stretch", height=600)

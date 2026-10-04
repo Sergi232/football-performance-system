@@ -73,6 +73,17 @@ def alias_player(name: object, aliases: dict[str, str]) -> str:
     return aliases.get(raw, raw) if demo_mode() else raw
 
 
+def available_integer(value: object) -> str:
+    """Present a sourced aggregate without converting unavailable data into zero."""
+    if value is None or pd.isna(value):
+        return "N/D"
+    return str(int(value))
+
+
+def available_pair(left: object, right: object) -> str:
+    return f"{available_integer(left)} · {available_integer(right)}"
+
+
 path = db_path()
 if not path.exists():
     st.error(f"No se ha encontrado la base de datos: {path}")
@@ -160,18 +171,17 @@ k1, k2, k3, k4 = st.columns(4)
 with k1:
     metric_card("Marcador", result_text(match.get("score_for"), match.get("score_against")), f"{team_name} · {match_opponent}")
 with k2:
-    metric_card("Remates", safe_number(match.get("shots_total"), 0), "Total registrado")
+    metric_card("Remates", available_integer(match.get("shots_total")), "Total registrado")
 with k3:
-    metric_card("A puerta", safe_number(match.get("shots_on_target"), 0), "Gol + a puerta")
+    metric_card("A puerta", available_integer(match.get("shots_on_target")), "Gol + a puerta")
 with k4:
-    metric_card("Córners", f"{safe_number(match.get('corners_for'), 0)} · {safe_number(match.get('corners_against'), 0)}", "Favor · contra")
+    metric_card("Córners", available_pair(match.get("corners_for"), match.get("corners_against")), "Favor · contra")
 
-if pd.notna(match.get("corners_for")):
-    b1, b2, b3, b4 = st.columns(4)
-    b1.metric("Faltas", f"{int(match['fouls_committed'])} cometidas · {int(match['fouls_received'])} recibidas")
-    b2.metric("Tarjetas", f"{int(match['yellow_cards'])} amarillas · {int(match['red_cards'])} rojas")
-    b3.metric("Penaltis", f"{int(match['penalties_won'])} favor · {int(match['penalties_conceded'])} contra")
-    b4.metric("Jugadores utilizados", str(len(ratings)), "Apariciones con minutos")
+b1, b2, b3, b4 = st.columns(4)
+b1.metric("Faltas", f"{available_integer(match.get('fouls_committed'))} cometidas · {available_integer(match.get('fouls_received'))} recibidas")
+b2.metric("Tarjetas", f"{available_integer(match.get('yellow_cards'))} amarillas · {available_integer(match.get('red_cards'))} rojas")
+b3.metric("Penaltis", f"{available_integer(match.get('penalties_won'))} favor · {available_integer(match.get('penalties_conceded'))} contra")
+b4.metric("Jugadores utilizados", str(len(ratings)), "Apariciones con minutos")
 
 c1, c2, c3 = st.columns(3)
 with c1:
