@@ -6,140 +6,116 @@ Fuente de verdad operativa del proyecto junto con el código actual de `main`. S
 
 ---
 
-# ESTADO EJECUTIVO
+# 1. ESTADO EJECUTIVO
 
 ```text
-PRODUCTO FUNCIONAL                    CERRADO / VALIDADO
-GLOBAL END-TO-END QA                  PASS
-REPRODUCIBILIDAD                      PASS
-CI AUTOMÁTICO                         ACTIVO / PASS
-DEMO PÚBLICA SINTÉTICA                PASS / REDISTRIBUIBLE
-UI FINAL PRESENTATION AUDIT           CERRADO / CORREGIDO
-COACH COPILOT LOCAL                   CERRADO / REAL SMOKE 22/22 PASS
-COACH COPILOT OPENAI BYOK             IMPLEMENTADO / CONTRACT + CI PASS / LIVE API NO VALIDADA
-MEMORIA ACADÉMICA INTEGRADA           BORRADOR COMPLETO
-MARCO TEÓRICO / BIBLIOGRAFÍA          BORRADOR COMPLETO
-METODOLOGÍA                           BORRADOR COMPLETO
-RESULTADOS                            BORRADOR COMPLETO
-DISCUSIÓN / LIMITACIONES              BORRADOR COMPLETO
-CONCLUSIONES / TRABAJO FUTURO         BORRADOR COMPLETO
-TABLAS ACADÉMICAS                     CREADAS
-FIGURAS TÉCNICAS                      5 SVG CREADOS
-ANEXOS                                BORRADOR CREADO
-GUION DEFENSA                         CREADO
-CAPTURAS REALES PRODUCTO              EN CURSO — ÚLTIMO GATE VISUAL
-PLANTILLA / RÚBRICA UNIVERSIDAD       PENDIENTE EXTERNO
-PUBLIC DEPLOYMENT                     NO HACER — licencia dataset real no resuelta
+PRODUCTO WEB FUNCIONAL                 CERRADO / VALIDADO
+GLOBAL END-TO-END QA                   PASS
+REPRODUCIBILIDAD                       PASS
+CI AUTOMÁTICO                          PASS
+DEMO PÚBLICA SINTÉTICA                 PASS / REDISTRIBUIBLE
+TEAM / PLAYER / MATCH / GPS            QA PASS
+EXPERT SYSTEM N1000-N13000             CERRADO / VALIDADO
+MATCH RATING V5                        CONGELADO
+PERFORMANCE INDEX                      v0.2 EXPERIMENTAL
+REPORTS V6                             PASS
+COACH COPILOT QUERY-SPACE CONTRACT     PASS EN CI
+COACH COPILOT LOCAL REAL               PASS 22/22 PREVIO · avg 1.4s
+SMOKE LOCAL AMPLIADO                   28 CASOS · PENDIENTE ÚNICA REEJECUCIÓN FINAL
+COACH COPILOT OPENAI BYOK              IMPLEMENTADO / CONTRACT PASS / LIVE API NO VALIDADA
+ANONIMIZACIÓN DEMO ASSISTANT           CONTRACT PASS
+CAPTURAS FINALES                       PENDIENTE ÚLTIMO GATE VISUAL
+PUBLIC DEPLOYMENT                      NO HACER CON DATASET REAL POR LICENCIA
 ```
 
-No añadir nueva funcionalidad deportiva salvo defecto real o nueva evidencia. Prioridad actual: cierre visual, documental y entrega.
+No añadir nueva funcionalidad deportiva salvo defecto real. Prioridad: una única validación local automatizada final, revisión visual, capturas y entrega.
 
 ---
 
-# HIPÓTESIS PRINCIPAL
+# 2. HIPÓTESIS DEL TFM
 
 > **Un equipo de fútbol amateur o semiprofesional puede disponer de un sistema integral y auditable de soporte a la decisión a partir de datos de vídeo y GPS opcional, capaz de transformarlos en información sobre rendimiento, evolución, rol y comportamiento físico de los jugadores y del equipo.**
 
-Contraste actual:
+Estado del contraste:
 
 ```text
 viabilidad técnica / arquitectónica     FAVORABLEMENTE CONTRASTADA
-mejora decisiones entrenador            NO DEMOSTRADA
-mejora rendimiento deportivo            NO DEMOSTRADA
-fatiga / readiness / lesión             NO DEMOSTRADO / NO IMPLEMENTADO
+mejora causal de decisiones             NO DEMOSTRADA
+mejora causal del rendimiento           NO DEMOSTRADA
+fatiga / readiness / lesión             NO IMPLEMENTADO / NO VALIDADO
 impacto comercial                       NO VALIDADO
 ```
 
 ---
 
-# ARQUITECTURA VIGENTE
+# 3. ARQUITECTURA ACTUAL
 
 ```text
-VIDEO / COLLECTOR + GPS OPCIONAL
+VIDEO / DATA COLLECTOR + GPS OPCIONAL
 → RAW / NORMALIZED DATA
 → FEATURE ENGINE
 → ANALYTICS
 → EXPERT SYSTEM / DS-ML
-→ PRODUCT SERVICE / ACCESS
-→ DASHBOARD
-   ↓              ↓
-COACH COPILOT     PDF
+→ PRODUCT SERVICE / ACCESS LAYER
+→ WEB DASHBOARD
+   ↓                         ↓
+COACH COPILOT               PDF
 ```
 
 Regla global:
 
-> Una capa superior no inventa métricas, scores, rankings o recomendaciones que no existan en una capa inferior validada.
+> Una capa superior no puede inventar métricas, scores, rankings, thresholds o recomendaciones que no existan o no estén autorizados por una capa inferior validada.
 
-Coach Copilot actual:
+Arquitectura Coach Copilot:
 
 ```text
-QUESTION
-→ DETERMINISTIC HIGH-CONFIDENCE ROUTER
-→ si la consulta es clara: READ-ONLY TOOL directamente
-→ si es ambigua: QWEN 3.5 4B local o OPENAI BYOK opcional
+PREGUNTA
+→ PREFLIGHT / GUARDRAILS
+→ ROUTER DETERMINISTA DE ALTA CONFIANZA
+→ si es resoluble: TOOL READ-ONLY
+→ si sigue siendo ambigua y está dentro de dominio:
+     Qwen 3.5 4B local
+     o OpenAI BYOK opcional
 → PYTHON / DUCKDB / ANALYTICS / EXPERT SYSTEM
-→ STRUCTURED EVIDENCE
-→ respuesta factual determinista o síntesis externa limitada
-→ POLICY / NUMERIC GUARDS
+→ EVIDENCIA ESTRUCTURADA
+→ RESPUESTA
 → COACH
 ```
 
-Ni Qwen ni OpenAI tienen acceso directo a DuckDB. Match Rating, Performance Index, rankings, features y decisiones críticas se calculan fuera del LLM.
+Qwen/OpenAI no tienen acceso directo a DuckDB ni calculan Match Rating, Performance Index, rankings o decisiones críticas.
 
 ---
 
-# MÓDULOS CERRADOS
-
-```text
-DATA-01/02/03/04                    CERRADO / VALIDADO
-COLLECTOR-01                        CERRADO / V1.1 / FINAL GATE PASS
-GPS NORMALIZATION                   CERRADO / VALIDADO
-GPS SYNTHETIC DEMO                  CERRADO / VALIDADO
-GPS PHYSICAL SUMMARY                CERRADO / REAL > SYNTHETIC
-FEATURE-01/02/03                    CERRADO / VALIDADO
-ANALYTICS-01                        CERRADO / VALIDADO
-EXPERT-01..07 N1000-N13000          CERRADO / VALIDADO
-MATCH RATING V5                     CERRADO / CONGELADO
-PERFORMANCE INDEX                   v0.2 EXPERIMENTAL / OPERATIVO
-DASHBOARD TEAM / PLAYER / MATCH     QA PASS
-DASHBOARD GPS                       QA PASS
-ATTENTION CENTRE                    CERRADO / v0.3
-ACCESS CONTROL                      CONTRACT PASS / AUTH REAL PENDIENTE
-COACH COPILOT LOCAL                 CERRADO / 22/22 REAL SMOKE PASS
-COACH COPILOT OPENAI BYOK           IMPLEMENTADO / CONTRACT + CI PASS
-REPORTS V6                          CERRADO / PASS
-```
-
----
-
-# COLLECTOR V1.1 — VARIABLES APROBADAS
+# 4. VARIABLES APROBADAS DEL DATA COLLECTOR
 
 Taxonomía congelada:
 
 ```text
 collector/event_catalog.json
 catalog_version=0.3.0
+collector/data_collector_futbol.html
 ```
 
 Variables observables aprobadas:
 - identificación: jugador, dorsal, titular/suplente, minutos;
-- contexto: partido, equipo, rival, fecha, formación, rol/posición, lado y cambios;
+- contexto: partido, equipo, rival, fecha, formación, rol/posición, lado y cambios de rol;
 - pase normal/largo/centro × éxito/fallo;
 - pase clave y asistencia;
 - regate y pérdida;
 - remate: gol / a puerta / fuera / bloqueado;
 - defensa: entrada, intercepción, bloqueo y despeje;
 - falta cometida/recibida con localización;
-- tarjeta amarilla/roja;
-- penal ganado/concedido con resultado;
-- portero: parada y gol encajado;
-- córner a favor/en contra + resultado ABP.
+- tarjetas y penaltis;
+- córners/ABP y resultado de secuencia;
+- portero: parada y gol encajado.
 
-No recoger manualmente xG, PPDA, posesión avanzada, pressing, heatmaps, fatiga ni métricas derivables.
+No recoger manualmente xG, PPDA, posesión avanzada, pressing, heatmaps, fatiga ni métricas que se puedan derivar automáticamente.
 
 ---
 
-# DATA / FEATURES / ANALYTICS
+# 5. DATA / FEATURES / ANALYTICS
+
+Unidad analítica principal: `player_match`.
 
 Caso profesional de desarrollo:
 
@@ -149,20 +125,26 @@ players context=36
 played appearances=590
 ```
 
+Estado:
+
 ```text
-FEATURE-01 = 28 features / 23380 rows / 6324 non-null / PASS
-FEATURE-02 = 28 × 7 temporal operators / 163660 rows / strict-past PASS
-FEATURE-03 = 117735 rows / 43060 non-null / 590/835 con rol observado / PASS
-ANALYTICS-01 = 46760 rows / SELF_ROLE_PRIOR + PEER_ROLE_PRIOR / strict-past PASS
+FEATURE-01  28 features base / 23380 rows / PASS
+FEATURE-02  28 × 7 operadores temporales / strict-past PASS
+FEATURE-03  role-conditioned / strict-past + same-role PASS
+ANALYTICS-01 SELF_ROLE_PRIOR + PEER_ROLE_PRIOR / PASS
 ```
 
-Current-player exclusion y equal-player weighting: PASS.
+Principios cerrados:
+- current-player exclusion en peers;
+- equal-player weighting;
+- no same-date/future leakage;
+- no inferir rol cuando falta evidencia.
 
 ---
 
-# MATCH RATING / PERFORMANCE INDEX
+# 6. MATCH RATING / PERFORMANCE INDEX
 
-Match Rating activo y congelado:
+Match Rating activo:
 
 ```text
 match_rating_v0.5-candidate
@@ -175,7 +157,7 @@ min=3.206
 max=9.554
 ```
 
-No modificar sin nueva evidencia + experimento + validación.
+Está congelado. No modificar sin nueva evidencia + experimento explícito + validación.
 
 Performance Index:
 
@@ -183,11 +165,11 @@ Performance Index:
 performance_score_v0.2-experimental
 ```
 
-Capa histórica/posicional complementaria. No sustituye al Match Rating.
+Es complementario y experimental; no sustituye al Match Rating.
 
 ---
 
-# EXPERT SYSTEM
+# 7. EXPERT SYSTEM
 
 ```text
 N1000   disponibilidad / actividad
@@ -198,38 +180,27 @@ N5000   creación / progresión
 N6000   contribución defensiva
 N7000   finalización
 N8000   contexto equipo
-N9000   componente físico
+N9000   componente físico opcional
 N10000  rol / contexto
 N11000  consistencia / tendencia
 N12000  player-fit evidence
 N13000  recommendation gate
 ```
 
-Contrato:
+Contrato por nodo:
 
 ```text
 entrada → condición → resultado → confianza → justificación
 ```
 
-Estado:
-
-```text
-engine_version=expert_0.7.0
-decision_rows=154475
-N13000_rows=2505
-NO_EVIDENCE=89
-POLICY_UNVALIDATED=501
-ROLE_UNKNOWN=245
-```
-
-N13000 no recomienda sin policy validada. N9000 no usa GPS sintético como evidencia física observada.
+`expert_0.7.0` está cerrado. N13000 no emite recomendación táctica sin policy validada. N9000 no considera GPS sintético como evidencia física real.
 
 ---
 
-# GPS
+# 8. GPS
 
 ```text
-provider file / synthetic demo
+archivo proveedor / demo sintética
 → gps_imports
 → gps_player_map
 → gps_observations
@@ -237,9 +208,9 @@ provider file / synthetic demo
 → dashboard / reports
 ```
 
+Estado profesional de desarrollo:
+
 ```text
-gps_physical_summary_v0.1-descriptive
-gps_synthetic_demo_v1.2.0
 imports=38
 mappings=590
 observations=38197
@@ -247,370 +218,321 @@ summaries=590
 REAL_OVER_SYNTHETIC=PASS
 ```
 
-No existen thresholds canónicos de HSR, sprint, workload, fatiga, readiness o lesión.
+No hay thresholds canónicos de HSR, sprint, workload, fatiga, readiness o riesgo de lesión.
 
 ---
 
-# COACH COPILOT — RUNTIME FINAL
+# 9. COACH COPILOT — CONTRATO FINAL
 
-## Arquitectura local
-
-Runtime principal de producto:
+Contrato canónico:
 
 ```text
-pregunta
-→ router determinista de alta confianza
-→ tools read-only
-→ Python/DuckDB
-→ respuesta factual determinista
+llm/COACH_COPILOT_CONTRACT.md
 ```
 
-Solo cuando la intención no se puede resolver con suficiente confianza:
+La consulta se modela como composición de:
 
 ```text
-pregunta ambigua
-→ qwen3.5:4b como router semántico local
-→ tools read-only
-→ Python/DuckDB
-→ evidencia estructurada
-→ respuesta factual determinista
+ENTIDAD
++ OPERACIÓN
++ MÉTRICA(S)
++ AGREGACIÓN
++ ROL/POSICIÓN
++ FILTROS
++ VENTANA TEMPORAL
++ CONTEXTO CONVERSACIONAL
 ```
 
-Qwen no calcula métricas críticas ni sintetiza rankings numéricos por su cuenta.
+No se valida una lista de frases aisladas. Se valida el espacio de consultas.
 
 Métricas queryables actuales:
-- goals;
-- assists;
-- shots;
-- passes_total;
-- passes_completed;
-- tackles_total;
-- tackles_won;
-- interceptions;
-- turnovers;
-- dispossessed;
-- minutes;
-- appearances;
-- total_distance_m;
-- peak_speed_m_s;
-- max_acceleration_m_s2;
-- min_acceleration_m_s2;
-- latest_match_rating;
-- avg_last5;
-- trend_delta_5v5.
+
+```text
+goals
+assists
+shots
+passes_total
+passes_completed
+tackles_total
+tackles_won
+interceptions
+turnovers
+dispossessed
+minutes
+appearances
+total_distance_m
+peak_speed_m_s
+max_acceleration_m_s2
+min_acceleration_m_s2
+latest_match_rating
+avg_last5
+trend_delta_5v5
+```
 
 Operaciones soportadas:
-- retrieve / rank / compare / trend / aggregate / evidence;
-- sum / mean / max / min / latest donde corresponda;
-- ventanas `últimos N partidos`;
-- follow-ups ordinales y de evidencia.
+- retrieve;
+- rank;
+- compare players;
+- compare role/position;
+- trend;
+- aggregate;
+- explain evidence;
+- data quality;
+- follow-ups ordinales, temporales y de evidencia.
 
-Guardrails explícitos:
-- fatiga/cansancio;
-- readiness;
+Agregaciones soportadas cuando corresponda:
+
+```text
+sum / mean / max / min / latest
+```
+
+Roles/posiciones cubiertos:
+
+```text
+GK  portero / guardameta
+CB  central
+FB  lateral / carrilero
+DM  pivote / mediocentro defensivo
+CM  mediocentro / centrocampista / interior
+AM  mediapunta
+W   extremo
+ST  delantero / delantero centro / punta / atacante
+```
+
+Comparación por posición:
+- si se pregunta `quién ha rendido mejor` dentro de un rol, el criterio explícito es **Match Rating medio en la muestra de ese rol**;
+- las demás métricas son evidencia descriptiva;
+- no se crea un score nuevo.
+
+Prioridad de entidades:
+
+```text
+jugador concreto > palabra que coincide con una posición
+```
+
+Esto evita que nombres como `Portero Demo` o `Central Demo A` se interpreten como grupos posicionales.
+
+Guardrails:
+- fatiga/cansancio/readiness;
 - riesgo de lesión;
 - XI/titularidad;
-- recomendación táctica no validada;
-- `mejor jugador`, `más completo`, `más determinante` sin definición analítica aprobada.
+- táctica/recomendación no validada;
+- `mejor jugador`, `más completo`, `más determinante` sin criterio analítico aprobado;
+- causalidad no soportada;
+- métricas inexistentes.
 
-## Validación local real — 04/10/2026
+Preflight final:
+- entrada basura como `sss` → aclaración inmediata, 0 LLM;
+- meta-consulta como `no puedes hacer nada` / `qué puedes hacer` → capacidades, 0 LLM;
+- fuera de dominio obvio como teoría de juegos → rechazo inmediato, 0 LLM;
+- Qwen/OpenAI quedan reservados para ambigüedad **dentro del dominio**.
 
-DuckDB profesional + `qwen3.5:4b`:
+Follow-ups soportados:
+
+```text
+¿Y el segundo?
+¿Y el tercero?
+¿Y en los últimos N partidos?
+¿Qué evidencias tienes?
+Sí, compáralos
+Muéstrame las métricas
+```
+
+---
+
+# 10. ANONIMIZACIÓN DEL ASSISTANT
+
+En demo pública la capa de presentación usa exactamente las identidades de la plataforma:
+
+```text
+Equipo Demo
+Jugador 01, Jugador 02, ...
+Rival 01, Rival 02, ...
+```
+
+Boundary:
+
+```text
+alias visible
+→ app/assistant_identity.py
+→ identidad interna canónica
+→ tools / DuckDB
+→ respuesta interna
+→ app/assistant_identity.py
+→ alias visible
+```
+
+Si queda una identidad interna conocida antes de renderizar, la UI bloquea la respuesta en lugar de exponerla.
+
+Contract tests cubren round-trip de jugador/rival y ausencia de fugas en comparaciones por rol.
+
+---
+
+# 11. VALIDACIÓN COACH COPILOT
+
+## CI reproducible
+
+Workflow:
+
+```text
+.github/workflows/tests.yml
+→ pytest -q
+→ build + validate synthetic public demo
+→ python -m llm.validate_coach_contract --db data/football_performance_synthetic_demo.duckdb
+```
+
+Últimos gates verificados:
+
+```text
+37166566145  SUCCESS  query-space + roles + identity precedence
+37167083614  SUCCESS  unit tests + synthetic demo + query-space + preflight
+37167157174  SUCCESS  último main code gate tras ampliar smoke real
+```
+
+El validador CI cubre rankings, métricas, todas las posiciones, ventanas, follow-ups, guardrails, ruido/fuera de dominio y aliases demo sin usar LLM.
+
+## Validación local real ya confirmada
+
+Antes de la ampliación final:
 
 ```text
 SMOKE CONTRACT: PASS (22/22)
 average_elapsed=1.4s
-consultas deterministas típicas=0.1–0.8s
-follow-ups encadenados=0.1–0.2s
-pregunta fuera de dominio vía fallback Qwen=25.3s
+deterministic common queries=0.1–0.8s
+follow-ups=0.1–0.2s
 ```
 
-Casos cubiertos: rating, rating medio L5, distancia media, top remates, asistencias, evolución, perfil natural, GPS, comparación, partido, estado de equipo, calidad, fatiga, lesión, titularidad, criterio no validado, fuera de dominio y cadena de follow-ups con evidencia.
+El smoke local se ha ampliado ahora a **28 casos** para incluir comparaciones por posición, follow-up de rol, ruido, meta-consulta y fuera de dominio sin fallback. Esta versión ampliada todavía requiere **una única ejecución final sobre la DuckDB profesional**; no sustituir esto por testing manual frase a frase.
 
-El smoke reproducible está en:
+Comando:
 
-```text
-llm/smoke_test_coach_agent.py
+```powershell
+python llm\smoke_test_coach_agent.py
 ```
 
-## Integración OpenAI opcional — BYOK
+---
 
-Implementada como segunda opción dentro de la misma página del Asistente IA:
+# 12. OPENAI BYOK
+
+La página del Assistant permite:
 
 ```text
 Local · Qwen
 OpenAI API · clave propia
 ```
 
-Arquitectura:
-
-```text
-pregunta clara
-→ router determinista local
-→ tool FPS
-→ DuckDB
-→ respuesta
-→ 0 llamadas OpenAI
-
-pregunta ambigua
-→ OpenAI semantic router
-→ tools FPS limitadas y revalidadas localmente
-→ DuckDB / analytics / expert
-→ evidencia estructurada
-→ síntesis OpenAI con numeric grounding guard
-```
-
 Reglas:
-- la API key pertenece al usuario;
-- la UI no la persiste en DuckDB ni en archivos del proyecto;
-- OpenAI no recibe acceso directo a DuckDB;
-- tool calls externas se revalidan contra el contrato local;
+- la clave pertenece al usuario;
+- no se guarda en DuckDB ni en archivos del proyecto;
+- consultas claras se resuelven localmente y no consumen API;
+- comparaciones por posición también son deterministas y provider-independent;
+- preflight/guardrails se ejecutan antes de OpenAI;
+- OpenAI solo puede seleccionar tools read-only permitidas;
+- cada tool call se revalida localmente;
 - tools desconocidas se descartan;
-- límites deportivos y guardrails son los mismos que en modo local.
+- OpenAI no tiene acceso directo a DuckDB.
 
-Estado de validación:
+Estado:
 
 ```text
-implementación                       PASS
-unit / contract tests                PASS
-synthetic demo CI                    PASS
-llamada real con API key             NO VALIDADA AÚN
+implementation                 PASS
+unit / contract tests          PASS
+CI                             PASS
+real OpenAI API call           NOT VALIDATED
 ```
 
-No implementar ahora conexión inversa ChatGPT → FPS / MCP. Queda como extensión futura.
+La conexión inversa `ChatGPT → FPS` / MCP queda como extensión futura y no forma parte del MVP.
 
 ---
 
-# HISTÓRICO DE MODELOS / EXPERIMENTOS LLM
+# 13. EXPERIMENTOS Y DECISIONES DESCARTADAS
+
+LLM:
 
 ```text
-qwen3:1.7b
-- rápido
-- insuficiente en selección semántica compleja y algunos guardrails
-- descartado como runtime final
-
-qwen3.5:4b
-- buen routing semántico
-- demasiado lento cuando se usa en todas las consultas (~55-61s observado)
-- aprobado como fallback semántico, no como paso obligatorio
-
-gemma3:4b
-- tool calling Ollama HTTP 400
-- descartado
-
-granite4.2:3b
-- benchmark contractual inicial 9/9
-- avg ~34.7s
-- fallos espontáneos posteriores en rating/GPS/follow-ups
-- descartado como runtime final; se conserva como benchmark histórico
+qwen3:1.7b       rápido pero insuficiente semánticamente → descartado
+qwen3.5:4b       aprobado como fallback, no como paso obligatorio
+Gemma3:4b        tool calling HTTP 400 → descartado
+Granite4.2:3b    benchmark inicial 9/9 pero fallos espontáneos + latencia → descartado como runtime final
 ```
 
-Decisión final: no validar frases aisladas; validar el espacio de consultas y usar composición `entidad + operación + métrica + agregación + filtros + ventana + follow-up`.
+DS/ML:
+- change detection: experimental / no deploy;
+- player similarity: exploratorio / no deploy;
+- role/source-position classification: context-only / no deploy;
+- no forzar ML cuando baseline/regla simple es más defendible;
+- role-player-fit y Expert-vs-ML quedan bloqueados sin ground truth independiente suficiente.
+
+Decisión de producto aprobada:
+
+> FPS no depende de un LLM concreto. El conocimiento está en data + analytics + expert system + tools; Qwen/OpenAI son capas de interpretación.
 
 ---
 
-# PRODUCTO / UI
+# 14. ARCHIVOS IMPORTANTES
 
-Modos:
-- Equipo;
-- Jugador;
-- Partido;
-- Físico/GPS;
-- Calidad y alertas;
-- Asistente IA.
-
-Demo presentation:
-
-```text
-team → Equipo Demo
-players → Jugador 01...
-opponents → Rival 01...
-```
-
-Access roles:
-- SUPERADMIN;
-- CLUB_ADMIN;
-- STAFF.
-
-Autenticación email/password/session: no implementada.
-
-UI presentation audit: cerrado. Tras los cambios del Coach Copilot debe hacerse una última revisión visual y recaptura de las pantallas finales.
-
----
-
-# REPORTS V6
-
-```text
-report_metrics=report_descriptive_v0.2
-schema=0.7.0
-Team=4 páginas
-Player=3 páginas
-Match=3 páginas
-REPORTS ELITE TECHNICAL GATE V6=PASS
-```
-
----
-
-# QA / REPRODUCIBILIDAD / CI
-
-```text
-Fase 1 — Data/Core          PASS
-Fase 2 — Analytics/Expert   PASS
-Fase 3A — Product           PASS
-Fase 3B — Delivery          PASS
-GLOBAL END-TO-END QA        PASS
-```
-
-Demo sintética pública:
-
-```text
-demo_version=synthetic_public_demo_v0.1.0
-matches=12
-players=18
-player_match=216
-played=192
-FEATURE-01=6048
-FEATURE-02=42336
-FEATURE-03=30456
-analytics_rows=12096
-expert_rows=39960
-N13000=648
-ratings=192
-performance_index=192
-gps=192
-professional_source_rows=0
-app_read_layer=PASS
-report_payloads=PASS
-redistribution_status=REDISTRIBUTABLE_SYNTHETIC_DEMO
-```
-
-CI activo:
-
-```text
-.github/workflows/tests.yml
-push + pull_request + workflow_dispatch
-Python 3.13
-pytest
-synthetic demo rebuild + validation
-```
-
-Runs recientes de referencia:
-
-```text
-37162911509 = SUCCESS — smoke test direct execution import fix
-37163349049 = SUCCESS — optional OpenAI Coach Copilot mode
-37163417219 = SUCCESS — OpenAI BYOK Assistant UI + contracts
-37163457928 = SUCCESS — external OpenAI tool-surface contract tests
-```
-
----
-
-# ARCHIVOS IMPORTANTES
-
-Core de producto:
+Producto:
 - `app/streamlit_app.py`;
+- `app/pages/2_Jugador.py`;
+- `app/pages/3_Equip.py`;
+- `app/pages/4_Partit.py`;
 - `app/pages/5_Assistent_IA.py`;
 - `app/data_access.py`;
-- `app/gps_physical_access.py`;
-- `collector/data_collector_futbol.html`;
-- `collector/event_catalog.json`.
+- `app/presentation.py`;
+- `app/assistant_identity.py`.
 
 Coach Copilot:
-- `llm/coach_agent_fast.py` — entrada pública local + normalización/guards;
-- `llm/coach_agent_general.py` — query grammar, router determinista, tools y respuestas;
-- `llm/coach_agent_external.py` — OpenAI BYOK opcional;
-- `llm/smoke_test_coach_agent.py` — smoke real reproducible;
-- `tests/test_coach_agent_fast.py`;
-- `tests/test_coach_agent_external.py`.
+- `llm/COACH_COPILOT_CONTRACT.md` — contrato canónico;
+- `llm/coach_agent_fast.py` — entrada pública local, preflight y guards;
+- `llm/coach_agent_general.py` — query grammar, router, tools y respuestas;
+- `llm/coach_role_analysis.py` — comparaciones por posición;
+- `llm/coach_agent_external.py` — OpenAI BYOK;
+- `llm/validate_coach_contract.py` — gate automático CI;
+- `llm/smoke_test_coach_agent.py` — gate real local.
 
-Documentación académica:
-- `docs/TFM_MANUSCRIPT_DRAFT.md`;
+Collector / GPS / engine:
+- `collector/data_collector_futbol.html`;
+- `collector/event_catalog.json`;
+- `features/`;
+- `analytics/`;
+- `decision_tree/`;
+- `gps/`.
+
+Entrega:
+- `README.md`;
+- `docs/TFM_MANUSCRIPT_DRAFT.md` — manuscrito canónico;
+- `docs/TFM_EVIDENCE_MATRIX.md`;
 - `docs/TFM_METHODOLOGY_DRAFT.md`;
 - `docs/TFM_RESULTS_DRAFT.md`;
 - `docs/TFM_DISCUSSION_CONCLUSIONS_DRAFT.md`;
-- `docs/TFM_EVIDENCE_MATRIX.md`;
-- `docs/TFM_TABLES_RESULTS.md`;
-- `docs/TFM_ANNEXES_DRAFT.md`;
 - `docs/TFM_SCREENSHOT_CHECKLIST.md`;
-- `docs/TFM_DEFENSE_OUTLINE.md`;
 - `docs/TFM_SUBMISSION_CHECKLIST.md`.
 
 ---
 
-# DECISIONES APROBADAS
+# 15. PROBLEMAS ABIERTOS / LIMITACIONES
 
-- MVP funcional antes de aumentar complejidad;
-- Collector V1.1 congelado;
-- raw / features / analytics / decision / LLM separados;
-- strict-past obligatorio;
-- Match Rating V5 congelado;
-- Performance Index separado y experimental;
-- experto jerárquico y auditable;
-- ML solo con target defendible y contra baseline simple;
-- GPS opcional, real > synthetic;
-- synthetic GPS no es evidencia física observada;
-- no inferir rol sin evidencia;
-- LLM downstream y read-only;
-- query-space composicional antes que una lista creciente de frases;
-- router determinista para consultas claras;
-- `qwen3.5:4b` solo como fallback semántico local;
-- respuesta factual crítica calculada fuera del LLM;
-- OpenAI BYOK opcional dentro de FPS, sin convertirlo en dependencia obligatoria;
-- pregunta no soportada no cae en un resumen genérico del equipo;
-- PDF downstream de analytics;
-- demo pública sintética separada del dataset profesional;
-- CI automático obligatorio;
-- hipótesis limitada a viabilidad técnica/auditable;
-- UI final muestra lenguaje de producto, no tokens internos.
+- ejecutar una sola vez el smoke ampliado de 28 casos sobre la DuckDB profesional;
+- revisión visual final del Assistant con aliases demo;
+- capturas finales del producto;
+- OpenAI BYOK tiene contract tests pero no una llamada real con API key;
+- no hay autenticación productiva completa;
+- no hay validación causal con entrenadores/clubes;
+- no publicar automáticamente el dataset profesional;
+- no implementar MCP/ChatGPT→FPS antes de la entrega.
 
 ---
 
-# DECISIONES DESCARTADAS / APLAZADAS
+# 16. SIGUIENTE PASO EXACTO
 
-- recrear proveedores profesionales;
-- recoger métricas avanzadas manuales sin coste/beneficio claro;
-- LLM como motor analítico;
-- XI ideal o rol óptimo sin policy validada;
-- fatiga/lesión/readiness sin datos y validación;
-- inferir posición de suplentes sin evidencia;
-- publicar dataset profesional sin derechos;
-- autenticación SaaS completa en MVP;
-- añadir ML solo por complejidad;
-- inventar validación con usuarios;
-- qwen3:1.7b como runtime conversacional final;
-- qwen3.5:4b como paso obligatorio en cada consulta;
-- gemma3:4b como runtime de tool calling con Ollama actual;
-- Granite 4.2 3B como runtime final tras fallos espontáneos;
-- embeddings / nuevo semantic-router antes de la entrega;
-- conexión externa ChatGPT → FPS / MCP en el MVP.
+```text
+1. git pull --ff-only
+2. ejecutar UNA VEZ: python llm\smoke_test_coach_agent.py sobre la DuckDB profesional
+3. si 28/28 PASS: no hacer más testing manual aleatorio
+4. abrir Streamlit en FPS_DEMO_MODE=1
+5. revisión visual + capturas canónicas
+6. congelar main para entrega
+7. maquetación / defensa / submission checklist
+```
 
----
-
-# PROBLEMAS ABIERTOS
-
-Prioridad de entrega:
-- última revisión visual de `app/pages/5_Assistent_IA.py` tras añadir selector Local/OpenAI;
-- capturas canónicas finales;
-- sincronizar README y manuscrito con la arquitectura final del Coach Copilot;
-- revisar checklist de entrega;
-- maquetación/presentación final según plantilla disponible.
-
-Limitaciones conocidas:
-- fallback Qwen local puede tardar ~20–30s en CPU para lenguaje realmente ambiguo;
-- modo OpenAI requiere API key y conexión externa;
-- modo OpenAI no tiene todavía una prueba live con una API key real;
-- autenticación de producción no implementada;
-- dataset profesional no redistribuible mientras no se resuelva licencia;
-- no existe validación externa con entrenadores ni ground truth para recomendaciones N13000.
-
----
-
-# SIGUIENTE PASO EXACTO
-
-1. `git pull --ff-only`.
-2. Arrancar la app con la DuckDB profesional y revisar visualmente el Asistente IA en modo `Local · Qwen`.
-3. Probar en la UI: rating, distancia, evolución, GPS, comparación y un guardrail; confirmar trazas legibles.
-4. Verificar que aparece `OpenAI API · clave propia`; no es necesario gastar API para cerrar el MVP si no se dispone de una key de prueba.
-5. Capturar la pantalla final del Coach Copilot y completar las 10 capturas de `docs/TFM_SCREENSHOT_CHECKLIST.md`.
-6. Sincronizar manuscrito/resultados/arquitectura con este estado final.
-7. Ejecutar checklist de entrega y congelar versión.
+No volver al patrón `usuario prueba frases al azar → se añade una regla`. Los defectos del espacio soportado deben detectarse mediante contrato + tests paramétricos + CI.
