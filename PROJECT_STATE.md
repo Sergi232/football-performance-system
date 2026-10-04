@@ -20,15 +20,14 @@ MATCH RATING V5                        CONGELADO
 PERFORMANCE INDEX                      v0.2 EXPERIMENTAL
 REPORTS V6                             PASS
 COACH COPILOT QUERY-SPACE CONTRACT     PASS EN CI
-COACH COPILOT LOCAL REAL               PASS 22/22 PREVIO · avg 1.4s
-SMOKE LOCAL AMPLIADO                   28 CASOS · PENDIENTE ÚNICA REEJECUCIÓN FINAL
+COACH COPILOT LOCAL REAL               PASS 28/28 · avg 0.4s
 COACH COPILOT OPENAI BYOK              IMPLEMENTADO / CONTRACT PASS / LIVE API NO VALIDADA
 ANONIMIZACIÓN DEMO ASSISTANT           CONTRACT PASS
 CAPTURAS FINALES                       PENDIENTE ÚLTIMO GATE VISUAL
 PUBLIC DEPLOYMENT                      NO HACER CON DATASET REAL POR LICENCIA
 ```
 
-No añadir nueva funcionalidad deportiva salvo defecto real. Prioridad: una única validación local automatizada final, revisión visual, capturas y entrega.
+No añadir nueva funcionalidad deportiva salvo defecto real. Coach Copilot queda congelado para entrega; prioridad inmediata: revisión visual, capturas y cierre documental.
 
 ---
 
@@ -391,20 +390,30 @@ Workflow:
 
 El validador CI cubre rankings, métricas, todas las posiciones, ventanas, follow-ups, guardrails, ruido/fuera de dominio y aliases demo sin usar LLM.
 
-## Validación local real ya confirmada
+## Validación local real final — 04/10/2026
 
-Antes de la ampliación final:
+DuckDB profesional + `qwen3.5:4b` configurado:
 
 ```text
-SMOKE CONTRACT: PASS (22/22)
-average_elapsed=1.4s
-deterministic common queries=0.1–0.8s
-follow-ups=0.1–0.2s
+SMOKE CONTRACT: PASS (28/28)
+average_elapsed=0.4s
 ```
 
-El smoke local se ha ampliado ahora a **28 casos** para incluir comparaciones por posición, follow-up de rol, ruido, meta-consulta y fuera de dominio sin fallback. Esta versión ampliada todavía requiere **una única ejecución final sobre la DuckDB profesional**; no sustituir esto por testing manual frase a frase.
+Cobertura real del smoke final:
+- rating y rating medio L5;
+- distancia media, remates y asistencias;
+- evolución, perfil natural y GPS de jugador;
+- comparación entre jugadores;
+- detalle de partido, estado de equipo y calidad de datos;
+- guardrails de fatiga, lesión, titularidad y criterio no validado;
+- comparación por posición;
+- fuera de dominio, ruido y meta-consulta sin LLM;
+- follow-ups ordinales, temporales y de evidencia;
+- follow-up de comparación por posición.
 
-Comando:
+Todos los casos del smoke final se resolvieron con `rounds=0`; no fue necesario activar fallback semántico para este contrato. El Coach Copilot local queda **congelado para entrega** salvo defecto real reproducible.
+
+Gate reproducible:
 
 ```powershell
 python llm\smoke_test_coach_agent.py
@@ -512,7 +521,6 @@ Entrega:
 
 # 15. PROBLEMAS ABIERTOS / LIMITACIONES
 
-- ejecutar una sola vez el smoke ampliado de 28 casos sobre la DuckDB profesional;
 - revisión visual final del Assistant con aliases demo;
 - capturas finales del producto;
 - OpenAI BYOK tiene contract tests pero no una llamada real con API key;
@@ -526,13 +534,12 @@ Entrega:
 # 16. SIGUIENTE PASO EXACTO
 
 ```text
-1. git pull --ff-only
-2. ejecutar UNA VEZ: python llm\smoke_test_coach_agent.py sobre la DuckDB profesional
-3. si 28/28 PASS: no hacer más testing manual aleatorio
-4. abrir Streamlit en FPS_DEMO_MODE=1
-5. revisión visual + capturas canónicas
-6. congelar main para entrega
-7. maquetación / defensa / submission checklist
+1. abrir Streamlit en FPS_DEMO_MODE=1
+2. revisión visual final del producto y del Assistant
+3. realizar capturas canónicas
+4. sincronización final de manuscrito/checklist si alguna captura o etiqueta cambió
+5. congelar main para entrega
+6. maquetación / defensa / submission checklist
 ```
 
 No volver al patrón `usuario prueba frases al azar → se añade una regla`. Los defectos del espacio soportado deben detectarse mediante contrato + tests paramétricos + CI.
