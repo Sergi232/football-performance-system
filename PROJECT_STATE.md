@@ -35,6 +35,18 @@ Validación reproducible conservada en `publication/output/equipo_demo_b_validat
 
 La calibración profesional se ejecuta offline; runtime consume los artefactos congelados V4/GK y no accede a PannaData/Opta. La equivalencia original frente a artefactos congelados fue PASS con `max_abs_error=7.478e-13`.
 
+## FASE 3 — ingesta automática por carpeta (PASS)
+
+La entrada operativa `run_ingestion_pipeline.py --db <ruta>` valida JSON V1.1, procesa los ficheros en orden temporal, conserva los válidos en `data/processed/` y envía los inválidos a `data/rejected/` con motivo persistente. La importación es idempotente y, tras un lote válido, ejecuta Features → Analytics → V5 frozen → N1000–N13000 sobre la misma DuckDB, sin acceso runtime a PannaData/Opta.
+
+## FASE 4 — Collector → pipeline local (PASS END-TO-END)
+
+`INICIAR_FOOTBALL_PERFORMANCE.bat` arranca únicamente en localhost el Collector y el dashboard sobre la misma DuckDB canónica. Al pulsar **FINALIZAR PARTIDO**, el servicio local recibe el JSON V1.1, preserva el raw auditable, reutiliza la ingesta idempotente y ejecuta Features → Analytics → Match Rating V5 frozen → N1000–N13000. El resultado vuelve al Collector y queda disponible en Team, Player, Match, Coach y PDF. La exportación JSON permanece como fallback.
+
+## PRODUCT FREEZE — 04/10/2026
+
+El cierre visual final está validado en Centro de mando, Equipo, Partido y Jugador. Los informes Team, Player y Match se renderizaron página a página sobre la Showcase histórica, sin cortes ni páginas vacías. No se añade funcionalidad adicional salvo defecto reproducible que invalide un contrato cerrado.
+
 ---
 
 # 2. HIPÓTESIS DEL TFM

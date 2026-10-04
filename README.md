@@ -90,6 +90,18 @@ Incluye:
 
 No recoge manualmente xG, PPDA, posesión avanzada, pressing, heatmaps, fatiga ni métricas derivables.
 
+### Flujo local final
+
+Para operar el flujo completo sin mover archivos ni ejecutar comandos adicionales:
+
+```powershell
+.\INICIAR_FOOTBALL_PERFORMANCE.bat
+```
+
+El launcher abre el Collector y el dashboard local usando la misma DuckDB: `data/football_performance.duckdb`. **FINALIZAR PARTIDO** envía el JSON V1.1 al servicio local, conserva una copia raw auditable y ejecuta importación idempotente → Features → Analytics → Match Rating V5 frozen → N1000–N13000. El JSON exportable se mantiene como fallback.
+
+La Showcase histórica y los datos privados permanecen fuera de Git. Para la demo pública sintética, usar `run_final_demo.ps1` según el gate de entrega.
+
 ---
 
 ## Data / Feature / Analytics

@@ -28,9 +28,13 @@ def _identities(db: Path) -> set[str]:
         rows = con.execute(
             """
             SELECT display_name FROM players
+            WHERE lower(coalesce(source_name, '')) <> 'collector'
             UNION SELECT display_name FROM teams
-            UNION SELECT source_name FROM players WHERE source_name IS NOT NULL
-            UNION SELECT source_name FROM teams WHERE source_name IS NOT NULL
+            WHERE lower(coalesce(source_name, '')) <> 'collector'
+            UNION SELECT source_name FROM players
+            WHERE source_name IS NOT NULL AND lower(source_name) <> 'collector'
+            UNION SELECT source_name FROM teams
+            WHERE source_name IS NOT NULL AND lower(source_name) <> 'collector'
             """
         ).fetchall()
     return {str(row[0]).strip() for row in rows if row[0] and len(str(row[0]).strip()) >= 4}
